@@ -192,6 +192,31 @@ begin
 end;
 $$;
 
+-- User recipes are owned through owner_id (not user_id): same isolation, checked explicitly.
+begin;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+insert into public.recipes (id, owner_id, name_fr, name_en, slots, ingredients, minutes, difficulty, steps)
+  values ('a-own-recipe', '00000000-0000-0000-0000-00000000000a', 'Recette A', 'Recipe A', '{lunch}', '[]', 10, 1, '{}');
+select pg_temp.expect((select count(*) from public.recipes where id = 'a-own-recipe') = 1, 'owner reads own recipe');
+commit;
+begin;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+select pg_temp.expect((select count(*) from public.recipes where id = 'a-own-recipe') = 0, 'B cannot read A recipe');
+update public.recipes set name_fr = 'pwned' where id = 'a-own-recipe';
+delete from public.recipes where id = 'a-own-recipe';
+do $$
+begin
+  insert into public.recipes (id, owner_id, name_fr, name_en, slots, ingredients, minutes, difficulty, steps)
+    values ('b-as-a', '00000000-0000-0000-0000-00000000000a', 'x', 'x', '{lunch}', '[]', 10, 1, '{}');
+  raise exception 'RLS TEST FAILED: B created a recipe owned by A';
+exception when insufficient_privilege then
+  raise notice 'ok - B cannot create a recipe owned by A';
+end;
+$$;
+commit;
+reset role;
+select pg_temp.expect((select name_fr from public.recipes where id = 'a-own-recipe') = 'Recette A', 'B cannot modify or delete A recipe');
+
 -- Anonymous: every public table is closed, catalogues included.
 do $$
 declare
@@ -221,5 +246,8 @@ begin
     if n <> 0 then raise exception 'RLS TEST FAILED: account deletion left rows in %', t; end if;
   end loop;
   raise notice 'ok - account deletion cascades to every user table';
+  if exists (select 1 from public.recipes where owner_id = '00000000-0000-0000-0000-00000000000a') then
+    raise exception 'RLS TEST FAILED: account deletion left recipes';
+  end if;
 end;
 $$;
