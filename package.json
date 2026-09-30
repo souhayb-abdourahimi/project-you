@@ -36,6 +36,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@playwright/test": "1.63",
     "@testing-library/react-native": "^14.0.1",
     "@types/jest": "^29.5.14",
     "@types/pg": "^8.23.1",
@@ -62,6 +63,7 @@
     "test:db": "bash scripts/db-test.sh",
     "build:web": "expo export --platform web",
     "check": "npm run lint && npm run typecheck && npm test",
+    "test:e2e": "playwright test",
     "test:live": "SUPABASE_LIVE=1 node --env-file-if-exists=.env.local node_modules/.bin/jest --ci src/services/__tests__/supabase.live.test.ts"
   },
   "private": true,
@@ -69,7 +71,8 @@
     "preset": "jest-expo",
     "testPathIgnorePatterns": [
       "/node_modules/",
-      "/supabase/(?!functions/)"
+      "/supabase/(?!functions/)",
+      "/e2e/"
     ],
     "transformIgnorePatterns": [
       "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|zod|i18next|react-i18next)"
