@@ -11,9 +11,10 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 import { SCENARIOS } from '@/domain/scenarios';
-import type { SyncableState, SyncedHashes, SyncTable } from '@/domain/sync/projection';
+import { SYNC_TABLES, type SyncableState, type SyncedHashes, type SyncTable } from '@/domain/sync/projection';
 
 import { isClientSafeKey } from '../keys';
+import { fetchAllPages } from '../paging';
 import { syncOnce, type SyncClient, type SyncStore } from '../sync';
 
 const env = process.env;
@@ -42,11 +43,12 @@ function newClient(storage = memoryAuthStorage()) {
 
 function restClient(client: SupabaseClient): SyncClient {
   return {
-    select: async (table: SyncTable, since) => {
-      let q = client.from(table).select('*');
-      if (since) q = q.gt('updated_at', since);
-      return q;
-    },
+    select: async (table: SyncTable, since) =>
+      fetchAllPages((from, to) => {
+        let q = client.from(table).select('*');
+        if (since) q = q.gt('updated_at', since);
+        return q.order(SYNC_TABLES[table].key).range(from, to);
+      }),
     upsert: async (table, rows, onConflict) => client.from(table).upsert(rows, { onConflict }),
     softDelete: async (table, keys, at) => client.from(table).update({ deleted_at: at }).in('id', keys),
   };

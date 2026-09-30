@@ -5,6 +5,8 @@
  * - `applyRemote` merges rows pulled from the server into the local state.
  * Local changes not yet pushed win over the server; otherwise the server wins.
  */
+import { z } from 'zod';
+
 import type { FoodExpense } from '../meals/budget';
 import type { InventoryItem, InventorySource, InventoryUnit } from '../meals/inventory';
 import type { MealSlot } from '../meals/recipes';
@@ -29,6 +31,50 @@ export interface WaistEntry {
 
 /** `${date}#${sessionIndex}` */
 export type SessionKey = string;
+
+/*
+ * Remote rows are external input: each one is validated before it reaches the local state.
+ * Numbers may arrive as strings (Postgres numeric), hence the coercion. Invalid rows are counted
+ * in `rejected` and ignored, never patched.
+ */
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const finite = z.coerce.number().finite();
+const nullableFinite = z.union([z.null(), z.undefined(), finite]);
+const deletedRow = z.object({ deleted_at: z.string() });
+const REMOTE_ROWS = {
+  inventory_items: z.object({
+    id: z.string(),
+    name: z.string().min(1),
+    quantity: finite.nonnegative(),
+    unit: z.enum(['g', 'ml', 'piece']),
+    source: z.enum(['manual', 'barcode', 'receipt', 'photo']).nullish(),
+    updated_at: z.string(),
+  }),
+  food_expenses: z.object({ id: z.string(), amount_cents: z.coerce.number().int().nonnegative(), spent_on: isoDate }),
+  weight_logs: z.object({ id: z.string(), measured_on: isoDate, weight_kg: finite.positive() }),
+  body_measurements: z.object({ id: z.string(), kind: z.string(), measured_on: isoDate, value_cm: finite.positive() }),
+  workout_sessions: z.object({
+    id: z.string(),
+    scheduled_for: isoDate.nullish(),
+    session_index: z.coerce.number().int().nonnegative().nullish(),
+    variant: z.enum(['full', 'short', 'light']).nullish(),
+    status: z.string(),
+  }),
+  exercise_logs: z.object({
+    session_id: z.string(),
+    exercise_id: z.string(),
+    set_index: z.coerce.number().int().nonnegative(),
+    reps: nullableFinite,
+    load_kg: nullableFinite,
+    rpe: nullableFinite,
+  }),
+  meal_plan_items: z.object({
+    date: isoDate,
+    slot: z.enum(['breakfast', 'lunch', 'snack', 'dinner']),
+    recipe_id: z.string(),
+    status: z.string(),
+  }),
+} satisfies Partial<Record<string, z.ZodType>>;
 
 export interface SyncableState {
   snapshot: UserContextSnapshot | null;
@@ -342,7 +388,13 @@ export function applyRemote(
   const rows = (table: SyncTable) =>
     (remote[table] ?? []).filter((r) => {
       const key = String(r[SYNC_TABLES[table].key]);
-      return !pending(table, key);
+      if (pending(table, key)) return false;
+      const schema = REMOTE_ROWS[table as keyof typeof REMOTE_ROWS];
+      if (!schema || schema.safeParse(r).success) return true;
+      // A deleted row only needs its key to be applied.
+      if (r.deleted_at != null && deletedRow.safeParse(r).success && r[SYNC_TABLES[table].key] != null) return true;
+      rejected += 1;
+      return false;
     });
 
   for (const r of rows('inventory_items')) {

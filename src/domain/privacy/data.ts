@@ -40,6 +40,10 @@ export const EXPORT_ONLY_TABLES = [
   'progress_photos',
   'ai_conversations',
   'ai_messages',
+  // Not written by the app yet, but they exist on the server.
+  'recipes',
+  'shopping_list_items',
+  'workout_plans',
 ] as const;
 
 export function countByCategory(state: SyncableState): Record<PrivacyCategory, number> {

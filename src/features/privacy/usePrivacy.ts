@@ -8,12 +8,11 @@ import {
   countByCategory,
   type PrivacyCategory,
 } from '@/domain/privacy/data';
+import { resetDeviceData } from '@/hooks/deviceData';
 import { signOut, useSession } from '@/services/auth';
 import { deleteAccount, deleteRemoteCategory, fetchAccountData } from '@/services/privacy';
 import { supabase } from '@/services/supabase';
-import { replaceScheduled } from '@/services/notifications';
 import { useDataStore } from '@/state/data';
-import { useNotificationStore } from '@/state/notifications';
 import { useProfileStore } from '@/state/profile';
 
 import appJson from '../../../app.json';
@@ -110,10 +109,7 @@ export function usePrivacy() {
       }
       await signOut().catch(() => undefined);
     }
-    useDataStore.getState().reset();
-    useProfileStore.getState().reset();
-    useNotificationStore.getState().reset();
-    await replaceScheduled([], () => ({ title: '', body: '' })).catch(() => undefined);
+    await resetDeviceData();
     setStatus({ kind: 'done', message: 'account_deleted' });
   };
 

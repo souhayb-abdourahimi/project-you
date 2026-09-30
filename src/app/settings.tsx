@@ -5,17 +5,16 @@ import { Button, Card, ChoiceGroup, ConfirmButton, MockBadge, Row, Screen, Text 
 import { SCENARIOS } from '@/domain/scenarios';
 import { signOut } from '@/services/auth';
 import { isSupabaseConfigured } from '@/services/supabase';
+import { resetDeviceData } from '@/hooks/deviceData';
 import { useDataStore } from '@/state/data';
 import { useProfileStore } from '@/state/profile';
 
 export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
-  const { complete, restartOnboarding, reset: resetProfile } = useProfileStore();
-  const resetData = useDataStore((s) => s.reset);
+  const { complete, restartOnboarding } = useProfileStore();
 
-  const resetAll = () => {
-    resetData();
-    resetProfile();
+  const resetAll = async () => {
+    await resetDeviceData();
     router.replace('/');
   };
 
@@ -61,7 +60,7 @@ export default function SettingsScreen() {
             label={t('auth.signOut')}
             onPress={async () => {
               await signOut();
-              resetAll();
+              await resetAll();
             }}
           />
         </Card>
@@ -82,7 +81,7 @@ export default function SettingsScreen() {
               variant="secondary"
               label={name}
               onPress={() => {
-                resetData();
+                useDataStore.getState().reset();
                 complete({ ...snapshot, createdAt: new Date().toISOString() });
                 router.replace('/');
               }}

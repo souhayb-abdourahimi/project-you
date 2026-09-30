@@ -198,4 +198,31 @@ describe('applyRemote', () => {
     expect(state.snapshot).toBeNull();
     expect(rejected).toBe(1);
   });
+
+  it('rejects invalid remote rows instead of storing NaN or unknown values', () => {
+    const server = asServer(fullState());
+    const weight = server.weight_logs![0];
+    const item = server.inventory_items![0];
+    server.weight_logs = [{ ...weight, weight_kg: null }];
+    server.inventory_items = [{ ...item, unit: 'bucket' }];
+    const { state, rejected } = applyRemote(emptyState(), server, USER, {});
+    expect(rejected).toBe(2);
+    expect(state.weights).toEqual([]);
+    expect(state.inventory).toEqual([]);
+  });
+
+  it('accepts numbers sent as strings (Postgres numeric) and deletions with partial data', () => {
+    const source = fullState();
+    const server = asServer(source);
+    server.weight_logs = server.weight_logs!.map((w) => ({ ...w, weight_kg: String(w.weight_kg) }));
+    const { state, rejected } = applyRemote(emptyState(), server, USER, {});
+    expect(rejected).toBe(0);
+    expect(state.weights).toEqual(source.weights);
+
+    const deleted = asServer(source);
+    deleted.inventory_items = [{ id: deleted.inventory_items![0].id, deleted_at: '2026-09-30T10:00:00Z' }];
+    const after = applyRemote(source, deleted, USER, syncedFor(source));
+    expect(after.rejected).toBe(0);
+    expect(after.state.inventory.map((i) => i.id)).not.toContain(source.inventory[0].id);
+  });
 });
