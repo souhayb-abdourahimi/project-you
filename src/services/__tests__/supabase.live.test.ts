@@ -95,13 +95,16 @@ async function wipe(client: SupabaseClient, userId: string) {
 
 describeLive('live Supabase project', () => {
   jest.setTimeout(60_000);
-  const a = newClient();
-  const b = newClient();
+  // Created in beforeAll: the describe body also runs when the suite is skipped (no URL in CI).
+  let a: SupabaseClient;
+  let b: SupabaseClient;
   let aId = '';
   let bId = '';
 
   beforeAll(async () => {
     expect(isClientSafeKey(key)).toBe(true);
+    a = newClient();
+    b = newClient();
     const ra = await a.auth.signInWithPassword(accounts.a);
     const rb = await b.auth.signInWithPassword(accounts.b);
     expect(ra.error).toBeNull();
