@@ -40,13 +40,20 @@ Supabase / PostgreSQL. Migrations versionnées dans `supabase/migrations/` (horo
 | `coach_memory` | mémoire structurée du coach | `kind` énuméré (aliment détesté, créneau préféré…) |
 | `ai_conversations` / `ai_messages` | AIConversation, AIMessage | phase 3 ; tables créées mais inutilisées au MVP |
 
+## Migration `20261001000001_sync_hardening.sql`
+
+- Plus de clé étrangère des tables utilisateur vers les catalogues (`foods`, `recipes`, `exercises`) : ces catalogues sont livrés avec l'app et non peuplés côté serveur (MOCK aujourd'hui, CIQUAL demain, identifiants appelés à changer). Les FK faisaient échouer toute synchronisation d'inventaire, de repas et de séries. Remplacées par un `check` de format d'identifiant (D-014).
+- Politiques restrictives : une séance ne peut pointer que vers un plan du même utilisateur, une série que vers une séance du même utilisateur (sinon la suppression par B aurait effacé des lignes de A par cascade).
+- `exercise_logs` : unicité `(session_id, exercise_id, set_index)` pour des upserts idempotents.
+- `weekly_reviews.deleted_at` ; privilèges par défaut retirés à `anon` pour les futures tables.
+
 ## Prévu plus tard (non créé)
 
 `stores`, `prices`, `promotions`, `gyms`, `sports_activities` : phases 2–3, avec la traçabilité complète des données externes. Créés quand un provider réel existe, pour ne pas stocker de données inventées.
 
 ## Tests RLS
 
-`supabase/tests/rls.sql` crée deux utilisateurs, simule leurs JWT (`request.jwt.claims`) et vérifie qu'aucun ne peut lire/écrire les lignes de l'autre, et que `anon` ne voit rien. Lancer : `npm run test:db` (Postgres local requis ; en CI via un service Postgres). Le script installe un schéma `auth` minimal équivalent à Supabase (`auth.uid()`, rôles `anon`/`authenticated`/`service_role`).
+`supabase/tests/rls.sql` crée deux utilisateurs, simule leurs JWT (`request.jwt.claims`) et vérifie **pour chaque table contenant `user_id`** (liste découverte automatiquement, une nouvelle table est donc testée d'office) : RLS activée, une politique propriétaire pour SELECT/INSERT/UPDATE/DELETE, aucune politique ouverte à tous ou à `anon`, A lit ses lignes, B ne peut ni les lire, ni les modifier, ni les supprimer ; A ne peut pas céder une ligne à B ; B ne peut pas rattacher une séance ou une série aux données de A ; `anon` n'a aucun privilège sur aucune table ; la suppression du compte vide toutes les tables. Les tests ont été vérifiés en injectant volontairement une faille (politique `using (true)`, politique manquante, privilège `anon`) : chacune fait échouer la suite. Lancer : `npm run test:db` (Postgres local requis ; en CI via un service Postgres). Le script installe un schéma `auth` minimal équivalent à Supabase (`auth.uid()`, rôles `anon`/`authenticated`/`service_role`).
 
 ## Suppression de compte
 
