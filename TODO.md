@@ -5,9 +5,10 @@ Tâches importantes à ne pas perdre entre deux sessions. Référence des IDs : 
 ## En cours / prochaine étape
 
 - [ ] **M-01 / M-19 validation réelle** : appliquer les 2 migrations sur le projet Supabase (SQL Editor), créer 2 comptes de test confirmés, lancer `npm run test:live` depuis un environnement qui atteint `*.supabase.co` (bloqué dans l'environnement cloud actuel).
-- [ ] **M-18** Notifications locales (expo-notifications) par catégorie, plafond quotidien.
-- [ ] **M-20** Privacy Center : export JSON, Edge Function `delete-account` (service role, supprime Storage puis `auth.users`).
-- [ ] **M-22** E2E Playwright (web) du parcours complet.
+- [ ] Déployer l'Edge Function `delete-account` (`supabase functions deploy delete-account`) et tester la suppression de compte sur le projet réel.
+- [ ] E2E avec un vrai compte (inscription → sync → second appareil) une fois le réseau vers Supabase disponible.
+- [ ] Notifications sur le web (Web Push) : non supporté pour l'instant, l'écran le dit.
+- [ ] Phase 2 : calendrier (événements de l'app uniquement), HealthKit / Health Connect, lieux, magasins, prix réels.
 
 ## Données
 

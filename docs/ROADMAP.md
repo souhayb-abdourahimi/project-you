@@ -42,11 +42,11 @@ Statuts : `done` · `in progress` · `todo` · `blocked`. Priorités : P0 (bloqu
 | M-15 | Modes « J'ai 15 minutes » / « Pas envie » + anti-abandon | P1 | done | M-10, M-14 | faible | unit | jamais culpabilisant |
 | M-16 | Motivation personnalisée | P1 | done | M-02 | faible | unit | utilise la réponse « pourquoi » |
 | M-17 | PlanningEngine (créneaux manuels) + calendrier basique | P1 | done | M-10 | moyen | unit | séances placées dans de vrais créneaux, fallback maison |
-| M-18 | Notifications locales par catégorie | P1 | todo | M-14 | moyen | unit | réglables, plafond anti-spam |
+| M-18 | Notifications locales par catégorie | P1 | done (mobile ; non supporté sur web) | M-14 | moyen | unit | réglables, plafond anti-spam |
 | M-19 | Synchronisation Supabase (diff d'états, D-015) | P0 | done (testée sur le vrai schéma ; à valider sur le projet réel) | F-08, F-10 | **élevé** | unit + intégration | hors ligne → en ligne sans perte |
-| M-20 | Privacy Center (export, suppression compte/photos) | P0 | todo | M-01, M-19 | élevé | intégration | suppression complète vérifiée |
+| M-20 | Privacy Center (export, suppression compte/photos) | P0 | done (suppression de compte à valider sur le projet réel) | M-01, M-19 | élevé | intégration | suppression complète vérifiée |
 | M-21 | Web responsive (sidebar ≥ 1024 px) | P1 | done | M-14 | faible | UI | toutes les pages MVP utilisables au clavier |
-| M-22 | Tests E2E du parcours (web, Playwright) | P1 | todo | M-01..M-17 | moyen | E2E | parcours succès complet vert en CI |
+| M-22 | Tests E2E du parcours (web, Playwright) | P1 | done (mode local, mobile + desktop) | M-01..M-17 | moyen | E2E | parcours succès complet vert en CI |
 | M-23 | Revue critique MVP (sécurité, a11y, perf) | P0 | todo | tout | — | — | rapport + corrections |
 
 ### Phase 2 — Intégrations réelles

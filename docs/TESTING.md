@@ -6,7 +6,7 @@
 | Base de données | psql + Postgres 16 | `npm run test:db` | migrations ; audit RLS de **toutes** les tables à `user_id` (A/B, anon, politiques) ; cascade de suppression ; synchronisation réelle contre le schéma (`sync.db.test.ts`) |
 | Supabase réel | Jest + supabase-js (clé publishable) | `npm run test:live` | inscription/connexion, mauvais mot de passe, restauration et rafraîchissement de session, anon, sync complète, isolation A/B, déconnexion. Nécessite deux comptes de test confirmés (`SUPABASE_TEST_EMAIL_A/B`, `SUPABASE_TEST_PASSWORD_A/B` en variables d'environnement ou dans `.env.local`) et l'accès réseau au projet. **Pas encore exécuté** : le réseau de l'environnement cloud bloque `*.supabase.co`. |
 | Build | Expo | `npm run build:web` | export web de production |
-| E2E | Playwright (web) | à venir (M-22) | parcours inscription → progression |
+| E2E | Playwright (web, Chromium) | `npm run build:web && npm run test:e2e` | sur l'export web en mode local, viewports mobile (Pixel 7) et desktop (1366×900) : parcours complet onboarding → objectif → repas → inventaire → séance 15 min → pesée → bilan hebdo → suppression Privacy Center ; navigation par onglets ; contraintes dures (vegan, allergies multiples) vérifiées contre le catalogue ; aucun prix inventé (petit budget) ; exercices compatibles sans salle ; emploi du temps chargé ; « Pas envie ». Chromium préinstallé : `PW_CHROMIUM_PATH=/chemin/chrome`. Le parcours avec compte Supabase n'est pas couvert (réseau). |
 
 CI : `.github/workflows/ci.yml` (lint, typecheck, tests, build web, tests DB sur service Postgres).
 

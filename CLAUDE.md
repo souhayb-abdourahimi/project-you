@@ -26,6 +26,8 @@ npm run check             # lint + typecheck + unit tests (run before every comm
 npm test                  # unit tests; single file: npx jest src/domain/nutrition
 npm run test:db           # migrations + RLS tests on Postgres ($DATABASE_URL or local cluster)
 npm run build:web         # production web export
+npm run test:e2e          # Playwright on the web export (build:web first; PW_CHROMIUM_PATH for a local Chromium)
+npm run test:live         # auth/RLS/sync against the real Supabase project (needs network + 2 test accounts in .env.local)
 EXPO_OFFLINE=1 npx expo install <pkg>   # add a dependency (api.expo.dev is blocked here)
 ```
 

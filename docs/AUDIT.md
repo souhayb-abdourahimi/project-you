@@ -7,7 +7,7 @@ Légende : **DONE** (fonctionne et testé) · **PARTIAL** · **BROKEN** · **MIS
 ## Synthèse
 
 - Base saine : architecture en couches respectée (`app → features → components/state/services/providers → domain`), moteurs purs testés, RLS sur toutes les tables, CI verte.
-- Rien n'est **PROD READY** : catalogue d'aliments MOCK, connexion Supabase réelle jamais exécutée (le réseau de l'environnement cloud bloque `*.supabase.co`), pas d'E2E.
+- Rien n'est **PROD READY** : catalogue d'aliments MOCK, connexion Supabase réelle jamais exécutée (le réseau de l'environnement cloud bloque `*.supabase.co`).
 - Défauts réels trouvés et corrigés : plan repas sous la cible protéique (vegan et perte de gras), synchronisation qui n'envoyait que 4 types de données et ne tirait rien, clés étrangères qui auraient fait échouer toute synchronisation, plan repas non régénéré après un changement de régime ou d'allergie, date d'objectif affichée au jour près.
 
 ## Détail
@@ -18,7 +18,7 @@ Légende : **DONE** (fonctionne et testé) · **PARTIAL** · **BROKEN** · **MIS
 | Outillage | ESLint (domaine sans React/Expo/Supabase), Prettier, Jest | DONE | DONE | |
 | Outillage | Dépendances | NEEDS REVIEW | NEEDS REVIEW | 14 vulnérabilités « moderate » transitives (outils de build Expo), aucune en production directe ; `pg` ajouté en dev pour les tests d'intégration |
 | CI | lint, typecheck, tests, export web, migrations + RLS | DONE | DONE | + tests d'intégration de la synchronisation sur Postgres |
-| Navigation | Onglets natifs + barre latérale web ≥ 1024 px | DONE | DONE | |
+| Navigation | Onglets natifs + barre latérale web ≥ 1024 px | BROKEN | DONE | la barre latérale alignait les onglets en ligne : seul « Aujourd’hui » était cliquable sur grand écran (trouvé par l'E2E, corrigé) |
 | Navigation | Protection des routes | PARTIAL | DONE | redirection connexion/onboarding ; attente du premier pull sur un nouvel appareil |
 | Auth | Inscription, connexion, déconnexion (UI + service) | PARTIAL | PARTIAL | code prêt, tests live écrits (`npm run test:live`), **non exécutés** faute d'accès réseau |
 | Auth | Session persistante / rafraîchissement | PARTIAL | PARTIAL | AsyncStorage + rafraîchissement limité au premier plan (recommandation Supabase RN) ; test live écrit |
@@ -44,12 +44,12 @@ Légende : **DONE** (fonctionne et testé) · **PARTIAL** · **BROKEN** · **MIS
 | Planning | Créneaux manuels | DONE | DONE | calendrier réel : MISSING (P2-04) |
 | Progrès | Poids, moyenne mobile, tour de taille | DONE | DONE | autres mensurations, photos : MISSING |
 | Motivation | Messages personnels, anti-abandon, modes 15 min / Pas envie | DONE | DONE | à étendre (marche, mobilité, repas express) |
-| Bilan hebdo | Weekly review | MISSING | MISSING | table prête |
-| Notifications | Moteur + préférences | MISSING | MISSING | M-18 |
-| Privacy Center | Export, suppression | MISSING | MISSING | M-20 |
+| Bilan hebdo | Weekly review | MISSING | DONE | calculé uniquement depuis les données saisies ; séance courte = victoire ; données absentes nommées comme absentes |
+| Notifications | Moteur + préférences | MISSING | PARTIAL | opt-in, heures calmes, plafond quotidien, écart minimal ; mobile uniquement (web : non supporté, affiché) ; non testé sur appareil réel |
+| Privacy Center | Export, suppression | MISSING | PARTIAL | export JSON et suppression par catégorie testés (unitaires + E2E local) ; suppression de compte via Edge Function testée en unitaire, **non déployée** sur le projet réel |
 | Providers | Interfaces (prix, promos, magasins, lieux, salles, calendrier, santé, IA) | DONE | DONE | implémentations réelles : MISSING (phase 2) |
 | IA | Schémas de sortie Zod | PARTIAL | PARTIAL | coach non branché |
-| E2E | Parcours web Playwright | MISSING | MISSING | M-22 ; smoke test manuel fait |
+| E2E | Parcours web Playwright | MISSING | DONE (mode local) | 22 tests, mobile + desktop, en CI ; parcours avec compte réel non couvert |
 | Accessibilité | Rôles, labels, cibles 44 px, contraste testé | DONE | NEEDS REVIEW | revue complète en M-23 |
 | Sécurité | Secrets | DONE | DONE | `.env*` ignorés (`.env.local` présent localement, non commité) ; seule la clé publishable côté client |
 | Docs | CLAUDE.md, docs/*, règles | DONE | DONE | mises à jour à chaque étape |
@@ -64,3 +64,4 @@ Légende : **DONE** (fonctionne et testé) · **PARTIAL** · **BROKEN** · **MIS
 1. Accès réseau à `krcqdrrfnvfpvczxwrmt.supabase.co` depuis l'environnement d'exécution (ou exécution de `npm run test:live` depuis un poste qui y a accès).
 2. Migrations à appliquer sur le projet Supabase (SQL Editor) : `20260930000001_core.sql` puis `20261001000001_sync_hardening.sql`.
 3. Deux comptes de test confirmés pour `npm run test:live`.
+4. Déploiement de l'Edge Function `delete-account` pour la suppression de compte.
