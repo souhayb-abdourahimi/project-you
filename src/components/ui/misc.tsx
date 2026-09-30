@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { radius, spacing, useColors, type ColorToken } from '@/theme';
@@ -16,6 +16,22 @@ export function MockBadge() {
       <Text variant="caption" color="mock">
         {t('common.mock')}
       </Text>
+    </View>
+  );
+}
+
+/** Full-screen loading state with an accessible label. */
+export function LoadingScreen({ message }: { message?: string }) {
+  const { t } = useTranslation();
+  const colors = useColors();
+  const label = message ?? t('common.loading');
+  return (
+    <View
+      style={[styles.loading, { backgroundColor: colors.background }]}
+      accessibilityRole="progressbar"
+      accessibilityLabel={label}>
+      <ActivityIndicator color={colors.primary} />
+      <Text color="textMuted">{label}</Text>
     </View>
   );
 }
@@ -75,6 +91,7 @@ export function Section({ title, children, right }: { title: string; children: R
 }
 
 const styles = StyleSheet.create({
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
   badge: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: radius.sm, paddingHorizontal: spacing.xs },
   banner: { borderLeftWidth: 4, borderRadius: radius.sm, padding: spacing.md },
   tile: { flex: 1, minWidth: 140 },

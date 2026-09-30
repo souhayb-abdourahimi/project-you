@@ -106,3 +106,12 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
 - **Alternatives** : peupler les catalogues par migration (double source de vérité, dérive), ou les servir depuis Supabase (dépendance réseau pour afficher une recette).
 - **Trade-offs** : un identifiant inconnu est possible ; le client l'affiche comme « aliment inconnu » plutôt que de planter.
 - **Date** : 2026-10-01
+
+## D-015 — Synchronisation par différence d'états (remplace l'outbox de D-006)
+
+- **Contexte** : l'outbox n'était alimentée que par 4 actions (inventaire, poids, tour de taille, dépenses) ; profil, séances, séries et repas n'étaient jamais envoyés, et rien n'était tiré du serveur.
+- **Décision** : une projection pure `état local → lignes serveur` par table, une empreinte (JSON trié) de chaque ligne synchronisée, un diff pour pousser et une fusion pour tirer. Ajouter une donnée synchronisée = l'ajouter à la projection, sans toucher aux actions des stores.
+- **Règles** : local non poussé > serveur > local déjà synchronisé ; `updated_at` fixé par le serveur uniquement (le curseur ne dépend pas de l'horloge du téléphone) ; lignes refusées isolées une par une et réessayées ; profil distant validé par Zod avant d'être appliqué.
+- **Alternatives** : compléter l'outbox action par action (oubli facile, c'était déjà le cas), PowerSync / ElectricSQL (dépendance lourde).
+- **Trade-offs** : la projection est recalculée à chaque tour (quelques centaines de lignes : négligeable) ; conflit simultané sur deux appareils = le changement non poussé de l'appareil qui synchronise gagne.
+- **Date** : 2026-10-01

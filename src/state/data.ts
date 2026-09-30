@@ -6,27 +6,20 @@ import { consume, type InventoryItem } from '@/domain/meals/inventory';
 import { replaceMealInPlan, type PlannedMeal, type WeeklyMealPlan } from '@/domain/meals/planner';
 import type { WeightEntry } from '@/domain/progress/weight';
 import type { IsoDate } from '@/domain/shared/dates';
-import { enqueue, markDone, markFailed, type OutboxOp, type SyncTable } from '@/domain/sync/outbox';
+import {
+  sessionKey,
+  type CompletedSession,
+  type SessionKey,
+  type SyncableState,
+  type SyncedHashes,
+  type WaistEntry,
+} from '@/domain/sync/projection';
 import type { LoggedSet } from '@/domain/training/progression';
-import type { SessionVariant } from '@/domain/training/adapt';
 import { newId } from '@/lib/id';
 
 import { persistStorage } from './storage';
 
-export interface CompletedSession {
-  date: IsoDate;
-  sessionIndex: number;
-  variant: SessionVariant;
-  completedAt: string;
-}
-
-export interface WaistEntry {
-  date: IsoDate;
-  cm: number;
-}
-
-/** `${date}#${sessionIndex}` */
-export type SessionKey = string;
+export type { CompletedSession, SessionKey, WaistEntry };
 
 interface DataState {
   inventory: InventoryItem[];
@@ -39,7 +32,11 @@ interface DataState {
   completedSessions: CompletedSession[];
   /** Planned date → new date for rescheduled sessions. */
   rescheduled: Record<IsoDate, IsoDate>;
-  outbox: OutboxOp[];
+  sessionIds: Record<SessionKey, string>;
+  /** Account the local data belongs to (null = local mode, not attached to an account yet). */
+  ownerId: string | null;
+  synced: SyncedHashes;
+  lastPulledAt: string | null;
 
   addInventoryItem: (item: Omit<InventoryItem, 'id' | 'addedAt' | 'updatedAt'>) => void;
   updateInventoryItem: (id: string, patch: Partial<InventoryItem>) => void;
@@ -54,8 +51,8 @@ interface DataState {
   swapExercise: (session: SessionKey, fromId: string, toId: string) => void;
   completeSession: (session: Omit<CompletedSession, 'completedAt'>) => void;
   reschedule: (from: IsoDate, to: IsoDate) => void;
-  outboxDone: (ids: string[]) => void;
-  outboxFailed: (id: string) => void;
+  applySync: (patch: Partial<SyncableState> & { synced?: SyncedHashes; lastPulledAt?: string | null }) => void;
+  setOwner: (ownerId: string | null) => void;
   reset: () => void;
 }
 
@@ -71,31 +68,15 @@ const initial = {
   exerciseSwaps: {},
   completedSessions: [],
   rescheduled: {},
-  outbox: [],
+  sessionIds: {},
+  ownerId: null,
+  synced: {},
+  lastPulledAt: null,
 };
 
-function queue(
-  outbox: OutboxOp[],
-  table: SyncTable,
-  rowId: string,
-  kind: 'upsert' | 'delete',
-  payload: Record<string, unknown>,
-) {
-  return enqueue(outbox, { id: newId(), table, rowId, kind, payload, changedAt: now() });
-}
-
-function inventoryRow(i: InventoryItem) {
-  return {
-    id: i.id,
-    food_id: i.foodId,
-    name: i.name,
-    quantity: i.quantity,
-    unit: i.unit,
-    category: i.category,
-    expires_on: i.expiresOn,
-    source: i.source,
-    updated_at: i.updatedAt,
-  };
+/** Server id for a workout session, created the first time the session is touched. */
+function withSessionId(ids: Record<SessionKey, string>, key: SessionKey) {
+  return ids[key] ? ids : { ...ids, [key]: newId() };
 }
 
 export const useDataStore = create<DataState>()(
@@ -105,25 +86,13 @@ export const useDataStore = create<DataState>()(
       addInventoryItem: (input) =>
         set((s) => {
           const item: InventoryItem = { ...input, id: newId(), addedAt: now(), updatedAt: now() };
-          return {
-            inventory: [...s.inventory, item],
-            outbox: queue(s.outbox, 'inventory_items', item.id, 'upsert', inventoryRow(item)),
-          };
+          return { inventory: [...s.inventory, item] };
         }),
       updateInventoryItem: (id, patch) =>
         set((s) => {
-          const inventory = s.inventory.map((i) => (i.id === id ? { ...i, ...patch, updatedAt: now() } : i));
-          const item = inventory.find((i) => i.id === id);
-          return {
-            inventory,
-            outbox: item ? queue(s.outbox, 'inventory_items', id, 'upsert', inventoryRow(item)) : s.outbox,
-          };
+          return { inventory: s.inventory.map((i) => (i.id === id ? { ...i, ...patch, updatedAt: now() } : i)) };
         }),
-      removeInventoryItem: (id) =>
-        set((s) => ({
-          inventory: s.inventory.filter((i) => i.id !== id),
-          outbox: queue(s.outbox, 'inventory_items', id, 'delete', { id, deleted_at: now() }),
-        })),
+      removeInventoryItem: (id) => set((s) => ({ inventory: s.inventory.filter((i) => i.id !== id) })),
       setMealPlan: (mealPlan) => set({ mealPlan }),
       replaceMeal: (meal) =>
         set((s) => ({
@@ -149,47 +118,23 @@ export const useDataStore = create<DataState>()(
       addExpense: (amountCents, spentOn) =>
         set((s) => {
           const expense = { id: newId(), amountCents, spentOn };
-          return {
-            expenses: [...s.expenses, expense],
-            outbox: queue(s.outbox, 'food_expenses', expense.id, 'upsert', {
-              id: expense.id,
-              amount_cents: amountCents,
-              spent_on: spentOn,
-              updated_at: now(),
-            }),
-          };
+          return { expenses: [...s.expenses, expense] };
         }),
       logWeight: (date, weightKg) =>
         set((s) => {
           const existing = s.weights.find((w) => w.date === date);
           const entry = { id: existing?.id ?? newId(), date, weightKg };
-          return {
-            weights: [...s.weights.filter((w) => w.date !== date), entry],
-            outbox: queue(s.outbox, 'weight_logs', entry.id, 'upsert', {
-              id: entry.id,
-              measured_on: date,
-              weight_kg: weightKg,
-              updated_at: now(),
-            }),
-          };
+          return { weights: [...s.weights.filter((w) => w.date !== date), entry] };
         }),
       logWaist: (date, cm) =>
         set((s) => {
           const existing = s.waist.find((w) => w.date === date);
           const entry = { id: existing?.id ?? newId(), date, cm };
-          return {
-            waist: [...s.waist.filter((w) => w.date !== date), entry],
-            outbox: queue(s.outbox, 'body_measurements', entry.id, 'upsert', {
-              id: entry.id,
-              measured_on: date,
-              kind: 'waist',
-              value_cm: cm,
-              updated_at: now(),
-            }),
-          };
+          return { waist: [...s.waist.filter((w) => w.date !== date), entry] };
         }),
       logSet: (session, exerciseId, loggedSet) =>
         set((s) => ({
+          sessionIds: withSessionId(s.sessionIds, session),
           setLogs: {
             ...s.setLogs,
             [session]: {
@@ -204,16 +149,29 @@ export const useDataStore = create<DataState>()(
         })),
       completeSession: (session) =>
         set((s) => ({
+          sessionIds: withSessionId(s.sessionIds, sessionKey(session.date, session.sessionIndex)),
           completedSessions: [
             ...s.completedSessions.filter((c) => !(c.date === session.date && c.sessionIndex === session.sessionIndex)),
             { ...session, completedAt: now() },
           ],
         })),
       reschedule: (from, to) => set((s) => ({ rescheduled: { ...s.rescheduled, [from]: to } })),
-      outboxDone: (ids) => set((s) => ({ outbox: markDone(s.outbox, ids) })),
-      outboxFailed: (id) => set((s) => ({ outbox: markFailed(s.outbox, id, now()) })),
+      applySync: (patch) => {
+        const { snapshot: _snapshot, ...data } = patch;
+        set(data);
+      },
+      setOwner: (ownerId) => set({ ownerId }),
       reset: () => set(initial),
     }),
-    { name: 'py.data.v1', storage: persistStorage, version: 1 },
+    {
+      name: 'py.data.v1',
+      storage: persistStorage,
+      version: 2,
+      // v1 had an outbox; v2 syncs by diff and needs the new fields.
+      migrate: (persisted) => {
+        const { outbox: _outbox, ...rest } = (persisted ?? {}) as Record<string, unknown>;
+        return { ...initial, ...rest } as unknown as DataState;
+      },
+    },
   ),
 );

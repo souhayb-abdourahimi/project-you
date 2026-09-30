@@ -17,6 +17,8 @@ interface ProfileState {
   updateDraft: <K extends DraftSection>(section: K, patch: Partial<OnboardingDraft[K]>) => void;
   setStep: (step: OnboardingStepId) => void;
   complete: (snapshot: UserContextSnapshot) => void;
+  /** Replaces the snapshot with the account's version pulled from the server. */
+  setSnapshot: (snapshot: UserContextSnapshot | null) => void;
   setLocalMode: (value: boolean) => void;
   restartOnboarding: () => void;
   reset: () => void;
@@ -37,6 +39,7 @@ export const useProfileStore = create<ProfileState>()(
         set((s) => ({ draft: { ...s.draft, [section]: { ...s.draft[section], ...patch } } })),
       setStep: (currentStep) => set({ currentStep }),
       complete: (snapshot) => set({ snapshot }),
+      setSnapshot: (snapshot) => set({ snapshot }),
       setLocalMode: (localMode) => set({ localMode }),
       restartOnboarding: () => set({ currentStep: 'profile.name' }),
       reset: () => set({ ...initial, draft: emptyDraft() }),

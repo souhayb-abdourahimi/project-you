@@ -53,7 +53,7 @@ src/
     planning/          PlanningEngine (WeeklyPlan), modes 15 min / pas envie
     progress/          moyennes de poids, tendances, check-ins
     motivation/        messages, anti-abandon
-    sync/              file d'attente de synchronisation (outbox)
+    sync/              projection état local ↔ lignes serveur, diff et fusion (D-015)
     shared/            types communs (Result, ExternalDataMeta, dates)
 supabase/
   migrations/          SQL versionné (tables + RLS)
@@ -65,9 +65,10 @@ scripts/               outils dev (db-test.sh)
 ## Données et offline-first
 
 1. L'UI lit les **stores locaux** (persistés sur l'appareil).
-2. Toute écriture met à jour le store **et** ajoute une opération à l'**outbox** (`src/domain/sync/outbox.ts`).
-3. Le service de sync vide l'outbox vers Supabase (retry exponentiel), puis récupère les changements distants (`updated_at > last_pulled_at`).
-4. Conflits : *last-write-wins* par ligne sur `updated_at`, suppressions logiques (`deleted_at`) pour qu'une suppression hors ligne se propage. Choix documenté dans `DECISIONS.md` (D-006).
+2. Les écritures ne modifient que le store local ; aucune file d'attente à maintenir dans chaque action.
+3. Le service de sync (`src/services/sync.ts`, lancé par `useSync` à la connexion, toutes les 30 s et au retour au premier plan) **tire** d'abord les lignes modifiées depuis le dernier curseur serveur (`updated_at`, recouvrement de 60 s), les fusionne, puis **pousse** la différence entre la projection de l'état local (`src/domain/sync/projection.ts`) et l'empreinte de ce qui a déjà été synchronisé.
+4. Conflits : un changement local pas encore poussé gagne ; sinon le serveur gagne. Suppressions logiques (`deleted_at`) pour l'inventaire, les pesées, les mensurations et les dépenses ; l'historique (repas consommés, séances, séries) n'est jamais supprimé automatiquement. Première connexion d'un appareil ayant des données locales : les données du compte gagnent, les données uniquement locales sont envoyées. Données d'un autre compte présentes sur l'appareil : effacées avant la synchronisation. Déconnexion : données locales effacées. Détails : D-015.
+5. Testé contre le vrai schéma, les migrations et les politiques RLS (`src/services/__tests__/sync.db.test.ts`, lancé par `npm run test:db` et en CI).
 
 Fonctionne hors connexion : séance, repas, inventaire, poids, progression, recettes déjà téléchargées.
 

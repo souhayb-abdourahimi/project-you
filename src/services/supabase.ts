@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 
 import { isClientSafeKey } from './keys';
 
@@ -25,3 +25,12 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
       },
     })
   : null;
+
+// Native apps: refresh the session only while in the foreground (Supabase guidance for React Native).
+if (supabase && Platform.OS !== 'web') {
+  const client = supabase;
+  AppState.addEventListener('change', (state) => {
+    if (state === 'active') void client.auth.startAutoRefresh();
+    else void client.auth.stopAutoRefresh();
+  });
+}
