@@ -423,6 +423,50 @@ const fr = {
     categoryList:
       'Salles · Running · Football · Basket · Tennis · Natation · Vélo · Escalade · Yoga · Danse · Arts martiaux · Musculation · Randonnée · Parcs · Stades · Gymnases · Clubs · Activités universitaires',
   },
+  review: {
+    title: 'Bilan de la semaine',
+    open: 'Voir le bilan de la semaine',
+    intro: 'Basé uniquement sur ce que tu as enregistré. Les chiffres sont des estimations.',
+    sessions: 'Séances',
+    sessionsValue: '{{done}} / {{planned}}',
+    meals: 'Repas cochés',
+    weight: 'Poids moyen',
+    budget: 'Budget',
+    effort: 'Effort moyen (RPE)',
+    workedTitle: 'Ce qui a fonctionné',
+    hardTitle: 'Ce qui a été difficile',
+    adaptTitle: 'Ce qu’on peut adapter',
+    nextTitle: 'La semaine prochaine',
+    none: 'Rien à signaler.',
+    worked: {
+      sessions: '{{count}} séance(s) faite(s). Chaque séance compte.',
+      short_counts: '{{count}} séance(s) en version courte ou allégée : c’est une victoire, pas un échec.',
+      meals: '{{count}} repas du plan cochés.',
+      weight_trend: 'Tendance du poids moyen : {{change}} kg sur la semaine (estimation).',
+      waist: 'Tour de taille : {{change}} cm depuis la dernière mesure.',
+      budget: 'Budget courses respecté.',
+    },
+    hard: {
+      sessions: '{{done}} séance(s) sur {{planned}} prévues. Les semaines chargées arrivent à tout le monde.',
+      effort: 'Effort moyen élevé (RPE {{rpe}}) : ton corps a besoin de récupérer.',
+      protein: '{{days}} jour(s) sous ta cible de protéines avec les recettes disponibles.',
+      no_weight: 'Pas de pesée cette semaine : la tendance n’est pas disponible.',
+      budget: 'Budget courses dépassé.',
+    },
+    adapt: {
+      start_small: 'Reprendre avec une seule séance courte, au moment le plus simple de ta semaine.',
+      shorter_sessions:
+        'Prévoir des séances plus courtes les jours chargés (le mode « J’ai 15 minutes » est là pour ça).',
+      lighter_week: 'Une semaine un peu plus légère pour récupérer, sans augmenter les charges.',
+      protein_sources: 'Ajouter à l’inventaire une source de protéines que tu aimes (tofu, lentilles, œufs, skyr…).',
+      measure_waist: 'Mesurer ton tour de taille : pour une recomposition, c’est plus parlant que la balance.',
+      use_inventory: 'Cuisiner d’abord ce que tu as déjà : la liste de courses le prend en compte.',
+    },
+    next: {
+      sessions: '{{count}} séance(s) prévue(s), adaptées à ton emploi du temps.',
+      keep_going: 'Continuer comme ça, au même rythme.',
+    },
+  },
   notifications: {
     title: 'Notifications',
     intro:

@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -59,6 +60,7 @@ export default function ProgressScreen() {
         />
       </Row>
       <Text color="textMuted">{t('progress.streak', { count: streak })}</Text>
+      <Button variant="secondary" label={t('review.open')} onPress={() => router.push('/review')} />
       {weights.length === 0 ? <EmptyState message={t('progress.noData')} /> : null}
       <Section title={t('progress.weight')}>
         <Card>
