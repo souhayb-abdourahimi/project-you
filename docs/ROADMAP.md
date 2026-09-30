@@ -25,7 +25,7 @@ Statuts : `done` · `in progress` · `todo` · `blocked`. Priorités : P0 (bloqu
 
 | ID | FEATURE | PRIORITY | STATUS | DEPENDENCIES | RISK | TESTS | DEFINITION OF DONE |
 |---|---|---|---|---|---|---|---|
-| M-01 | Création de compte / connexion (email + mot de passe) | P0 | in progress (UI faite, à tester sur un vrai projet Supabase) | F-10 | moyen | intégration | inscription, connexion, déconnexion, erreurs lisibles |
+| M-01 | Création de compte / connexion (email + mot de passe) | P0 | in progress (code + tests live prêts, non exécutés : réseau bloqué) | F-10 | moyen | intégration | inscription, connexion, déconnexion, erreurs lisibles |
 | M-02 | Onboarding adaptatif | P0 | done | F-06, F-07 | moyen | unit (étapes) + UI | parcours complet, sauts conditionnels, brouillon local |
 | M-03 | Objectif + contrôle de réalisme | P0 | done | M-02 | **élevé** (santé) | unit | objectif agressif → alternative proposée |
 | M-04 | Profil + UserContextSnapshot | P0 | done | M-02 | faible | unit | snapshot validé Zod |
@@ -43,7 +43,7 @@ Statuts : `done` · `in progress` · `todo` · `blocked`. Priorités : P0 (bloqu
 | M-16 | Motivation personnalisée | P1 | done | M-02 | faible | unit | utilise la réponse « pourquoi » |
 | M-17 | PlanningEngine (créneaux manuels) + calendrier basique | P1 | done | M-10 | moyen | unit | séances placées dans de vrais créneaux, fallback maison |
 | M-18 | Notifications locales par catégorie | P1 | todo | M-14 | moyen | unit | réglables, plafond anti-spam |
-| M-19 | Synchronisation Supabase (outbox, LWW) | P0 | in progress (push fait, pull à faire) | F-08, F-10 | **élevé** | unit + intégration | hors ligne → en ligne sans perte |
+| M-19 | Synchronisation Supabase (diff d'états, D-015) | P0 | done (testée sur le vrai schéma ; à valider sur le projet réel) | F-08, F-10 | **élevé** | unit + intégration | hors ligne → en ligne sans perte |
 | M-20 | Privacy Center (export, suppression compte/photos) | P0 | todo | M-01, M-19 | élevé | intégration | suppression complète vérifiée |
 | M-21 | Web responsive (sidebar ≥ 1024 px) | P1 | done | M-14 | faible | UI | toutes les pages MVP utilisables au clavier |
 | M-22 | Tests E2E du parcours (web, Playwright) | P1 | todo | M-01..M-17 | moyen | E2E | parcours succès complet vert en CI |

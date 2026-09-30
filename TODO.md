@@ -4,8 +4,7 @@ Tâches importantes à ne pas perdre entre deux sessions. Référence des IDs : 
 
 ## En cours / prochaine étape
 
-- [ ] **M-01** Auth : écran d'inscription/connexion branché sur Supabase ; tester contre un vrai projet Supabase (URL + clé anon à fournir dans `.env`).
-- [ ] **M-19** Sync : service qui vide l'outbox vers Supabase + pull incrémental ; les stores écrivent déjà dans l'outbox.
+- [ ] **M-01 / M-19 validation réelle** : appliquer les 2 migrations sur le projet Supabase (SQL Editor), créer 2 comptes de test confirmés, lancer `npm run test:live` depuis un environnement qui atteint `*.supabase.co` (bloqué dans l'environnement cloud actuel).
 - [ ] **M-18** Notifications locales (expo-notifications) par catégorie, plafond quotidien.
 - [ ] **M-20** Privacy Center : export JSON, Edge Function `delete-account` (service role, supprime Storage puis `auth.users`).
 - [ ] **M-22** E2E Playwright (web) du parcours complet.
