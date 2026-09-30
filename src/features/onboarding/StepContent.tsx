@@ -18,7 +18,7 @@ import {
   TrainingLevel,
 } from '@/domain/profile/schemas';
 import { EXERCISES } from '@/domain/training/exercises';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, formatMonth } from '@/lib/format';
 import { spacing } from '@/theme';
 
 import { ListField, NumberField, toggle } from './fields';
@@ -401,7 +401,7 @@ export function StepContent({
 }
 
 function Review({ draft }: { draft: OnboardingDraft }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const now = new Date();
   const result = buildSnapshot(draft, now);
   if (!result.ok)
@@ -437,7 +437,7 @@ function Review({ draft }: { draft: OnboardingDraft }) {
           message={t(`feasibility.${feasibility.status}`, {
             rate: Math.abs(feasibility.recommendedWeeklyChangeKg ?? 0),
             required: Math.abs(feasibility.requiredWeeklyChangeKg ?? 0),
-            date: feasibility.suggestedTargetDate ?? '',
+            month: feasibility.suggestedTargetDate ? formatMonth(feasibility.suggestedTargetDate, i18n.language) : '',
           })}
         />
       ) : null}

@@ -24,7 +24,6 @@ Tâches importantes à ne pas perdre entre deux sessions. Référence des IDs : 
 
 ## Produit
 
-- [ ] Plans vegan : l'apport protéique des recettes MOCK reste sous la cible (≈ 105 g pour 160 g) ; enrichir les recettes et les collations vegan.
 - [ ] Le budget n'influence pas encore le choix des recettes faute de prix réels (PriceProvider ou saisie utilisateur).
 - [ ] Onboarding : l'année de naissance se saisit au clavier ; envisager un sélecteur.
 - [ ] Identifiants store `app.projectyou` provisoires : à remplacer par le domaine définitif.

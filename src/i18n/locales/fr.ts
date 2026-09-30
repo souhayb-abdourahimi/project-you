@@ -352,6 +352,10 @@ const fr = {
     ingredients: 'Ingrédients',
     steps: 'Préparation',
     usesInventory: 'Utilise {{count}} aliment(s) déjà chez toi',
+    adapted: 'Adaptée à tes contraintes : {{to}} à la place de {{from}}',
+    proteinPlanned: 'Protéines prévues aujourd’hui : {{planned}} g sur {{target}} g (estimation)',
+    proteinShort:
+      'Avec tes contraintes actuelles, les recettes disponibles restent sous ta cible de protéines aujourd’hui. Ajouter une source de protéines que tu tolères aiderait.',
     warnings: {
       minor_no_deficit: 'Tu as moins de 18 ans : pas de déficit calorique. Priorité à la croissance et à la santé.',
       underweight_no_deficit:
@@ -363,7 +367,7 @@ const fr = {
   feasibility: {
     ok: 'Ton objectif est réaliste. Rythme conseillé : {{rate}} kg par semaine.',
     aggressive:
-      'Ton objectif demande {{required}} kg par semaine, c’est plus rapide que ce que nous conseillons. Une date plus réaliste : {{date}}. Tu gardes le choix.',
+      'Ta date demande environ {{required}} kg par semaine, plus rapide que ce que nous conseillons. À un rythme d’environ {{rate}} kg par semaine, l’objectif serait plutôt atteint vers {{month}}. C’est une estimation, pas une promesse : le rythme réel varie. Tu gardes le choix.',
     unsafe_target:
       'Ce poids cible serait sous la zone de santé pour ta taille. Nous te proposons plutôt de viser la forme et la composition corporelle.',
     inconsistent: 'Le poids cible ne correspond pas à l’objectif choisi. Tu peux l’ajuster.',

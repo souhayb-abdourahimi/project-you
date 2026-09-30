@@ -45,6 +45,11 @@ export function MealCard({ meal, compact }: { meal: PlannedMeal; compact?: boole
         {t('nutrition.protein')} {Math.round(meal.nutrition.proteinG)} g · {t('nutrition.carbs')}{' '}
         {Math.round(meal.nutrition.carbsG)} g · {t('nutrition.fat')} {Math.round(meal.nutrition.fatG)} g
       </Text>
+      {(meal.substitutions ?? []).map((sub) => (
+        <Text key={sub.from} variant="caption" color="textMuted">
+          {t('nutrition.adapted', { from: getFood(sub.from)?.name[lang], to: getFood(sub.to)?.name[lang] })}
+        </Text>
+      ))}
       {meal.usesInventory.length > 0 ? (
         <Text variant="caption" color="success">
           {t('nutrition.usesInventory', { count: meal.usesInventory.length })}

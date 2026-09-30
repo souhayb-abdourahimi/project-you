@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 
 import type { FoodExpense } from '@/domain/meals/budget';
 import { consume, type InventoryItem } from '@/domain/meals/inventory';
-import type { PlannedMeal, WeeklyMealPlan } from '@/domain/meals/planner';
+import { replaceMealInPlan, type PlannedMeal, type WeeklyMealPlan } from '@/domain/meals/planner';
 import type { WeightEntry } from '@/domain/progress/weight';
 import type { IsoDate } from '@/domain/shared/dates';
 import { enqueue, markDone, markFailed, type OutboxOp, type SyncTable } from '@/domain/sync/outbox';
@@ -127,10 +127,7 @@ export const useDataStore = create<DataState>()(
       setMealPlan: (mealPlan) => set({ mealPlan }),
       replaceMeal: (meal) =>
         set((s) => ({
-          mealPlan: s.mealPlan && {
-            ...s.mealPlan,
-            days: s.mealPlan.days.map((d) => ({ ...d, meals: d.meals.map((m) => (m.id === meal.id ? meal : m)) })),
-          },
+          mealPlan: s.mealPlan && replaceMealInPlan(s.mealPlan, meal),
         })),
       markMealEaten: (mealId) =>
         set((s) => {

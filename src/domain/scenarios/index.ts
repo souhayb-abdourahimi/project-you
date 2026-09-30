@@ -91,6 +91,19 @@ export const SCENARIOS = {
     },
   }),
   vegan: scenario({ nutrition: { diet: 'vegan', allergies: ['peanuts'] } }),
+  veganFatLoss: scenario({
+    user: { weightKg: 92, sex: 'female', heightCm: 168, displayName: 'Sam (MOCK)', birthYear: 1994 },
+    goal: { type: 'fat_loss', targetWeightKg: 80, targetDate: '2027-06-30' },
+    nutrition: { diet: 'vegan', allergies: [] },
+  }),
+  veganMuscleGain: scenario({
+    goal: { type: 'muscle_gain', targetWeightKg: 80, targetDate: '2027-06-30' },
+    nutrition: { diet: 'vegan', allergies: [], mealsPerDay: 4 },
+  }),
+  multipleAllergies: scenario({
+    goal: { type: 'recomposition' },
+    nutrition: { allergies: ['gluten', 'milk', 'nuts', 'fish'], mealsPerDay: 4 },
+  }),
   busySchedule: scenario({
     schedule: {
       availability: [

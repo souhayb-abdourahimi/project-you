@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 
 import { constraintsFrom } from '@/domain/meals/constraints';
-import { planWeek as planMeals } from '@/domain/meals/planner';
+import { mealPlanKey, planWeek as planMeals, replaceMealInPlan, type WeeklyMealPlan } from '@/domain/meals/planner';
 import { assessGoalFeasibility, computeNutritionTargets } from '@/domain/nutrition/engine';
 import { planWeek as planSchedule, type PlannedDay, type WeeklyPlan } from '@/domain/planning/engine';
 import { startOfWeek, toIsoDate } from '@/domain/shared/dates';
@@ -26,6 +26,21 @@ function withReschedules(plan: WeeklyPlan, rescheduled: Record<string, string>):
   return { ...plan, days };
 }
 
+function keepEaten(next: WeeklyMealPlan, previous: WeeklyMealPlan | null): WeeklyMealPlan {
+  if (!previous || previous.weekStart !== next.weekStart) return next;
+  const eaten = new Map(
+    previous.days
+      .flatMap((d) => d.meals)
+      .filter((m) => m.status === 'eaten')
+      .map((m) => [m.id, m]),
+  );
+  if (eaten.size === 0) return next;
+  return next.days.reduce<WeeklyMealPlan>((plan, day) => {
+    const kept = day.meals.map((m) => eaten.get(m.id)).filter((m) => m !== undefined);
+    return kept.reduce((p, m) => replaceMealInPlan(p, m), plan);
+  }, next);
+}
+
 /** Everything the screens need, derived from the snapshot by the deterministic engines. */
 export function usePlan() {
   const snapshot = useProfileStore((s) => s.snapshot);
@@ -47,19 +62,31 @@ export function usePlan() {
     return { targets, feasibility, workoutPlan, schedule };
   }, [snapshot, year, today, weekStart]);
 
-  // The meal plan is generated once per week (so it does not reshuffle as the inventory changes).
+  const planKey = useMemo(
+    () =>
+      snapshot && derived
+        ? mealPlanKey(weekStart, {
+            targets: derived.targets,
+            constraints: constraintsFrom(snapshot.nutrition, snapshot.lifestyle.kitchen),
+            preferences: snapshot.nutrition,
+          })
+        : null,
+    [snapshot, derived, weekStart],
+  );
+
+  // Generated once per week and profile (it does not reshuffle as the inventory changes), but a
+  // diet, allergy or target change regenerates it, keeping meals already eaten.
   useEffect(() => {
-    if (!snapshot || !derived || mealPlan?.weekStart === weekStart) return;
-    setMealPlan(
-      planMeals(weekStart, {
-        targets: derived.targets,
-        constraints: constraintsFrom(snapshot.nutrition, snapshot.lifestyle.kitchen),
-        preferences: snapshot.nutrition,
-        inventory,
-        today,
-      }),
-    );
-  }, [snapshot, derived, mealPlan?.weekStart, weekStart, inventory, today, setMealPlan]);
+    if (!snapshot || !derived || !planKey || mealPlan?.key === planKey) return;
+    const next = planMeals(weekStart, {
+      targets: derived.targets,
+      constraints: constraintsFrom(snapshot.nutrition, snapshot.lifestyle.kitchen),
+      preferences: snapshot.nutrition,
+      inventory,
+      today,
+    });
+    setMealPlan(keepEaten(next, mealPlan));
+  }, [snapshot, derived, planKey, mealPlan, weekStart, inventory, today, setMealPlan]);
 
   const schedule = useMemo(
     () => (derived ? withReschedules(derived.schedule, rescheduled) : null),
@@ -75,7 +102,7 @@ export function usePlan() {
     feasibility: derived.feasibility,
     workoutPlan: derived.workoutPlan,
     schedule,
-    mealPlan: mealPlan?.weekStart === weekStart ? mealPlan : null,
+    mealPlan: mealPlan?.key === planKey ? mealPlan : null,
     plannerContext: {
       targets: derived.targets,
       constraints: constraintsFrom(snapshot.nutrition, snapshot.lifestyle.kitchen),

@@ -344,6 +344,10 @@ const en: LocaleShape = {
     ingredients: 'Ingredients',
     steps: 'Steps',
     usesInventory: 'Uses {{count}} food(s) you already have',
+    adapted: 'Adapted to your constraints: {{to}} instead of {{from}}',
+    proteinPlanned: 'Protein planned today: {{planned}} g of {{target}} g (estimate)',
+    proteinShort:
+      'With your current constraints, the available recipes stay under your protein target today. Adding a protein source you tolerate would help.',
     warnings: {
       minor_no_deficit: 'You are under 18: no calorie deficit. Growth and health come first.',
       underweight_no_deficit:
@@ -355,7 +359,7 @@ const en: LocaleShape = {
   feasibility: {
     ok: 'Your goal is realistic. Suggested pace: {{rate}} kg per week.',
     aggressive:
-      'Your goal needs {{required}} kg per week, faster than we recommend. A more realistic date: {{date}}. The choice is yours.',
+      'Your date needs about {{required}} kg per week, faster than we recommend. At about {{rate}} kg per week, you would more likely get there around {{month}}. This is an estimate, not a promise: real progress varies. The choice is yours.',
     unsafe_target:
       'This target would be below the healthy range for your height. We suggest aiming for fitness and body composition instead.',
     inconsistent: 'The target weight does not match the chosen goal. You can adjust it.',

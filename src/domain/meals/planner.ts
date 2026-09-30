@@ -21,7 +21,17 @@ export interface PlannedMeal {
   nutrition: Nutrients;
   status: MealStatus;
   usesInventory: string[];
+  /** Ingredients swapped to respect diet/allergies/exclusions, shown to the user as "adapted". */
+  substitutions?: { from: string; to: string }[];
   rationale: Rationale;
+}
+
+export interface ProteinCoverage {
+  targetG: number;
+  /** Rounded planned protein (estimate). */
+  plannedG: number;
+  /** True when the plan reaches at least PROTEIN_MET_RATIO of the target. */
+  met: boolean;
 }
 
 export interface DailyMealPlan {
@@ -29,12 +39,31 @@ export interface DailyMealPlan {
   meals: PlannedMeal[];
   totals: Nutrients;
   targetKcal: number;
+  protein: ProteinCoverage;
 }
+
+/** A day counts as meeting its protein target from 90 % of it (estimates, not lab values). */
+export const PROTEIN_MET_RATIO = 0.9;
+
+/** Recipes kept per slot for the day-level search: best-ranked plus most protein-dense (≤ 7⁵ combinations). */
+const CANDIDATES_PER_SLOT = 4;
+const PROTEIN_DENSE_PER_SLOT = 3;
+/** Nutrition outranks inventory and preferences (docs/NUTRITION_ENGINE.md, priority order). */
+const PROTEIN_SHORTFALL_WEIGHT = 20;
+/** Extra penalty below the "met" threshold, so variety or inventory never trade it away. */
+const PROTEIN_UNMET_WEIGHT = 60;
+const KCAL_DEVIATION_WEIGHT = 10;
+const SAME_DAY_REPEAT_PENALTY = 3;
 
 export interface WeeklyMealPlan {
   weekStart: IsoDate;
   days: DailyMealPlan[];
+  /** Fingerprint of the inputs; a different key means the plan is stale (see mealPlanKey). */
+  key?: string;
 }
+
+/** Bump when the planner's output changes meaning, so stored plans are regenerated. */
+export const MEAL_PLANNER_VERSION = 2;
 
 const SLOT_SHARES: Record<number, [MealSlot, number][]> = {
   2: [
@@ -90,6 +119,7 @@ interface Candidate {
   recipe: Recipe;
   score: number;
   usesInventory: string[];
+  substitutions: { from: string; to: string }[];
 }
 
 /**
@@ -124,7 +154,10 @@ export function rankRecipes(
     score += 0.5 * recipe.ingredients.filter((i) => matchesAny(i.foodId, ctx.preferences.likedFoods)).length;
     score -= 2 * recipe.ingredients.filter((i) => matchesAny(i.foodId, ctx.preferences.dislikedFoods)).length;
     score -= 1.5 * (usage.get(recipe.id) ?? 0);
-    candidates.push({ recipe, score, usesInventory });
+    const substitutions = base.ingredients
+      .map((i, index) => ({ from: i.foodId, to: recipe.ingredients[index].foodId }))
+      .filter((sub) => sub.from !== sub.to);
+    candidates.push({ recipe, score, usesInventory, substitutions });
   }
   return candidates.sort((a, b) => b.score - a.score || a.recipe.id.localeCompare(b.recipe.id));
 }
@@ -147,6 +180,7 @@ function planMeal(date: IsoDate, index: number, slot: MealSlot, targetKcal: numb
     nutrition: recipeNutrition(ingredients),
     status: 'planned',
     usesInventory: candidate.usesInventory,
+    substitutions: candidate.substitutions,
     rationale: {
       goal: 'meals.goal.daily_target',
       constraints: ['meals.constraint.diet', 'meals.constraint.allergies', 'meals.constraint.cooking_time'],
@@ -164,6 +198,55 @@ function subtract(stock: Map<string, number>, ingredients: Ingredient[]): void {
   }
 }
 
+function proteinRatio(recipe: Recipe): number {
+  const n = recipeNutrition(recipe.ingredients);
+  return n.kcal > 0 ? (n.proteinG * 4) / n.kcal : 0;
+}
+
+interface SlotOption {
+  candidate: Candidate;
+  meal: PlannedMeal;
+}
+
+/**
+ * Picks one recipe per slot by searching the combinations of the best candidates of each slot,
+ * so the day as a whole reaches the protein target (a greedy per-meal choice cannot: see the
+ * vegan regression tests). Deterministic: ties keep the first combination in ranking order.
+ */
+function bestCombination(options: SlotOption[][], ctx: PlannerContext): SlotOption[] {
+  const { calories, proteinG } = ctx.targets;
+  let best: { score: number; picks: SlotOption[] } | null = null;
+
+  const visit = (slot: number, picks: SlotOption[], score: number, protein: number, kcal: number) => {
+    if (slot === options.length) {
+      const ratio = proteinG > 0 ? protein / proteinG : 1;
+      const kcalDeviation = Math.max(0, Math.abs(kcal / calories - 1) - 0.05);
+      const total =
+        score -
+        PROTEIN_SHORTFALL_WEIGHT * Math.max(0, 1 - ratio) -
+        PROTEIN_UNMET_WEIGHT * Math.max(0, PROTEIN_MET_RATIO - ratio) -
+        KCAL_DEVIATION_WEIGHT * kcalDeviation;
+      if (!best || total > best.score + 1e-9) best = { score: total, picks: [...picks] };
+      return;
+    }
+    if (options[slot].length === 0) return visit(slot + 1, picks, score, protein, kcal);
+    for (const option of options[slot]) {
+      const repeat = picks.some((p) => p.candidate.recipe.id === option.candidate.recipe.id);
+      picks.push(option);
+      visit(
+        slot + 1,
+        picks,
+        score + option.candidate.score - (repeat ? SAME_DAY_REPEAT_PENALTY : 0),
+        protein + option.meal.nutrition.proteinG,
+        kcal + option.meal.nutrition.kcal,
+      );
+      picks.pop();
+    }
+  };
+  visit(0, [], 0, 0, 0);
+  return (best as { picks: SlotOption[] } | null)?.picks ?? [];
+}
+
 export function planDay(
   date: IsoDate,
   ctx: PlannerContext,
@@ -171,26 +254,80 @@ export function planDay(
   usage = new Map<string, number>(),
 ): DailyMealPlan {
   const shares = SLOT_SHARES[ctx.preferences.mealsPerDay] ?? SLOT_SHARES[3];
-  const meals: PlannedMeal[] = [];
-  const usedToday = new Set<string>();
-  shares.forEach(([slot, share], index) => {
-    const ranked = rankRecipes(slot, ctx, stock, usage).filter((c) => !usedToday.has(c.recipe.id));
-    const best = ranked[0];
-    if (!best) return;
-    const meal = planMeal(date, index, slot, ctx.targets.calories * share, best);
-    meals.push(meal);
-    usedToday.add(best.recipe.id);
-    usage.set(best.recipe.id, (usage.get(best.recipe.id) ?? 0) + 1);
-    subtract(stock, meal.ingredients);
+  const options = shares.map(([slot, share], index) => {
+    const ranked = rankRecipes(slot, ctx, stock, usage);
+    const byProtein = [...ranked].sort((a, b) => proteinRatio(b.recipe) - proteinRatio(a.recipe));
+    const kept = new Set([...ranked.slice(0, CANDIDATES_PER_SLOT), ...byProtein.slice(0, PROTEIN_DENSE_PER_SLOT)]);
+    return ranked
+      .filter((c) => kept.has(c))
+      .map((candidate) => ({ candidate, meal: planMeal(date, index, slot, ctx.targets.calories * share, candidate) }));
   });
-  return { date, meals, totals: sumNutrients(meals.map((m) => m.nutrition)), targetKcal: ctx.targets.calories };
+  const meals = bestCombination(options, ctx).map((p) => p.meal);
+  for (const meal of meals) {
+    usage.set(meal.recipeId, (usage.get(meal.recipeId) ?? 0) + 1);
+    subtract(stock, meal.ingredients);
+  }
+  return summarizeDay(date, meals, ctx.targets);
+}
+
+/** Totals and protein coverage of a day; call again whenever a meal is replaced. */
+export function summarizeDay(
+  date: IsoDate,
+  meals: PlannedMeal[],
+  targets: Pick<NutritionTargets, 'calories' | 'proteinG'>,
+): DailyMealPlan {
+  const totals = sumNutrients(meals.map((m) => m.nutrition));
+  return {
+    date,
+    meals,
+    totals,
+    targetKcal: targets.calories,
+    protein: {
+      targetG: targets.proteinG,
+      plannedG: Math.round(totals.proteinG),
+      met: totals.proteinG >= targets.proteinG * PROTEIN_MET_RATIO,
+    },
+  };
+}
+
+/** Replaces one meal and recomputes that day's totals. */
+export function replaceMealInPlan(plan: WeeklyMealPlan, meal: PlannedMeal): WeeklyMealPlan {
+  return {
+    ...plan,
+    days: plan.days.map((d) =>
+      d.meals.some((m) => m.id === meal.id)
+        ? summarizeDay(
+            d.date,
+            d.meals.map((m) => (m.id === meal.id ? meal : m)),
+            { calories: d.targetKcal, proteinG: d.protein?.targetG ?? 0 },
+          )
+        : d,
+    ),
+  };
+}
+
+/**
+ * Fingerprint of everything that must invalidate a stored plan: a diet or allergy change mid-week
+ * has to regenerate it, never leave a now-forbidden meal on screen.
+ */
+export function mealPlanKey(weekStart: IsoDate, ctx: Omit<PlannerContext, 'inventory' | 'today' | 'recipes'>): string {
+  return JSON.stringify([
+    MEAL_PLANNER_VERSION,
+    weekStart,
+    Math.round(ctx.targets.calories),
+    Math.round(ctx.targets.proteinG),
+    ctx.constraints,
+    ctx.preferences.mealsPerDay,
+    ctx.preferences.likedFoods,
+    ctx.preferences.dislikedFoods,
+  ]);
 }
 
 export function planWeek(weekStart: IsoDate, ctx: PlannerContext): WeeklyMealPlan {
   const stock = stockByFood(ctx.inventory);
   const usage = new Map<string, number>();
   const days = Array.from({ length: 7 }, (_, i) => planDay(addDays(weekStart, i), ctx, stock, usage));
-  return { weekStart, days };
+  return { weekStart, days, key: mealPlanKey(weekStart, ctx) };
 }
 
 export type ReplaceReason = 'replace' | 'missing_ingredient' | 'faster' | 'more_protein' | 'cheaper';

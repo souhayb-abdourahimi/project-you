@@ -13,6 +13,14 @@ export function formatDate(date: string, locale: string): string {
   }).format(new Date(y, m - 1, d));
 }
 
+/** Month-level date ("février 2027") for estimates, to avoid false day-level precision. */
+export function formatMonth(date: string, locale: string): string {
+  const [y, m] = date.split('-').map(Number);
+  return new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'fr-FR', { month: 'long', year: 'numeric' }).format(
+    new Date(y, m - 1, 1),
+  );
+}
+
 export function nowTime(date = new Date()): string {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }

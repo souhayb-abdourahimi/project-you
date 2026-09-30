@@ -67,6 +67,13 @@ export const FOOD_CATALOG: readonly Food[] = [
   food('salmon', 'Saumon', 'Salmon', 'protein', [200, 20, 0, 13], { animal: 'fish', allergens: ['fish'] }),
   food('egg', 'Œuf', 'Egg', 'protein', [140, 12.5, 0.5, 10], { animal: 'egg', allergens: ['eggs'], gramsPerPiece: 55 }),
   food('tofu', 'Tofu ferme', 'Firm tofu', 'protein', [145, 15, 2, 8.5], { allergens: ['soy'] }),
+  food('tempeh', 'Tempeh', 'Tempeh', 'protein', [190, 19, 9, 11], { allergens: ['soy'] }),
+  food('seitan', 'Seitan', 'Seitan', 'protein', [140, 25, 6, 2], { allergens: ['gluten'] }),
+  food('tvp', 'Protéines de soja texturées (sèches)', 'Textured soy protein (dry)', 'protein', [330, 50, 17, 1], {
+    allergens: ['soy'],
+  }),
+  food('edamame', 'Edamame surgelés', 'Frozen edamame', 'legume', [120, 11, 9, 5], { allergens: ['soy'] }),
+  food('soy_yogurt', 'Yaourt au soja nature', 'Plain soy yogurt', 'dairy', [50, 4, 2.5, 2.3], { allergens: ['soy'] }),
   food('greek_yogurt', 'Yaourt grec 0 %', 'Greek yogurt 0%', 'dairy', [60, 10, 4, 0.3], {
     animal: 'dairy',
     allergens: ['milk'],
@@ -85,6 +92,7 @@ export const FOOD_CATALOG: readonly Food[] = [
   food('rice', 'Riz (cru)', 'Rice (dry)', 'grain', [355, 7, 78, 0.6]),
   food('pasta', 'Pâtes (crues)', 'Pasta (dry)', 'grain', [355, 12.5, 71, 1.5], { allergens: ['gluten'] }),
   food('wholemeal_bread', 'Pain complet', 'Wholemeal bread', 'grain', [245, 9, 43, 3], { allergens: ['gluten'] }),
+  food('rice_cakes', 'Galettes de riz', 'Rice cakes', 'grain', [385, 8, 80, 3]),
   food('potato', 'Pomme de terre', 'Potato', 'vegetable', [80, 2, 17, 0.1]),
   food('lentils', 'Lentilles (sèches)', 'Lentils (dry)', 'legume', [335, 24, 50, 1.5]),
   food('chickpeas_canned', 'Pois chiches en conserve', 'Canned chickpeas', 'legume', [120, 7, 15, 2.5]),

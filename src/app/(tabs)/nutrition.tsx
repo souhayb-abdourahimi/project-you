@@ -42,6 +42,12 @@ export default function NutritionScreen() {
       </Row>
       <BudgetCard />
       <Section title={t('today.meals')}>
+        {today?.protein ? (
+          <Text variant="caption" color="textMuted">
+            {t('nutrition.proteinPlanned', { planned: today.protein.plannedG, target: today.protein.targetG })}
+          </Text>
+        ) : null}
+        {today?.protein && !today.protein.met ? <Banner message={t('nutrition.proteinShort')} /> : null}
         {today ? (
           today.meals.map((m) => <MealCard key={m.id} meal={m} />)
         ) : (
