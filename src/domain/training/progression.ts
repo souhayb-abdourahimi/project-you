@@ -41,7 +41,12 @@ export function suggestProgression(input: {
   const { repsMin, repsMax, history, fatigue } = input;
   const increment = getExercise(input.exerciseId)?.loadIncrementKg ?? 0;
   const last = history.at(-1);
-  const make = (action: ProgressionAction, loadKg: number, targetReps: number, reason: string): ProgressionSuggestion => ({
+  const make = (
+    action: ProgressionAction,
+    loadKg: number,
+    targetReps: number,
+    reason: string,
+  ): ProgressionSuggestion => ({
     action,
     loadKg: Math.max(0, Math.round(loadKg * 4) / 4),
     targetReps,

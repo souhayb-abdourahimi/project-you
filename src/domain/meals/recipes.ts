@@ -160,8 +160,16 @@ export const RECIPES: readonly Recipe[] = [
     difficulty: 2,
     equipment: ['stove'],
     steps: {
-      fr: ["Faire revenir l'oignon et la pâte de curry.", 'Ajouter les lentilles et 3 volumes d’eau, cuire 20 min.', 'Ajouter les épinards, servir avec le riz.'],
-      en: ['Sweat onion with curry paste.', 'Add lentils and 3 volumes of water, simmer 20 min.', 'Stir in spinach, serve with rice.'],
+      fr: [
+        "Faire revenir l'oignon et la pâte de curry.",
+        'Ajouter les lentilles et 3 volumes d’eau, cuire 20 min.',
+        'Ajouter les épinards, servir avec le riz.',
+      ],
+      en: [
+        'Sweat onion with curry paste.',
+        'Add lentils and 3 volumes of water, simmer 20 min.',
+        'Stir in spinach, serve with rice.',
+      ],
     },
     substitutions: { spinach: ['frozen_veg_mix'], curry_paste: ['tomato_sauce'] },
   },
@@ -236,7 +244,11 @@ export const RECIPES: readonly Recipe[] = [
     difficulty: 2,
     equipment: ['oven'],
     steps: {
-      fr: ['Cuire les pommes de terre au four 25 min à 200 °C.', 'Ajouter le saumon les 12 dernières minutes.', 'Faire tomber les épinards.'],
+      fr: [
+        'Cuire les pommes de terre au four 25 min à 200 °C.',
+        'Ajouter le saumon les 12 dernières minutes.',
+        'Faire tomber les épinards.',
+      ],
       en: ['Roast potatoes 25 min at 200 °C.', 'Add salmon for the last 12 minutes.', 'Wilt the spinach.'],
     },
     substitutions: { salmon: ['chicken_breast', 'tofu'], potato: ['rice'] },
@@ -254,8 +266,16 @@ export const RECIPES: readonly Recipe[] = [
     difficulty: 1,
     equipment: ['microwave'],
     steps: {
-      fr: ['Cuire les pommes de terre en dés 8 min au micro-ondes.', 'Ajouter bœuf et légumes, cuire 5 min en remuant à mi-cuisson.', 'Vérifier que la viande est bien cuite.'],
-      en: ['Microwave diced potatoes 8 min.', 'Add beef and vegetables, cook 5 min, stirring halfway.', 'Make sure the meat is cooked through.'],
+      fr: [
+        'Cuire les pommes de terre en dés 8 min au micro-ondes.',
+        'Ajouter bœuf et légumes, cuire 5 min en remuant à mi-cuisson.',
+        'Vérifier que la viande est bien cuite.',
+      ],
+      en: [
+        'Microwave diced potatoes 8 min.',
+        'Add beef and vegetables, cook 5 min, stirring halfway.',
+        'Make sure the meat is cooked through.',
+      ],
     },
     substitutions: { ground_beef_5: ['red_beans_canned', 'tuna_canned'] },
   },

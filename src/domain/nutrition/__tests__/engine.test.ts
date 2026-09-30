@@ -85,7 +85,10 @@ describe('assessGoalFeasibility', () => {
   const today = '2026-09-30';
 
   it('flags an aggressive loss and suggests a later date', () => {
-    const s = scenario({ user: { weightKg: 90 }, goal: { type: 'fat_loss', targetWeightKg: 75, targetDate: '2026-11-15' } });
+    const s = scenario({
+      user: { weightKg: 90 },
+      goal: { type: 'fat_loss', targetWeightKg: 75, targetDate: '2026-11-15' },
+    });
     const f = assessGoalFeasibility(s, today);
     expect(f.status).toBe('aggressive');
     expect(f.suggestedTargetDate! > '2026-11-15').toBe(true);
@@ -93,7 +96,10 @@ describe('assessGoalFeasibility', () => {
   });
 
   it('accepts a reasonable loss', () => {
-    const s = scenario({ user: { weightKg: 90 }, goal: { type: 'fat_loss', targetWeightKg: 85, targetDate: '2027-02-28' } });
+    const s = scenario({
+      user: { weightKg: 90 },
+      goal: { type: 'fat_loss', targetWeightKg: 85, targetDate: '2027-02-28' },
+    });
     expect(assessGoalFeasibility(s, today).status).toBe('ok');
   });
 

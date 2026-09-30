@@ -2,15 +2,7 @@ import type { Allergen } from '../profile/schemas';
 import type { ExternalDataMeta } from '../shared/external';
 
 export type FoodCategory =
-  | 'protein'
-  | 'dairy'
-  | 'grain'
-  | 'legume'
-  | 'vegetable'
-  | 'fruit'
-  | 'fat'
-  | 'nut_seed'
-  | 'condiment';
+  'protein' | 'dairy' | 'grain' | 'legume' | 'vegetable' | 'fruit' | 'fat' | 'nut_seed' | 'condiment';
 
 /** Animal origin, used to enforce vegetarian/vegan diets. */
 export type AnimalOrigin = 'meat' | 'fish' | 'dairy' | 'egg' | null;
@@ -68,14 +60,26 @@ function food(
 export const FOOD_CATALOG: readonly Food[] = [
   food('chicken_breast', 'Blanc de poulet', 'Chicken breast', 'protein', [120, 23, 0, 2], { animal: 'meat' }),
   food('ground_beef_5', 'Bœuf haché 5 %', 'Lean ground beef 5%', 'protein', [130, 21, 0, 5], { animal: 'meat' }),
-  food('tuna_canned', 'Thon au naturel', 'Canned tuna', 'protein', [115, 26, 0, 1], { animal: 'fish', allergens: ['fish'] }),
+  food('tuna_canned', 'Thon au naturel', 'Canned tuna', 'protein', [115, 26, 0, 1], {
+    animal: 'fish',
+    allergens: ['fish'],
+  }),
   food('salmon', 'Saumon', 'Salmon', 'protein', [200, 20, 0, 13], { animal: 'fish', allergens: ['fish'] }),
   food('egg', 'Œuf', 'Egg', 'protein', [140, 12.5, 0.5, 10], { animal: 'egg', allergens: ['eggs'], gramsPerPiece: 55 }),
   food('tofu', 'Tofu ferme', 'Firm tofu', 'protein', [145, 15, 2, 8.5], { allergens: ['soy'] }),
-  food('greek_yogurt', 'Yaourt grec 0 %', 'Greek yogurt 0%', 'dairy', [60, 10, 4, 0.3], { animal: 'dairy', allergens: ['milk'] }),
+  food('greek_yogurt', 'Yaourt grec 0 %', 'Greek yogurt 0%', 'dairy', [60, 10, 4, 0.3], {
+    animal: 'dairy',
+    allergens: ['milk'],
+  }),
   food('skyr', 'Skyr', 'Skyr', 'dairy', [62, 11, 4, 0.2], { animal: 'dairy', allergens: ['milk'] }),
-  food('cottage_cheese', 'Fromage blanc 0 %', 'Fat-free quark', 'dairy', [48, 7.5, 4, 0.2], { animal: 'dairy', allergens: ['milk'] }),
-  food('emmental', 'Emmental râpé', 'Grated emmental', 'dairy', [380, 28, 0.5, 29], { animal: 'dairy', allergens: ['milk'] }),
+  food('cottage_cheese', 'Fromage blanc 0 %', 'Fat-free quark', 'dairy', [48, 7.5, 4, 0.2], {
+    animal: 'dairy',
+    allergens: ['milk'],
+  }),
+  food('emmental', 'Emmental râpé', 'Grated emmental', 'dairy', [380, 28, 0.5, 29], {
+    animal: 'dairy',
+    allergens: ['milk'],
+  }),
   food('soy_drink', 'Boisson au soja', 'Soy drink', 'dairy', [40, 3.3, 2.5, 1.8], { allergens: ['soy'] }),
   food('oats', "Flocons d'avoine", 'Rolled oats', 'grain', [370, 13, 60, 7], { allergens: ['gluten'] }),
   food('rice', 'Riz (cru)', 'Rice (dry)', 'grain', [355, 7, 78, 0.6]),
@@ -95,7 +99,9 @@ export const FOOD_CATALOG: readonly Food[] = [
   food('apple', 'Pomme', 'Apple', 'fruit', [53, 0.3, 12, 0.2], { gramsPerPiece: 150 }),
   food('frozen_berries', 'Fruits rouges surgelés', 'Frozen berries', 'fruit', [45, 1, 8, 0.3]),
   food('olive_oil', "Huile d'olive", 'Olive oil', 'fat', [900, 0, 0, 100]),
-  food('peanut_butter', 'Beurre de cacahuète', 'Peanut butter', 'nut_seed', [600, 25, 15, 50], { allergens: ['peanuts'] }),
+  food('peanut_butter', 'Beurre de cacahuète', 'Peanut butter', 'nut_seed', [600, 25, 15, 50], {
+    allergens: ['peanuts'],
+  }),
   food('almonds', 'Amandes', 'Almonds', 'nut_seed', [600, 21, 8, 52], { allergens: ['nuts'] }),
   food('tomato_sauce', 'Sauce tomate', 'Tomato sauce', 'condiment', [45, 1.5, 7, 1]),
   food('curry_paste', 'Pâte de curry', 'Curry paste', 'condiment', [120, 2, 12, 7], { allergens: ['mustard'] }),

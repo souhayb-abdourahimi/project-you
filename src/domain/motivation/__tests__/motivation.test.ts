@@ -12,11 +12,17 @@ describe('motivation', () => {
 
 describe('anti-abandon', () => {
   it('prioritises recovery when exhausted', () => {
-    expect(suggestAlternatives({ energy: 1, motivation: 3, fatigue: 5, availableMinutes: 60 }, 60).options[0]).toBe('rest');
+    expect(suggestAlternatives({ energy: 1, motivation: 3, fatigue: 5, availableMinutes: 60 }, 60).options[0]).toBe(
+      'rest',
+    );
   });
   it('proposes a short session when time is short', () => {
-    expect(suggestAlternatives({ energy: 3, motivation: 3, fatigue: 2, availableMinutes: 20 }, 60).options[0]).toBe('short_session');
-    expect(suggestAlternatives({ energy: 3, motivation: 3, fatigue: 2, availableMinutes: 10 }, 60).options).not.toContain('short_session');
+    expect(suggestAlternatives({ energy: 3, motivation: 3, fatigue: 2, availableMinutes: 20 }, 60).options[0]).toBe(
+      'short_session',
+    );
+    expect(
+      suggestAlternatives({ energy: 3, motivation: 3, fatigue: 2, availableMinutes: 10 }, 60).options,
+    ).not.toContain('short_session');
   });
   it('offers lighter options when motivation is low, never nothing', () => {
     const advice = suggestAlternatives({ energy: 3, motivation: 1, fatigue: 2, availableMinutes: 60 }, 60);

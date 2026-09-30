@@ -67,7 +67,10 @@ export function freeIntervals(schedule: ScheduleProfile, day: Weekday): Interval
 }
 
 function longest(intervals: Interval[]): Interval | null {
-  return intervals.reduce<Interval | null>((best, i) => (!best || i.end - i.start > best.end - best.start ? i : best), null);
+  return intervals.reduce<Interval | null>(
+    (best, i) => (!best || i.end - i.start > best.end - best.start ? i : best),
+    null,
+  );
 }
 
 interface DayOption {
@@ -119,7 +122,11 @@ const DEFAULT_SPREAD: Record<number, Weekday[]> = {
 export function planWeek(input: PlanningInput): WeeklyPlan {
   const warnings: PlanningWarning[] = [];
   const weekdays: Weekday[] = [1, 2, 3, 4, 5, 6, 7];
-  const days: PlannedDay[] = weekdays.map((weekday) => ({ date: addDays(input.weekStart, weekday - 1), weekday, items: [] }));
+  const days: PlannedDay[] = weekdays.map((weekday) => ({
+    date: addDays(input.weekStart, weekday - 1),
+    weekday,
+    items: [],
+  }));
   const requested = input.training.sessionsPerWeek;
 
   if (input.schedule.availability.length === 0) {
@@ -144,7 +151,8 @@ export function planWeek(input: PlanningInput): WeeklyPlan {
     );
     (best ?? []).forEach((option, sessionIndex) => {
       const start = option.slot.start + option.travel;
-      const duration = option.variant === 'short' ? Math.min(20, option.slot.end - option.slot.start) : input.training.sessionMinutes;
+      const duration =
+        option.variant === 'short' ? Math.min(20, option.slot.end - option.slot.start) : input.training.sessionMinutes;
       if (input.training.hasGym && option.location === 'home') warnings.push('home_fallback_used');
       days[option.day - 1].items.push({
         kind: 'workout',
@@ -192,9 +200,17 @@ function placeFoodTasks(days: PlannedDay[], input: PlanningInput): void {
   const before = days[prep.d.weekday - 2];
   const beforeSlot = before ? longest(freeIntervals(input.schedule, before.weekday)) : null;
   if (before && beforeSlot && beforeSlot.end - beforeSlot.start >= SHOPPING_MINUTES + busyWith(before)) {
-    before.items.push({ kind: 'shopping', start: formatTime(beforeSlot.end - SHOPPING_MINUTES), end: formatTime(beforeSlot.end) });
+    before.items.push({
+      kind: 'shopping',
+      start: formatTime(beforeSlot.end - SHOPPING_MINUTES),
+      end: formatTime(beforeSlot.end),
+    });
   } else if (prepStart - prep.slot.start >= SHOPPING_MINUTES + busyWith(prep.d)) {
-    prep.d.items.push({ kind: 'shopping', start: formatTime(prepStart - SHOPPING_MINUTES), end: formatTime(prepStart) });
+    prep.d.items.push({
+      kind: 'shopping',
+      start: formatTime(prepStart - SHOPPING_MINUTES),
+      end: formatTime(prepStart),
+    });
   }
 }
 

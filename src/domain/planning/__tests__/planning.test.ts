@@ -17,7 +17,9 @@ describe('PlanningEngine', () => {
   it('places sessions around a real busy schedule (classes 8–16, work 18–21)', () => {
     const s = SCENARIOS.busySchedule;
     const plan = planWeek({ weekStart: WEEK, schedule: s.schedule, training: s.training });
-    const workouts = plan.days.flatMap((d) => d.items.filter((i) => i.kind === 'workout').map((i) => ({ day: d.weekday, ...i })));
+    const workouts = plan.days.flatMap((d) =>
+      d.items.filter((i) => i.kind === 'workout').map((i) => ({ day: d.weekday, ...i })),
+    );
     expect(workouts).toHaveLength(3);
     for (const w of workouts) {
       if (w.kind !== 'workout' || !w.start || !w.end) throw new Error('expected timed workout');

@@ -1,5 +1,13 @@
 import { SCENARIOS } from '../../scenarios';
-import { buildSnapshot, emptyDraft, firstIncompleteStep, nextStepId, progressOf, visibleSteps, type OnboardingDraft } from '../steps';
+import {
+  buildSnapshot,
+  emptyDraft,
+  firstIncompleteStep,
+  nextStepId,
+  progressOf,
+  visibleSteps,
+  type OnboardingDraft,
+} from '../steps';
 
 const ids = (d: OnboardingDraft) => visibleSteps(d).map((s) => s.id);
 

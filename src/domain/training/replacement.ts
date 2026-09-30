@@ -20,7 +20,7 @@ export function findReplacements(exerciseId: string, reason: ReplacementReason, 
 
   let equipment = ctx.equipment;
   if (reason === 'no_equipment') {
-    const missing = current.equipment.filter((e) => e !== 'bodyweight');
+    const missing: readonly Equipment[] = current.equipment.filter((e) => e !== 'bodyweight');
     equipment = ctx.equipment.filter((e) => !missing.includes(e));
   }
 
@@ -33,7 +33,8 @@ export function findReplacements(exerciseId: string, reason: ReplacementReason, 
     if (!isAvailable(e, equipment)) return false;
     const rank = LEVEL_RANK[e.level];
     if (rank > maxRank) return false;
-    if (reason === 'easier' || reason === 'cant_do') return rank <= currentRank && (rank < currentRank || e.compound === current.compound);
+    if (reason === 'easier' || reason === 'cant_do')
+      return rank <= currentRank && (rank < currentRank || e.compound === current.compound);
     if (reason === 'harder') {
       // Harder = a higher level, or the loaded version of a bodyweight movement.
       return rank > currentRank || (rank === currentRank && current.loadIncrementKg === 0 && e.loadIncrementKg > 0);

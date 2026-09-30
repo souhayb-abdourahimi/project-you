@@ -37,10 +37,28 @@ export interface WeeklyMealPlan {
 }
 
 const SLOT_SHARES: Record<number, [MealSlot, number][]> = {
-  2: [['lunch', 0.5], ['dinner', 0.5]],
-  3: [['breakfast', 0.25], ['lunch', 0.375], ['dinner', 0.375]],
-  4: [['breakfast', 0.25], ['lunch', 0.3], ['snack', 0.15], ['dinner', 0.3]],
-  5: [['breakfast', 0.2], ['snack', 0.1], ['lunch', 0.3], ['snack', 0.1], ['dinner', 0.3]],
+  2: [
+    ['lunch', 0.5],
+    ['dinner', 0.5],
+  ],
+  3: [
+    ['breakfast', 0.25],
+    ['lunch', 0.375],
+    ['dinner', 0.375],
+  ],
+  4: [
+    ['breakfast', 0.25],
+    ['lunch', 0.3],
+    ['snack', 0.15],
+    ['dinner', 0.3],
+  ],
+  5: [
+    ['breakfast', 0.2],
+    ['snack', 0.1],
+    ['lunch', 0.3],
+    ['snack', 0.1],
+    ['dinner', 0.3],
+  ],
 };
 
 export interface PlannerContext {
@@ -115,13 +133,7 @@ function scaleIngredients(ingredients: Ingredient[], servings: number): Ingredie
   return ingredients.map((i) => ({ foodId: i.foodId, grams: Math.round(i.grams * servings) }));
 }
 
-function planMeal(
-  date: IsoDate,
-  index: number,
-  slot: MealSlot,
-  targetKcal: number,
-  candidate: Candidate,
-): PlannedMeal {
+function planMeal(date: IsoDate, index: number, slot: MealSlot, targetKcal: number, candidate: Candidate): PlannedMeal {
   const baseKcal = recipeNutrition(candidate.recipe.ingredients).kcal;
   const servings = baseKcal > 0 ? clamp(roundTo(targetKcal / baseKcal, 0.25), 0.5, 2.5) : 1;
   const ingredients = scaleIngredients(candidate.recipe.ingredients, servings);

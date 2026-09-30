@@ -27,7 +27,10 @@ describe('WorkoutEngine', () => {
   it('never includes refused exercises', () => {
     const plan = generateWorkoutPlan({
       goal: 'maintenance',
-      training: { ...SCENARIOS.studentMediumBudget.training, refusedExerciseIds: ['back_squat', 'deadlift', 'bench_press'] },
+      training: {
+        ...SCENARIOS.studentMediumBudget.training,
+        refusedExerciseIds: ['back_squat', 'deadlift', 'bench_press'],
+      },
     });
     const ids = plan.sessions.flatMap((s) => s.exercises.map((e) => e.exerciseId));
     expect(ids).not.toContain('back_squat');
@@ -62,7 +65,10 @@ describe('replacements', () => {
   it('offers easier and harder variations', () => {
     const easier = findReplacements('push_up', 'easier', ctx);
     expect(easier.map((e) => e.id)).toContain('incline_push_up');
-    const harder = findReplacements('bodyweight_squat', 'harder', { ...ctx, equipment: ['bodyweight', 'dumbbells', 'bench'] });
+    const harder = findReplacements('bodyweight_squat', 'harder', {
+      ...ctx,
+      equipment: ['bodyweight', 'dumbbells', 'bench'],
+    });
     expect(harder.length).toBeGreaterThan(0);
     for (const h of harder) expect(h.level !== 'beginner' || h.loadIncrementKg > 0).toBe(true);
   });
@@ -83,7 +89,18 @@ describe('ProgressionEngine', () => {
   const base = { exerciseId: 'goblet_squat', repsMin: 8, repsMax: 12, fatigue: 'normal' as const };
 
   it('adds load at the top of the range with manageable effort', () => {
-    const s = suggestProgression({ ...base, history: [{ date: 'd1', sets: [{ reps: 12, loadKg: 20, rpe: 8 }, { reps: 12, loadKg: 20, rpe: 8.5 }] }] });
+    const s = suggestProgression({
+      ...base,
+      history: [
+        {
+          date: 'd1',
+          sets: [
+            { reps: 12, loadKg: 20, rpe: 8 },
+            { reps: 12, loadKg: 20, rpe: 8.5 },
+          ],
+        },
+      ],
+    });
     expect(s).toMatchObject({ action: 'increase_load', loadKg: 22, targetReps: 8 });
   });
 
@@ -93,7 +110,11 @@ describe('ProgressionEngine', () => {
   });
 
   it('does not increase when fatigue is high', () => {
-    const s = suggestProgression({ ...base, fatigue: 'high', history: [{ date: 'd1', sets: [{ reps: 12, loadKg: 20, rpe: 7 }] }] });
+    const s = suggestProgression({
+      ...base,
+      fatigue: 'high',
+      history: [{ date: 'd1', sets: [{ reps: 12, loadKg: 20, rpe: 7 }] }],
+    });
     expect(s.action).toBe('keep');
   });
 
@@ -113,7 +134,12 @@ describe('adapted sessions', () => {
   const plan = generateWorkoutPlan({ goal: 'muscle_gain', training: SCENARIOS.studentMediumBudget.training });
 
   it('"J\'ai 15 minutes" gives a home bodyweight circuit', () => {
-    const s = shortSession(plan.sessions[0], { minutes: 15, equipment: ['bodyweight'], level: 'intermediate', refusedExerciseIds: [] });
+    const s = shortSession(plan.sessions[0], {
+      minutes: 15,
+      equipment: ['bodyweight'],
+      level: 'intermediate',
+      refusedExerciseIds: [],
+    });
     expect(s.variant).toBe('short');
     expect(s.exercises.length).toBeGreaterThanOrEqual(2);
     expect(s.estimatedMinutes).toBeLessThanOrEqual(15);

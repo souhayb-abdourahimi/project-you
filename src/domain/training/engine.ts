@@ -32,16 +32,22 @@ export interface WorkoutPlan {
 
 export interface WorkoutInput {
   goal: GoalType;
-  training: Pick<
-    TrainingProfile,
-    'level' | 'sessionsPerWeek' | 'sessionMinutes' | 'equipment' | 'refusedExerciseIds'
-  >;
+  training: Pick<TrainingProfile, 'level' | 'sessionsPerWeek' | 'sessionMinutes' | 'equipment' | 'refusedExerciseIds'>;
 }
 
 const FOCUS_PATTERNS: Record<SessionFocus, MovementPattern[]> = {
   full_a: ['squat', 'push_horizontal', 'pull_horizontal', 'hinge', 'push_vertical', 'pull_vertical', 'core', 'arms'],
   full_b: ['hinge', 'push_vertical', 'pull_vertical', 'lunge', 'push_horizontal', 'pull_horizontal', 'core', 'arms'],
-  upper: ['push_horizontal', 'pull_horizontal', 'push_vertical', 'pull_vertical', 'arms', 'arms', 'core', 'push_horizontal'],
+  upper: [
+    'push_horizontal',
+    'pull_horizontal',
+    'push_vertical',
+    'pull_vertical',
+    'arms',
+    'arms',
+    'core',
+    'push_horizontal',
+  ],
   lower: ['squat', 'hinge', 'lunge', 'core', 'hinge', 'squat', 'core', 'lunge'],
 };
 
@@ -66,11 +72,17 @@ interface Prescription {
 function prescriptionFor(goal: GoalType, compound: boolean, level: TrainingLevel): Prescription {
   let p: Prescription;
   if (goal === 'performance') {
-    p = compound ? { sets: 4, repsMin: 4, repsMax: 6, restSeconds: 150 } : { sets: 3, repsMin: 8, repsMax: 10, restSeconds: 90 };
+    p = compound
+      ? { sets: 4, repsMin: 4, repsMax: 6, restSeconds: 150 }
+      : { sets: 3, repsMin: 8, repsMax: 10, restSeconds: 90 };
   } else if (goal === 'muscle_gain' || goal === 'recomposition') {
-    p = compound ? { sets: 3, repsMin: 6, repsMax: 10, restSeconds: 120 } : { sets: 3, repsMin: 10, repsMax: 12, restSeconds: 75 };
+    p = compound
+      ? { sets: 3, repsMin: 6, repsMax: 10, restSeconds: 120 }
+      : { sets: 3, repsMin: 10, repsMax: 12, restSeconds: 75 };
   } else {
-    p = compound ? { sets: 3, repsMin: 8, repsMax: 12, restSeconds: 90 } : { sets: 2, repsMin: 12, repsMax: 15, restSeconds: 60 };
+    p = compound
+      ? { sets: 3, repsMin: 8, repsMax: 12, restSeconds: 90 }
+      : { sets: 2, repsMin: 12, repsMax: 15, restSeconds: 60 };
   }
   if (level === 'beginner') {
     // Beginners: fewer sets and moderate reps to learn the movements safely.
@@ -136,7 +148,10 @@ export function generateWorkoutPlan(input: WorkoutInput): WorkoutPlan {
         unit: timeBased ? 'seconds' : 'reps',
         restSeconds: p.restSeconds,
         targetRpe: training.level === 'beginner' ? 7 : 8,
-        alternatives: options.filter((o) => o.id !== pick.id).slice(0, 2).map((o) => o.id),
+        alternatives: options
+          .filter((o) => o.id !== pick.id)
+          .slice(0, 2)
+          .map((o) => o.id),
       });
     }
 

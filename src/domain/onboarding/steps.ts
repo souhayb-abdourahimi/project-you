@@ -42,16 +42,7 @@ export function emptyDraft(): OnboardingDraft {
 }
 
 export type OnboardingSection =
-  | 'profile'
-  | 'goal'
-  | 'motivation'
-  | 'life'
-  | 'budget'
-  | 'kitchen'
-  | 'diet'
-  | 'training'
-  | 'schedule'
-  | 'review';
+  'profile' | 'goal' | 'motivation' | 'life' | 'budget' | 'kitchen' | 'diet' | 'training' | 'schedule' | 'review';
 
 export type OnboardingStepId =
   | 'profile.name'
@@ -113,7 +104,12 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     isComplete: (d) => d.user.heightCm !== undefined && d.user.weightKg !== undefined,
   },
   { id: 'profile.sex', section: 'profile', isVisible: always, isComplete: (d) => d.user.sex !== undefined },
-  { id: 'profile.activity', section: 'profile', isVisible: always, isComplete: (d) => d.user.activityLevel !== undefined },
+  {
+    id: 'profile.activity',
+    section: 'profile',
+    isVisible: always,
+    isComplete: (d) => d.user.activityLevel !== undefined,
+  },
   { id: 'goal.type', section: 'goal', isVisible: always, isComplete: (d) => d.goal.type !== undefined },
   { id: 'goal.target', section: 'goal', isVisible: isWeightGoal, isComplete: optional },
   { id: 'goal.priorities', section: 'goal', isVisible: always, isComplete: optional },
@@ -137,7 +133,12 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     isComplete: (d) => d.nutrition.mealsPerDay !== undefined && d.nutrition.cookingMinutes !== undefined,
   },
   { id: 'training.gym', section: 'training', isVisible: always, isComplete: (d) => d.training.hasGym !== undefined },
-  { id: 'training.gymDetails', section: 'training', isVisible: (d) => d.training.hasGym === true, isComplete: optional },
+  {
+    id: 'training.gymDetails',
+    section: 'training',
+    isVisible: (d) => d.training.hasGym === true,
+    isComplete: optional,
+  },
   {
     id: 'training.homeEquipment',
     section: 'training',
@@ -200,9 +201,7 @@ export function firstIncompleteStep(draft: OnboardingDraft, referenceYear: numbe
  * Builds the validated snapshot, filling optional lists with sensible defaults.
  * Details asked only in hidden steps are dropped (e.g. gym details when the user has no gym).
  */
-export type SnapshotResult =
-  | { ok: true; snapshot: UserContextSnapshot }
-  | { ok: false; issues: string[] };
+export type SnapshotResult = { ok: true; snapshot: UserContextSnapshot } | { ok: false; issues: string[] };
 
 export function buildSnapshot(draft: OnboardingDraft, now: Date): SnapshotResult {
   const age = draft.user.birthYear === undefined ? undefined : now.getFullYear() - draft.user.birthYear;

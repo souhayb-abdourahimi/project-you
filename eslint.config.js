@@ -8,6 +8,10 @@ module.exports = defineConfig([
     ignores: ['dist/*', '.expo/*', 'node_modules/*', 'supabase/functions/*'],
   },
   {
+    // Zod pattern: a schema constant and its inferred type share one name.
+    rules: { '@typescript-eslint/no-redeclare': 'off' },
+  },
+  {
     // The domain layer is pure TypeScript: no UI, platform or backend imports (docs/ARCHITECTURE.md).
     files: ['src/domain/**/*.ts'],
     rules: {

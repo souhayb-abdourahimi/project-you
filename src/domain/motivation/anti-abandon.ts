@@ -8,7 +8,8 @@ export interface DailyCheckin {
   availableMinutes: number;
 }
 
-export type Alternative = 'full_session' | 'short_session' | 'light_session' | 'walk' | 'mobility' | 'reschedule' | 'rest';
+export type Alternative =
+  'full_session' | 'short_session' | 'light_session' | 'walk' | 'mobility' | 'reschedule' | 'rest';
 
 export interface AntiAbandonAdvice {
   /** Most suitable first. The user always picks; nothing is imposed. */
@@ -25,11 +26,15 @@ export function suggestAlternatives(checkin: DailyCheckin, plannedMinutes: numbe
     return { options: ['light_session', 'mobility', 'walk', 'reschedule', 'rest'], messageKey: 'antiAbandon.tired' };
   }
   if (checkin.availableMinutes < plannedMinutes) {
-    const options: Alternative[] = checkin.availableMinutes >= 15 ? ['short_session', 'walk', 'reschedule'] : ['walk', 'mobility', 'reschedule'];
+    const options: Alternative[] =
+      checkin.availableMinutes >= 15 ? ['short_session', 'walk', 'reschedule'] : ['walk', 'mobility', 'reschedule'];
     return { options, messageKey: 'antiAbandon.no_time' };
   }
   if (checkin.motivation <= 2) {
-    return { options: ['short_session', 'light_session', 'walk', 'reschedule', 'rest'], messageKey: 'antiAbandon.low_motivation' };
+    return {
+      options: ['short_session', 'light_session', 'walk', 'reschedule', 'rest'],
+      messageKey: 'antiAbandon.low_motivation',
+    };
   }
   return { options: ['full_session', 'short_session', 'light_session'], messageKey: 'antiAbandon.ready' };
 }

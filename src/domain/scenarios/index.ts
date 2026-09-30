@@ -62,13 +62,16 @@ export function scenario(overrides: DeepPartialSnapshot = {}): UserContextSnapsh
   for (const [key, value] of Object.entries(overrides)) {
     const current = result[key];
     result[key] =
-      current && typeof current === 'object' && !Array.isArray(current) ? { ...current, ...value } : value;
+      current && typeof current === 'object' && !Array.isArray(current) ? { ...current, ...(value as object) } : value;
   }
   return result as unknown as UserContextSnapshot;
 }
 
 export const SCENARIOS = {
-  studentLowBudget: scenario({ budget: { weeklyFoodBudgetCents: 2500 }, lifestyle: { lifeStatus: 'student', kitchen: ['microwave'] } }),
+  studentLowBudget: scenario({
+    budget: { weeklyFoodBudgetCents: 2500 },
+    lifestyle: { lifeStatus: 'student', kitchen: ['microwave'] },
+  }),
   studentMediumBudget: scenario({ budget: { weeklyFoodBudgetCents: 4500 } }),
   muscleGain: scenario({ goal: { type: 'muscle_gain', targetWeightKg: 80, targetDate: '2027-06-30' } }),
   fatLoss: scenario({

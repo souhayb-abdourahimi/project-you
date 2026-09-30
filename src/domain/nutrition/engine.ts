@@ -52,10 +52,7 @@ const HIGH_BMI = 30;
 const REFERENCE_BMI = 25;
 
 export type NutritionWarning =
-  | 'minor_no_deficit'
-  | 'underweight_no_deficit'
-  | 'calorie_floor_applied'
-  | 'sex_unspecified_estimate';
+  'minor_no_deficit' | 'underweight_no_deficit' | 'calorie_floor_applied' | 'sex_unspecified_estimate';
 
 export interface NutritionTargets {
   bmr: number;
@@ -119,8 +116,7 @@ export function computeNutritionTargets(snapshot: UserContextSnapshot, reference
   if (user.sex === 'unspecified') warnings.push('sex_unspecified_estimate');
 
   // With a high BMI, protein is based on the weight at BMI 25 to avoid excessive targets.
-  const referenceWeight =
-    userBmi >= HIGH_BMI ? REFERENCE_BMI * (user.heightCm / 100) ** 2 : user.weightKg;
+  const referenceWeight = userBmi >= HIGH_BMI ? REFERENCE_BMI * (user.heightCm / 100) ** 2 : user.weightKg;
   const proteinG = PROTEIN_PER_KG[goal.type] * referenceWeight;
   const fatG = Math.max(MIN_FAT_PER_KG * user.weightKg, (calories * FAT_SHARE) / 9);
   const carbsG = Math.max(0, (calories - proteinG * 4 - fatG * 9) / 4);
@@ -169,10 +165,7 @@ const GAIN_MAX = 0.005;
  * Honest check of the user's target: never blocks the user, but flags aggressive or unsafe goals
  * and proposes a more reasonable timeline.
  */
-export function assessGoalFeasibility(
-  snapshot: UserContextSnapshot,
-  today: string,
-): GoalFeasibility {
+export function assessGoalFeasibility(snapshot: UserContextSnapshot, today: string): GoalFeasibility {
   const { goal, user } = snapshot;
   const none: GoalFeasibility = {
     status: 'not_applicable',

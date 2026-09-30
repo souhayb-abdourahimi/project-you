@@ -11,7 +11,9 @@ describe('structured AI outputs', () => {
   });
   it('requires confirmation for inventory changes', () => {
     const change = { action: 'add', name: 'Riz', quantity: 500, unit: 'g' };
-    expect(parseCoachAction({ type: 'inventory_update', requiresConfirmation: false, changes: [change] }).ok).toBe(false);
+    expect(parseCoachAction({ type: 'inventory_update', requiresConfirmation: false, changes: [change] }).ok).toBe(
+      false,
+    );
     expect(parseCoachAction({ type: 'inventory_update', requiresConfirmation: true, changes: [change] }).ok).toBe(true);
   });
 });

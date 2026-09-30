@@ -18,9 +18,16 @@ export interface AdaptedSession {
  */
 export function shortSession(
   template: WorkoutTemplate,
-  opts: { minutes: number; equipment: readonly Equipment[]; level: TrainingLevel; refusedExerciseIds: readonly string[] },
+  opts: {
+    minutes: number;
+    equipment: readonly Equipment[];
+    level: TrainingLevel;
+    refusedExerciseIds: readonly string[];
+  },
 ): AdaptedSession {
-  const equipment: Equipment[] = opts.equipment.includes('bodyweight') ? [...opts.equipment] : ['bodyweight', ...opts.equipment];
+  const equipment: Equipment[] = opts.equipment.includes('bodyweight')
+    ? [...opts.equipment]
+    : ['bodyweight', ...opts.equipment];
   const patterns = [...new Set(template.exercises.map((e) => getExercise(e.exerciseId)?.pattern).filter(Boolean))];
   const maxExercises = opts.minutes <= 15 ? 3 : 4;
   const used = new Set<string>();
@@ -44,7 +51,12 @@ export function shortSession(
     });
   }
 
-  return { variant: 'short', exercises, estimatedMinutes: Math.min(opts.minutes, estimateMinutes(exercises)), atHome: true };
+  return {
+    variant: 'short',
+    exercises,
+    estimatedMinutes: Math.min(opts.minutes, estimateMinutes(exercises)),
+    atHome: true,
+  };
 }
 
 /** "Version allégée": same exercises, ~40 % fewer sets, lower effort. */

@@ -5,6 +5,7 @@ import { FOOD_CATALOG, getFood } from '../catalog';
 import { constraintsFrom, isFoodAllowed } from '../constraints';
 import { consume, type InventoryItem } from '../inventory';
 import { alternativesFor, planDay, planWeek, type PlannerContext } from '../planner';
+import { getRecipe } from '../recipes';
 import { buildShoppingList } from '../shopping';
 import type { UserContextSnapshot } from '../../profile/schemas';
 
@@ -57,9 +58,14 @@ describe('hard constraints', () => {
   });
 
   it('treats lactose intolerance as a milk exclusion', () => {
-    const s = { ...SCENARIOS.studentMediumBudget, nutrition: { ...SCENARIOS.studentMediumBudget.nutrition, intolerances: ['Lactose'] } };
+    const s = {
+      ...SCENARIOS.studentMediumBudget,
+      nutrition: { ...SCENARIOS.studentMediumBudget.nutrition, intolerances: ['Lactose'] },
+    };
     const plan = planWeek('2026-09-28', ctxFor(s));
-    const allergens = plan.days.flatMap((d) => d.meals.flatMap((m) => m.ingredients.flatMap((i) => getFood(i.foodId)!.allergens)));
+    const allergens = plan.days.flatMap((d) =>
+      d.meals.flatMap((m) => m.ingredients.flatMap((i) => getFood(i.foodId)!.allergens)),
+    );
     expect(allergens).not.toContain('milk');
   });
 
@@ -67,13 +73,15 @@ describe('hard constraints', () => {
     const s = SCENARIOS.studentLowBudget; // microwave only
     const plan = planDay(TODAY, ctxFor(s));
     for (const m of plan.meals) {
-      const recipe = require('../recipes').getRecipe(m.recipeId);
-      expect(recipe.equipment.every((e: string) => e === 'microwave')).toBe(true);
+      expect(getRecipe(m.recipeId)!.equipment.every((e) => e === 'microwave')).toBe(true);
     }
   });
 
   it('excludes free-text forbidden foods, accent-insensitively', () => {
-    const s = { ...SCENARIOS.studentMediumBudget, nutrition: { ...SCENARIOS.studentMediumBudget.nutrition, excludedFoods: ['oeuf', 'thon'] } };
+    const s = {
+      ...SCENARIOS.studentMediumBudget,
+      nutrition: { ...SCENARIOS.studentMediumBudget.nutrition, excludedFoods: ['oeuf', 'thon'] },
+    };
     const plan = planWeek('2026-09-28', ctxFor(s));
     const ids = plan.days.flatMap((d) => d.meals.flatMap((m) => m.ingredients.map((i) => i.foodId)));
     expect(ids).not.toContain('egg');
@@ -114,7 +122,8 @@ describe('planner', () => {
     expect(faster.status).toBe('ok');
     const missing = alternativesFor(meal, 'missing_ingredient', ctx, { missingFoodId: meal.ingredients[0].foodId });
     if (missing.status === 'ok') {
-      for (const alt of missing.meals) expect(alt.ingredients.map((i) => i.foodId)).not.toContain(meal.ingredients[0].foodId);
+      for (const alt of missing.meals)
+        expect(alt.ingredients.map((i) => i.foodId)).not.toContain(meal.ingredients[0].foodId);
     }
   });
 });
@@ -123,7 +132,11 @@ describe('shopping list', () => {
   it('subtracts inventory and never invents a price', () => {
     const ctx = ctxFor(SCENARIOS.studentMediumBudget, [item('rice', 5000)]);
     const plan = planWeek('2026-09-28', ctx);
-    const list = buildShoppingList(plan.days.flatMap((d) => d.meals), ctx.inventory, '2026-09-28');
+    const list = buildShoppingList(
+      plan.days.flatMap((d) => d.meals),
+      ctx.inventory,
+      '2026-09-28',
+    );
     expect(list.items.find((i) => i.foodId === 'rice')).toBeUndefined();
     expect(list.items.every((i) => i.estimatedCostCents === null)).toBe(true);
     expect(list.knownCostCents).toBeNull();
@@ -140,7 +153,10 @@ describe('shopping list', () => {
 
 describe('inventory', () => {
   it('consumes soonest-expiring items first', () => {
-    const items = [item('rice', 300, { id: 'a', expiresOn: '2026-12-01' }), item('rice', 200, { id: 'b', expiresOn: '2026-10-02' })];
+    const items = [
+      item('rice', 300, { id: 'a', expiresOn: '2026-12-01' }),
+      item('rice', 200, { id: 'b', expiresOn: '2026-10-02' }),
+    ];
     const after = consume(items, 'rice', 250, TODAY);
     expect(after.find((i) => i.id === 'b')!.quantity).toBe(0);
     expect(after.find((i) => i.id === 'a')!.quantity).toBe(250);
@@ -154,11 +170,15 @@ describe('inventory', () => {
 
 describe('budget', () => {
   it('computes planned / spent / remaining', () => {
-    const s = summarizeWeek(4500, [
-      { id: '1', amountCents: 2000, spentOn: '2026-09-28' },
-      { id: '2', amountCents: 1470, spentOn: '2026-10-01' },
-      { id: '3', amountCents: 9999, spentOn: '2026-10-10' },
-    ], '2026-09-28');
+    const s = summarizeWeek(
+      4500,
+      [
+        { id: '1', amountCents: 2000, spentOn: '2026-09-28' },
+        { id: '2', amountCents: 1470, spentOn: '2026-10-01' },
+        { id: '3', amountCents: 9999, spentOn: '2026-10-10' },
+      ],
+      '2026-09-28',
+    );
     expect(s).toMatchObject({ plannedCents: 4500, spentCents: 3470, remainingCents: 1030, status: 'on_track' });
   });
 });
