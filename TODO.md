@@ -8,7 +8,6 @@ Tâches importantes à ne pas perdre entre deux sessions. Référence des IDs : 
 - [ ] **M-19** Sync : service qui vide l'outbox vers Supabase + pull incrémental ; les stores écrivent déjà dans l'outbox.
 - [ ] **M-18** Notifications locales (expo-notifications) par catégorie, plafond quotidien.
 - [ ] **M-20** Privacy Center : export JSON, Edge Function `delete-account` (service role, supprime Storage puis `auth.users`).
-- [ ] **M-21** Web : sidebar ≥ 1024 px.
 - [ ] **M-22** E2E Playwright (web) du parcours complet.
 
 ## Données
@@ -24,6 +23,11 @@ Tâches importantes à ne pas perdre entre deux sessions. Référence des IDs : 
 - [ ] Vérifier `npm audit` (14 vulnérabilités « moderate » transitives au scaffold, outils de build Expo).
 
 ## Produit
+
+- [ ] Plans vegan : l'apport protéique des recettes MOCK reste sous la cible (≈ 105 g pour 160 g) ; enrichir les recettes et les collations vegan.
+- [ ] Le budget n'influence pas encore le choix des recettes faute de prix réels (PriceProvider ou saisie utilisateur).
+- [ ] Onboarding : l'année de naissance se saisit au clavier ; envisager un sélecteur.
+- [ ] Identifiants store `app.projectyou` provisoires : à remplacer par le domaine définitif.
 
 - [ ] Questions d'onboarding : vérifier les formulations avec de vrais utilisateurs (tests d'utilisabilité).
 - [ ] Icône, splash et nom définitifs (actuellement ceux du template Expo).
