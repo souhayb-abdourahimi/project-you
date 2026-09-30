@@ -10,6 +10,7 @@ const WEEK = '2026-09-28';
 function input(s = SCENARIOS.studentMediumBudget, patch: Partial<WeeklyReviewInput> = {}): WeeklyReviewInput {
   return {
     weekStart: WEEK,
+    today: '2026-10-04',
     goal: s.goal.type,
     schedule: planWeek({ weekStart: WEEK, schedule: s.schedule, training: s.training }),
     completedSessions: [],
@@ -81,5 +82,26 @@ describe('weeklyReview', () => {
   it('reads protein coverage from the meal plan', () => {
     const r = weeklyReview(input(SCENARIOS.veganFatLoss));
     expect(r.meals?.proteinDaysMet).toBe(7);
+  });
+
+  it('never counts sessions still ahead in the week as missed', () => {
+    // The day before the week starts: nothing is behind yet.
+    const monday = weeklyReview(input(undefined, { today: '2026-09-27' }));
+    expect(monday.hard.map((p) => p.key)).not.toContain('review.hard.sessions');
+    expect(monday.hard.map((p) => p.key)).not.toContain('review.hard.protein');
+    expect(monday.adapt.map((p) => p.key)).not.toContain('review.adapt.start_small');
+  });
+
+  it('only lists a weight trend as a win when it goes the way of the goal', () => {
+    const weights = [
+      { date: '2026-09-21', weightKg: 80 },
+      { date: '2026-09-23', weightKg: 80 },
+      { date: '2026-09-29', weightKg: 81 },
+      { date: '2026-10-01', weightKg: 81 },
+    ];
+    const fatLoss = weeklyReview(input(SCENARIOS.fatLoss, { weights }));
+    expect(fatLoss.worked.map((p) => p.key)).not.toContain('review.worked.weight_trend');
+    const gain = weeklyReview(input(SCENARIOS.muscleGain, { weights }));
+    expect(gain.worked.map((p) => p.key)).toContain('review.worked.weight_trend');
   });
 });

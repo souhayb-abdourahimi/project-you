@@ -307,6 +307,28 @@ export function replaceMealInPlan(plan: WeeklyMealPlan, meal: PlannedMeal): Week
 }
 
 /**
+ * Meals already eaten stay in the regenerated plan. They are matched by day and slot (and
+ * occurrence within the slot), not by id: ids contain the meal index, which moves when the
+ * number of meals per day changes.
+ */
+export function carryOverEaten(next: WeeklyMealPlan, previous: WeeklyMealPlan | null): WeeklyMealPlan {
+  if (!previous || previous.weekStart !== next.weekStart) return next;
+  const slotKey = (meals: PlannedMeal[], m: PlannedMeal) =>
+    `${m.date}|${m.slot}|${meals.filter((x) => x.slot === m.slot).indexOf(m)}`;
+  const eaten = new Map(
+    previous.days.flatMap((d) => d.meals.filter((m) => m.status === 'eaten').map((m) => [slotKey(d.meals, m), m])),
+  );
+  if (eaten.size === 0) return next;
+  return next.days.reduce<WeeklyMealPlan>((plan, day) => {
+    const kept = day.meals.flatMap((m) => {
+      const old = eaten.get(slotKey(day.meals, m));
+      return old ? [{ ...old, id: m.id }] : [];
+    });
+    return kept.reduce((p, m) => replaceMealInPlan(p, m), plan);
+  }, next);
+}
+
+/**
  * Fingerprint of everything that must invalidate a stored plan: a diet or allergy change mid-week
  * has to regenerate it, never leave a now-forbidden meal on screen.
  */

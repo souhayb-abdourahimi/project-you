@@ -36,11 +36,32 @@ export async function requestNotificationPermission(): Promise<PermissionResult>
   }
 }
 
-/** Replaces every reminder this app scheduled with the new plan. Never touches other apps' data. */
-export async function replaceScheduled(
+let queue: Promise<unknown> = Promise.resolve();
+let lastApplied: string | null = null;
+
+/**
+ * Replaces every reminder this app scheduled with the new plan. Never touches other apps' data.
+ * Calls run one after the other (two overlapping replacements could leave a stale reminder),
+ * and an unchanged plan is not rescheduled.
+ */
+export function replaceScheduled(
   plan: PlannedNotification[],
   render: (n: PlannedNotification) => { title: string; body: string },
 ): Promise<number> {
+  const rendered = plan.map((n) => ({ n, ...render(n) }));
+  const signature = JSON.stringify(rendered.map(({ n, title, body }) => [n.id, n.date, n.time, title, body]));
+  const run = queue.then(async () => {
+    if (signature === lastApplied) return rendered.length;
+    lastApplied = null;
+    const count = await applySchedule(rendered);
+    lastApplied = signature;
+    return count;
+  });
+  queue = run.catch(() => undefined);
+  return run;
+}
+
+async function applySchedule(rendered: { n: PlannedNotification; title: string; body: string }[]): Promise<number> {
   const existing = await Notifications.getAllScheduledNotificationsAsync();
   await Promise.all(
     existing
@@ -48,12 +69,11 @@ export async function replaceScheduled(
       .map((r) => Notifications.cancelScheduledNotificationAsync(r.identifier)),
   );
   let count = 0;
-  for (const n of plan) {
+  for (const { n, title, body } of rendered) {
     const [y, m, d] = n.date.split('-').map(Number);
     const [hh, mm] = n.time.split(':').map(Number);
     const date = new Date(y, m - 1, d, hh, mm);
     if (date.getTime() <= Date.now()) continue;
-    const { title, body } = render(n);
     await Notifications.scheduleNotificationAsync({
       identifier: n.id,
       content: { title, body, data: { tag: APP_TAG, category: n.category } },

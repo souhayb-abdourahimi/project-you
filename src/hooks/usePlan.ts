@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 
 import { constraintsFrom } from '@/domain/meals/constraints';
-import { mealPlanKey, planWeek as planMeals, replaceMealInPlan, type WeeklyMealPlan } from '@/domain/meals/planner';
+import { carryOverEaten, mealPlanKey, planWeek as planMeals } from '@/domain/meals/planner';
 import { assessGoalFeasibility, computeNutritionTargets } from '@/domain/nutrition/engine';
 import { planWeek as planSchedule, type PlannedDay, type WeeklyPlan } from '@/domain/planning/engine';
 import { startOfWeek, toIsoDate } from '@/domain/shared/dates';
@@ -24,21 +24,6 @@ function withReschedules(plan: WeeklyPlan, rescheduled: Record<string, string>):
     target.items = [workout, ...target.items.filter((i) => i.kind !== 'rest')];
   }
   return { ...plan, days };
-}
-
-function keepEaten(next: WeeklyMealPlan, previous: WeeklyMealPlan | null): WeeklyMealPlan {
-  if (!previous || previous.weekStart !== next.weekStart) return next;
-  const eaten = new Map(
-    previous.days
-      .flatMap((d) => d.meals)
-      .filter((m) => m.status === 'eaten')
-      .map((m) => [m.id, m]),
-  );
-  if (eaten.size === 0) return next;
-  return next.days.reduce<WeeklyMealPlan>((plan, day) => {
-    const kept = day.meals.map((m) => eaten.get(m.id)).filter((m) => m !== undefined);
-    return kept.reduce((p, m) => replaceMealInPlan(p, m), plan);
-  }, next);
 }
 
 /** Everything the screens need, derived from the snapshot by the deterministic engines. */
@@ -85,7 +70,7 @@ export function usePlan() {
       inventory,
       today,
     });
-    setMealPlan(keepEaten(next, mealPlan));
+    setMealPlan(carryOverEaten(next, mealPlan));
   }, [snapshot, derived, planKey, mealPlan, weekStart, inventory, today, setMealPlan]);
 
   const schedule = useMemo(

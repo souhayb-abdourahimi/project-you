@@ -418,6 +418,7 @@ const en: LocaleShape = {
   review: {
     title: 'Weekly review',
     open: 'See the weekly review',
+    noProfile: 'Finish your profile to see your weekly review.',
     intro: 'Based only on what you logged. Numbers are estimates.',
     sessions: 'Workouts',
     sessionsValue: '{{done}} / {{planned}}',

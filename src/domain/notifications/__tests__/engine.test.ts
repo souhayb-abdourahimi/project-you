@@ -83,4 +83,17 @@ describe('NotificationEngine', () => {
     expect(isQuiet('23:00', '22:00', '07:00')).toBe(true);
     expect(isQuiet('08:00', '22:00', '07:00')).toBe(false);
   });
+
+  it('drops a training reminder that quiet hours would push past the session start', () => {
+    const all = planNotifications({
+      prefs: on({ quietStart: '00:00', quietEnd: '23:00' }),
+      week,
+      motivation: s.motivation,
+      from,
+    });
+    for (const n of all.filter((x) => x.category === 'training')) {
+      expect(n.time < String(n.params?.time)).toBe(true);
+    }
+    expect(all.filter((x) => x.category === 'training')).toEqual([]);
+  });
 });

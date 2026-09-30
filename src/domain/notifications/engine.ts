@@ -108,10 +108,11 @@ export function planNotifications(input: {
   if (!prefs.enabled) return [];
   const completed = new Set(input.completed ?? []);
   const candidates: PlannedNotification[] = [];
-  const add = (n: Omit<PlannedNotification, 'id'>) => {
+  /** `before`: a reminder moved out of quiet hours must still come before the event it announces. */
+  const add = (n: Omit<PlannedNotification, 'id'>, before?: string) => {
     if (!prefs.categories[n.category]) return;
     const time = outOfQuietHours(n.time, prefs);
-    if (!time) return;
+    if (!time || (before && time >= before)) return;
     if (n.date < from.date || (n.date === from.date && time < from.time)) return;
     candidates.push({ ...n, time, id: `${n.date}:${n.category}:${n.titleKey}` });
   };
@@ -119,17 +120,20 @@ export function planNotifications(input: {
   for (const day of week.days) {
     for (const item of day.items) {
       if (item.kind === 'workout' && item.start && !completed.has(`${day.date}#${item.sessionIndex}`)) {
-        add({
-          category: 'training',
-          date: day.date,
-          time: formatTime(Math.max(0, parseTime(item.start) - TRAINING_LEAD_MINUTES)),
-          titleKey: 'notifications.messages.training.title',
-          bodyKey:
-            item.variant === 'short'
-              ? 'notifications.messages.training.body_short'
-              : 'notifications.messages.training.body',
-          params: { time: item.start },
-        });
+        add(
+          {
+            category: 'training',
+            date: day.date,
+            time: formatTime(Math.max(0, parseTime(item.start) - TRAINING_LEAD_MINUTES)),
+            titleKey: 'notifications.messages.training.title',
+            bodyKey:
+              item.variant === 'short'
+                ? 'notifications.messages.training.body_short'
+                : 'notifications.messages.training.body',
+            params: { time: item.start },
+          },
+          item.start,
+        );
       }
       if (item.kind === 'shopping') {
         add({

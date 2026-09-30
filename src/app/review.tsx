@@ -23,10 +23,11 @@ export default function ReviewScreen() {
   const { t, i18n } = useTranslation();
   const plan = usePlan();
   const data = useDataStore();
-  if (!plan) return <EmptyState message={t('common.loading')} />;
+  if (!plan) return <EmptyState message={t('review.noProfile')} />;
 
   const r = weeklyReview({
     weekStart: plan.weekStart,
+    today: plan.today,
     goal: plan.snapshot.goal.type,
     schedule: plan.schedule,
     completedSessions: data.completedSessions,

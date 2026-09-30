@@ -426,6 +426,7 @@ const fr = {
   review: {
     title: 'Bilan de la semaine',
     open: 'Voir le bilan de la semaine',
+    noProfile: 'Termine ton profil pour voir ton bilan de la semaine.',
     intro: 'Basé uniquement sur ce que tu as enregistré. Les chiffres sont des estimations.',
     sessions: 'Séances',
     sessionsValue: '{{done}} / {{planned}}',

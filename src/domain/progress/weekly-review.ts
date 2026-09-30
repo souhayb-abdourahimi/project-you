@@ -13,6 +13,8 @@ import { weightTrend, type WeightEntry } from './weight';
 
 export interface WeeklyReviewInput {
   weekStart: IsoDate;
+  /** Days after today are still ahead: they are never counted as missed. */
+  today: IsoDate;
   goal: GoalType;
   schedule: WeeklyPlan;
   completedSessions: { date: IsoDate; sessionIndex: number; variant: 'full' | 'short' | 'light' }[];
@@ -45,7 +47,9 @@ const inWeek = (date: IsoDate, weekStart: IsoDate) => date >= weekStart && date 
 
 export function weeklyReview(input: WeeklyReviewInput): WeeklyReview {
   const { weekStart } = input;
-  const planned = input.schedule.days.filter((d) => d.items.some((i) => i.kind === 'workout')).length;
+  const workoutDays = input.schedule.days.filter((d) => d.items.some((i) => i.kind === 'workout'));
+  const planned = workoutDays.length;
+  const plannedSoFar = workoutDays.filter((d) => d.date <= input.today).length;
   const done = input.completedSessions.filter((c) => inWeek(c.date, weekStart));
   const shortOrLight = done.filter((c) => c.variant !== 'full').length;
 
@@ -62,8 +66,8 @@ export function weeklyReview(input: WeeklyReviewInput): WeeklyReview {
     ? {
         planned: days.reduce((n, d) => n + d.meals.length, 0),
         eaten: days.reduce((n, d) => n + d.meals.filter((m) => m.status === 'eaten').length, 0),
-        proteinDaysMet: days.filter((d) => d.protein?.met).length,
-        daysPlanned: days.length,
+        proteinDaysMet: days.filter((d) => d.date <= input.today && d.protein?.met).length,
+        daysPlanned: days.filter((d) => d.date <= input.today).length,
       }
     : null;
 
@@ -86,8 +90,8 @@ export function weeklyReview(input: WeeklyReviewInput): WeeklyReview {
   // Sessions: any session is a win, never a failure.
   if (done.length > 0) worked.push({ key: 'review.worked.sessions', params: { count: done.length } });
   if (shortOrLight > 0) worked.push({ key: 'review.worked.short_counts', params: { count: shortOrLight } });
-  if (planned > 0 && done.length < planned) {
-    hard.push({ key: 'review.hard.sessions', params: { done: done.length, planned } });
+  if (plannedSoFar > 0 && done.length < plannedSoFar) {
+    hard.push({ key: 'review.hard.sessions', params: { done: done.length, planned: plannedSoFar } });
     adapt.push({ key: done.length === 0 ? 'review.adapt.start_small' : 'review.adapt.shorter_sessions' });
   }
   if (averageRpe !== null && averageRpe >= 9) {
@@ -106,7 +110,8 @@ export function weeklyReview(input: WeeklyReviewInput): WeeklyReview {
   // Body: for recomposition the waist and performance matter more than the scale.
   const recomposition = input.goal === 'recomposition';
   if (trend.entriesUsed === 0) hard.push({ key: 'review.hard.no_weight' });
-  else if (trend.weeklyChangeKg !== null && !recomposition) {
+  else if (trend.weeklyChangeKg !== null && !recomposition && trendMatchesGoal(input.goal, trend.weeklyChangeKg)) {
+    // A trend against the goal is shown in the stats only: weekly weight is noisy, not a verdict.
     worked.push({ key: 'review.worked.weight_trend', params: { change: trend.weeklyChangeKg } });
   }
   if (waistChangeCm !== null) worked.push({ key: 'review.worked.waist', params: { change: waistChangeCm } });
@@ -135,4 +140,11 @@ export function weeklyReview(input: WeeklyReviewInput): WeeklyReview {
     adapt,
     nextWeek,
   };
+}
+
+/** Maintenance tolerates normal day-to-day noise (±0.3 kg/week). */
+function trendMatchesGoal(goal: GoalType, weeklyChangeKg: number): boolean {
+  if (goal === 'fat_loss') return weeklyChangeKg < 0;
+  if (goal === 'muscle_gain') return weeklyChangeKg > 0;
+  return Math.abs(weeklyChangeKg) <= 0.3;
 }
