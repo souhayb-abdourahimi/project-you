@@ -47,7 +47,7 @@ Statuts : `done` · `in progress` · `todo` · `blocked`. Priorités : P0 (bloqu
 | M-20 | Privacy Center (export, suppression compte/photos) | P0 | done (suppression de compte à valider sur le projet réel) | M-01, M-19 | élevé | intégration | suppression complète vérifiée |
 | M-21 | Web responsive (sidebar ≥ 1024 px) | P1 | done | M-14 | faible | UI | toutes les pages MVP utilisables au clavier |
 | M-22 | Tests E2E du parcours (web, Playwright) | P1 | done (mode local, mobile + desktop) | M-01..M-17 | moyen | E2E | parcours succès complet vert en CI |
-| M-23 | Revue critique MVP (sécurité, a11y, perf) | P0 | todo | tout | — | — | rapport + corrections |
+| M-23 | Revue critique MVP (sécurité, a11y, perf) | P0 | done (voir docs/AUDIT.md) | tout | — | — | rapport + corrections |
 
 ### Phase 2 — Intégrations réelles
 

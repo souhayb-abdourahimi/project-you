@@ -19,7 +19,10 @@ Tâches importantes à ne pas perdre entre deux sessions. Référence des IDs : 
 
 - [ ] Remplacer le harness `supabase/tests` par `supabase test db` (pgTAP) quand Docker est disponible.
 - [ ] Rate limiting des Edge Functions (IA, suppression de compte).
-- [ ] Politiques Storage du bucket `progress-photos` (migration dédiée quand la fonctionnalité photo arrive).
+- [ ] Politiques Storage du bucket `progress-photos` (migration dédiée quand la fonctionnalité photo arrive) ; `delete-account` : paginer la liste des photos et échouer si elle ne peut pas être lue.
+- [ ] Identifiants de `goals` et des repas dérivés du `user_id` : passer la clé de conflit à `(user_id, id)` ou ajouter un sel aléatoire.
+- [ ] Découper `src/features/onboarding/StepContent.tsx` (449 lignes).
+- [ ] Placeholders de dates/heures codés en dur dans l'onboarding : passer par i18n.
 - [ ] Vérifier `npm audit` (14 vulnérabilités « moderate » transitives au scaffold, outils de build Expo).
 
 ## Produit

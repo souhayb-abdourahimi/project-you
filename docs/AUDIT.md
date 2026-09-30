@@ -65,3 +65,29 @@ Légende : **DONE** (fonctionne et testé) · **PARTIAL** · **BROKEN** · **MIS
 2. Migrations à appliquer sur le projet Supabase (SQL Editor) : `20260930000001_core.sql` puis `20261001000001_sync_hardening.sql`.
 3. Deux comptes de test confirmés pour `npm run test:live`.
 4. Déploiement de l'Edge Function `delete-account` pour la suppression de compte.
+
+## Revue critique (M-23, 2026-10-01)
+
+Deux revues indépendantes (sécurité/vie privée ; sync/état/UX), chaque constat vérifié dans le code.
+
+**Corrigé**
+
+| Gravité | Problème | Correction |
+|---|---|---|
+| Élevée | Une synchronisation en cours pendant une déconnexion ou un changement de compte pouvait écrire les données du compte A dans celles du compte B | écritures liées au compte et à la session de synchronisation |
+| Élevée | Le propriétaire des données locales était lu avant leur chargement depuis le stockage | attente de l'hydratation avant toute décision |
+| Élevée | Une erreur inattendue bloquait la synchronisation jusqu'au redémarrage | try/finally, état « erreur » |
+| Moyenne | Pull et export limités silencieusement à 1000 lignes par table | pagination complète (`src/services/paging.ts`) |
+| Moyenne | Lignes distantes non validées (NaN, valeurs inconnues) | schémas Zod par table, lignes invalides rejetées |
+| Moyenne | Première synchro hors ligne : le profil local pouvait écraser celui du compte | le compte reste prioritaire tant qu'aucun échange n'a abouti |
+| Moyenne | Après déconnexion, les rappels programmés affichaient encore la motivation de l'utilisateur | déconnexion et réinitialisation annulent les rappels et leurs préférences |
+| Moyenne | Bilan hebdo : les séances à venir comptées comme manquées (culpabilisant) ; tendance de poids toujours « réussie » | seuls les jours passés comptent ; tendance listée seulement si elle va dans le sens de l'objectif |
+| Moyenne | Repas cochés perdus si le nombre de repas par jour change | rapprochement par jour et créneau |
+| Moyenne | Rappels annulés et reprogrammés toutes les 30 s, appels concurrents | file unique, plan inchangé ignoré |
+| Basse | Rappel de séance déplacé par les heures calmes après le début de la séance | rappel supprimé |
+| Basse | Recettes personnelles (`owner_id`) sans test RLS, tables serveur absentes de l'export | test RLS dédié, export complété |
+| Basse (desktop) | Barre latérale : seul le premier onglet cliquable | trouvé par l'E2E, corrigé |
+
+**Vérifié sans problème** : RLS et politiques sur toutes les tables, anon sans privilège, `set_updated_at` sans SECURITY DEFINER, cascade de suppression, Edge Function `delete-account` (identité tirée du jeton uniquement, erreurs génériques), aucune clé secrète dans le client ni dans le dépôt, aucun `console.*` dans `src`, heures calmes qui passent minuit, plafond et écart des rappels, aucun mot moralisateur.
+
+**Restant (non bloquant, dans `TODO.md`)** : bucket photos et ses politiques (avant la fonction photo), pagination de la liste de photos dans `delete-account`, identifiants prévisibles pour `goals`/repas (clé de conflit à revoir), `StepContent.tsx` à découper (449 lignes), migration v1 → v2 du stockage local qui abandonne l'ancienne file d'envoi (aucune version publiée n'est concernée).
