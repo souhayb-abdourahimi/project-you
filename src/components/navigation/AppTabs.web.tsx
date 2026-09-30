@@ -57,7 +57,10 @@ function TabButton({ children, isFocused, wide, ...props }: TabTriggerSlotProps 
 const styles = StyleSheet.create({
   root: { flex: 1 },
   slot: { flex: 1 },
+  // TabList defaults to a row; the sidebar stacks its tabs.
   sidebar: {
+    flexDirection: 'column',
+    justifyContent: 'flex-start',
     width: 240,
     paddingVertical: spacing.xl,
     paddingHorizontal: spacing.md,
