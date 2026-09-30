@@ -67,7 +67,11 @@ function restAs(db: Client, userId: string): SyncClient {
             Object.fromEntries(
               Object.entries(r).map(([k, v]) => [
                 k,
-                v instanceof Date ? v.toISOString() : typeof v === 'string' && /^-?\d+(\.\d+)?$/.test(v) && k !== 'id' ? Number(v) : v,
+                v instanceof Date
+                  ? v.toISOString()
+                  : typeof v === 'string' && /^-?\d+(\.\d+)?$/.test(v) && k !== 'id'
+                    ? Number(v)
+                    : v,
               ]),
             ),
           ) as Row[];
@@ -125,8 +129,11 @@ describeDb('sync against the real schema (Postgres + RLS)', () => {
 
   beforeAll(async () => {
     await db.connect();
-    await db.query(`insert into auth.users (id, email) values ($1, 'sync-a@example.test'), ($2, 'sync-b@example.test')
-                    on conflict (id) do nothing`, [A, B]);
+    await db.query(
+      `insert into auth.users (id, email) values ($1, 'sync-a@example.test'), ($2, 'sync-b@example.test')
+                    on conflict (id) do nothing`,
+      [A, B],
+    );
   });
   afterAll(async () => {
     await db.query('delete from auth.users where id = any($1::uuid[])', [[A, B]]);
@@ -157,7 +164,14 @@ describeDb('sync against the real schema (Postgres + RLS)', () => {
       completedSessions: [
         { date: '2026-09-30', sessionIndex: 0, variant: 'short', completedAt: '2026-09-30T19:00:00.000Z' },
       ],
-      setLogs: { [key]: { goblet_squat: [{ reps: 10, loadKg: 16, rpe: 7 }, { reps: 9, loadKg: 16.25 }] } },
+      setLogs: {
+        [key]: {
+          goblet_squat: [
+            { reps: 10, loadKg: 16, rpe: 7 },
+            { reps: 9, loadKg: 16.25 },
+          ],
+        },
+      },
       sessionIds: { [key]: 'aaaaaaaa-0000-4000-8000-000000000005' },
     });
     const first = await syncOnce(restAs(db, A), phone, A, { claim: true });
