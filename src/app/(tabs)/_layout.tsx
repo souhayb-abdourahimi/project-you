@@ -2,6 +2,7 @@ import { Redirect } from 'expo-router';
 
 import AppTabs from '@/components/navigation/AppTabs';
 import { LoadingScreen } from '@/components/ui';
+import { NotificationScheduler } from '@/features/notifications/NotificationScheduler';
 import { useSession } from '@/services/auth';
 import { isSupabaseConfigured } from '@/services/supabase';
 import { useProfileStore } from '@/state/profile';
@@ -18,5 +19,10 @@ export default function TabsLayout() {
   // Signed in on a new device: wait for the account's profile before sending to onboarding.
   if (session && !snapshot && !initialPullDone) return <LoadingScreen />;
   if (!snapshot) return <Redirect href="/onboarding" />;
-  return <AppTabs />;
+  return (
+    <>
+      <NotificationScheduler />
+      <AppTabs />
+    </>
+  );
 }

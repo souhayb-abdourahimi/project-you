@@ -7,3 +7,4 @@ export { Rationale } from './Rationale';
 export { Screen } from './Screen';
 export { Text } from './Text';
 export { TextField } from './TextField';
+export { ConfirmButton } from './ConfirmButton';

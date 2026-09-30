@@ -53,6 +53,8 @@ interface DataState {
   reschedule: (from: IsoDate, to: IsoDate) => void;
   applySync: (patch: Partial<SyncableState> & { synced?: SyncedHashes; lastPulledAt?: string | null }) => void;
   setOwner: (ownerId: string | null) => void;
+  /** Drops sync fingerprints of tables whose server rows were deleted outside the sync. */
+  forgetSynced: (tables: string[]) => void;
   reset: () => void;
 }
 
@@ -161,6 +163,10 @@ export const useDataStore = create<DataState>()(
         set(data);
       },
       setOwner: (ownerId) => set({ ownerId }),
+      forgetSynced: (tables) =>
+        set((s) => ({
+          synced: Object.fromEntries(Object.entries(s.synced).filter(([ref]) => !tables.includes(ref.split(':')[0]))),
+        })),
       reset: () => set(initial),
     }),
     {

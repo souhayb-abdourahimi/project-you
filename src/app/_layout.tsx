@@ -43,6 +43,8 @@ export default function RootLayout() {
         <Stack.Screen name="inventory" options={{ headerShown: true, title: t('inventory.title') }} />
         <Stack.Screen name="shopping" options={{ headerShown: true, title: t('shopping.title') }} />
         <Stack.Screen name="settings" options={{ headerShown: true, title: t('settings.title') }} />
+        <Stack.Screen name="privacy" options={{ headerShown: true, title: t('privacy.title') }} />
+        <Stack.Screen name="notifications" options={{ headerShown: true, title: t('notifications.title') }} />
         <Stack.Screen
           name="adapt"
           options={{ presentation: 'modal', headerShown: true, title: t('antiAbandon.title') }}
