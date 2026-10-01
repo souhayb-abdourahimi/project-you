@@ -8,12 +8,14 @@ import { consistency, highlightedIndicators, weightTrend } from '@/domain/progre
 import { addDays, startOfWeek } from '@/domain/shared/dates';
 import { NumberField } from '@/features/onboarding/fields';
 import { usePlan } from '@/hooks/usePlan';
+import { useWeights } from '@/hooks/useWeights';
 import { useDataStore } from '@/state/data';
 
 export default function ProgressScreen() {
   const { t } = useTranslation();
   const plan = usePlan();
-  const { weights, waist, completedSessions, logWeight, logWaist } = useDataStore();
+  const { waist, completedSessions, logWeight, logWaist } = useDataStore();
+  const weights = useWeights();
   const [weight, setWeight] = useState<number | undefined>();
   const [waistCm, setWaistCm] = useState<number | undefined>();
   const [formKey, setFormKey] = useState(0);

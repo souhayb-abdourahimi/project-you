@@ -4,26 +4,11 @@
  * (no invented hours, address, crowd level or equipment). OSM data is collaborative, so it is
  * labelled with its source and "to check".
  */
-export interface GeoPoint {
-  lat: number;
-  lng: number;
-}
+import type { GeoPoint, Place, PlaceKind } from './types';
 
-export type PlaceKind = 'gym' | 'store';
-
-export interface OsmPlace {
-  id: string;
-  kind: PlaceKind;
-  name: string;
-  /** OSM tag that matched (e.g. `leisure=fitness_centre`), shown as the category. */
-  category: string;
-  location: GeoPoint;
-  address: string | null;
-  /** Raw OSM `opening_hours` value; never interpreted as "open now". */
-  openingHours: string | null;
-  website: string | null;
-  distanceMeters: number;
-}
+export type { GeoPoint, PlaceKind } from './types';
+/** An OSM place is a provider-neutral `Place`: only fields OSM contributors entered are filled. */
+export type OsmPlace = Place;
 
 const SELECTORS: Record<PlaceKind, [string, string][]> = {
   gym: [

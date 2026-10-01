@@ -4,6 +4,7 @@ import { Linking, Platform } from 'react-native';
 
 import { Banner, Button, Card, ConfirmButton, Row, Screen, Text } from '@/components/ui';
 import { DELETABLE_CATEGORIES, type PrivacyCategory } from '@/domain/privacy/data';
+import { HealthPrivacy } from '@/features/health/HealthPrivacy';
 import { usePrivacy } from '@/features/privacy/usePrivacy';
 import { useCalendarStore } from '@/state/calendar';
 
@@ -60,11 +61,9 @@ export default function PrivacyScreen() {
           <Text color="textMuted">{t(calendarConnected ? 'privacy.connected' : 'privacy.notConnected')}</Text>
         </Row>
         <Button variant="secondary" label={t('privacy.manageCalendar')} onPress={() => router.push('/calendar')} />
-        <Row>
-          <Text style={{ flex: 1 }}>{t('privacy.health')}</Text>
-          <Text color="textMuted">{t('privacy.notConnected')}</Text>
-        </Row>
       </Card>
+
+      <HealthPrivacy />
 
       <Card>
         <Text variant="heading">{t('privacy.permissions')}</Text>

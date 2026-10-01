@@ -19,7 +19,13 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "app.projectyou"
+      "package": "app.projectyou",
+      "permissions": [
+        "android.permission.health.READ_WEIGHT",
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_EXERCISE",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED"
+      ]
     },
     "web": {
       "output": "single",
@@ -54,6 +60,23 @@
           "locationAlwaysPermission": false,
           "isIosBackgroundLocationEnabled": false,
           "isAndroidBackgroundLocationEnabled": false
+        }
+      ],
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "Project You lit, seulement si tu l'autorises, ton poids, tes pas, tes entraînements et ton énergie active pour suivre ta progression sans ressaisie. Ces données restent sur ton téléphone et ne sont jamais envoyées à l'IA.",
+          "NSHealthUpdateUsageDescription": "Project You n'écrit rien dans Santé aujourd'hui. Si une future version propose d'y enregistrer tes séances, elle te le demandera d'abord.",
+          "background": false
+        }
+      ],
+      "react-native-health-connect",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
         }
       ]
     ],

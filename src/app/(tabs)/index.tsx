@@ -4,8 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { Banner, Button, Card, Row, Screen, Section, Text } from '@/components/ui';
 import { dailyMotivation } from '@/domain/motivation/messages';
 import { nextAction } from '@/domain/today';
+import { HealthCard } from '@/features/health/HealthCard';
 import { MealCard } from '@/features/nutrition/MealCard';
 import { usePlan } from '@/hooks/usePlan';
+import { useWeights } from '@/hooks/useWeights';
 import { nowTime } from '@/lib/format';
 import { isSupabaseConfigured } from '@/services/supabase';
 import { useDataStore } from '@/state/data';
@@ -14,7 +16,7 @@ export default function TodayScreen() {
   const { t } = useTranslation();
   const plan = usePlan();
   const completed = useDataStore((s) => s.completedSessions);
-  const weights = useDataStore((s) => s.weights);
+  const weights = useWeights();
   if (!plan) return null;
 
   const day = plan.schedule.days.find((d) => d.date === plan.today) ?? null;
@@ -85,6 +87,8 @@ export default function TodayScreen() {
           </Row>
         ) : null}
       </Card>
+
+      <HealthCard plan={plan} />
 
       <Card muted>
         <Text variant="caption" color="textMuted">

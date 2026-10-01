@@ -1,4 +1,4 @@
-import { clearPlacesCache, osmGymProvider, osmStoreProvider } from '../osm';
+import { clearPlacesCache, osmGymProvider, osmPlacesProvider, osmStoreProvider } from '../osm';
 
 const HOME = { lat: 48.85661, lng: 2.35222 };
 const realFetch = global.fetch;
@@ -52,5 +52,14 @@ describe('OpenStreetMap provider', () => {
       throw new TypeError('Network request failed');
     }) as unknown as typeof fetch;
     expect(await osmStoreProvider.nearby(HOME, 1000)).toEqual({ status: 'error', error: 'network', retryable: true });
+  });
+
+  it('serves the provider-neutral places interface used by the UI', async () => {
+    const fetchMock = respond(200, {
+      elements: [{ type: 'node', id: 7, lat: 48.858, lon: 2.355, tags: { shop: 'supermarket', name: 'Marché' } }],
+    });
+    const r = await osmPlacesProvider.nearby('store', HOME, 2000);
+    expect(r).toMatchObject({ status: 'ok', data: [{ kind: 'store', name: 'Marché' }] });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

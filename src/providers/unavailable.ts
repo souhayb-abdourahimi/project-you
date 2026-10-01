@@ -1,7 +1,7 @@
 import type {
   CalendarProvider,
   GymProvider,
-  HealthProvider,
+  MapsProvider,
   PlacesProvider,
   PriceProvider,
   ProductProvider,
@@ -25,7 +25,8 @@ export const providers = {
   price: { pricesFor: notConfigured } satisfies PriceProvider,
   promotion: { current: notConfigured } satisfies PromotionProvider,
   store: { nearby: notConfigured } satisfies StoreProvider,
-  places: { search: notConfigured } satisfies PlacesProvider,
+  places: { nearby: notConfigured } satisfies PlacesProvider,
+  maps: { open: notConfigured } satisfies MapsProvider,
   gym: { nearby: notConfigured } satisfies GymProvider,
   sports: { activities: notConfigured } satisfies SportsProvider,
   calendar: {
@@ -36,5 +37,4 @@ export const providers = {
     deleteAppEvent: notConfigured,
     disconnect: notConfigured,
   } satisfies CalendarProvider,
-  health: { requestAccess: notConfigured, read: notConfigured, disconnect: async () => {} } satisfies HealthProvider,
 };

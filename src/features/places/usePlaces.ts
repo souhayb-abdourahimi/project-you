@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Linking } from 'react-native';
 
-import type { PlaceKind } from '@/domain/places/osm';
+import type { PlaceKind } from '@/domain/places/types';
 import { UserContextSnapshot } from '@/domain/profile/schemas';
 import { providers } from '@/providers';
 import type { Place, ProviderResult } from '@/providers/types';
@@ -40,8 +39,7 @@ export function usePlaces() {
       return;
     }
     setPhase({ kind: 'loading' });
-    const provider = kind === 'gym' ? providers.gym : providers.store;
-    setPhase({ kind: 'done', result: await provider.nearby(position.data, RADIUS[kind]) });
+    setPhase({ kind: 'done', result: await providers.places.nearby(kind, position.data, RADIUS[kind]) });
   };
 
   const switchKind = (kind: PlaceKind) => {
@@ -59,10 +57,7 @@ export function usePlaces() {
     if (next.success) setSnapshot(next.data);
   };
 
-  const openMap = (place: Place) =>
-    Linking.openURL(
-      `https://www.openstreetmap.org/?mlat=${place.location.lat}&mlon=${place.location.lng}#map=18/${place.location.lat}/${place.location.lng}`,
-    );
+  const openMap = (place: Place) => providers.maps.open(place.location);
 
   return {
     placeKind,

@@ -4,7 +4,17 @@
  * and report missing data as `unavailable` rather than inventing it.
  */
 import type { Food } from '@/domain/meals/catalog';
-import type { GeoPoint, OsmPlace } from '@/domain/places/osm';
+import type { GeoPoint, Place, PlaceKind } from '@/domain/places/types';
+import type {
+  HealthAvailability,
+  HealthDataType,
+  HealthPermissions,
+  HealthSource,
+  RawDailyTotal,
+  RawWeightSample,
+  RawWorkout,
+  TimeRange,
+} from '@/domain/health/types';
 import type { ExternalDataMeta } from '@/domain/shared/external';
 
 export type ProviderResult<T> =
@@ -12,9 +22,7 @@ export type ProviderResult<T> =
   | { status: 'unavailable'; reason: 'not_configured' | 'no_data' | 'not_supported_on_platform' | 'permission_denied' }
   | { status: 'error'; error: 'timeout' | 'rate_limited' | 'network' | 'auth' | 'unknown'; retryable: boolean };
 
-export type { GeoPoint } from '@/domain/places/osm';
-/** A place as listed by a provider: only fields the source really has, the rest `null`. */
-export type Place = OsmPlace;
+export type { GeoPoint, Place, PlaceKind } from '@/domain/places/types';
 
 export interface Price {
   foodId: string;
@@ -48,12 +56,6 @@ export interface AppCalendarEventInput {
   notes?: string;
 }
 
-export interface HealthSample {
-  type: 'weight' | 'steps' | 'workout';
-  value: number;
-  date: string;
-}
-
 export interface FoodProvider {
   search(query: string, locale: 'fr' | 'en'): Promise<ProviderResult<Food[]>>;
 }
@@ -69,8 +71,12 @@ export interface PromotionProvider {
 export interface StoreProvider {
   nearby(near: GeoPoint, radiusMeters: number): Promise<ProviderResult<Place[]>>;
 }
+/**
+ * Nearby places of a kind. The only entry point the UI uses: swapping OpenStreetMap for another
+ * source means writing another implementation and wiring it in src/providers/index.ts (D-019).
+ */
 export interface PlacesProvider {
-  search(category: string, near: GeoPoint, radiusMeters: number): Promise<ProviderResult<Place[]>>;
+  nearby(kind: PlaceKind, near: GeoPoint, radiusMeters: number): Promise<ProviderResult<Place[]>>;
 }
 export interface GymProvider {
   nearby(near: GeoPoint, radiusMeters: number): Promise<ProviderResult<Place[]>>;
@@ -95,17 +101,37 @@ export interface CalendarProvider {
   /** Deletes the app calendar and therefore every event the app wrote. */
   disconnect(): Promise<ProviderResult<true>>;
 }
+/**
+ * Apple Health (HealthKit) on iOS, Health Connect on Android, nothing on web. Read-only in V1:
+ * weight, steps, workouts and active energy (D-018). Values are raw; src/domain/health normalises,
+ * validates and deduplicates them. Never imported by a screen: features go through useHealth.
+ */
 export interface HealthProvider {
-  requestAccess(types: HealthSample['type'][]): Promise<ProviderResult<true>>;
-  read(type: HealthSample['type'], from: string, to: string): Promise<ProviderResult<HealthSample[]>>;
-  disconnect(): Promise<void>;
+  readonly source: HealthSource | null;
+  getAvailability(): Promise<HealthAvailability>;
+  /** Shows the system permission sheet for these types only. */
+  requestPermissions(types: HealthDataType[]): Promise<ProviderResult<HealthPermissions>>;
+  getPermissions(types: HealthDataType[]): Promise<ProviderResult<HealthPermissions>>;
+  getWeight(range: TimeRange): Promise<ProviderResult<RawWeightSample[]>>;
+  /** One total per local day, aggregated by the platform (phone + watch counted once). */
+  getSteps(range: TimeRange): Promise<ProviderResult<RawDailyTotal[]>>;
+  getWorkouts(range: TimeRange): Promise<ProviderResult<RawWorkout[]>>;
+  getActiveCalories(range: TimeRange): Promise<ProviderResult<RawDailyTotal[]>>;
+  /**
+   * Stops the link on the platform side when the platform allows it (Android revokes, effective at
+   * next app start). iOS has no API for it: the user removes access in Settings › Health.
+   */
+  disconnect(): Promise<ProviderResult<{ revokedBySystem: boolean }>>;
+  /** Opens the place where the user manages health permissions. */
+  openSettings(): Promise<void>;
 }
 export interface LocationProvider {
   /** Asks for the foreground permission when needed, then reads the current position once. */
   current(): Promise<ProviderResult<GeoPoint>>;
 }
+/** Opens a point on a map; the UI never builds a map URL itself. */
 export interface MapsProvider {
-  openDirections(to: GeoPoint): Promise<ProviderResult<true>>;
+  open(at: GeoPoint): Promise<ProviderResult<true>>;
 }
 export interface NotificationProvider {
   requestPermission(): Promise<ProviderResult<true>>;

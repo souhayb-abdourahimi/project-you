@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { SCENARIOS } from '../src/domain/scenarios';
 
-import { button, freezeClock, seedProfile, text } from './helpers';
+import { button, collectErrors, freezeClock, seedProfile, text } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await freezeClock(page);
@@ -80,4 +80,22 @@ test('calendar on the web says it is unsupported instead of failing', async ({ p
   await page.goto('/calendar');
   await expect(text(page, /n’est pas disponible sur le web/)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Connecter mon calendrier' }).filter({ visible: true })).toBeDisabled();
+});
+
+test('health on the web: clear message, manual entry still available, nothing on Today', async ({ page }) => {
+  const errors = collectErrors(page);
+  await seedProfile(page, SCENARIOS.beginner);
+  await page.goto('/health');
+  await expect(text(page, 'Les données santé ne sont pas disponibles sur cette plateforme.')).toBeVisible();
+  await button(page, 'Saisir à la main').click();
+  await expect(page).toHaveURL(/\/progress$/);
+  await expect(button(page, 'Noter mon poids')).toBeVisible();
+
+  await page.goto('/privacy');
+  await expect(text(page, 'Santé et activité')).toBeVisible();
+  await expect(text(page, /jamais envoyées à ton compte ni à l’IA/)).toBeVisible();
+
+  await page.goto('/');
+  await expect(text(page, 'Pas aujourd’hui')).toHaveCount(0);
+  expect(errors).toEqual([]);
 });

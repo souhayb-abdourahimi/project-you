@@ -14,6 +14,7 @@ import { deleteAccount, deleteRemoteCategory, fetchAccountData } from '@/service
 import { supabase } from '@/services/supabase';
 import { useCalendarStore } from '@/state/calendar';
 import { useDataStore } from '@/state/data';
+import { useHealthStore } from '@/state/health';
 import { useNotificationStore } from '@/state/notifications';
 import { useProfileStore } from '@/state/profile';
 
@@ -46,7 +47,19 @@ async function share(json: string, fileName: string) {
 function deviceSettings() {
   const { connected, readBusy, writeSessions, busy, written } = useCalendarStore.getState();
   const { prefs } = useNotificationStore.getState();
-  return { notifications: prefs, calendar: { connected, readBusy, writeSessions, busy, writtenEvents: written } };
+  const health = useHealthStore.getState();
+  return {
+    notifications: prefs,
+    calendar: { connected, readBusy, writeSessions, busy, writtenEvents: written },
+    // Imported from Apple Health / Health Connect: kept on this device only.
+    health: {
+      connected: health.connected,
+      sharedTypes: health.wanted,
+      permissions: health.permissions,
+      lastSyncAt: health.lastSyncAt,
+      imported: health.data,
+    },
+  };
 }
 
 export function usePrivacy() {

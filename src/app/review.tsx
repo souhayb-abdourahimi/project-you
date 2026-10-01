@@ -4,6 +4,7 @@ import { Card, EmptyState, Row, Screen, StatTile, Text } from '@/components/ui';
 import { weeklyReview, type ReviewPoint } from '@/domain/progress/weekly-review';
 import { usePlan } from '@/hooks/usePlan';
 import { formatMoney } from '@/lib/format';
+import { useWeights } from '@/hooks/useWeights';
 import { useDataStore } from '@/state/data';
 
 function Points({ title, points }: { title: string; points: ReviewPoint[] }) {
@@ -23,6 +24,7 @@ export default function ReviewScreen() {
   const { t, i18n } = useTranslation();
   const plan = usePlan();
   const data = useDataStore();
+  const weights = useWeights();
   if (!plan) return <EmptyState message={t('review.noProfile')} />;
 
   const r = weeklyReview({
@@ -33,7 +35,7 @@ export default function ReviewScreen() {
     completedSessions: data.completedSessions,
     setLogs: data.setLogs,
     mealPlan: plan.mealPlan,
-    weights: data.weights,
+    weights,
     waist: data.waist,
     expenses: data.expenses,
     weeklyBudgetCents: plan.snapshot.budget.weeklyFoodBudgetCents,
