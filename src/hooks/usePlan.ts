@@ -5,11 +5,17 @@ import { planWeekWithDiagnosis as planMeals } from '@/domain/meals/diagnosis';
 import { carryOverEaten, mealPlanKey } from '@/domain/meals/planner';
 import { assessGoalFeasibility, computeNutritionTargets } from '@/domain/nutrition/engine';
 import { planWeek as planSchedule, type PlannedDay, type WeeklyPlan } from '@/domain/planning/engine';
+import { appliedCalorieOffset, appliedSessionsPerWeek } from '@/domain/journey/adjustments';
+import { evaluateSafety } from '@/domain/journey/safety';
+import { journeyStart, loggedDays } from '@/domain/journey/state';
+import { weightBasis, withCalorieOffset } from '@/domain/journey/weight-basis';
 import { startOfWeek, toIsoDate } from '@/domain/shared/dates';
 import { generateWorkoutPlan } from '@/domain/training/engine';
 import { useCalendarStore } from '@/state/calendar';
 import { useDataStore } from '@/state/data';
 import { useProfileStore } from '@/state/profile';
+
+import { useWeights } from './useWeights';
 
 /** Applies user reschedules on top of the engine's weekly plan. */
 export function withReschedules(plan: WeeklyPlan, rescheduled: Record<string, string>): WeeklyPlan {
@@ -54,25 +60,65 @@ export function usePlan() {
   const setMealPlan = useDataStore((s) => s.setMealPlan);
   const rescheduled = useDataStore((s) => s.rescheduled);
   const calendarBusy = useCalendarStore((s) => (s.connected && s.readBusy ? s.busy : null));
+  const adjustments = useDataStore((s) => s.adjustments);
+  const previousMealPlan = useDataStore((s) => s.previousMealPlan);
+  const completedSessions = useDataStore((s) => s.completedSessions);
+  const weights = useWeights();
 
   const today = toIsoDate(new Date());
   const weekStart = startOfWeek(today);
   const year = Number(today.slice(0, 4));
 
+  // Safety signals that only need weigh-ins and marked meals (no plan targets): enough to freeze the
+  // weight basis without depending on the targets it feeds (docs/ADAPTATION_ENGINE.md §4).
+  const frozen = useMemo(() => {
+    if (!snapshot) return false;
+    const base = computeNutritionTargets(snapshot, year);
+    const { flags } = evaluateSafety({
+      today,
+      loggedDays: loggedDays(previousMealPlan, mealPlan),
+      floorKcal: base.floorKcal,
+      weights,
+      sessionDates: [],
+      plannedSessionsPerWeek: snapshot.training.sessionsPerWeek,
+      checkins: [],
+    });
+    return flags.includes('fast_weight_loss') || flags.includes('low_intake');
+  }, [snapshot, year, today, previousMealPlan, mealPlan, weights]);
+
+  const startedOn = useMemo(
+    () =>
+      snapshot
+        ? journeyStart(snapshot.createdAt.slice(0, 10), [
+            ...weights.map((w) => w.date),
+            ...completedSessions.map((c) => c.date),
+          ])
+        : today,
+    [snapshot, weights, completedSessions, today],
+  );
+
   const derived = useMemo(() => {
     if (!snapshot) return null;
-    const targets = computeNutritionTargets(snapshot, year);
+    // The plan follows the measured weight (14-day checkpoints) and the adaptations the user accepted.
+    const basis = weightBasis({ startedOn, today, profileWeightKg: snapshot.user.weightKg, weights, frozen });
+    const sessionsPerWeek = appliedSessionsPerWeek(adjustments) ?? snapshot.training.sessionsPerWeek;
+    const effective = {
+      ...snapshot,
+      user: { ...snapshot.user, weightKg: basis.weightKg },
+      training: { ...snapshot.training, sessionsPerWeek },
+    };
+    const targets = withCalorieOffset(computeNutritionTargets(effective, year), appliedCalorieOffset(adjustments));
     const feasibility = assessGoalFeasibility(snapshot, today);
-    const workoutPlan = generateWorkoutPlan({ goal: snapshot.goal.type, training: snapshot.training });
+    const workoutPlan = generateWorkoutPlan({ goal: snapshot.goal.type, training: effective.training });
     // Busy times from the user's calendar count as fixed constraints for this week only.
     const busy = calendarBusy?.weekStart === weekStart ? calendarBusy.slots : [];
     const schedule = planSchedule({
       weekStart,
       schedule: { ...snapshot.schedule, fixedConstraints: [...snapshot.schedule.fixedConstraints, ...busy] },
-      training: snapshot.training,
+      training: effective.training,
     });
-    return { targets, feasibility, workoutPlan, schedule };
-  }, [snapshot, year, today, weekStart, calendarBusy]);
+    return { targets, feasibility, workoutPlan, schedule, basis, sessionsPerWeek, startedOn };
+  }, [snapshot, year, today, weekStart, calendarBusy, adjustments, weights, frozen, startedOn]);
 
   const planKey = useMemo(
     () =>
@@ -111,6 +157,11 @@ export function usePlan() {
     today,
     weekStart,
     targets: derived.targets,
+    /** Weight the targets use (profile weight until a 14-day checkpoint replaces it). */
+    weightBasis: derived.basis,
+    /** Sessions per week after accepted adaptations. */
+    sessionsPerWeek: derived.sessionsPerWeek,
+    startedOn: derived.startedOn,
     feasibility: derived.feasibility,
     workoutPlan: derived.workoutPlan,
     schedule,

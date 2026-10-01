@@ -125,34 +125,48 @@ function loggedSessions(d: Pick<ProgressData, 'setLogs'>): { date: IsoDate; exer
  * New best sets, at most one per exercise and session. The first session of an exercise sets the
  * reference: it is never a record (no false record on the first try).
  */
+// Recomputed from the same (immutable) set log by several views: cached per log object.
+const recordsCache = new WeakMap<object, PersonalRecord[]>();
+
 export function personalRecords(d: Pick<ProgressData, 'setLogs'>): PersonalRecord[] {
-  const history = new Map<string, LoggedSet[]>();
+  const cached = recordsCache.get(d.setLogs);
+  if (cached) return cached;
+  // Per exercise: heaviest load so far and the most reps seen at each load (parallel arrays).
+  const history = new Map<string, { maxLoad: number; loads: number[]; reps: number[] }>();
   const out: PersonalRecord[] = [];
   for (const session of loggedSessions(d)) {
     for (const [exerciseId, sets] of Object.entries(session.exercises)) {
       const done = sets.filter((s) => s.reps >= 1);
       if (done.length === 0) continue;
       const before = history.get(exerciseId);
-      if (before && before.length > 0) {
-        const maxLoad = Math.max(...before.map((s) => s.loadKg));
+      if (before) {
         let best: PersonalRecord | null = null;
         for (const s of done) {
-          const repsAtOrAbove = before.filter((b) => b.loadKg >= s.loadKg).map((b) => b.reps);
+          let repsAtOrAbove = -1;
+          for (let i = 0; i < before.loads.length; i++) {
+            if (before.loads[i] >= s.loadKg && before.reps[i] > repsAtOrAbove) repsAtOrAbove = before.reps[i];
+          }
           const kind =
-            s.loadKg > maxLoad
-              ? 'load'
-              : repsAtOrAbove.length > 0 && s.reps > Math.max(...repsAtOrAbove)
-                ? 'reps'
-                : null;
+            s.loadKg > before.maxLoad ? 'load' : repsAtOrAbove >= 0 && s.reps > repsAtOrAbove ? 'reps' : null;
           if (!kind) continue;
           const candidate: PersonalRecord = { exerciseId, date: session.date, loadKg: s.loadKg, reps: s.reps, kind };
           if (!best || s.loadKg > best.loadKg || (s.loadKg === best.loadKg && s.reps > best.reps)) best = candidate;
         }
         if (best) out.push(best);
       }
-      history.set(exerciseId, [...(before ?? []), ...done]);
+      const h = before ?? { maxLoad: -Infinity, loads: [], reps: [] };
+      for (const s of done) {
+        h.maxLoad = Math.max(h.maxLoad, s.loadKg);
+        const at = h.loads.indexOf(s.loadKg);
+        if (at === -1) {
+          h.loads.push(s.loadKg);
+          h.reps.push(s.reps);
+        } else if (s.reps > h.reps[at]) h.reps[at] = s.reps;
+      }
+      history.set(exerciseId, h);
     }
   }
+  recordsCache.set(d.setLogs, out);
   return out;
 }
 
@@ -182,12 +196,19 @@ function trendOf(a: LoggedSet, b: LoggedSet): ExerciseTrend['trend'] {
  * Best set (heaviest, then most reps) of the first 14 days of an exercise vs the last 14 days, for exercises
  * followed for at least 14 days.
  */
+const trendsCache = new WeakMap<object, ExerciseTrend[]>();
+
 export function exerciseTrends(d: Pick<ProgressData, 'setLogs'>): ExerciseTrend[] {
+  const cached = trendsCache.get(d.setLogs);
+  if (cached) return cached;
   const perExercise = new Map<string, { date: IsoDate; sets: LoggedSet[] }[]>();
   for (const session of loggedSessions(d)) {
     for (const [id, sets] of Object.entries(session.exercises)) {
       const done = sets.filter((s) => s.reps >= 1);
-      if (done.length > 0) perExercise.set(id, [...(perExercise.get(id) ?? []), { date: session.date, sets: done }]);
+      if (done.length === 0) continue;
+      const list = perExercise.get(id) ?? [];
+      list.push({ date: session.date, sets: done });
+      perExercise.set(id, list);
     }
   }
   const out: ExerciseTrend[] = [];
@@ -207,5 +228,7 @@ export function exerciseTrends(d: Pick<ProgressData, 'setLogs'>): ExerciseTrend[
     });
   }
   const rank = { up: 0, stable: 1, down: 2 };
-  return out.sort((x, y) => rank[x.trend] - rank[y.trend] || x.exerciseId.localeCompare(y.exerciseId));
+  const sorted = out.sort((x, y) => rank[x.trend] - rank[y.trend] || x.exerciseId.localeCompare(y.exerciseId));
+  trendsCache.set(d.setLogs, sorted);
+  return sorted;
 }
