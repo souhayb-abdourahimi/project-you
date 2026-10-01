@@ -18,6 +18,7 @@ import {
   TrainingLevel,
 } from '@/domain/profile/schemas';
 import { EXERCISES } from '@/domain/training/exercises';
+import { ExclusionSummary } from '@/features/nutrition/ExclusionSummary';
 import { formatMoney, formatMonth } from '@/lib/format';
 import { spacing } from '@/theme';
 
@@ -236,6 +237,7 @@ export function StepContent({
               value={draft.nutrition.intolerances}
               onChange={(intolerances) => update('nutrition', { intolerances })}
             />
+            <ExclusionSummary intolerances={draft.nutrition.intolerances} />
           </>
         );
       }
@@ -248,6 +250,7 @@ export function StepContent({
               value={draft.nutrition.excludedFoods}
               onChange={(excludedFoods) => update('nutrition', { excludedFoods })}
             />
+            <ExclusionSummary excluded={draft.nutrition.excludedFoods} />
             <ListField
               label={t('onboarding.diet.foods.disliked')}
               value={draft.nutrition.dislikedFoods}

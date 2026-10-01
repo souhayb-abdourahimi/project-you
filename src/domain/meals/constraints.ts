@@ -1,43 +1,25 @@
 import type { Allergen, Diet, KitchenEquipment, NutritionProfile } from '../profile/schemas';
 import { getFood, type Food } from './catalog';
+import { excludes, resolveExclusions, type ResolvedExclusion } from './exclusions';
 import type { Ingredient, Recipe } from './recipes';
+
+export { normalize } from './exclusions';
 
 export interface FoodConstraints {
   diet: Diet;
   allergies: Allergen[];
-  /** Free-text foods the user cannot or will not eat (excluded + intolerances). */
-  forbiddenTerms: string[];
+  /** Excluded foods and intolerances typed by the user, translated into catalogue targets (D-021). */
+  exclusions: ResolvedExclusion[];
   /** Empty = unknown kitchen, no appliance filtering. */
   kitchen: KitchenEquipment[];
   maxMinutes: number;
 }
 
-/** Common intolerance words mapped to the allergen that covers them. */
-const INTOLERANCE_ALLERGENS: Record<string, Allergen> = {
-  lactose: 'milk',
-  lait: 'milk',
-  gluten: 'gluten',
-};
-
-export function normalize(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/œ/g, 'oe')
-    .replace(/æ/g, 'ae')
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .trim();
-}
-
 export function constraintsFrom(nutrition: NutritionProfile, kitchen: KitchenEquipment[]): FoodConstraints {
-  const extraAllergens = nutrition.intolerances
-    .map((i) => INTOLERANCE_ALLERGENS[normalize(i)])
-    .filter((a): a is Allergen => a !== undefined);
   return {
     diet: nutrition.diet,
-    allergies: [...new Set([...nutrition.allergies, ...extraAllergens])],
-    forbiddenTerms: [...nutrition.excludedFoods, ...nutrition.intolerances].map(normalize).filter(Boolean),
+    allergies: [...new Set(nutrition.allergies)],
+    exclusions: resolveExclusions(nutrition.excludedFoods, nutrition.intolerances),
     kitchen,
     maxMinutes: Math.max(nutrition.cookingMinutes, 5),
   };
@@ -47,8 +29,7 @@ export function isFoodAllowed(food: Food, c: FoodConstraints): boolean {
   if (c.diet === 'vegan' && food.animal !== null) return false;
   if (c.diet === 'vegetarian' && (food.animal === 'meat' || food.animal === 'fish')) return false;
   if (food.allergens.some((a) => c.allergies.includes(a))) return false;
-  const names = [food.id, food.name.fr, food.name.en].map(normalize);
-  return !c.forbiddenTerms.some((term) => names.some((name) => name.includes(term)));
+  return !c.exclusions.some((e) => excludes(e, food));
 }
 
 /**

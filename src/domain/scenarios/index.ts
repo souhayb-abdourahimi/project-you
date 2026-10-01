@@ -104,6 +104,16 @@ export const SCENARIOS = {
     goal: { type: 'recomposition' },
     nutrition: { allergies: ['gluten', 'milk', 'nuts', 'fish'], mealsPerDay: 4 },
   }),
+  /** Vegan with a soy allergy: the catalogue cannot fill every meal (review C2, D-021). */
+  veganSoyAllergy: scenario({
+    user: { displayName: 'Charlie (MOCK)' },
+    goal: { type: 'fat_loss', targetWeightKg: 70, targetDate: '2027-06-30' },
+    nutrition: { diet: 'vegan', allergies: ['soy'] },
+  }),
+  /** Free-text exclusions and intolerances (review C1, D-021). */
+  freeTextExclusions: scenario({
+    nutrition: { excludedFoods: ['Poissons', 'oeufs'], intolerances: ['soja', 'lactose'] },
+  }),
   busySchedule: scenario({
     schedule: {
       availability: [
