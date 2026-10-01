@@ -471,6 +471,16 @@ const en: LocaleShape = {
     costUnknown: 'Cost: data unavailable',
   },
   progress: {
+    note: {
+      no_weight: 'No weigh-in yet: log your weight a few mornings a week to see your trend.',
+      no_waist: 'No waist measurement yet: one every two weeks is enough to follow what changes.',
+      no_loads: 'Your sessions are logged, but not your loads: log them to see your strength progress.',
+      recomposition_waist: 'Your weight barely moves, which is expected in recomposition: your waist went down {{cm}} cm.',
+      recomposition_loads:
+        'Your weight barely moves, which is expected in recomposition: {{count}} exercise(s) are going up in load.',
+      recomposition_measure:
+        'Your weight barely moves, which is expected in recomposition: measure your waist to see better what changes.',
+    },
     title: 'Progress',
     weight: 'Weight',
     logWeight: 'Log my weight',
@@ -1117,7 +1127,8 @@ const en: LocaleShape = {
       inventory: 'Inventory',
       expenses: 'Food expenses',
       workouts: 'Workouts and sets',
-      meals: 'Meals eaten',
+      meals: 'Marked meals (eaten, skipped, replaced)',
+      journey: 'Journey tracking (days, check-ins, milestones, adjustments)',
     },
     count: '{{count}} item(s)',
     export: 'Export my data',

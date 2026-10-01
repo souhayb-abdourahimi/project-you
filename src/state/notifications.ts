@@ -12,22 +12,23 @@ import {
 
 import { persistStorage } from './storage';
 
-/** Check-ins kept on the device for the coach signals (fatigue of the day). */
-const MAX_CHECKINS = 30;
-
 interface NotificationState {
   prefs: NotificationPreferences;
   /** Last permission answer, so the screen can explain a refusal. */
   permission: 'unknown' | 'granted' | 'denied' | 'unsupported' | 'error';
   /** Messages this device scheduled (template ids only, never the text). */
   history: NotificationHistoryEntry[];
+  /**
+   * Check-ins saved before D-028, waiting to be moved into the journey's day logs (synced).
+   * Emptied by `moveLegacyCheckins`; nothing writes here any more.
+   */
   checkins: CheckinSignal[];
   update: (patch: Partial<NotificationPreferences>) => void;
   toggleCategory: (category: NotificationCategory) => void;
   setPermission: (permission: NotificationState['permission']) => void;
   setHistory: (history: NotificationHistoryEntry[]) => void;
   markOpened: (id: string) => void;
-  logCheckin: (checkin: CheckinSignal) => void;
+  clearLegacyCheckins: () => void;
   reset: () => void;
 }
 
@@ -47,12 +48,7 @@ export const useNotificationStore = create<NotificationState>()(
       setPermission: (permission) => set({ permission }),
       setHistory: (history) => set({ history }),
       markOpened: (id) => set((s) => ({ history: markOpened(s.history, id, new Date().toISOString()) })),
-      logCheckin: (checkin) =>
-        set((s) => ({
-          checkins: [...s.checkins.filter((c) => c.date !== checkin.date), checkin]
-            .sort((a, b) => a.date.localeCompare(b.date))
-            .slice(-MAX_CHECKINS),
-        })),
+      clearLegacyCheckins: () => set({ checkins: [] }),
       reset: () => set({ prefs: DEFAULT_NOTIFICATION_PREFERENCES, permission: 'unknown', history: [], checkins: [] }),
     }),
     {

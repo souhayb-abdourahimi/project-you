@@ -51,6 +51,18 @@ export interface DayLog {
   activityMinutes?: number;
 }
 
+/** Day logs that carry the three declared levels, as the journey state reads them. */
+export function checkinSignals(
+  logs: readonly DayLog[],
+): { date: IsoDate; energy: number; motivation: number; fatigue: number }[] {
+  const out: { date: IsoDate; energy: number; motivation: number; fatigue: number }[] = [];
+  for (const d of logs) {
+    if (d.energy === undefined || d.motivation === undefined || d.fatigue === undefined) continue;
+    out.push({ date: d.date, energy: d.energy, motivation: d.motivation, fatigue: d.fatigue });
+  }
+  return out;
+}
+
 /** An exercise swapped during a session, with the reason picked by the user. */
 export interface ExerciseSwap {
   /** `${date}#${sessionIndex}` */

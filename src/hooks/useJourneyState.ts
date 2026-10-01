@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { checkinSignals } from '@/domain/journey/outcomes';
 import { deriveJourneyState, type JourneyState } from '@/domain/journey/state';
 import { getRecipe } from '@/domain/meals/recipes';
 import { useDataStore } from '@/state/data';
-import { useNotificationStore } from '@/state/notifications';
 
 import type { Plan } from './usePlan';
 
@@ -17,7 +17,8 @@ export function useJourneyState(plan: Plan | null): JourneyState | null {
   const completed = useDataStore((s) => s.completedSessions);
   const weights = useDataStore((s) => s.weights);
   const previousMealPlan = useDataStore((s) => s.previousMealPlan);
-  const checkins = useNotificationStore((s) => s.checkins);
+  const dayLogs = useDataStore((s) => s.dayLogs);
+  const checkins = useMemo(() => checkinSignals(dayLogs), [dayLogs]);
   const locale = i18n.language === 'en' ? 'en' : 'fr';
 
   return useMemo(() => {

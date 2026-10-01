@@ -6,7 +6,10 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { useSync } from '@/hooks/useSync';
+import { hydrated, useSync } from '@/hooks/useSync';
+import { useDataStore } from '@/state/data';
+import { moveLegacyCheckins } from '@/state/legacy';
+import { useNotificationStore } from '@/state/notifications';
 import { palette, useScheme } from '@/theme';
 
 void SplashScreen.preventAutoHideAsync();
@@ -19,6 +22,7 @@ export default function RootLayout() {
   useSync();
   useEffect(() => {
     void SplashScreen.hideAsync();
+    void Promise.all([hydrated(useDataStore), hydrated(useNotificationStore)]).then(moveLegacyCheckins);
   }, []);
 
   return (

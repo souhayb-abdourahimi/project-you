@@ -12,6 +12,25 @@ const state: SyncableState = {
   completedSessions: [{ date: '2026-09-30', sessionIndex: 0, variant: 'full', completedAt: '2026-09-30T19:00:00Z' }],
   setLogs: { '2026-09-30#0': { goblet_squat: [{ reps: 10, loadKg: 16 }] } },
   sessionIds: { '2026-09-30#0': 's' },
+  sessionOutcomes: { '2026-09-29#0': { status: 'skipped', reason: 'tired', at: '' } },
+  swapReasons: { '2026-09-30#0': { goblet_squat: 'dislike' } },
+  mealLog: [
+    {
+      id: 'm1',
+      date: '2026-09-21',
+      slot: 'lunch',
+      recipeId: 'r',
+      servings: 1,
+      status: 'skipped',
+      reason: 'no_time',
+      kcal: 0,
+    },
+  ],
+  measurements: [{ id: 'c', date: '2026-09-30', kind: 'chest', cm: 100 }],
+  dayLogs: [{ date: '2026-09-30', mode: 'difficult' }],
+  weeklyCheckins: [{ weekStart: '2026-09-21', weekRating: 3, answeredAt: '2026-09-27T10:00:00Z' }],
+  milestones: { first_session: { reachedOn: '2026-09-30', celebratedAt: null } },
+  adjustments: [],
 };
 
 describe('privacy data', () => {
@@ -20,8 +39,10 @@ describe('privacy data', () => {
       profile: 1,
       motivation: 1,
       weights: 1,
-      measurements: 1,
-      workouts: 1,
+      measurements: 2,
+      workouts: 2,
+      meals: 1,
+      journey: 3,
     });
   });
 
@@ -32,6 +53,12 @@ describe('privacy data', () => {
       const others = DELETABLE_CATEGORIES.filter((c) => c !== category);
       for (const o of others) expect(countByCategory(next)[o]).toBe(countByCategory(state)[o]);
     }
+  });
+
+  it('deleting the journey category removes day logs, weekly check-ins, milestones and adjustments', () => {
+    const next = clearCategory(state, 'journey');
+    expect([next.dayLogs, next.weeklyCheckins, next.milestones, next.adjustments]).toEqual([[], [], {}, []]);
+    expect(next.sessionOutcomes).toBe(state.sessionOutcomes);
   });
 
   it('clearing motivation removes the answers from what is synced', () => {

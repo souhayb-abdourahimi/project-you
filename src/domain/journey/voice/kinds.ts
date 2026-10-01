@@ -56,11 +56,15 @@ export const MAX_SAME_KIND_IN_A_ROW = 2;
 export const triggerOf = (templateId: string) => templateId.split('|')[0] as Trigger;
 
 /** Kinds of the screen messages of the last days, most recent first (one per day). */
-export function recentScreenKinds(history: VoiceUse[], today: string, days = MAX_SAME_KIND_IN_A_ROW): (MessageKind | null)[] {
+export function recentScreenKinds(
+  history: VoiceUse[],
+  today: string,
+  days = MAX_SAME_KIND_IN_A_ROW,
+): (MessageKind | null)[] {
   return Array.from({ length: days }, (_, i) => {
     const date = addDays(today, -(i + 1));
     const use = history.find((u) => u.channel === 'screen' && u.date === date);
-    return use ? TRIGGER_KIND[triggerOf(use.templateId)] ?? null : null;
+    return use ? (TRIGGER_KIND[triggerOf(use.templateId)] ?? null) : null;
   });
 }
 
@@ -115,5 +119,9 @@ export function pickAnchorSlot(
   if (order.length === 0) return null;
   const yesterday = addDays(date, -1);
   const recent = new Set(history.filter((u) => u.date === date || u.date === yesterday).map((u) => u.anchorSlot));
-  return order.find((s) => !recent.has(s)) ?? order.find((s) => !history.some((u) => u.date === date && u.anchorSlot === s)) ?? order[0];
+  return (
+    order.find((s) => !recent.has(s)) ??
+    order.find((s) => !history.some((u) => u.date === date && u.anchorSlot === s)) ??
+    order[0]
+  );
 }

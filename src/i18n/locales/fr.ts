@@ -482,6 +482,17 @@ const fr = {
     costUnknown: 'Coût : donnée indisponible',
   },
   progress: {
+    note: {
+      no_weight: 'Pas encore de pesée : note ton poids quelques matins par semaine pour voir ta tendance.',
+      no_waist: 'Pas encore de tour de taille : une mesure tous les quinze jours suffit pour suivre ce qui change.',
+      no_loads: 'Tes séances sont notées, mais pas tes charges : note-les pour voir tes progrès de force.',
+      recomposition_waist:
+        'Ton poids bouge peu, c’est attendu en recomposition : ton tour de taille a baissé de {{cm}} cm.',
+      recomposition_loads:
+        'Ton poids bouge peu, c’est attendu en recomposition : {{count}} exercice(s) progressent dans tes charges.',
+      recomposition_measure:
+        'Ton poids bouge peu, c’est attendu en recomposition : mesure ton tour de taille pour mieux voir ce qui change.',
+    },
     title: 'Progression',
     weight: 'Poids',
     logWeight: 'Noter mon poids',
@@ -1145,7 +1156,8 @@ const fr = {
       inventory: 'Inventaire',
       expenses: 'Dépenses alimentaires',
       workouts: 'Séances et séries',
-      meals: 'Repas consommés',
+      meals: 'Repas cochés (mangés, sautés, remplacés)',
+      journey: 'Suivi du parcours (journées, bilans, jalons, ajustements)',
     },
     count: '{{count}} élément(s)',
     export: 'Exporter mes données',

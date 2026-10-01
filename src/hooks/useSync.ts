@@ -31,7 +31,7 @@ function storeFor(userId: string, isActive: () => boolean): SyncStore {
   };
 }
 
-function hydrated(persisted: {
+export function hydrated(persisted: {
   persist: { hasHydrated: () => boolean; onFinishHydration: (fn: () => void) => () => void };
 }) {
   return new Promise<void>((resolve) => {

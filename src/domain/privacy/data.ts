@@ -5,7 +5,7 @@
 import type { SyncableState, SyncTable } from '../sync/projection';
 
 export type PrivacyCategory =
-  'profile' | 'motivation' | 'weights' | 'measurements' | 'inventory' | 'expenses' | 'workouts' | 'meals';
+  'profile' | 'motivation' | 'weights' | 'measurements' | 'inventory' | 'expenses' | 'workouts' | 'meals' | 'journey';
 
 /** Server tables holding each category. Profile deletion = account deletion. */
 export const CATEGORY_TABLES: Record<PrivacyCategory, SyncTable[]> = {
@@ -15,8 +15,10 @@ export const CATEGORY_TABLES: Record<PrivacyCategory, SyncTable[]> = {
   measurements: ['body_measurements'],
   inventory: ['inventory_items'],
   expenses: ['food_expenses'],
-  workouts: ['exercise_logs', 'workout_sessions'],
+  workouts: ['exercise_substitutions', 'exercise_logs', 'workout_sessions'],
   meals: ['meal_plan_items'],
+  // Day check-ins, weekly check-ins, milestones and adaptation decisions (D-028).
+  journey: ['daily_checkins', 'weekly_checkins', 'journey_milestones', 'adjustments'],
 };
 
 /** Categories the user can delete one by one (the profile goes with the account). */
@@ -28,11 +30,11 @@ export const DELETABLE_CATEGORIES: PrivacyCategory[] = [
   'expenses',
   'workouts',
   'meals',
+  'journey',
 ];
 
 /** Extra server tables included in the export (not synced by the app yet). */
 export const EXPORT_ONLY_TABLES = [
-  'daily_checkins',
   'weekly_reviews',
   'notification_preferences',
   'notification_settings',
@@ -54,15 +56,29 @@ export function countByCategory(state: SyncableState): Record<PrivacyCategory, n
     profile: state.snapshot ? 1 : 0,
     motivation: m ? Object.values(m).filter((v) => typeof v === 'string' && v.trim() !== '').length : 0,
     weights: state.weights.length,
-    measurements: state.waist.length,
+    measurements: state.waist.length + (state.measurements?.length ?? 0),
     inventory: state.inventory.length,
     expenses: state.expenses.length,
-    workouts: Object.keys(state.sessionIds).length || state.completedSessions.length,
-    meals: state.mealPlan?.days.flatMap((d) => d.meals).filter((m) => m.status === 'eaten').length ?? 0,
+    workouts:
+      new Set([...Object.keys(state.sessionIds), ...Object.keys(state.sessionOutcomes ?? {})]).size ||
+      state.completedSessions.length,
+    meals: markedMeals(state),
+    journey:
+      (state.dayLogs?.length ?? 0) +
+      (state.weeklyCheckins?.length ?? 0) +
+      Object.keys(state.milestones ?? {}).length +
+      (state.adjustments?.length ?? 0),
   };
 }
 
-/** Local state with one category removed. Deleting meals keeps the plan but forgets what was eaten. */
+/** Meals the user marked (eaten, skipped or replaced), in the current plan or kept in the journal. */
+function markedMeals(state: SyncableState): number {
+  const inPlan = (state.mealPlan?.days ?? []).flatMap((d) => d.meals).filter((m) => m.status !== 'planned');
+  const ids = new Set(inPlan.map((m) => m.id));
+  return inPlan.length + (state.mealLog ?? []).filter((m) => !ids.has(m.id)).length;
+}
+
+/** Local state with one category removed. Deleting meals keeps the plan but forgets what was marked. */
 export function clearCategory(state: SyncableState, category: PrivacyCategory): SyncableState {
   switch (category) {
     case 'profile':
@@ -72,26 +88,39 @@ export function clearCategory(state: SyncableState, category: PrivacyCategory): 
     case 'weights':
       return { ...state, weights: [] };
     case 'measurements':
-      return { ...state, waist: [] };
+      return { ...state, waist: [], measurements: [] };
     case 'inventory':
       return { ...state, inventory: [] };
     case 'expenses':
       return { ...state, expenses: [] };
     case 'workouts':
-      return { ...state, completedSessions: [], setLogs: {}, sessionIds: {} };
+      return {
+        ...state,
+        completedSessions: [],
+        setLogs: {},
+        sessionIds: {},
+        sessionOutcomes: {},
+        exerciseSwaps: {},
+        swapReasons: {},
+      };
     case 'meals':
-      return state.mealPlan
-        ? {
-            ...state,
-            mealPlan: {
+      return {
+        ...state,
+        mealLog: [],
+        mealPlan: state.mealPlan
+          ? {
               ...state.mealPlan,
               days: state.mealPlan.days.map((d) => ({
                 ...d,
-                meals: d.meals.map((m) => (m.status === 'eaten' ? { ...m, status: 'planned' as const } : m)),
+                meals: d.meals.map((m) =>
+                  m.status === 'planned' ? m : { ...m, status: 'planned' as const, reason: undefined },
+                ),
               })),
-            },
-          }
-        : state;
+            }
+          : null,
+      };
+    case 'journey':
+      return { ...state, dayLogs: [], weeklyCheckins: [], milestones: {}, adjustments: [] };
   }
 }
 

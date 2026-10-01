@@ -1,6 +1,6 @@
 # Progress Journey — « Mon évolution »
 
-Statut : **architecture validée** (D-028). Module : `src/domain/journey/progress-journey.ts` + `milestones.ts`. Écran : onglet Progrès, titré « Mon évolution ».
+Statut : **architecture validée** (D-028). Modules : `src/domain/journey/progress-journey.ts`, `progress-facts.ts` (faits recalculés : jours actifs, semaines, records, tendances, moyennes de poids), `milestones.ts`, `adherence.ts`. Écran : onglet Progrès, titré « Mon évolution ».
 Date : 2026-10-01. Règles fondatrices : `docs/TRANSFORMATION_JOURNEY.md` §0 (aucune estimation sur le corps, sécurité d'abord).
 
 L'écran raconte **l'histoire de l'utilisateur** depuis le début : ce qu'il a fait, ce qui a bougé, ce qui reste constant. Pas un tableau de graphiques. Toutes les valeurs sont saisies ou mesurées ; une donnée absente est dite absente.
@@ -43,7 +43,7 @@ interface ProgressJourney {
 
 - **Poids** : toujours la moyenne sur 7 jours (jamais la pesée du jour seule), comparée à la moyenne de la première semaine qui a au moins 2 pesées.
 - **Records** : une série bat un record quand, pour un exercice, la charge est plus haute qu'avant à répétitions ≥ 1, ou le nombre de répétitions plus haut à charge égale ou supérieure. Pas de 1RM estimé (c'est une estimation).
-- **Tendances** : meilleure série des 14 premiers jours de l'exercice vs des 14 derniers jours ; « stable » sous ±2,5 %.
+- **Tendances** : meilleure série (la plus lourde, puis le plus de répétitions à cette charge) des 14 premiers jours de l'exercice vs des 14 derniers jours. La charge décide ; à charge proche (±2,5 %), les répétitions décident ; « stable » sous ±2,5 % sur les deux. Pas de score de volume : 47,5 kg × 8 est un progrès par rapport à 40 kg × 10.
 - **Jamais affiché** : masse musculaire, masse grasse, calories brûlées, énergie active estimée par l'appareil, pourcentage de graisse.
 
 ## 2. Sections de l'écran

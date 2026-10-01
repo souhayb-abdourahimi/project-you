@@ -50,8 +50,9 @@ function deviceSettings() {
   const health = useHealthStore.getState();
   return {
     notifications: prefs,
-    // Which coach messages were scheduled (template ids, never the text) and the check-ins they used.
+    // Which coach messages were scheduled (template ids, never the text).
     notificationHistory: history,
+    // Check-ins saved before D-028 and not moved into the day logs yet (normally empty).
     checkins,
     calendar: { connected, readBusy, writeSessions, busy, writtenEvents: written },
     // Imported from Apple Health / Health Connect: kept on this device only.
@@ -77,6 +78,13 @@ export function usePrivacy() {
   const completedSessions = useDataStore((s) => s.completedSessions);
   const setLogs = useDataStore((s) => s.setLogs);
   const sessionIds = useDataStore((s) => s.sessionIds);
+  const sessionOutcomes = useDataStore((s) => s.sessionOutcomes);
+  const mealLog = useDataStore((s) => s.mealLog);
+  const measurements = useDataStore((s) => s.measurements);
+  const dayLogs = useDataStore((s) => s.dayLogs);
+  const weeklyCheckins = useDataStore((s) => s.weeklyCheckins);
+  const milestones = useDataStore((s) => s.milestones);
+  const adjustments = useDataStore((s) => s.adjustments);
   const snapshot = useProfileStore((s) => s.snapshot);
   const counts = countByCategory({
     snapshot,
@@ -88,6 +96,13 @@ export function usePrivacy() {
     completedSessions,
     setLogs,
     sessionIds,
+    sessionOutcomes,
+    mealLog,
+    measurements,
+    dayLogs,
+    weeklyCheckins,
+    milestones,
+    adjustments,
   });
 
   const exportData = async () => {

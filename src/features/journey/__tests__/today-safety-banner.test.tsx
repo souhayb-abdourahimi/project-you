@@ -31,7 +31,7 @@ beforeEach(() => {
   jest.useFakeTimers({ now: new Date(`${today}T10:00:00`), doNotFake: ['nextTick', 'setImmediate'] });
   void i18n.changeLanguage('fr');
   useProfileStore.setState({ snapshot: scenario() });
-  useDataStore.setState({ completedSessions: [], weights: [], mealPlan: null, previousMealPlan: null });
+  useDataStore.setState({ completedSessions: [], weights: [], mealPlan: null, previousMealPlan: null, dayLogs: [] });
   useNotificationStore.setState({ prefs: { ...DEFAULT_NOTIFICATION_PREFERENCES, enabled: false }, checkins: [] });
 });
 
@@ -47,8 +47,8 @@ function overTrainedAndTired() {
       completedAt: `${addDays(today, -i - 1)}T18:00:00.000Z`,
     })),
   });
-  useNotificationStore.setState({
-    checkins: [
+  useDataStore.setState({
+    dayLogs: [
       { date: addDays(today, -1), energy: 2, motivation: 3, fatigue: 4 },
       { date: today, energy: 2, motivation: 3, fatigue: 5 },
     ],

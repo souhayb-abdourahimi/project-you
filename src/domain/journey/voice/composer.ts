@@ -75,10 +75,9 @@ export function composeMessage(input: {
             ? given
             : ['private'];
   // The user's own answers: the one that fits the moment (anchor context), never two days in a row.
-  const personal =
-    slots.every((s) => s === 'why' || s === 'change' || s === 'feel')
-      ? pickAnchorSlot(given, input.anchorContext ?? TRIGGER_ANCHOR_CONTEXT[trigger] ?? 'default', history, date)
-      : null;
+  const personal = slots.every((s) => s === 'why' || s === 'change' || s === 'feel')
+    ? pickAnchorSlot(given, input.anchorContext ?? TRIGGER_ANCHOR_CONTEXT[trigger] ?? 'default', history, date)
+    : null;
   const slot: AnchorSlot = personal ?? slots[0];
 
   const anchorUse = lastUses(history, (e) => [templateParts(e.templateId).anchor]);
