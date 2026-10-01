@@ -1,7 +1,8 @@
 import { useEffect, useMemo } from 'react';
 
 import { constraintsFrom } from '@/domain/meals/constraints';
-import { carryOverEaten, mealPlanKey, planWeek as planMeals } from '@/domain/meals/planner';
+import { planWeekWithDiagnosis as planMeals } from '@/domain/meals/diagnosis';
+import { carryOverEaten, mealPlanKey } from '@/domain/meals/planner';
 import { assessGoalFeasibility, computeNutritionTargets } from '@/domain/nutrition/engine';
 import { planWeek as planSchedule, type PlannedDay, type WeeklyPlan } from '@/domain/planning/engine';
 import { startOfWeek, toIsoDate } from '@/domain/shared/dates';

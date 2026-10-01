@@ -6,6 +6,7 @@ import { dailyMotivation } from '@/domain/motivation/messages';
 import { nextAction } from '@/domain/today';
 import { HealthCard } from '@/features/health/HealthCard';
 import { MealCard } from '@/features/nutrition/MealCard';
+import { PlanDiagnosisCard } from '@/features/nutrition/PlanDiagnosisCard';
 import { usePlan } from '@/hooks/usePlan';
 import { useWeights } from '@/hooks/useWeights';
 import { nowTime } from '@/lib/format';
@@ -109,6 +110,7 @@ export default function TodayScreen() {
       ) : null}
 
       <Section title={t('today.meals')}>
+        {plan.mealPlan?.diagnosis ? <PlanDiagnosisCard diagnosis={plan.mealPlan.diagnosis} compact /> : null}
         {meals?.meals.map((m) => (
           <MealCard key={m.id} meal={m} compact />
         ))}

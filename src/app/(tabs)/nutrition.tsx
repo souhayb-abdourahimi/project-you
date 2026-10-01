@@ -3,7 +3,9 @@ import { useTranslation } from 'react-i18next';
 
 import { Banner, Button, Card, ProgressBar, Rationale, Row, Screen, Section, StatTile, Text } from '@/components/ui';
 import { BudgetCard } from '@/features/nutrition/BudgetCard';
+import { ExclusionSummary } from '@/features/nutrition/ExclusionSummary';
 import { MealCard } from '@/features/nutrition/MealCard';
+import { PlanDiagnosisCard } from '@/features/nutrition/PlanDiagnosisCard';
 import { usePlan } from '@/hooks/usePlan';
 
 export default function NutritionScreen() {
@@ -40,6 +42,14 @@ export default function NutritionScreen() {
         <Button variant="secondary" label={t('nutrition.inventory')} onPress={() => router.push('/inventory')} />
         <Button variant="secondary" label={t('nutrition.shopping')} onPress={() => router.push('/shopping')} />
       </Row>
+      {plan.snapshot.nutrition.excludedFoods.length + plan.snapshot.nutrition.intolerances.length > 0 ? (
+        <Card muted>
+          <ExclusionSummary
+            excluded={plan.snapshot.nutrition.excludedFoods}
+            intolerances={plan.snapshot.nutrition.intolerances}
+          />
+        </Card>
+      ) : null}
       <BudgetCard />
       <Section title={t('today.meals')}>
         {today?.protein ? (
@@ -47,7 +57,11 @@ export default function NutritionScreen() {
             {t('nutrition.proteinPlanned', { planned: today.protein.plannedG, target: today.protein.targetG })}
           </Text>
         ) : null}
-        {today?.protein && !today.protein.met ? <Banner message={t('nutrition.proteinShort')} /> : null}
+        {plan.mealPlan?.diagnosis ? (
+          <PlanDiagnosisCard diagnosis={plan.mealPlan.diagnosis} />
+        ) : today?.protein && !today.protein.met ? (
+          <Banner message={t('nutrition.proteinShort')} />
+        ) : null}
         {today ? (
           today.meals.map((m) => <MealCard key={m.id} meal={m} />)
         ) : (

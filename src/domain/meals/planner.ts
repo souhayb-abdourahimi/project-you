@@ -5,6 +5,7 @@ import { clamp, roundTo } from '../shared/math';
 import type { Rationale } from '../shared/rationale';
 import { getFood, nutrientsFor, sumNutrients, type Nutrients } from './catalog';
 import { adaptRecipe, normalize, type FoodConstraints } from './constraints';
+import type { PlanDiagnosis } from './diagnosis';
 import { stockByFood, isExpiringSoon, type InventoryItem } from './inventory';
 import { RECIPES, type Ingredient, type MealSlot, type Recipe } from './recipes';
 
@@ -60,10 +61,12 @@ export interface WeeklyMealPlan {
   days: DailyMealPlan[];
   /** Fingerprint of the inputs; a different key means the plan is stale (see mealPlanKey). */
   key?: string;
+  /** Why the plan is incomplete or short in protein, and what would help (null = nothing to explain). */
+  diagnosis?: PlanDiagnosis | null;
 }
 
 /** Bump when the planner's output changes meaning, so stored plans are regenerated. */
-export const MEAL_PLANNER_VERSION = 3;
+export const MEAL_PLANNER_VERSION = 4;
 
 const SLOT_SHARES: Record<number, [MealSlot, number][]> = {
   2: [

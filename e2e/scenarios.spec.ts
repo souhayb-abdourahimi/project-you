@@ -29,7 +29,7 @@ async function expectNone(page: Page, names: string[]) {
   expect(names.filter((n) => lines.has(n))).toEqual([]);
 }
 
-for (const key of ['vegan', 'veganFatLoss', 'multipleAllergies', 'studentLowBudget'] as const) {
+for (const key of ['vegan', 'veganFatLoss', 'multipleAllergies', 'studentLowBudget', 'freeTextExclusions'] as const) {
   test(`meals respect the hard constraints: ${key}`, async ({ page }) => {
     const errors = collectErrors(page);
     const scenario = SCENARIOS[key];
@@ -44,6 +44,29 @@ for (const key of ['vegan', 'veganFatLoss', 'multipleAllergies', 'studentLowBudg
     expect(errors).toEqual([]);
   });
 }
+
+test('free-text exclusions: the app shows what it understood', async ({ page }) => {
+  await seedProfile(page, SCENARIOS.freeTextExclusions);
+  await page.goto('/nutrition');
+  await expect(text(page, 'Ce que l’application a compris')).toBeVisible();
+  await expect(text(page, /« soja » \(soja\) : .*Tofu nature.*exclus/)).toBeVisible();
+  await expect(text(page, /« Poissons » \(poissons\) : .*Thon/)).toBeVisible();
+});
+
+test('vegan with a soy allergy: missing meals are explained with adjustments', async ({ page }) => {
+  const errors = collectErrors(page);
+  await seedProfile(page, SCENARIOS.veganSoyAllergy);
+  await page.goto('/nutrition');
+  await expect(text(page, 'Ton plan de repas est incomplet')).toBeVisible();
+  await expect(text(page, /Aucune recette ne respecte toutes tes contraintes pour : Petit-déjeuner/)).toBeVisible();
+  await expect(text(page, 'Contraintes en cause')).toBeVisible();
+  await expect(text(page, /Allergie : Soja/)).toBeVisible();
+  await expect(text(page, 'Tu peux modifier :')).toBeVisible();
+  await expect(text(page, /passer à 2 repas par jour/)).toBeVisible();
+  await page.goto('/');
+  await expect(text(page, 'Ton plan de repas est incomplet')).toBeVisible();
+  expect(errors).toEqual([]);
+});
 
 test('low budget: the shopping list never shows an invented price', async ({ page }) => {
   await seedProfile(page, SCENARIOS.studentLowBudget);
