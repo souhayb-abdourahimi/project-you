@@ -16,6 +16,7 @@ export const COOLDOWN_DAYS: Partial<Record<Trigger, number>> = {
   weekly_checkin: 6,
   success_streak: 6,
   fatigue_recovery: 2,
+  encouragement_kept_going: 2,
   safety_low_intake: 3,
   safety_fast_loss: 3,
   safety_training_load: 3,
@@ -40,6 +41,8 @@ export function onCooldown(
     return sameTrigger.some((e) => e.facts.since === facts.since);
   }
   if (trigger === 'success_streak' && sameTrigger.some((e) => e.facts.weeks === facts.weeks)) return true;
+  // A milestone is celebrated once, whatever the date.
+  if (trigger === 'milestone_reached') return sameTrigger.some((e) => e.facts.milestone === facts.milestone);
   const days = COOLDOWN_DAYS[trigger];
   if (!days) return false;
   return sameTrigger.some((e) => Math.abs(daysBetween(e.date, date)) < days);

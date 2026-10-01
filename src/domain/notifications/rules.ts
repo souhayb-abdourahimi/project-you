@@ -32,6 +32,18 @@ export const ABSENCE_HORIZON_DAYS = 14;
 export const STREAK_MILESTONES = [2, 3, 4, 6, 8, 12, 16, 20, 26, 39, 52];
 export const WEEKLY_REVIEW_TIME = '18:00';
 export const STREAK_TIME = '19:00';
+/** Milestones are celebrated in the evening, like streaks (docs/RETENTION.md §4). */
+export const MILESTONE_TIME = '19:00';
+
+/** What the Daily Coach decided, for the notification channel (CLAUDE.md rule 6: one engine). */
+export interface JourneyChannelInput {
+  /** The milestone to celebrate (journey/milestones.ts), with its message facts. */
+  milestone?: { id: string; facts: Record<string, string> } | null;
+  /** Days kept in a short, difficult or replaced version: the next morning says "tu as gardé le fil". */
+  keptGoingDates?: IsoDate[];
+  /** Today's session as the Daily Coach planned it; 'none' (rest, mobility, replaced) drops its reminder. */
+  todaySession?: { variant: 'full' | 'short' | 'light'; minutes: number } | 'none';
+}
 
 /**
  * Only one message of the "motivation" kind per day, best first: celebrating beats reaching out,
@@ -42,6 +54,7 @@ export const MOTIVATION_SLOT_ORDER: Trigger[] = [
   'safety_fast_loss',
   'safety_training_load',
   'safety_low_logging',
+  'encouragement_kept_going',
   'success_session',
   'absence_last',
   'absence_comeback',
@@ -88,8 +101,10 @@ export function collectCandidates(input: {
   /** Sessions already done (`${date}#${index}`): no reminder for them. */
   completed: Set<string>;
   fromDate: IsoDate;
+  journey?: JourneyChannelInput;
 }): Candidate[] {
   const { prefs, week, state, completed } = input;
+  const journey = input.journey ?? {};
   const { safety } = state;
   const safetyMessage = safetyMessageFor(safety);
   // While the safety rule is active: no congratulations, no push (CLAUDE.md rule 8).
@@ -106,14 +121,28 @@ export function collectCandidates(input: {
   for (const day of week.days) {
     for (const item of day.items) {
       if (item.kind === 'workout') workoutDays.add(day.date);
-      if (item.kind === 'workout' && item.start && !completed.has(`${day.date}#${item.sessionIndex}`)) {
+      // Today, the reminder follows the Daily Coach: nothing on a rest or replaced day, the short
+      // version on a difficult day or a comeback.
+      const coached = day.date === state.today ? journey.todaySession : undefined;
+      if (
+        item.kind === 'workout' &&
+        item.start &&
+        coached !== 'none' &&
+        !completed.has(`${day.date}#${item.sessionIndex}`)
+      ) {
         const tired = lighterSessions || (state.difficulties.fatigue === 'high' && day.date === state.today);
+        const short = coached ? coached.variant !== 'full' : item.variant === 'short';
         out.push({
           trigger: tired ? 'session_planned_tired' : 'session_planned',
           date: day.date,
           time: formatTime(Math.max(0, parseTime(item.start) - TRAINING_LEAD_MINUTES)),
           before: item.start,
-          facts: { time: item.start, ...(item.variant === 'short' ? { short: '1' } : {}), ...safetyFacts },
+          facts: {
+            time: item.start,
+            ...(short ? { short: '1' } : {}),
+            ...(coached && short ? { minutes: String(coached.minutes) } : {}),
+            ...safetyFacts,
+          },
         });
       }
       if (item.kind === 'shopping') {
@@ -147,7 +176,22 @@ export function collectCandidates(input: {
       );
     }
 
-    if (celebrate && day.date === week.weekStart && STREAK_MILESTONES.includes(state.progress.weeklyStreak)) {
+    // A milestone is celebrated once, the evening it is reached (never under safety, D-028).
+    const milestone = celebrate && day.date === state.today ? journey.milestone : null;
+    if (milestone) {
+      out.push({
+        trigger: 'milestone_reached',
+        date: day.date,
+        time: MILESTONE_TIME,
+        facts: { ...milestone.facts, milestone: milestone.id },
+      });
+    }
+    if (
+      celebrate &&
+      !milestone &&
+      day.date === week.weekStart &&
+      STREAK_MILESTONES.includes(state.progress.weeklyStreak)
+    ) {
       out.push({
         trigger: 'success_streak',
         date: day.date,
@@ -159,6 +203,16 @@ export function collectCandidates(input: {
     // Motivation slot candidates for this day (the planner keeps the best one).
     if (safetyMessage && day.date >= state.today) {
       out.push({ ...safetyMessage, date: day.date, time: prefs.motivationTime });
+    }
+    // The morning after a short, difficult or replaced day: "tu as gardé le fil" (it takes the place
+    // of success_session that day). Not while the safety rule asks to slow down.
+    if (
+      !safety.active &&
+      (journey.keptGoingDates ?? []).includes(addDays(day.date, -1)) &&
+      day.date >= state.today &&
+      day.date <= addDays(state.today, 1)
+    ) {
+      out.push({ trigger: 'encouragement_kept_going', date: day.date, time: prefs.motivationTime, facts: {} });
     }
     if (
       celebrate &&
