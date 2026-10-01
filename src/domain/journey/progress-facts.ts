@@ -115,7 +115,7 @@ export interface PersonalRecord {
 }
 
 /** Sessions with their sets, in date order. */
-function loggedSessions(d: ProgressData): { date: IsoDate; exercises: Record<string, LoggedSet[]> }[] {
+function loggedSessions(d: Pick<ProgressData, 'setLogs'>): { date: IsoDate; exercises: Record<string, LoggedSet[]> }[] {
   return Object.entries(d.setLogs)
     .map(([key, exercises]) => ({ key, date: key.split('#')[0], exercises }))
     .sort((a, b) => a.key.localeCompare(b.key));
@@ -125,7 +125,7 @@ function loggedSessions(d: ProgressData): { date: IsoDate; exercises: Record<str
  * New best sets, at most one per exercise and session. The first session of an exercise sets the
  * reference: it is never a record (no false record on the first try).
  */
-export function personalRecords(d: ProgressData): PersonalRecord[] {
+export function personalRecords(d: Pick<ProgressData, 'setLogs'>): PersonalRecord[] {
   const history = new Map<string, LoggedSet[]>();
   const out: PersonalRecord[] = [];
   for (const session of loggedSessions(d)) {
@@ -182,7 +182,7 @@ function trendOf(a: LoggedSet, b: LoggedSet): ExerciseTrend['trend'] {
  * Best set (heaviest, then most reps) of the first 14 days of an exercise vs the last 14 days, for exercises
  * followed for at least 14 days.
  */
-export function exerciseTrends(d: ProgressData): ExerciseTrend[] {
+export function exerciseTrends(d: Pick<ProgressData, 'setLogs'>): ExerciseTrend[] {
   const perExercise = new Map<string, { date: IsoDate; sets: LoggedSet[] }[]>();
   for (const session of loggedSessions(d)) {
     for (const [id, sets] of Object.entries(session.exercises)) {

@@ -1,3 +1,4 @@
+import fr from '../../../i18n/locales/fr';
 import { constraintsFrom } from '../../meals/constraints';
 import { planWeek as planMeals } from '../../meals/planner';
 import { computeNutritionTargets } from '../../nutrition/engine';
@@ -45,7 +46,7 @@ describe('weeklyReview', () => {
   it('says weight data is missing instead of guessing', () => {
     const r = weeklyReview(input());
     expect(r.weight).toEqual({ averageKg: null, changeKg: null, entries: 0 });
-    expect(r.hard.map((p) => p.key)).toContain('review.hard.no_weight');
+    expect(r.missing.map((p) => p.key)).toContain('review.missing.weight');
   });
 
   it('does not rely on the scale alone for recomposition', () => {
@@ -103,5 +104,97 @@ describe('weeklyReview', () => {
     expect(fatLoss.worked.map((p) => p.key)).not.toContain('review.worked.weight_trend');
     const gain = weeklyReview(input(SCENARIOS.muscleGain, { weights }));
     expect(gain.worked.map((p) => p.key)).toContain('review.worked.weight_trend');
+  });
+
+  describe('Ton bilan (D-028)', () => {
+    const resolve = (key: string) => key.split('.').reduce((o: Record<string, unknown>, k) => o?.[k] as never, fr);
+
+    it('the main problem is named and answered; pain never gets a diagnosis', () => {
+      const r = weeklyReview(
+        input(undefined, {
+          checkin: { weekStart: WEEK, weekRating: 2, mainProblem: 'pain', answeredAt: '2026-10-04T18:00:00.000Z' },
+        }),
+      );
+      expect(r.hard.map((p) => p.key)).toContain('review.hard.problem.pain');
+      expect(r.adapt.map((p) => p.key)).toContain('review.adapt.problem.pain');
+      expect(resolve('review.adapt.problem.pain')).toMatch(/professionnel de santé/);
+      expect(r.missing.map((p) => p.key)).not.toContain('review.missing.checkin');
+    });
+
+    it('"none" adds nothing; no check-in is said, never guessed', () => {
+      const none = weeklyReview(
+        input(undefined, {
+          checkin: { weekStart: WEEK, weekRating: 4, mainProblem: 'none', answeredAt: '2026-10-04T18:00:00.000Z' },
+        }),
+      );
+      expect(none.hard.some((p) => p.key.startsWith('review.hard.problem'))).toBe(false);
+      expect(weeklyReview(input(undefined, { checkin: null })).missing.map((p) => p.key)).toContain(
+        'review.missing.checkin',
+      );
+      // Not asked at all (older callers): nothing said about it.
+      expect(weeklyReview(input()).missing.map((p) => p.key)).not.toContain('review.missing.checkin');
+    });
+
+    it('a replaced session is adapted, not missed; difficult days and records are named', () => {
+      const r = weeklyReview(
+        input(undefined, {
+          completedSessions: [{ date: '2026-09-28', sessionIndex: 0, variant: 'full' }],
+          sessionOutcomes: { '2026-09-30#0': { status: 'replaced', replacedBy: 'walk', at: '' } },
+          dayLogs: [
+            { date: '2026-09-30', mode: 'difficult', activity: 'walk', activityMinutes: 15 },
+            { date: '2026-09-20', mode: 'difficult' },
+          ],
+          records: [
+            { exerciseId: 'bench', date: '2026-09-28', loadKg: 50, reps: 8, kind: 'load' },
+            { exerciseId: 'bench', date: '2026-09-14', loadKg: 45, reps: 8, kind: 'load' },
+          ],
+        }),
+      );
+      expect(r.adapted).toBe(1);
+      expect(r.worked).toEqual(
+        expect.arrayContaining([
+          { key: 'review.worked.adapted', params: { count: 1 } },
+          { key: 'review.worked.activity', params: { count: 1 } },
+          { key: 'review.worked.records', params: { count: 1 } },
+        ]),
+      );
+      expect(r.hard).toContainEqual({ key: 'review.hard.difficult_days', params: { count: 1 } });
+      const sessions = r.hard.find((p) => p.key === 'review.hard.sessions');
+      if (sessions) expect(sessions.params?.planned).toBe(r.sessions.planned - 1);
+    });
+
+    it('no meal marked on past days: said missing', () => {
+      const r = weeklyReview(input());
+      expect(r.missing.map((p) => p.key)).toContain('review.missing.meals');
+    });
+
+    it('every review key exists in French', () => {
+      const r = weeklyReview(
+        input(undefined, {
+          checkin: null,
+          dayLogs: [{ date: '2026-09-30', mode: 'difficult' }],
+          sessionOutcomes: { '2026-09-30#0': { status: 'replaced', at: '' } },
+        }),
+      );
+      for (const p of [...r.worked, ...r.hard, ...r.adapt, ...r.nextWeek, ...r.missing]) {
+        expect(typeof resolve(p.key)).toBe('string');
+      }
+      for (const problem of [
+        'time',
+        'hunger',
+        'cravings',
+        'fatigue',
+        'pain',
+        'motivation',
+        'budget',
+        'social',
+        'sleep',
+        'schedule',
+        'other',
+      ]) {
+        expect(typeof resolve(`review.hard.problem.${problem}`)).toBe('string');
+        expect(typeof resolve(`review.adapt.problem.${problem}`)).toBe('string');
+      }
+    });
   });
 });

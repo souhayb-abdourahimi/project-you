@@ -12,7 +12,7 @@ import { useDataStore } from '@/state/data';
 import { useProfileStore } from '@/state/profile';
 
 /** Applies user reschedules on top of the engine's weekly plan. */
-function withReschedules(plan: WeeklyPlan, rescheduled: Record<string, string>): WeeklyPlan {
+export function withReschedules(plan: WeeklyPlan, rescheduled: Record<string, string>): WeeklyPlan {
   const moves = Object.entries(rescheduled).filter(([from]) => plan.days.some((d) => d.date === from));
   if (moves.length === 0) return plan;
   const days: PlannedDay[] = plan.days.map((d) => ({ ...d, items: [...d.items] }));
@@ -26,6 +26,24 @@ function withReschedules(plan: WeeklyPlan, rescheduled: Record<string, string>):
     target.items = [workout, ...target.items.filter((i) => i.kind !== 'rest')];
   }
   return { ...plan, days };
+}
+
+/**
+ * The schedule of another week (a past week for the review, adherence over 4 weeks). The calendar's
+ * busy times are known for the current week only, so they are not applied here.
+ */
+export function scheduleOfWeek(
+  snapshot: {
+    schedule: Parameters<typeof planSchedule>[0]['schedule'];
+    training: Parameters<typeof planSchedule>[0]['training'];
+  },
+  weekStart: string,
+  rescheduled: Record<string, string>,
+): WeeklyPlan {
+  return withReschedules(
+    planSchedule({ weekStart, schedule: snapshot.schedule, training: snapshot.training }),
+    rescheduled,
+  );
 }
 
 /** Everything the screens need, derived from the snapshot by the deterministic engines. */

@@ -1,8 +1,12 @@
+import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
-import { Card, EmptyState, Row, Screen, StatTile, Text } from '@/components/ui';
+import { Banner, Button, Card, EmptyState, Row, Screen, StatTile, Text } from '@/components/ui';
+import { personalRecords } from '@/domain/journey/progress-facts';
+import { checkinWeek } from '@/domain/journey/weekly-checkin';
 import { weeklyReview, type ReviewPoint } from '@/domain/progress/weekly-review';
-import { usePlan } from '@/hooks/usePlan';
+import { scheduleOfWeek, usePlan } from '@/hooks/usePlan';
+import { addDays } from '@/domain/shared/dates';
 import { formatMoney } from '@/lib/format';
 import { useWeights } from '@/hooks/useWeights';
 import { useDataStore } from '@/state/data';
@@ -27,14 +31,23 @@ export default function ReviewScreen() {
   const weights = useWeights();
   if (!plan) return <EmptyState message={t('review.noProfile')} />;
 
+  // Friday to Sunday: this week; Monday and Tuesday: the week that just ended (with its check-in).
+  const openWeek = checkinWeek(plan.today);
+  const weekStart = openWeek ?? plan.weekStart;
+  const current = weekStart === plan.weekStart;
+  const checkin = data.weeklyCheckins.find((c) => c.weekStart === weekStart);
   const r = weeklyReview({
-    weekStart: plan.weekStart,
-    today: plan.today,
+    weekStart,
+    today: current ? plan.today : addDays(weekStart, 6),
     goal: plan.snapshot.goal.type,
-    schedule: plan.schedule,
+    schedule: current ? plan.schedule : scheduleOfWeek(plan.snapshot, weekStart, data.rescheduled),
     completedSessions: data.completedSessions,
     setLogs: data.setLogs,
-    mealPlan: plan.mealPlan,
+    mealPlan: current ? plan.mealPlan : data.previousMealPlan,
+    checkin: checkin ?? (openWeek ? null : undefined),
+    sessionOutcomes: data.sessionOutcomes,
+    dayLogs: data.dayLogs,
+    records: personalRecords(data),
     weights,
     waist: data.waist,
     expenses: data.expenses,
@@ -44,6 +57,8 @@ export default function ReviewScreen() {
   return (
     <Screen>
       <Text color="textMuted">{t('review.intro')}</Text>
+      {openWeek && !checkin ? <Button label={t('review.checkinCta')} onPress={() => router.push('/checkin')} /> : null}
+      {checkin ? <Banner tone="success" message={t('review.checkinDone')} /> : null}
       <Row>
         <StatTile
           label={t('review.sessions')}
@@ -74,6 +89,7 @@ export default function ReviewScreen() {
       <Points title={t('review.hardTitle')} points={r.hard} />
       <Points title={t('review.adaptTitle')} points={r.adapt} />
       <Points title={t('review.nextTitle')} points={r.nextWeek} />
+      {r.missing.length > 0 ? <Points title={t('review.missingTitle')} points={r.missing} /> : null}
     </Screen>
   );
 }
