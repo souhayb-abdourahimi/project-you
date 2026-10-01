@@ -1,3 +1,4 @@
+import type { MealReason } from '../journey/outcomes';
 import type { NutritionTargets } from '../nutrition/engine';
 import type { NutritionProfile } from '../profile/schemas';
 import { addDays, type IsoDate } from '../shared/dates';
@@ -9,7 +10,11 @@ import type { PlanDiagnosis } from './diagnosis';
 import { stockByFood, isExpiringSoon, type InventoryItem } from './inventory';
 import { RECIPES, type Ingredient, type MealSlot, type Recipe } from './recipes';
 
-export type MealStatus = 'planned' | 'eaten' | 'skipped';
+/**
+ * `planned`: not marked yet. `skipped`: not eaten. `replaced`: the user ate something else (its
+ * energy is unknown, so the day never counts as fully logged for the low-intake rule).
+ */
+export type MealStatus = 'planned' | 'eaten' | 'skipped' | 'replaced';
 
 export interface PlannedMeal {
   id: string;
@@ -21,6 +26,8 @@ export interface PlannedMeal {
   ingredients: Ingredient[];
   nutrition: Nutrients;
   status: MealStatus;
+  /** Why it was skipped or replaced, only when the user said so (journey/outcomes.ts). */
+  reason?: MealReason;
   usesInventory: string[];
   /** Ingredients swapped to respect diet/allergies/exclusions, shown to the user as "adapted". */
   substitutions?: { from: string; to: string }[];

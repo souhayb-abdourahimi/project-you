@@ -39,6 +39,17 @@ export const TRIGGER_CATEGORY: Record<Trigger, NotificationCategory> = {
   safety_fast_loss: 'progress',
   safety_training_load: 'progress',
   safety_low_logging: 'progress',
+  // Sent as notifications (D-028): a milestone is news about progress; keeping the thread is motivation.
+  milestone_reached: 'progress',
+  encouragement_kept_going: 'motivation',
+  progress_note: 'progress',
+  // Screen-only messages of the Daily Coach (never planned as notifications).
+  first_day: 'motivation',
+  comeback_welcome: 'motivation',
+  difficult_day: 'motivation',
+  rest_day: 'motivation',
+  daily_tip: 'motivation',
+  daily_reflection: 'motivation',
 };
 
 export interface PlannedNotification extends ComposedMessage {

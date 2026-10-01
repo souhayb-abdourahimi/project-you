@@ -27,6 +27,19 @@ const v = (id: string, extra: Omit<Variant, 'id'> = {}): Variant => ({ id, ...ex
 /** Variants that push toward the goal (intensity, weight change): never while safety is active or for a protected user. */
 export const NO_PUSH = ['safety', 'protected'];
 
+/** Facts that name a milestone (milestone_reached titles). */
+const MILESTONE_FACTS = [
+  'first_session',
+  'first_week',
+  'sessions',
+  'active_days',
+  'weeks',
+  'record',
+  'improvement',
+  'goal_weight',
+  'checkpoint',
+];
+
 export const ANCHORS: Record<AnchorSlot, Variant[]> = {
   why: [v('v1'), v('v2'), v('v3')],
   change: [v('v1'), v('v2'), v('v3')],
@@ -168,6 +181,73 @@ export const CATALOG: Record<Trigger, Record<PartKind, Variant[]>> = {
     ],
   },
   safety_low_logging: {
+    title: [v('v1'), v('v2')],
+    action: [v('v1'), v('v2')],
+    meaning: [v('v1'), v('v2')],
+  },
+  first_day: {
+    title: [v('v1'), v('v2')],
+    action: [v('workout', { needs: ['workout'] }), v('meal', { unless: ['workout'] }), v('v1')],
+    meaning: [v('v1'), v('v2')],
+  },
+  comeback_welcome: {
+    title: [v('v1')],
+    action: [v('v1'), v('v2'), v('v3')],
+    meaning: [v('v1'), v('v2')],
+  },
+  difficult_day: {
+    title: [v('v1'), v('v2')],
+    action: [
+      v('minutes', { needs: ['minutes'] }),
+      v('walk', { needs: ['walk'], unless: ['minutes'] }),
+      v('rest', { needs: ['rest'], unless: ['minutes', 'walk'] }),
+      v('v1', { unless: ['minutes', 'walk', 'rest'] }),
+    ],
+    meaning: [v('v1'), v('v2'), v('v3')],
+  },
+  rest_day: {
+    title: [v('v1'), v('v2')],
+    action: [v('v1'), v('v2'), v('v3')],
+    meaning: [v('v1'), v('v2')],
+  },
+  daily_tip: {
+    title: [v('v1'), v('v2')],
+    action: [v('v1'), v('v2'), v('v3'), v('v4'), v('v5'), v('v6')],
+    meaning: [v('v1'), v('v2')],
+  },
+  daily_reflection: {
+    title: [v('v1'), v('v2')],
+    action: [v('v1'), v('v2'), v('v3'), v('v4')],
+    meaning: [v('v1'), v('v2')],
+  },
+  progress_note: {
+    title: [v('v1'), v('v2')],
+    action: [
+      v('sessions', { needs: ['sessions'] }),
+      v('weeks', { needs: ['weeks'] }),
+      v('active_days', { needs: ['active_days'] }),
+      v('v1', { unless: ['sessions', 'weeks', 'active_days'] }),
+    ],
+    meaning: [v('v1'), v('v2')],
+  },
+  milestone_reached: {
+    // One fact names the milestone; its title says it with the user's real numbers.
+    title: [
+      v('first_session', { needs: ['first_session'] }),
+      v('first_week', { needs: ['first_week'] }),
+      v('sessions', { needs: ['sessions'] }),
+      v('active_days', { needs: ['active_days'] }),
+      v('weeks', { needs: ['weeks'] }),
+      v('record', { needs: ['record'] }),
+      v('improvement', { needs: ['improvement'] }),
+      v('goal_weight', { needs: ['goal_weight'] }),
+      v('checkpoint', { needs: ['checkpoint'] }),
+      v('v1', { unless: MILESTONE_FACTS }),
+    ],
+    action: [v('v1'), v('v2')],
+    meaning: [v('v1'), v('v2')],
+  },
+  encouragement_kept_going: {
     title: [v('v1'), v('v2')],
     action: [v('v1'), v('v2')],
     meaning: [v('v1'), v('v2')],

@@ -2,6 +2,7 @@ import en from '../../../i18n/locales/en';
 import fr from '../../../i18n/locales/fr';
 import { DEFAULT_NOTIFICATION_PREFERENCES, type NotificationPreferences } from '../../notifications/types';
 import type { GoalType } from '../../profile/schemas';
+import { daysBetween } from '../../shared/dates';
 import { NO_SAFETY_ISSUE, type SafetyAssessment } from '../safety';
 import type { JourneyState } from '../state';
 import { goalFamily, type Tone } from '../voice/types';
@@ -48,6 +49,8 @@ export const allPrefsOn = (patch: Partial<NotificationPreferences> = {}): Notifi
 
 export interface StatePatch {
   today?: string;
+  startedOn?: string;
+  comeback?: boolean;
   goal?: GoalType;
   motivation?: JourneyState['motivation'];
   tone?: Tone;
@@ -69,6 +72,11 @@ export const stateFor = (p: StatePatch = {}): JourneyState => {
   const safety = { ...NO_SAFETY_ISSUE, ...p.safety };
   return {
     today,
+    journey: {
+      startedOn: p.startedOn ?? '2026-09-01',
+      dayIndex: Math.max(0, daysBetween(p.startedOn ?? '2026-09-01', today)),
+      firstDay: (p.startedOn ?? '2026-09-01') >= today,
+    },
     goal: { type: goal, family: goalFamily(goal) },
     motivation: p.motivation ?? { why: 'être fier de moi', change: 'avoir plus d’énergie', feel: 'léger et en forme' },
     tone: p.tone ?? 'gentle',
@@ -78,7 +86,12 @@ export const stateFor = (p: StatePatch = {}): JourneyState => {
       weeklyStreak: p.weeklyStreak ?? 0,
       weightDirection: p.weightDirection ?? 'unknown',
     },
-    momentum: { lastActivityDate: p.lastActivityDate ?? null, daysSinceActivity: null },
+    momentum: {
+      lastActivityDate: p.lastActivityDate ?? null,
+      daysSinceActivity: null,
+      previousActivityDate: p.lastActivityDate ?? null,
+      comeback: p.comeback ?? false,
+    },
     difficulties: { fatigue: p.fatigue ?? 'unknown' },
     profile: { age: 30, weightStatus: 'not_underweight', noPush: false, ...p.profile },
     safety: { ...safety, active: safety.flags.length > 0 },

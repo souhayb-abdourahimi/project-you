@@ -647,6 +647,49 @@ const en: LocaleShape = {
       safety_fast_loss: { v1: 'Your pace is fast', v2: 'Let’s slow down a little', sparse: 'Your pace seems fast' },
       safety_training_load: { v1: 'Time to recover', v2: 'Easing off' },
       safety_low_logging: { v1: 'How is it going?', v2: 'A quick check-in on your week' },
+      first_day: {
+        v1: 'Day one',
+        v2: 'Here we go',
+      },
+      comeback_welcome: {
+        v1: 'Good to see you again 👋',
+      },
+      difficult_day: {
+        v1: 'Busy day? We adapt.',
+        v2: 'A simpler version today',
+      },
+      rest_day: {
+        v1: 'Rest day',
+        v2: 'Recovery day',
+      },
+      daily_tip: {
+        v1: 'A tip for today',
+        v2: 'Small tip',
+      },
+      daily_reflection: {
+        v1: 'A question for you',
+        v2: 'A moment for you',
+      },
+      progress_note: {
+        v1: 'What you have built',
+        v2: 'It’s moving',
+      },
+      milestone_reached: {
+        first_session: 'First session done 🎉',
+        first_week: 'First week complete 🎉',
+        sessions: '{{sessions}} sessions done 🔥',
+        active_days: '{{active_days}} active days 🔥',
+        weeks: '{{weeks}} weeks in a row 🔥',
+        record: 'First record 💪',
+        improvement: 'First measured progress 🎉',
+        goal_weight: 'Weight goal reached 🎉',
+        checkpoint: 'Step {{checkpoint}} of your journey reached 🎉',
+        v1: 'A milestone reached 🎉',
+      },
+      encouragement_kept_going: {
+        v1: 'You kept the thread',
+        v2: 'Still on track',
+      },
     },
     action: {
       session_planned: {
@@ -738,6 +781,55 @@ const en: LocaleShape = {
         v1: 'How are your meals going at the moment? If your plan no longer fits your days, we can adjust it together.',
         v2: 'How are your meals going this week? If the plan doesn’t suit you anymore, you can adjust it in a few seconds.',
       },
+      first_day: {
+        workout: 'Today, just one thing: discover your first session, at your own pace.',
+        meal: 'Today, just one thing: look at your first planned meal.',
+        v1: 'Start simple: pick one action from today’s plan.',
+      },
+      comeback_welcome: {
+        v1: 'We start again from today, with one small action.',
+        v2: 'We start from today: pick the smallest action in your plan.',
+        v3: 'We start again from today, without going back over past days.',
+      },
+      difficult_day: {
+        minutes: 'Today, the short version is enough: {{minutes}} minutes.',
+        walk: 'Today, an easy 10 to 15 minute walk is enough.',
+        rest: 'Today, rest is the best choice: just keep your meals.',
+        v1: 'Today we keep the essentials: a short version of your plan.',
+      },
+      rest_day: {
+        v1: 'Enjoy your day: an easy walk if you feel like it.',
+        v2: 'No session today: go to bed a little earlier if you can.',
+        v3: 'Today, relax and keep your planned meals.',
+      },
+      daily_tip: {
+        v1: 'Lay out your gym clothes the day before your next session.',
+        v2: 'Keep a bottle of water close to you today.',
+        v3: 'Plan a protein-rich snack for the afternoon.',
+        v4: 'Pick your bedtime tonight and stick to it.',
+        v5: 'Look at tomorrow’s meals tonight: it saves time.',
+        v6: 'Take the stairs or walk 5 minutes after a meal.',
+      },
+      daily_reflection: {
+        v1: 'What helped you move forward this week?',
+        v2: 'What time of day suits you best for moving?',
+        v3: 'What would make tomorrow a little simpler?',
+        v4: 'What are you pleased with since you started?',
+      },
+      progress_note: {
+        sessions: 'You have done {{sessions}} sessions since you started.',
+        weeks: '{{weeks}} weeks in a row with at least one session.',
+        active_days: '{{active_days}} active days since you started.',
+        v1: 'Look at your progress: every logged entry tells your story.',
+      },
+      milestone_reached: {
+        v1: 'Take a moment to look at how far you have come in My progress.',
+        v2: 'Enjoy this moment: you built it day after day.',
+      },
+      encouragement_kept_going: {
+        v1: 'Today, go back to your usual plan if your day allows it.',
+        v2: 'Look at what is planned today, at your own pace.',
+      },
     },
     meaning: {
       session_planned: {
@@ -819,6 +911,43 @@ const en: LocaleShape = {
       safety_low_logging: {
         v1: 'A plan that fits you is easier to follow.',
         v2: 'Your plan is there to help you, not to make life harder.',
+      },
+      first_day: {
+        v1: 'Everything starts with a first step.',
+        v2: 'The first days are for finding your bearings.',
+      },
+      comeback_welcome: {
+        v1: 'Your progress does not start from zero.',
+        v2: 'Coming back is what matters most.',
+      },
+      difficult_day: {
+        v1: 'A small action keeps the thread, and that is what counts over months.',
+        v2: 'Adapting your plan to your day is how you keep going.',
+        v3: 'A short version really counts: it keeps the habit alive.',
+      },
+      rest_day: {
+        v1: 'Rest is part of the programme: that is when your body progresses.',
+        v2: 'Recovering today makes your next session easier.',
+      },
+      daily_tip: {
+        v1: 'Small preparations make the day simpler.',
+        v2: 'Simple habits are the ones that last.',
+      },
+      daily_reflection: {
+        v1: 'Spotting what works helps you do it again.',
+        v2: 'No right or wrong answer: it is your journey.',
+      },
+      progress_note: {
+        v1: 'Consistency shows in your data.',
+        v2: 'Seeing how far you have come helps you keep going.',
+      },
+      milestone_reached: {
+        v1: 'This milestone shows what your consistency builds.',
+        v2: 'Each step brings the next one closer.',
+      },
+      encouragement_kept_going: {
+        v1: 'For the habit, a short version counts as much as a full session.',
+        v2: 'Keeping the thread, even a little, is what moves you forward.',
       },
     },
   },

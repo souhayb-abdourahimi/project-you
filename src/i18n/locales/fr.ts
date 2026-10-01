@@ -666,6 +666,49 @@ const fr = {
       safety_fast_loss: { v1: 'Ton rythme est rapide', v2: 'On ralentit un peu', sparse: 'Ton rythme semble rapide' },
       safety_training_load: { v1: 'Place à la récupération', v2: 'On lève le pied' },
       safety_low_logging: { v1: 'Comment ça se passe ?', v2: 'Petit point sur ta semaine' },
+      first_day: {
+        v1: 'Premier jour',
+        v2: 'C’est parti',
+      },
+      comeback_welcome: {
+        v1: 'Content de te revoir 👋',
+      },
+      difficult_day: {
+        v1: 'Journée chargée ? On adapte.',
+        v2: 'Une version plus simple aujourd’hui',
+      },
+      rest_day: {
+        v1: 'Jour de repos',
+        v2: 'Journée de récupération',
+      },
+      daily_tip: {
+        v1: 'Un conseil pour aujourd’hui',
+        v2: 'Petite astuce',
+      },
+      daily_reflection: {
+        v1: 'Une question pour toi',
+        v2: 'Un moment pour toi',
+      },
+      progress_note: {
+        v1: 'Ce que tu as construit',
+        v2: 'Ça avance',
+      },
+      milestone_reached: {
+        first_session: 'Première séance faite 🎉',
+        first_week: 'Première semaine terminée 🎉',
+        sessions: '{{sessions}} séances terminées 🔥',
+        active_days: '{{active_days}} jours actifs 🔥',
+        weeks: '{{weeks}} semaines d’affilée 🔥',
+        record: 'Premier record 💪',
+        improvement: 'Premier progrès mesuré 🎉',
+        goal_weight: 'Objectif de poids atteint 🎉',
+        checkpoint: 'Étape {{checkpoint}} de ton parcours atteinte 🎉',
+        v1: 'Un jalon atteint 🎉',
+      },
+      encouragement_kept_going: {
+        v1: 'Tu as gardé le fil',
+        v2: 'Le fil est gardé',
+      },
     },
     action: {
       session_planned: {
@@ -757,6 +800,55 @@ const fr = {
         v1: 'Comment ça se passe avec tes repas en ce moment ? Si ton plan ne colle plus à tes journées, on peut l’ajuster ensemble.',
         v2: 'Comment se passent tes repas cette semaine ? Si le plan ne te convient plus, tu peux l’ajuster en quelques secondes.',
       },
+      first_day: {
+        workout: 'Aujourd’hui, une seule chose : découvre ta première séance, à ton rythme.',
+        meal: 'Aujourd’hui, une seule chose : regarde ton premier repas prévu.',
+        v1: 'Commence simple : choisis une seule action dans ton plan du jour.',
+      },
+      comeback_welcome: {
+        v1: 'On reprend à partir d’aujourd’hui, avec une seule petite action.',
+        v2: 'On repart d’aujourd’hui : choisis la plus petite action du plan.',
+        v3: 'On reprend à partir d’aujourd’hui, sans revenir sur les jours passés.',
+      },
+      difficult_day: {
+        minutes: 'Aujourd’hui, la version courte suffit : {{minutes}} minutes.',
+        walk: 'Aujourd’hui, une marche tranquille de 10 à 15 minutes suffit.',
+        rest: 'Aujourd’hui, le repos est le meilleur choix : garde simplement tes repas.',
+        v1: 'Aujourd’hui, on garde l’essentiel : une version courte de ton plan.',
+      },
+      rest_day: {
+        v1: 'Profite de ta journée : une marche tranquille si tu en as envie.',
+        v2: 'Pas de séance aujourd’hui : couche-toi un peu plus tôt si tu peux.',
+        v3: 'Aujourd’hui, détends-toi et garde tes repas prévus.',
+      },
+      daily_tip: {
+        v1: 'Prépare ta tenue de sport la veille de ta prochaine séance.',
+        v2: 'Garde une bouteille d’eau près de toi aujourd’hui.',
+        v3: 'Prévois une collation riche en protéines pour l’après-midi.',
+        v4: 'Choisis ton heure de coucher ce soir et tiens-la.',
+        v5: 'Regarde tes repas de demain ce soir : tu gagneras du temps.',
+        v6: 'Monte les escaliers ou marche 5 minutes après le repas.',
+      },
+      daily_reflection: {
+        v1: 'Qu’est-ce qui t’a aidé·e à avancer cette semaine ?',
+        v2: 'Quel moment de la journée te convient le mieux pour bouger ?',
+        v3: 'Qu’est-ce qui rendrait demain un peu plus simple ?',
+        v4: 'De quoi es-tu content·e depuis le début de ton projet ?',
+      },
+      progress_note: {
+        sessions: 'Tu as fait {{sessions}} séances depuis le début.',
+        weeks: '{{weeks}} semaines d’affilée avec au moins une séance.',
+        active_days: '{{active_days}} jours actifs depuis le début.',
+        v1: 'Regarde ton évolution : chaque donnée notée raconte ton parcours.',
+      },
+      milestone_reached: {
+        v1: 'Prends un instant pour regarder le chemin parcouru dans Mon évolution.',
+        v2: 'Savoure ce moment : tu l’as construit jour après jour.',
+      },
+      encouragement_kept_going: {
+        v1: 'Aujourd’hui, reprends ton plan habituel si ta journée le permet.',
+        v2: 'Regarde ce qui est prévu aujourd’hui, à ton rythme.',
+      },
     },
     meaning: {
       session_planned: {
@@ -839,6 +931,43 @@ const fr = {
       safety_low_logging: {
         v1: 'Un plan qui te ressemble est plus simple à suivre.',
         v2: 'Ton plan est là pour t’aider, pas pour te compliquer la vie.',
+      },
+      first_day: {
+        v1: 'Tout commence par un premier pas.',
+        v2: 'Les premiers jours servent à prendre tes repères.',
+      },
+      comeback_welcome: {
+        v1: 'Ta progression ne repart pas de zéro.',
+        v2: 'Revenir, c’est ce qui compte le plus.',
+      },
+      difficult_day: {
+        v1: 'Une petite action garde le fil, et c’est ce qui compte sur plusieurs mois.',
+        v2: 'Adapter ton plan à ta journée, c’est continuer.',
+        v3: 'Une version courte compte vraiment : elle entretient l’habitude.',
+      },
+      rest_day: {
+        v1: 'Le repos fait partie du programme : c’est là que ton corps progresse.',
+        v2: 'Récupérer aujourd’hui rend ta prochaine séance plus facile.',
+      },
+      daily_tip: {
+        v1: 'Les petites préparations rendent la journée plus simple.',
+        v2: 'Ce sont les habitudes simples qui tiennent sur la durée.',
+      },
+      daily_reflection: {
+        v1: 'Repérer ce qui marche aide à le refaire.',
+        v2: 'Pas de bonne ou de mauvaise réponse : c’est ton parcours.',
+      },
+      progress_note: {
+        v1: 'La régularité se voit dans tes données.',
+        v2: 'Voir le chemin parcouru aide à continuer.',
+      },
+      milestone_reached: {
+        v1: 'Ce jalon montre ce que ta régularité construit.',
+        v2: 'Chaque étape rend la suivante plus proche.',
+      },
+      encouragement_kept_going: {
+        v1: 'Une version courte compte pour l’habitude, autant qu’une séance complète.',
+        v2: 'Garder le fil, même un peu, c’est ce qui fait avancer.',
       },
     },
   },

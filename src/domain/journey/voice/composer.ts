@@ -1,6 +1,8 @@
 /**
  * The coach's voice: builds one message from the catalog, deterministically, for any channel.
- * 1. anchor: one of the user's own answers (why / change / feel), the least recently recalled;
+ * 1. anchor: one of the user's own answers (why / change / feel), the one that fits the moment
+ *    (voice/kinds.ts: change on a training day, feel on a rest day, why on a comeback…), never the
+ *    same as the day before;
  *    a generic anchor when the user hid personal words or gave none; a `care` anchor for safety
  *    messages, which never lean on the goal; a `checkin` anchor for the low-logging check-in;
  *    for a minor or an underweight user (state.profile.noPush) the fact `protected` removes every
@@ -10,6 +12,7 @@
  */
 import type { JourneyState } from '../state';
 import { ANCHORS, CATALOG, anchorKey, eligible, partKey, type PartKind, type Variant } from './catalog';
+import { TRIGGER_ANCHOR_CONTEXT, pickAnchorSlot, type AnchorContext } from './kinds';
 import { lastUses, leastRecentlyUsed } from './rotation';
 import {
   SAFETY_TRIGGERS,
@@ -45,8 +48,10 @@ export function composeMessage(input: {
   facts: Record<string, string>;
   state: Pick<JourneyState, 'goal' | 'tone' | 'motivation' | 'profile'>;
   quotePersonalWords: boolean;
-  /** Messages already used on this channel (rotation). */
+  /** Messages already used, on every channel (rotation). */
   history: VoiceUse[];
+  /** Which answer fits the moment; defaults to the trigger's context (voice/kinds.ts). */
+  anchorContext?: AnchorContext;
 }): ComposedMessage {
   const { trigger, date, facts, state, history } = input;
   // `protected` only filters variants; it is not interpolated anywhere.
@@ -69,8 +74,12 @@ export function composeMessage(input: {
           : input.quotePersonalWords
             ? given
             : ['private'];
-  const slotUse = lastUses(history, (e) => [e.anchorSlot]);
-  const [slot] = leastRecentlyUsed(slots, (s) => slotUse.get(s) ?? '', '');
+  // The user's own answers: the one that fits the moment (anchor context), never two days in a row.
+  const personal =
+    slots.every((s) => s === 'why' || s === 'change' || s === 'feel')
+      ? pickAnchorSlot(given, input.anchorContext ?? TRIGGER_ANCHOR_CONTEXT[trigger] ?? 'default', history, date)
+      : null;
+  const slot: AnchorSlot = personal ?? slots[0];
 
   const anchorUse = lastUses(history, (e) => [templateParts(e.templateId).anchor]);
   const [anchor] = leastRecentlyUsed(ANCHORS[slot], (x) => anchorUse.get(`${slot}.${x.id}`) ?? '', seed);

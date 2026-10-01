@@ -21,8 +21,13 @@ export interface CheckinSignal {
   fatigue: number;
 }
 
+/** Days without any logged activity after which coming back is a "comeback" (docs/RETENTION.md §2). */
+export const COMEBACK_AFTER_DAYS = 3;
+
 export interface JourneyState {
   today: IsoDate;
+  /** Where the user is in the journey. `startedOn`: onboarding or first logged data, the earliest. */
+  journey: { startedOn: IsoDate; dayIndex: number; firstDay: boolean };
   goal: { type: GoalType; family: GoalFamily };
   /** The user's own words (motivations table). */
   motivation: Pick<MotivationProfile, 'why' | 'change' | 'feel'>;
@@ -40,6 +45,10 @@ export interface JourneyState {
     /** Last day with a completed session, a weigh-in or an eaten meal; null when nothing is logged yet. */
     lastActivityDate: IsoDate | null;
     daysSinceActivity: number | null;
+    /** Last activity strictly before today, so a comeback stays a comeback all day long. */
+    previousActivityDate: IsoDate | null;
+    /** Back after at least COMEBACK_AFTER_DAYS days without any logged activity. */
+    comeback: boolean;
   };
   difficulties: {
     /** From today's or yesterday's check-in; `unknown` without one. */
@@ -66,6 +75,10 @@ export interface JourneyState {
 
 export interface JourneyInput {
   today: IsoDate;
+  /** First day of the journey (see journeyStart); defaults to the earliest logged date or today. */
+  startedOn?: IsoDate;
+  /** Other logged activity (light activity, check-ins, meals logged in past weeks). */
+  otherActivityDates?: IsoDate[];
   goal: GoalType;
   motivation: MotivationProfile;
   tone: Tone;
@@ -96,9 +109,14 @@ export function loggedDays(...mealPlans: (WeeklyMealPlan | null | undefined)[]):
       if (byDate.has(day.date)) continue;
       const eaten = day.meals.filter((m) => m.status === 'eaten');
       const unmarkedMeals = day.meals.filter((m) => m.status === 'planned').length;
+      // A replaced meal is logged, but what was eaten instead is unknown: the day is never "complete"
+      // for the low-intake rule (it would look lower than it was), yet it is not "unlogged" either.
+      const replaced = day.meals.some((m) => m.status === 'replaced');
+      const marked = day.meals.length > 0 && unmarkedMeals === 0 && day.meals.some((m) => m.status !== 'skipped');
       byDate.set(day.date, {
         date: day.date,
-        complete: day.meals.length > 0 && eaten.length > 0 && unmarkedMeals === 0,
+        complete: day.meals.length > 0 && eaten.length > 0 && unmarkedMeals === 0 && !replaced,
+        marked,
         unmarkedMeals,
         kcal: eaten.reduce((sum, m) => sum + m.nutrition.kcal, 0),
         targetKcal: day.targetKcal,
@@ -106,6 +124,14 @@ export function loggedDays(...mealPlans: (WeeklyMealPlan | null | undefined)[]):
     }
   }
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/**
+ * First day of the journey: the onboarding date or the first logged data, whichever is earlier
+ * (redoing the questionnaire must not restart the story).
+ */
+export function journeyStart(onboardedOn: IsoDate, loggedDates: IsoDate[]): IsoDate {
+  return loggedDates.reduce((a, b) => (b < a ? b : a), onboardedOn);
 }
 
 function journeyProfile(input: JourneyInput): JourneyState['profile'] {
@@ -130,8 +156,16 @@ export function deriveJourneyState(input: JourneyInput): JourneyState {
   const eatenDates = (input.mealPlan?.days ?? [])
     .filter((d) => d.meals.some((m) => m.status === 'eaten'))
     .map((d) => d.date);
-  const activity = [...sessionDates, ...input.weights.map((w) => w.date), ...eatenDates].filter(past);
+  const activity = [
+    ...sessionDates,
+    ...input.weights.map((w) => w.date),
+    ...eatenDates,
+    ...(input.otherActivityDates ?? []),
+  ].filter(past);
   const lastActivityDate = activity.length ? activity.reduce((a, b) => (a > b ? a : b)) : null;
+  const before = activity.filter((d) => d < today);
+  const previousActivityDate = before.length ? before.reduce((a, b) => (a > b ? a : b)) : null;
+  const startedOn = input.startedOn ?? journeyStart(today, activity);
 
   const weekStart = startOfWeek(today);
   const weeks: boolean[] = [];
@@ -171,6 +205,7 @@ export function deriveJourneyState(input: JourneyInput): JourneyState {
 
   return {
     today,
+    journey: { startedOn, dayIndex: Math.max(0, daysBetween(startedOn, today)), firstDay: startedOn >= today },
     goal: { type: input.goal, family },
     motivation: { why: input.motivation.why, change: input.motivation.change, feel: input.motivation.feel },
     tone: input.tone,
@@ -183,6 +218,8 @@ export function deriveJourneyState(input: JourneyInput): JourneyState {
     momentum: {
       lastActivityDate,
       daysSinceActivity: lastActivityDate ? daysBetween(lastActivityDate, today) : null,
+      previousActivityDate,
+      comeback: previousActivityDate !== null && daysBetween(previousActivityDate, today) >= COMEBACK_AFTER_DAYS,
     },
     difficulties: { fatigue },
     profile: journeyProfile(input),

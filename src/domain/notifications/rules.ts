@@ -70,6 +70,15 @@ export const TRIGGER_PRIORITY: Record<Trigger, number> = {
   success_streak: 7,
   fatigue_recovery: 8,
   daily_why: 9,
+  milestone_reached: 6,
+  encouragement_kept_going: 4,
+  progress_note: 7,
+  first_day: 9,
+  comeback_welcome: 9,
+  difficult_day: 9,
+  rest_day: 9,
+  daily_tip: 9,
+  daily_reflection: 9,
 };
 
 export function collectCandidates(input: {
