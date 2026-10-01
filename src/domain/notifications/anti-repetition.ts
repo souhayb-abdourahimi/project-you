@@ -2,6 +2,7 @@
  * Anti-repetition and anti-harassment rules of the notification channel (docs/NOTIFICATIONS.md):
  * - trigger cooldowns (one weekly message per week, one streak message per milestone…);
  * - one message per absence step and episode, never more than three per episode, then silence;
+ * - one low-logging check-in per episode (identified by its first unlogged day), never repeated;
  * - fewer messages when the last ones were all ignored.
  * Wording rotation (least recently used parts) lives in the voice (journey/voice/rotation.ts).
  */
@@ -33,8 +34,9 @@ export function onCooldown(
   const sameTrigger = history.filter((e) => e.trigger === trigger);
   // Already sent that day (e.g. the user moved the reminder time after it was delivered).
   if (sameTrigger.some((e) => e.date === date)) return true;
-  if (ABSENCE.includes(trigger)) {
-    // One message per step for a given absence episode (identified by the last active day).
+  if (ABSENCE.includes(trigger) || trigger === 'safety_low_logging') {
+    // One message per step for a given absence episode (identified by the last active day), and one
+    // check-in per low-logging episode (identified by its first unlogged day).
     return sameTrigger.some((e) => e.facts.since === facts.since);
   }
   if (trigger === 'success_streak' && sameTrigger.some((e) => e.facts.weeks === facts.weeks)) return true;

@@ -259,6 +259,15 @@ reset role;
 select pg_temp.expect((select count(*) from public.notification_history where user_id = '00000000-0000-0000-0000-00000000000a') = 1, 'prune by B leaves A history untouched');
 commit;
 
+-- PR #3: the low-logging check-in and its neutral anchor are accepted.
+begin;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+insert into public.notification_history (user_id, client_id, trigger, category, template_id, anchor_slot, local_date, local_time, facts)
+  values ('00000000-0000-0000-0000-00000000000a', '2026-10-01:safety_low_logging', 'safety_low_logging', 'progress', 'safety_low_logging|v1|checkin.v2|v1|v2', 'checkin', current_date, '08:30', '{"since":"2026-09-28"}');
+select pg_temp.expect((select count(*) from public.notification_history where trigger = 'safety_low_logging') = 1, 'low-logging check-in stored with the checkin anchor');
+reset role;
+rollback;
+
 do $$
 begin
   begin

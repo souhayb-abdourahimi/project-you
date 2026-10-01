@@ -32,6 +32,9 @@ const base: JourneyInput = {
   checkins: [],
   mealPlan: null,
   mealName: (id) => (id === 'lunch_recipe' ? 'Curry de lentilles' : null),
+  age: 30,
+  heightCm: 175,
+  profileWeightKg: 75,
 };
 
 describe('journey state (single source of truth)', () => {
@@ -139,5 +142,59 @@ describe('journey state (single source of truth)', () => {
       })),
     );
     expect(deriveJourneyState({ ...base, mealPlan: skipped }).safety.active).toBe(false);
+  });
+
+  it('sees last week’s days through the previous plan, so low logging is not blind on Monday (PR #3)', () => {
+    const day = (date: string, status: Status) => ({
+      date,
+      meals: [
+        ['lunch', status, status === 'eaten' ? 700 : 0],
+        ['dinner', status === 'eaten' ? 'eaten' : status, status === 'eaten' ? 900 : 0],
+      ] as [string, Status, number][],
+    });
+    const previous = mealPlan(
+      ['2026-09-21', '2026-09-22', '2026-09-23', '2026-09-24']
+        .map((d) => day(d, 'eaten'))
+        .concat(['2026-09-25', '2026-09-26', '2026-09-27'].map((d) => day(d, 'planned'))),
+    );
+    const current = mealPlan([day('2026-09-28', 'planned'), day('2026-09-29', 'planned')]);
+    const monday = { ...base, today: '2026-09-28', mealPlan: current };
+    expect(deriveJourneyState(monday).safety.lowLogging).toBeNull();
+    const s = deriveJourneyState({ ...monday, previousMealPlan: previous });
+    expect(s.safety.active).toBe(false);
+    expect(s.safety.lowLogging?.since).toBe('2026-09-25');
+    // The current plan wins for a date present in both.
+    expect(loggedDays(current, mealPlan([day('2026-09-28', 'eaten')]))[0].unmarkedMeals).toBe(2);
+  });
+});
+
+describe('journey state: age and weight status (PR #3)', () => {
+  it('passes the age and the weight status of the nutrition engine', () => {
+    expect(deriveJourneyState(base).profile).toEqual({ age: 30, weightStatus: 'not_underweight', noPush: false });
+    expect(deriveJourneyState({ ...base, age: 16 }).profile).toEqual({
+      age: 16,
+      weightStatus: 'not_underweight',
+      noPush: true,
+    });
+    // 54 kg at 1.75 m: BMI 17.6 < 18.5.
+    expect(deriveJourneyState({ ...base, profileWeightKg: 54 }).profile).toMatchObject({
+      weightStatus: 'underweight',
+      noPush: true,
+    });
+  });
+
+  it('uses the latest weigh-in over the profile weight, and never guesses without a height', () => {
+    const weights = [
+      { date: '2026-09-20', weightKg: 60 },
+      { date: '2026-09-30', weightKg: 55 },
+      { date: '2026-10-05', weightKg: 70 },
+    ];
+    expect(deriveJourneyState({ ...base, weights }).profile.weightStatus).toBe('underweight');
+    expect(deriveJourneyState({ ...base, heightCm: null }).profile).toEqual({
+      age: 30,
+      weightStatus: 'unknown',
+      noPush: false,
+    });
+    expect(deriveJourneyState({ ...base, age: null }).profile.noPush).toBe(false);
   });
 });

@@ -24,6 +24,8 @@ export type { CompletedSession, SessionKey, WaistEntry };
 interface DataState {
   inventory: InventoryItem[];
   mealPlan: WeeklyMealPlan | null;
+  /** Last week's plan, kept on this device so the safety rule sees the days before Monday (never synced). */
+  previousMealPlan: WeeklyMealPlan | null;
   expenses: FoodExpense[];
   weights: (WeightEntry & { id: string })[];
   waist: (WaistEntry & { id: string })[];
@@ -44,6 +46,8 @@ interface DataState {
   setMealPlan: (plan: WeeklyMealPlan) => void;
   replaceMeal: (meal: PlannedMeal) => void;
   markMealEaten: (mealId: string) => void;
+  /** The user did not eat this meal: the day counts as logged, with no energy for that meal. */
+  markMealSkipped: (mealId: string) => void;
   addExpense: (amountCents: number, spentOn: IsoDate) => void;
   logWeight: (date: IsoDate, weightKg: number) => void;
   logWaist: (date: IsoDate, cm: number) => void;
@@ -63,6 +67,7 @@ const now = () => new Date().toISOString();
 const initial = {
   inventory: [],
   mealPlan: null,
+  previousMealPlan: null,
   expenses: [],
   weights: [],
   waist: [],
@@ -95,7 +100,11 @@ export const useDataStore = create<DataState>()(
           return { inventory: s.inventory.map((i) => (i.id === id ? { ...i, ...patch, updatedAt: now() } : i)) };
         }),
       removeInventoryItem: (id) => set((s) => ({ inventory: s.inventory.filter((i) => i.id !== id) })),
-      setMealPlan: (mealPlan) => set({ mealPlan }),
+      setMealPlan: (mealPlan) =>
+        set((s) => ({
+          mealPlan,
+          previousMealPlan: s.mealPlan && s.mealPlan.weekStart < mealPlan.weekStart ? s.mealPlan : s.previousMealPlan,
+        })),
       replaceMeal: (meal) =>
         set((s) => ({
           mealPlan: s.mealPlan && replaceMealInPlan(s.mealPlan, meal),
@@ -113,6 +122,21 @@ export const useDataStore = create<DataState>()(
               days: s.mealPlan.days.map((d) => ({
                 ...d,
                 meals: d.meals.map((m) => (m.id === mealId ? { ...m, status: 'eaten' as const } : m)),
+              })),
+            },
+          };
+        }),
+      markMealSkipped: (mealId) =>
+        set((s) => {
+          if (!s.mealPlan) return {};
+          return {
+            mealPlan: {
+              ...s.mealPlan,
+              days: s.mealPlan.days.map((d) => ({
+                ...d,
+                meals: d.meals.map((m) =>
+                  m.id === mealId && m.status === 'planned' ? { ...m, status: 'skipped' as const } : m,
+                ),
               })),
             },
           };

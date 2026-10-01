@@ -25,17 +25,28 @@ export const TRIGGERS = [
   'safety_low_intake',
   'safety_fast_loss',
   'safety_training_load',
+  'safety_low_logging',
 ] as const;
 export type Trigger = (typeof TRIGGERS)[number];
 
-/** Messages of the safety rule (journey/safety.ts): they slow down, never push. */
-export const SAFETY_TRIGGERS: readonly Trigger[] = ['safety_low_intake', 'safety_fast_loss', 'safety_training_load'];
+/**
+ * Messages of the safety rule (journey/safety.ts): they slow down, never push. `safety_low_logging`
+ * is the neutral check-in of the low-logging signal (D-027): not a safety message, it slows nothing
+ * down; it is listed here so it reaches the user whatever the category switches.
+ */
+export const SAFETY_TRIGGERS: readonly Trigger[] = [
+  'safety_low_intake',
+  'safety_fast_loss',
+  'safety_training_load',
+  'safety_low_logging',
+];
 
 /**
  * Which of the user's own answers the message recalls. `private`: hidden on the lock screen;
- * `none`: no answer given; `care`: safety messages, which never lean on the goal.
+ * `none`: no answer given; `care`: safety messages, which never lean on the goal; `checkin`: the
+ * neutral low-logging check-in, which neither leans on the goal nor sounds like a warning.
  */
-export type AnchorSlot = 'why' | 'change' | 'feel' | 'private' | 'none' | 'care';
+export type AnchorSlot = 'why' | 'change' | 'feel' | 'private' | 'none' | 'care' | 'checkin';
 
 export type Tone = 'gentle' | 'direct';
 

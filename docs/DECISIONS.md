@@ -285,3 +285,45 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
   - les seuils de sécurité sont des paramètres de conception, à faire relire par un professionnel de santé avant la bêta publique ;
   - l'écran Santé (PR #1) affiche encore l'« énergie active » estimée par l'appareil, contraire à la règle 7 : signalé, non modifié ici.
 - **Date** : 2026-10-01
+
+## D-025 — Interrupteur général des notifications : il coupe aussi les messages de sécurité ; la bannière d'Aujourd'hui compense
+
+- **Contexte** : PR #3. `planNotifications` renvoie une liste vide quand `prefs.enabled = false` (`src/domain/notifications/engine.ts`), messages de sécurité compris. Les catégories désactivées, elles, ne bloquent pas la sécurité (D-024).
+- **Décision** : comportement gardé et assumé. L'interrupteur général est un refus explicite de toute notification ; l'app ne l'outrepasse jamais, même pour la sécurité. En contrepartie, la règle de sécurité ne dépend pas des notifications : la bannière `SafetyNotice` de l'écran Aujourd'hui affiche le même message (même voix, même règle) que les rappels soient activés ou non, et la carte de motivation y est masquée.
+- **Vérification** : `src/features/journey/__tests__/today-safety-banner.test.tsx` rend le vrai écran Aujourd'hui avec les rappels coupés et une règle de sécurité active : la bannière est affichée, la motivation non, et aucune notification n'est planifiée.
+- **Alternatives** : laisser passer les messages de sécurité malgré l'interrupteur. Refusé : une notification envoyée après un refus explicite trahit la confiance et le système peut de toute façon l'empêcher (permission retirée) ; la sécurité ne doit pas reposer sur un canal que l'utilisateur peut fermer.
+- **Trade-offs** : un utilisateur qui coupe les rappels et n'ouvre plus l'app ne voit plus rien. C'est assumé : l'app ne peut pas joindre quelqu'un qui a tout refusé.
+- **Date** : 2026-10-01
+
+## D-026 — Règle de sécurité : couvrir les utilisateurs qui journalisent peu ; âge et poids dans le parcours
+
+- **Contexte** : PR #3. Les trois détections de D-024 supposent un utilisateur qui note sérieusement, alors que le profil le plus à risque est celui qui arrête de noter. Architecture et seuils existants inchangés ; on ajoute les cas manquants (`src/domain/journey/safety.ts`).
+- **Décision** :
+  - **`low_logging`** (nouveau signal, le plus faible) : au moins 3 jours passés consécutifs, jusqu'à hier, où au moins un repas prévu n'est ni marqué mangé ni marqué sauté, chez quelqu'un qui avait au moins 3 journées notées en entier dans les 7 jours précédents. Il ne déclenche pas le message de sécurité : un message neutre (`safety_low_logging`, ancre `checkin`) demande comment ça se passe et propose d'ajuster le plan, sans reproche ni chiffre. Une seule fois par épisode (épisode = premier jour non noté, comme les absences). Un autre signal actif le remplace. *Corrigé par D-027 : il ne suspend plus ni félicitations ni relances.*
+  - **Perte rapide avec peu de pesées** : chemin dégradé quand une fenêtre de 7 jours n'a qu'une pesée (au moins une dans chacune des trois). Il ne parle que si la baisse dépasse **2 %/semaine deux semaines de suite** (le double du rythme sûr), et le message dit que la mesure est peu fréquente et la tendance imprécise ; aucun chiffre.
+  - **Charge sur la seule fréquence** : au moins `max(prévu + 2, prévu × 1,5)` séances dans chacune des **3** dernières fenêtres de 7 jours, sans fatigue déclarée. Le message propose de ralentir (« et si tu gardais une journée de repos en plus ? ») ; les rappels de séance restent normaux.
+  - **Âge et poids** : l'état du parcours reçoit l'âge (même calcul que le moteur nutrition) et le statut de poids (IMC < 18,5 à partir de la dernière pesée, sinon du poids du profil). Mineur ou sous-poids → `profile.noPush` : le composeur retire toute variante qui pousse vers l'intensité ou le déficit (marquées `NO_PUSH`) et le bilan du dimanche ne félicite jamais une baisse de poids.
+  - Pour que ces cas soient atteignables : bouton « Je ne l'ai pas mangé » sur les repas (statut `skipped`, qui existait sans interface) et conservation locale du plan de la semaine précédente (`previousMealPlan`, jamais synchronisé), sans quoi la règle ne voyait rien avant le mercredi.
+  - Migration `20261001000003_safety_low_logging.sql` : nouveau déclencheur et nouvelle ancre acceptés par `notification_history`.
+- **Paramètres de conception à faire relire par un professionnel de santé** (avec ceux de D-024) : 3 jours non notés, 3 journées notées sur les 7 jours d'avant, 2 %/semaine avec une pesée par semaine, `prévu × 1,5` et `prévu + 2` séances, 3 semaines de suite, IMC 18,5 et 18 ans (repris du moteur nutrition). Valeurs dans `SAFETY` (`safety.ts`).
+- **Alternatives** :
+  - compter un repas non marqué comme non mangé : refusé (règle 7, aucune estimation) ;
+  - envoyer le message de sécurité complet en cas de non-journalisation : refusé (ne pas noter n'est pas un excès ; un ton d'alerte ferait fuir) ;
+  - exiger une fatigue déclarée pour toute alerte de charge : c'était le cas, mais les check-ins sont facultatifs.
+- **Trade-offs** :
+  - le statut `skipped` reste sur l'appareil (la synchronisation n'envoie que les repas mangés) ; un second appareil voit ces journées comme non notées ;
+  - avec une pesée par semaine, la variation d'eau d'un jour pèse lourd : d'où le seuil doublé, au prix de détections plus tardives ;
+  - un utilisateur qui n'a jamais noté ses repas ne reçoit pas `low_logging` (rien à comparer) : les relances d'absence s'en chargent.
+- **Date** : 2026-10-01
+
+## D-027 — `low_logging` est un signal d'engagement, pas un signal de danger (correction de D-026)
+
+- **Contexte** : PR #3, correction demandée par Souhayb le 2026-10-01. Dans D-026, `low_logging` entrait dans `safety.flags`, donc `safety.active` passait à vrai : l'utilisateur perdait le rappel quotidien, les célébrations et les relances d'absence, et ses rappels recevaient le fait `safety`. C'est l'inverse de ce qu'il faut : quelqu'un qui arrête de noter est en train de décrocher, l'accompagnement doit rester présent.
+- **Décision** :
+  - `low_logging` sort de `flags` et devient un champ distinct, `SafetyAssessment.lowLogging` (`{ since, days }` ou `null`). `active` ne dépend plus que de `low_intake`, `fast_weight_loss` et `training_load`.
+  - Avec `low_logging` seul : rappel quotidien, célébrations, relances d'absence et rappels sans fait `safety`, comme d'habitude. S'ajoute le check-in neutre `safety_low_logging`, une fois par épisode, inchangé.
+  - Avec un vrai signal de sécurité en même temps : le message de sécurité prime, le check-in ne part pas (inchangé).
+  - Le planificateur ne garde le check-in que sur un seul jour par planification : les jours suivants gardent leur message habituel au lieu de le perdre au profit d'un check-in que l'anti-répétition supprimerait.
+- **Pourquoi** : ne pas noter ne dit rien de ce qui a été mangé. C'est un signe que l'utilisateur s'éloigne de l'app, pas un excès. Couper la motivation à ce moment-là accélérerait le décrochage.
+- **Tests** : la matrice « ni félicitation ni relance » couvre seulement les trois signaux de sécurité ; un test vérifie que ces messages continuent de partir avec `low_logging` seul, avec le check-in en plus et sans fait `safety`.
+- **Date** : 2026-10-01

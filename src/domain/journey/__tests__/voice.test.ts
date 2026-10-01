@@ -1,7 +1,7 @@
 import en from '../../../i18n/locales/en';
 import fr from '../../../i18n/locales/fr';
 import { leaves, stateFor, translator } from '../__fixtures__/journey';
-import { ANCHORS, CATALOG, anchorKey, partKey, type PartKind } from '../voice/catalog';
+import { ANCHORS, CATALOG, NO_PUSH, anchorKey, partKey, type PartKind } from '../voice/catalog';
 import { composeMessage, renderMessage, shortQuote } from '../voice/composer';
 import { toneIssues } from '../voice/tone';
 import { SAFETY_TRIGGERS, TRIGGERS, type AnchorSlot } from '../voice/types';
@@ -48,20 +48,25 @@ describe('coach voice: catalog and locales', () => {
       { meal: 'Curry' },
       { safety: '1' },
       { below_floor: '1' },
+      { sparse: '1' },
+      { frequency: '1' },
+      { since: '2026-09-28' },
     ];
     for (const trigger of TRIGGERS) {
       for (const goal of ['fat_loss', 'muscle_gain', 'recomposition', 'maintenance', 'performance'] as const) {
         for (const tone of ['gentle', 'direct'] as const) {
-          for (const f of facts) {
-            const m = composeMessage({
-              trigger,
-              date: '2026-10-01',
-              facts: trigger === 'success_streak' ? { ...f, weeks: '4' } : f,
-              state: stateFor({ goal, tone }),
-              quotePersonalWords: true,
-              history: [],
-            });
-            expect(m.templateId).toMatch(SQL_TEMPLATE_ID);
+          for (const noPush of [false, true]) {
+            for (const f of facts) {
+              const m = composeMessage({
+                trigger,
+                date: '2026-10-01',
+                facts: trigger === 'success_streak' ? { ...f, weeks: '4' } : f,
+                state: stateFor({ goal, tone, profile: { noPush } }),
+                quotePersonalWords: true,
+                history: [],
+              });
+              expect(m.templateId).toMatch(SQL_TEMPLATE_ID);
+            }
           }
         }
       }
@@ -112,7 +117,8 @@ describe('coach voice: composer', () => {
   });
 
   it('safety messages never lean on the goal: neutral anchor, a professional is suggested', () => {
-    for (const trigger of SAFETY_TRIGGERS) {
+    // The low-logging check-in is not a full safety message (tested below).
+    for (const trigger of SAFETY_TRIGGERS.filter((x) => x !== 'safety_low_logging')) {
       const m = composeMessage({
         trigger,
         date: '2026-10-01',
@@ -153,4 +159,104 @@ describe('coach voice: composer', () => {
       expect(m.body[2].key).not.toBe('coach.meaning.meal_planned.lose');
     }
   });
+
+  it('low logging: a neutral check-in that asks how it is going and offers to adjust, never a reproach', () => {
+    for (const locale of ['fr', 'en'] as const) {
+      for (let i = 0; i < 4; i++) {
+        const m = composeMessage({
+          trigger: 'safety_low_logging',
+          date: `2026-10-0${i + 1}`,
+          facts: { since: '2026-09-28' },
+          state: stateFor(),
+          quotePersonalWords: true,
+          history: [],
+        });
+        expect(m.anchorSlot).toBe('checkin');
+        const { title, body } = renderMessage(m, translator(locale));
+        const text = `${title} ${body}`;
+        expect(text).toContain('?');
+        expect(body).toMatch(locale === 'fr' ? /ajust/ : /adjust/);
+        // Not the full safety message, no reproach about logging, nothing personal or goal-related.
+        expect(text).not.toMatch(/professionnel|professional|rempli|noté|logged|filled|fier de moi/i);
+        expect(toneIssues(text)).toEqual([]);
+      }
+    }
+  });
+
+  it('fast loss from few weigh-ins: always says the trend is imprecise, with no figure', () => {
+    for (let i = 0; i < 4; i++) {
+      for (const locale of ['fr', 'en'] as const) {
+        const m = composeMessage({
+          trigger: 'safety_fast_loss',
+          date: `2026-10-0${i + 1}`,
+          facts: { sparse: '1' },
+          state: stateFor(),
+          quotePersonalWords: true,
+          history: [],
+        });
+        const { title, body } = renderMessage(m, translator(locale));
+        expect(body).toMatch(locale === 'fr' ? /imprécise/ : /imprecise/);
+        expect(`${title} ${body}`).not.toMatch(/\d/);
+        expect(m.title.key).not.toBe('coach.title.safety_fast_loss.v1');
+      }
+    }
+  });
+
+  it('training load on frequency alone: a proposal to slow down, never a fatigue alert', () => {
+    for (let i = 0; i < 4; i++) {
+      const m = composeMessage({
+        trigger: 'safety_training_load',
+        date: `2026-10-0${i + 1}`,
+        facts: { frequency: '1' },
+        state: stateFor(),
+        quotePersonalWords: true,
+        history: [],
+      });
+      const { body } = renderMessage(m, t);
+      expect(body).not.toMatch(/fatigu/);
+      expect(body).toMatch(/\?|tu peux/);
+      expect(m.body[1].key).toMatch(/\.frequency\d$/);
+    }
+  });
+
+  it('never encourages intensity or a deficit for a minor or an underweight user', () => {
+    const pushing = goalPushKeys();
+    expect(pushing.length).toBeGreaterThan(5);
+    for (const trigger of TRIGGERS) {
+      for (const goal of ['fat_loss', 'weight_loss', 'muscle_gain', 'recomposition', 'performance'] as const) {
+        const history: { templateId: string; anchorSlot: AnchorSlot; date: string; time: string }[] = [];
+        // Enough rotations to see every eligible variant.
+        for (let i = 0; i < 8; i++) {
+          const m = composeMessage({
+            trigger,
+            date: `2026-10-0${i + 1}`,
+            facts: trigger === 'success_streak' ? { weeks: '4' } : trigger === 'meal_planned' ? { meal: 'Curry' } : {},
+            state: stateFor({ goal, profile: { noPush: true } }),
+            quotePersonalWords: true,
+            history,
+          });
+          history.push({
+            templateId: m.templateId,
+            anchorSlot: m.anchorSlot,
+            date: `2026-10-0${i + 1}`,
+            time: '08:30',
+          });
+          for (const part of [m.title, ...m.body]) expect(pushing).not.toContain(part.key);
+        }
+      }
+    }
+  });
 });
+
+/** Every catalog part that pushes toward the goal (marked `unless: NO_PUSH`). */
+function goalPushKeys(): string[] {
+  const out: string[] = [];
+  for (const trigger of TRIGGERS) {
+    for (const kind of ['title', 'action', 'meaning'] as PartKind[]) {
+      for (const v of CATALOG[trigger][kind]) {
+        if (NO_PUSH.every((f) => v.unless?.includes(f))) out.push(partKey(trigger, kind, v.id));
+      }
+    }
+  }
+  return out;
+}

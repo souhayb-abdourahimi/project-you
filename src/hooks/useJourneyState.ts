@@ -16,6 +16,7 @@ export function useJourneyState(plan: Plan | null): JourneyState | null {
   const { i18n } = useTranslation();
   const completed = useDataStore((s) => s.completedSessions);
   const weights = useDataStore((s) => s.weights);
+  const previousMealPlan = useDataStore((s) => s.previousMealPlan);
   const checkins = useNotificationStore((s) => s.checkins);
   const locale = i18n.language === 'en' ? 'en' : 'fr';
 
@@ -32,7 +33,12 @@ export function useJourneyState(plan: Plan | null): JourneyState | null {
       weights,
       checkins,
       mealPlan: plan.mealPlan,
+      previousMealPlan,
       mealName: (id) => getRecipe(id)?.name[locale] ?? null,
+      // Same age as the nutrition engine (reference year of today), so both layers agree on "minor".
+      age: Number(plan.today.slice(0, 4)) - plan.snapshot.user.birthYear,
+      heightCm: plan.snapshot.user.heightCm,
+      profileWeightKg: plan.snapshot.user.weightKg,
     });
-  }, [plan, completed, weights, checkins, locale]);
+  }, [plan, completed, weights, checkins, previousMealPlan, locale]);
 }
