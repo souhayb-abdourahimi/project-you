@@ -59,3 +59,35 @@ export interface ExerciseSwap {
   toId: string;
   reason: ReplacementReason;
 }
+
+/** A meal the user marked, kept after its week leaves the plan (journal of the journey). */
+export interface MealLogEntry {
+  /** Planner meal id (`${date}…`), also the server row's source id. */
+  id: string;
+  /** Server row id when the entry came from another device (its planner id is unknown here). */
+  rowId?: string;
+  date: IsoDate;
+  slot: 'breakfast' | 'lunch' | 'snack' | 'dinner';
+  recipeId: string;
+  servings: number;
+  status: 'eaten' | 'skipped' | 'replaced';
+  reason?: MealReason;
+  kcal: number;
+}
+
+/** Body measurements other than the waist (the waist keeps its own list for compatibility). */
+export const MEASUREMENT_KINDS = ['hips', 'chest', 'arm', 'thigh', 'neck'] as const;
+export type MeasurementKind = (typeof MEASUREMENT_KINDS)[number];
+
+export interface MeasurementEntry {
+  id: string;
+  date: IsoDate;
+  kind: MeasurementKind;
+  cm: number;
+}
+
+/** A milestone reached (derived) and whether it was celebrated: celebrated once, on any device. */
+export interface MilestoneRecord {
+  reachedOn: IsoDate;
+  celebratedAt: string | null;
+}

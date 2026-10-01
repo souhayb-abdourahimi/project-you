@@ -215,6 +215,79 @@ describeDb('sync against the real schema (Postgres + RLS)', () => {
     expect(a.state().inventory).toEqual([]);
   });
 
+  it('journey history (D-028) goes through the real schema and comes back on a second device', async () => {
+    const done = sessionKey('2026-09-29', 0);
+    const replaced = sessionKey('2026-09-27', 1);
+    const phone = memoryStore({
+      completedSessions: [
+        { date: '2026-09-29', sessionIndex: 0, variant: 'full', completedAt: '2026-09-29T19:00:00.000Z' },
+      ],
+      sessionIds: {
+        [done]: 'aaaaaaaa-0000-4000-8000-0000000000d1',
+        [replaced]: 'aaaaaaaa-0000-4000-8000-0000000000d2',
+      },
+      sessionOutcomes: { [replaced]: { status: 'replaced', replacedBy: 'walk', reason: 'tired', at: '' } },
+      exerciseSwaps: { [done]: { goblet_squat: 'split_squat' } },
+      swapReasons: { [done]: { goblet_squat: 'dislike' } },
+      dayLogs: [
+        { date: '2026-09-27', fatigue: 4, energy: 2, mode: 'difficult', activity: 'walk', activityMinutes: 15 },
+      ],
+      mealLog: [
+        {
+          id: '2026-09-21-lunch-1',
+          date: '2026-09-21',
+          slot: 'lunch',
+          recipeId: 'lentil_curry',
+          servings: 1,
+          status: 'skipped',
+          reason: 'no_time',
+          kcal: 0,
+        },
+      ],
+      measurements: [{ id: 'aaaaaaaa-0000-4000-8000-0000000000d3', date: '2026-09-29', kind: 'chest', cm: 101 }],
+      weeklyCheckins: [
+        {
+          weekStart: '2026-09-21',
+          weekRating: 3,
+          fatigue: 4,
+          mainProblem: 'sleep',
+          answeredAt: '2026-09-27T18:00:00.000Z',
+        },
+      ],
+      milestones: { first_session: { reachedOn: '2026-09-29', celebratedAt: null } },
+      adjustments: [
+        {
+          id: 'aaaaaaaa-0000-4000-8000-0000000000d4',
+          kind: 'nutrition',
+          changeKey: 'calories_per_day',
+          from: 0,
+          to: -120,
+          reasonKey: 'adapt.reason.slow_loss',
+          evidence: { weeks: 3, adherence: 85 },
+          status: 'proposed',
+          effectiveFrom: '2026-10-05',
+          decidedAt: '2026-10-04T18:00:00.000Z',
+        },
+      ],
+    });
+    const up = await syncOnce(restAs(db, A), phone, A);
+    expect(up).toMatchObject({ offline: false, failed: 0, rejected: 0 });
+
+    const laptop = memoryStore();
+    await syncOnce(restAs(db, A), laptop, A);
+    const s = laptop.state();
+    expect(s.sessionOutcomes?.[replaced]).toMatchObject({ status: 'replaced', replacedBy: 'walk', reason: 'tired' });
+    expect(s.swapReasons).toMatchObject({ [done]: { goblet_squat: 'dislike' } });
+    expect(s.dayLogs).toEqual(phone.state().dayLogs);
+    expect(s.measurements).toEqual(phone.state().measurements);
+    expect(s.weeklyCheckins).toEqual(phone.state().weeklyCheckins);
+    expect(s.milestones).toEqual(phone.state().milestones);
+    expect(s.adjustments).toEqual(phone.state().adjustments);
+    expect(s.mealLog).toEqual([expect.objectContaining({ date: '2026-09-21', status: 'skipped', reason: 'no_time' })]);
+    // The second device has nothing to push back.
+    expect((await syncOnce(restAs(db, A), laptop, A)).pushed).toBe(0);
+  });
+
   it('refuses a row that violates a constraint without losing the others', async () => {
     const store = memoryStore({
       weights: [

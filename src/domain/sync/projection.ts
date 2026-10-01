@@ -7,6 +7,20 @@
  */
 import { z } from 'zod';
 
+import type { Adjustment } from '../journey/adjustments';
+import {
+  DAY_MODES,
+  LIGHT_ACTIVITIES,
+  MEAL_REASONS,
+  MEASUREMENT_KINDS,
+  SESSION_REASONS,
+  type DayLog,
+  type MealLogEntry,
+  type MeasurementEntry,
+  type MilestoneRecord,
+  type SessionOutcome,
+} from '../journey/outcomes';
+import { MAIN_PROBLEMS, type WeeklyCheckin } from '../journey/weekly-checkin';
 import type { FoodExpense } from '../meals/budget';
 import type { InventoryItem, InventorySource, InventoryUnit } from '../meals/inventory';
 import type { MealSlot } from '../meals/recipes';
@@ -16,6 +30,7 @@ import type { WeightEntry } from '../progress/weight';
 import type { IsoDate } from '../shared/dates';
 import type { SessionVariant } from '../training/adapt';
 import type { LoggedSet } from '../training/progression';
+import type { ReplacementReason } from '../training/replacement';
 
 export interface CompletedSession {
   date: IsoDate;
@@ -69,10 +84,47 @@ const REMOTE_ROWS = {
     rpe: nullableFinite,
   }),
   meal_plan_items: z.object({
+    id: z.string(),
     date: isoDate,
     slot: z.enum(['breakfast', 'lunch', 'snack', 'dinner']),
     recipe_id: z.string(),
     status: z.string(),
+    servings: finite.positive().nullish(),
+    reason: z.enum(MEAL_REASONS).nullish(),
+  }),
+  daily_checkins: z.object({
+    id: z.string(),
+    date: isoDate,
+    energy: nullableFinite,
+    motivation: nullableFinite,
+    fatigue: nullableFinite,
+    available_minutes: nullableFinite,
+    day_mode: z.enum(DAY_MODES).nullish(),
+    activity: z.enum(['walk', 'mobility', 'rest']).nullish(),
+    activity_minutes: nullableFinite,
+  }),
+  weekly_checkins: z.object({
+    id: z.string(),
+    week_start: isoDate,
+    week_rating: z.coerce.number().int().min(1).max(5),
+    main_problem: z.enum(MAIN_PROBLEMS).nullish(),
+    answered_at: z.string(),
+  }),
+  exercise_substitutions: z.object({
+    session_id: z.string(),
+    from_exercise_id: z.string(),
+    to_exercise_id: z.string(),
+    reason: z.enum(['dislike', 'cant_do', 'no_equipment', 'easier', 'harder']).nullish(),
+  }),
+  journey_milestones: z.object({ milestone_id: z.string(), reached_on: isoDate, celebrated_at: z.string().nullish() }),
+  adjustments: z.object({
+    id: z.string(),
+    kind: z.string(),
+    change_key: z.string(),
+    reason_key: z.string(),
+    status: z.enum(['proposed', 'applied', 'declined', 'reverted']),
+    effective_from: isoDate,
+    decided_at: z.string(),
   }),
 } satisfies Partial<Record<string, z.ZodType>>;
 
@@ -87,6 +139,16 @@ export interface SyncableState {
   setLogs: Record<SessionKey, Record<string, LoggedSet[]>>;
   /** Server id of each workout session the user started or completed. */
   sessionIds: Record<SessionKey, string>;
+  // Journey history (D-028). Optional so older callers and exports stay valid.
+  sessionOutcomes?: Record<SessionKey, SessionOutcome>;
+  exerciseSwaps?: Record<SessionKey, Record<string, string>>;
+  swapReasons?: Record<SessionKey, Record<string, ReplacementReason>>;
+  dayLogs?: DayLog[];
+  mealLog?: MealLogEntry[];
+  measurements?: MeasurementEntry[];
+  weeklyCheckins?: WeeklyCheckin[];
+  milestones?: Record<string, MilestoneRecord>;
+  adjustments?: Adjustment[];
 }
 
 export type SyncTable =
@@ -100,7 +162,12 @@ export type SyncTable =
   | 'workout_sessions'
   | 'exercise_logs'
   | 'weight_logs'
-  | 'body_measurements';
+  | 'body_measurements'
+  | 'daily_checkins'
+  | 'weekly_checkins'
+  | 'exercise_substitutions'
+  | 'journey_milestones'
+  | 'adjustments';
 
 export type Row = Record<string, unknown>;
 
@@ -124,6 +191,11 @@ export const SYNC_TABLES: Record<SyncTable, TableSpec> = {
   exercise_logs: { key: 'id', deleteOnMissing: false },
   weight_logs: { key: 'id', deleteOnMissing: true },
   body_measurements: { key: 'id', deleteOnMissing: true },
+  daily_checkins: { key: 'id', deleteOnMissing: false },
+  weekly_checkins: { key: 'id', deleteOnMissing: true },
+  exercise_substitutions: { key: 'id', deleteOnMissing: false },
+  journey_milestones: { key: 'id', deleteOnMissing: false },
+  adjustments: { key: 'id', deleteOnMissing: false },
 };
 
 export const SYNC_TABLE_ORDER = Object.keys(SYNC_TABLES) as SyncTable[];
@@ -175,6 +247,10 @@ const goalId = (userId: string) => stableUuid(`${userId}:goal`);
 const mealRowId = (userId: string, mealId: string) => stableUuid(`${userId}:meal:${mealId}`);
 const setRowId = (sessionId: string, exerciseId: string, index: number) =>
   stableUuid(`${sessionId}:${exerciseId}:${index}`);
+const dayRowId = (userId: string, date: IsoDate) => stableUuid(`${userId}:day:${date}`);
+const weekRowId = (userId: string, weekStart: IsoDate) => stableUuid(`${userId}:week:${weekStart}`);
+const swapRowId = (sessionId: string, fromId: string) => stableUuid(`${sessionId}:swap:${fromId}`);
+const milestoneRowId = (userId: string, id: string) => stableUuid(`${userId}:milestone:${id}`);
 
 export function sessionKey(date: IsoDate, sessionIndex: number): SessionKey {
   return `${date}#${sessionIndex}`;
@@ -265,10 +341,24 @@ export function project(state: SyncableState, userId: string): Record<SyncTable,
   for (const w of state.waist) {
     put('body_measurements', { id: w.id, measured_on: w.date, kind: 'waist', value_cm: w.cm, deleted_at: null });
   }
-  // Meals: only what was actually eaten (the plan itself is recomputed from the profile).
+  // Meals: only what the user marked, eaten, skipped or replaced (the plan itself is recomputed
+  // from the profile). Past weeks come from the journal; the current plan wins for its own days.
+  for (const m of state.mealLog ?? []) {
+    put('meal_plan_items', {
+      id: m.rowId ?? mealRowId(userId, m.id),
+      date: m.date,
+      slot: m.slot,
+      recipe_id: m.recipeId,
+      servings: m.servings,
+      ingredients: [],
+      status: m.status,
+      reason: orNull(m.reason),
+      deleted_at: null,
+    });
+  }
   for (const day of state.mealPlan?.days ?? []) {
     for (const m of day.meals) {
-      if (m.status !== 'eaten') continue;
+      if (m.status === 'planned') continue;
       put('meal_plan_items', {
         id: mealRowId(userId, m.id),
         date: m.date,
@@ -277,23 +367,94 @@ export function project(state: SyncableState, userId: string): Record<SyncTable,
         servings: m.servings,
         ingredients: m.ingredients,
         status: m.status,
+        reason: orNull(m.reason),
         deleted_at: null,
       });
     }
+  }
+  for (const m of state.measurements ?? []) {
+    put('body_measurements', { id: m.id, measured_on: m.date, kind: m.kind, value_cm: m.cm, deleted_at: null });
+  }
+  for (const d of state.dayLogs ?? []) {
+    put('daily_checkins', {
+      id: dayRowId(userId, d.date),
+      date: d.date,
+      energy: orNull(d.energy),
+      motivation: orNull(d.motivation),
+      fatigue: orNull(d.fatigue),
+      available_minutes: orNull(d.availableMinutes),
+      day_mode: orNull(d.mode),
+      activity: orNull(d.activity),
+      activity_minutes: orNull(d.activityMinutes),
+      deleted_at: null,
+    });
+  }
+  for (const c of state.weeklyCheckins ?? []) {
+    put('weekly_checkins', {
+      id: weekRowId(userId, c.weekStart),
+      week_start: c.weekStart,
+      week_rating: c.weekRating,
+      energy: orNull(c.energy),
+      motivation: orNull(c.motivation),
+      fatigue: orNull(c.fatigue),
+      nutrition: orNull(c.nutrition),
+      training: orNull(c.training),
+      difficulty: orNull(c.difficulty),
+      main_problem: orNull(c.mainProblem),
+      answered_at: c.answeredAt,
+      deleted_at: null,
+    });
+  }
+  for (const [id, m] of Object.entries(state.milestones ?? {})) {
+    put('journey_milestones', {
+      id: milestoneRowId(userId, id),
+      milestone_id: id,
+      reached_on: m.reachedOn,
+      celebrated_at: m.celebratedAt,
+      deleted_at: null,
+    });
+  }
+  for (const a of state.adjustments ?? []) {
+    put('adjustments', {
+      id: a.id,
+      kind: a.kind,
+      change_key: a.changeKey,
+      from_value: a.from,
+      to_value: a.to,
+      reason_key: a.reasonKey,
+      evidence: a.evidence,
+      status: a.status,
+      effective_from: a.effectiveFrom,
+      decided_at: a.decidedAt,
+      deleted_at: null,
+    });
   }
   const completed = new Map(state.completedSessions.map((c) => [sessionKey(c.date, c.sessionIndex), c]));
   for (const [key, id] of Object.entries(state.sessionIds)) {
     const { date, sessionIndex } = parseSessionKey(key);
     const done = completed.get(key);
+    const outcome = done ? undefined : state.sessionOutcomes?.[key];
     put('workout_sessions', {
       id,
       session_index: sessionIndex,
       scheduled_for: date,
       variant: done?.variant ?? 'full',
       completed_at: done?.completedAt ?? null,
-      status: done ? 'completed' : 'in_progress',
+      status: done ? 'completed' : (outcome?.status ?? 'in_progress'),
+      outcome_reason: orNull(outcome?.reason),
+      replaced_by: outcome?.status === 'replaced' ? orNull(outcome.replacedBy) : null,
       deleted_at: null,
     });
+    for (const [fromId, toId] of Object.entries(state.exerciseSwaps?.[key] ?? {})) {
+      put('exercise_substitutions', {
+        id: swapRowId(id, fromId),
+        session_id: id,
+        from_exercise_id: fromId,
+        to_exercise_id: toId,
+        reason: orNull(state.swapReasons?.[key]?.[fromId]),
+        deleted_at: null,
+      });
+    }
     for (const [exerciseId, sets] of Object.entries(state.setLogs[key] ?? {})) {
       sets.forEach((set, index) =>
         put('exercise_logs', {
@@ -379,6 +540,15 @@ export function applyRemote(
     completedSessions: [...state.completedSessions],
     setLogs: { ...state.setLogs },
     sessionIds: { ...state.sessionIds },
+    sessionOutcomes: { ...state.sessionOutcomes },
+    exerciseSwaps: { ...state.exerciseSwaps },
+    swapReasons: { ...state.swapReasons },
+    dayLogs: [...(state.dayLogs ?? [])],
+    mealLog: [...(state.mealLog ?? [])],
+    measurements: [...(state.measurements ?? [])],
+    weeklyCheckins: [...(state.weeklyCheckins ?? [])],
+    milestones: { ...state.milestones },
+    adjustments: [...(state.adjustments ?? [])],
   };
   let rejected = 0;
   const upsertBy = <T extends { id: string }>(list: T[], item: T | null, deleted: boolean, id: string) => {
@@ -437,7 +607,17 @@ export function applyRemote(
     );
   }
   for (const r of rows('body_measurements')) {
-    if (r.kind !== 'waist') continue;
+    if (r.kind !== 'waist') {
+      const kind = MEASUREMENT_KINDS.find((k) => k === r.kind);
+      if (!kind) continue;
+      const id = String(r.id);
+      const date = String(r.measured_on);
+      const rest = next.measurements!.filter(
+        (m) => m.id !== id && !(m.date === date && m.kind === kind && !pending('body_measurements', m.id)),
+      );
+      next.measurements = r.deleted_at != null ? rest : [...rest, { id, date, kind, cm: Number(r.value_cm) }];
+      continue;
+    }
     const id = String(r.id);
     const date = String(r.measured_on);
     next.waist = upsertBy(
@@ -456,6 +636,17 @@ export function applyRemote(
     next.sessionIds[key] = id;
     keyById.set(id, key);
     next.completedSessions = next.completedSessions.filter((c) => sessionKey(c.date, c.sessionIndex) !== key);
+    delete next.sessionOutcomes![key];
+    if (r.status === 'skipped' || r.status === 'replaced') {
+      const reason = SESSION_REASONS.find((x) => x === r.outcome_reason);
+      const by = LIGHT_ACTIVITIES.find((x) => x === r.replaced_by);
+      next.sessionOutcomes![key] = {
+        status: r.status,
+        ...(reason ? { reason } : {}),
+        ...(r.status === 'replaced' && by ? { replacedBy: by } : {}),
+        at: String(r.updated_at ?? ''),
+      };
+    }
     if (r.status === 'completed') {
       next.completedSessions.push({
         date: String(r.scheduled_for),
@@ -474,23 +665,126 @@ export function applyRemote(
     next.setLogs[key] = { ...next.setLogs[key], [exerciseId]: sets.filter(Boolean) };
   }
 
+  for (const r of rows('exercise_substitutions')) {
+    const key = keyById.get(String(r.session_id));
+    if (!key || r.deleted_at != null) continue;
+    const from = String(r.from_exercise_id);
+    next.exerciseSwaps![key] = { ...next.exerciseSwaps![key], [from]: String(r.to_exercise_id) };
+    const reason = r.reason as ReplacementReason | null | undefined;
+    if (reason) next.swapReasons![key] = { ...next.swapReasons![key], [from]: reason };
+  }
+
+  // Meals marked on another device: the current week's plan takes their status, older weeks go to
+  // the journal of the journey.
+  const marked = rows('meal_plan_items').filter(
+    (r) => r.deleted_at == null && (r.status === 'eaten' || r.status === 'skipped' || r.status === 'replaced'),
+  );
+  const planDays = new Set(next.mealPlan?.days.map((d) => d.date) ?? []);
   if (next.mealPlan) {
-    const eaten = new Set(
-      rows('meal_plan_items')
-        .filter((r) => r.status === 'eaten' && r.deleted_at == null)
-        .map((r) => `${r.date}|${r.slot as MealSlot}|${r.recipe_id}`),
-    );
-    if (eaten.size > 0) {
+    const byKey = new Map(marked.map((r) => [`${r.date}|${r.slot as MealSlot}|${r.recipe_id}`, r]));
+    if (byKey.size > 0) {
       next.mealPlan = {
         ...next.mealPlan,
         days: next.mealPlan.days.map((d) => ({
           ...d,
-          meals: d.meals.map((m) =>
-            eaten.has(`${m.date}|${m.slot}|${m.recipeId}`) ? { ...m, status: 'eaten' as const } : m,
-          ),
+          meals: d.meals.map((m) => {
+            const r = byKey.get(`${m.date}|${m.slot}|${m.recipeId}`);
+            if (!r) return m;
+            const reason = MEAL_REASONS.find((x) => x === r.reason);
+            const { reason: _old, ...rest } = m;
+            return { ...rest, status: r.status as 'eaten' | 'skipped' | 'replaced', ...(reason ? { reason } : {}) };
+          }),
         })),
       };
     }
+  }
+  const ownRowIds = new Set((next.mealLog ?? []).map((m) => m.rowId ?? mealRowId(userId, m.id)));
+  for (const r of marked) {
+    if (planDays.has(String(r.date)) || ownRowIds.has(String(r.id))) continue;
+    const reason = MEAL_REASONS.find((x) => x === r.reason);
+    next.mealLog!.push({
+      id: String(r.id),
+      rowId: String(r.id),
+      date: String(r.date),
+      slot: r.slot as MealSlot,
+      recipeId: String(r.recipe_id),
+      servings: Number(r.servings ?? 1),
+      status: r.status as 'eaten' | 'skipped' | 'replaced',
+      ...(reason ? { reason } : {}),
+      // Energy is recomputed from the recipe by the journey when needed; 0 = unknown here.
+      kcal: 0,
+    });
+  }
+
+  for (const r of rows('daily_checkins')) {
+    const date = String(r.date);
+    const rest = next.dayLogs!.filter((d) => d.date !== date);
+    if (r.deleted_at != null) {
+      next.dayLogs = rest;
+      continue;
+    }
+    const mode = DAY_MODES.find((x) => x === r.day_mode);
+    const activity = (['walk', 'mobility', 'rest'] as const).find((x) => x === r.activity);
+    const entry: DayLog = { date };
+    if (r.energy != null) entry.energy = Number(r.energy);
+    if (r.motivation != null) entry.motivation = Number(r.motivation);
+    if (r.fatigue != null) entry.fatigue = Number(r.fatigue);
+    if (r.available_minutes != null) entry.availableMinutes = Number(r.available_minutes);
+    if (mode) entry.mode = mode;
+    if (activity) entry.activity = activity;
+    if (r.activity_minutes != null) entry.activityMinutes = Number(r.activity_minutes);
+    next.dayLogs = [...rest, entry].sort((a, b) => a.date.localeCompare(b.date));
+  }
+  for (const r of rows('weekly_checkins')) {
+    const weekStart = String(r.week_start);
+    const rest = next.weeklyCheckins!.filter((c) => c.weekStart !== weekStart);
+    if (r.deleted_at != null) {
+      next.weeklyCheckins = rest;
+      continue;
+    }
+    const level = (v: unknown) => (v == null ? undefined : Number(v));
+    const mainProblem = MAIN_PROBLEMS.find((x) => x === r.main_problem);
+    const entry: WeeklyCheckin = {
+      weekStart,
+      weekRating: Number(r.week_rating),
+      answeredAt: new Date(String(r.answered_at)).toISOString(),
+    };
+    for (const k of ['energy', 'motivation', 'fatigue', 'nutrition', 'training', 'difficulty'] as const) {
+      const v = level(r[k]);
+      if (v !== undefined) entry[k] = v;
+    }
+    if (mainProblem) entry.mainProblem = mainProblem;
+    next.weeklyCheckins = [...rest, entry];
+  }
+  for (const r of rows('journey_milestones')) {
+    if (r.deleted_at != null) continue;
+    const id = String(r.milestone_id);
+    const old = next.milestones![id];
+    next.milestones![id] = {
+      reachedOn: old && old.reachedOn < String(r.reached_on) ? old.reachedOn : String(r.reached_on),
+      // Celebrated on any device = celebrated.
+      celebratedAt: old?.celebratedAt ?? str(r.celebrated_at) ?? null,
+    };
+  }
+  for (const r of rows('adjustments')) {
+    if (r.deleted_at != null) continue;
+    const id = String(r.id);
+    const value = (v: unknown) => (typeof v === 'number' || typeof v === 'string' ? v : null);
+    next.adjustments = [
+      ...next.adjustments!.filter((a) => a.id !== id),
+      {
+        id,
+        kind: r.kind as Adjustment['kind'],
+        changeKey: String(r.change_key),
+        from: value(r.from_value),
+        to: value(r.to_value),
+        reasonKey: String(r.reason_key),
+        evidence: (r.evidence && typeof r.evidence === 'object' ? r.evidence : {}) as Adjustment['evidence'],
+        status: r.status as Adjustment['status'],
+        effectiveFrom: String(r.effective_from),
+        decidedAt: String(r.decided_at),
+      },
+    ];
   }
 
   const profile = (remote.profiles ?? [])[0];

@@ -118,6 +118,11 @@ insert into public.notification_history (user_id, client_id, trigger, category, 
 insert into public.integration_connections (user_id, kind, provider) values ('00000000-0000-0000-0000-00000000000a', 'calendar', 'google_calendar');
 insert into public.coach_memory (user_id, kind, value) values ('00000000-0000-0000-0000-00000000000a', 'disliked_food', 'brocoli');
 insert into public.ai_messages (conversation_id, user_id, role, content) values ('00000000-0000-0000-0000-0000000000c1', '00000000-0000-0000-0000-00000000000a', 'user', 'hello');
+-- Daily Coach (D-028).
+insert into public.weekly_checkins (user_id, week_start, week_rating) values ('00000000-0000-0000-0000-00000000000a', '2026-09-28', 4);
+insert into public.exercise_substitutions (user_id, session_id, from_exercise_id, to_exercise_id, reason) values ('00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-0000000000e2', 'goblet_squat', 'split_squat', 'dislike');
+insert into public.journey_milestones (user_id, milestone_id, reached_on) values ('00000000-0000-0000-0000-00000000000a', 'first_session', '2026-09-30');
+insert into public.adjustments (user_id, kind, change_key, reason_key, status, effective_from) values ('00000000-0000-0000-0000-00000000000a', 'training', 'sessions_per_week', 'adapt.reason.missed_two_weeks', 'proposed', '2026-10-05');
 
 do $$
 declare
@@ -190,6 +195,12 @@ begin
     raise exception 'RLS TEST FAILED: B attached a set to A session';
   exception when insufficient_privilege then
     raise notice 'ok - B cannot attach a set to A session';
+  end;
+  begin
+    insert into public.exercise_substitutions (user_id, session_id, from_exercise_id, to_exercise_id) values ('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000e2', 'push_up', 'bench_press');
+    raise exception 'RLS TEST FAILED: B attached a substitution to A session';
+  exception when insufficient_privilege then
+    raise notice 'ok - B cannot attach a substitution to A session';
   end;
   perform set_config('role', 'postgres', true);
 end;
