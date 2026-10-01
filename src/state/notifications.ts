@@ -71,7 +71,13 @@ export const useNotificationStore = create<NotificationState>()(
           };
         }),
       reset: () =>
-        set({ prefs: DEFAULT_NOTIFICATION_PREFERENCES, permission: 'unknown', history: [], checkins: [], screenVoice: [] }),
+        set({
+          prefs: DEFAULT_NOTIFICATION_PREFERENCES,
+          permission: 'unknown',
+          history: [],
+          checkins: [],
+          screenVoice: [],
+        }),
     }),
     {
       name: 'py.notifications.v1',

@@ -19,7 +19,9 @@ export function channelInput(journey: Journey): JourneyChannelInput {
   const workout = journey.daily.items.find((i) => i.kind === 'workout');
   const variant = workout?.params.variant;
   return {
-    milestone: journey.celebration ? { id: journey.celebration.id, facts: milestoneFacts(journey.celebration.id) } : null,
+    milestone: journey.celebration
+      ? { id: journey.celebration.id, facts: milestoneFacts(journey.celebration.id) }
+      : null,
     keptGoingDates: journey.keptGoingDates,
     todaySession: !workout
       ? 'none'

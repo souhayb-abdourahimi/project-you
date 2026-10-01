@@ -131,7 +131,10 @@ export function useJourney(plan: Plan | null): Journey | null {
     for (const e of notificationHistory) {
       const id = e.facts.milestone;
       if (e.trigger === 'milestone_reached' && id && (e.status === 'delivered' || e.status === 'opened')) {
-        records[id] = { reachedOn: records[id]?.reachedOn ?? e.date, celebratedAt: records[id]?.celebratedAt ?? e.date };
+        records[id] = {
+          reachedOn: records[id]?.reachedOn ?? e.date,
+          celebratedAt: records[id]?.celebratedAt ?? e.date,
+        };
       }
     }
     const celebration = milestoneToCelebrate({
@@ -164,9 +167,7 @@ export function useJourney(plan: Plan | null): Journey | null {
       state,
       day,
       meals: plan.mealPlan?.days.find((d) => d.date === today) ?? null,
-      session: template
-        ? { sessionIndex, focus: template.focus, minutes: snapshot.training.sessionMinutes }
-        : null,
+      session: template ? { sessionIndex, focus: template.focus, minutes: snapshot.training.sessionMinutes } : null,
       completed: done ? { variant: done.variant } : null,
       outcome: data.sessionOutcomes[sessionKey(today, sessionIndex)] ?? null,
       dayLog: data.dayLogs.find((d) => d.date === today) ?? null,
@@ -268,7 +269,11 @@ export function useJourney(plan: Plan | null): Journey | null {
       meals,
       milestones: data.milestones,
       adjustments: data.adjustments,
-      confirmed: { refusedExerciseIds: snapshot.training.refusedExerciseIds, dislikedRecipeIds: [], likedRecipeIds: [] },
+      confirmed: {
+        refusedExerciseIds: snapshot.training.refusedExerciseIds,
+        dislikedRecipeIds: [],
+        likedRecipeIds: [],
+      },
     });
 
     return { state, daily, progress, celebration, recommendations, risk, memory, keptGoingDates };
