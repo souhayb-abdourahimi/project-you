@@ -10,8 +10,11 @@ Tâches importantes à ne pas perdre entre deux sessions. Référence des IDs : 
 - [ ] Notifications sur le web (Web Push) : non supporté pour l'instant, l'écran le dit.
 - [ ] Tester le calendrier sur un iPhone et un Android réels (permission, création du calendrier « Project You », déconnexion).
 - [ ] Tester la recherche de lieux sur appareil (Overpass n'est pas joignable depuis l'environnement cloud : testé avec des réponses simulées).
-- [ ] P2-03 HealthKit / Health Connect (décision build natif en attente).
-- [ ] Parcs et activités (SportsProvider / PlacesProvider) ; prix et promotions réels (aucune source choisie).
+- [ ] **P2-03 santé** : dérouler `docs/MOBILE_HEALTH_TEST_PLAN.md` sur un iPhone et un Android réels (build de développement). Rien n'a été testé sur appareil.
+- [ ] Avant publication Play : page de politique de confidentialité affichée par l'intent Health Connect, déclaration « Health apps » ; App Store : capability HealthKit sur l'App ID, fiche App Privacy.
+- [ ] **D-019** : choisir le fournisseur de lieux de production (Overpass auto-hébergé ou service sous contrat) ; l'instance publique est limitée à ~100 requêtes/jour pour une app.
+- [ ] Manifeste Android : `READ/WRITE_EXTERNAL_STORAGE` (≤ API 32) et `SYSTEM_ALERT_WINDOW` viennent du template Expo ; vérifier s'ils sont utiles et les bloquer sinon (`android.blockedPermissions`).
+- [ ] Parcs et activités (SportsProvider) ; prix et promotions réels (aucune source choisie).
 
 ## Données
 

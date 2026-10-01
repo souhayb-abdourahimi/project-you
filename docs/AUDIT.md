@@ -95,3 +95,26 @@ Deux revues indépendantes (sécurité/vie privée ; sync/état/UX), chaque cons
 **Vérifié sans problème** : RLS et politiques sur toutes les tables, anon sans privilège, `set_updated_at` sans SECURITY DEFINER, cascade de suppression, Edge Function `delete-account` (identité tirée du jeton uniquement, erreurs génériques), aucune clé secrète dans le client ni dans le dépôt, aucun `console.*` dans `src`, heures calmes qui passent minuit, plafond et écart des rappels, aucun mot moralisateur.
 
 **Restant (non bloquant, dans `TODO.md`)** : bucket photos et ses politiques (avant la fonction photo), pagination de la liste de photos dans `delete-account`, identifiants prévisibles pour `goals`/repas (clé de conflit à revoir), `StepContent.tsx` à découper (449 lignes), migration v1 → v2 du stockage local qui abandonne l'ancienne file d'envoi (aucune version publiée n'est concernée).
+
+## Revue sécurité et confidentialité — phase 2 santé (2026-10-01)
+
+Ce qui a été vérifié :
+
+- **Permissions minimales** :
+  - Android : 4 lectures seulement. Le manifeste a été généré par `expo prebuild` et relu : aucune permission `WRITE_*`, `BACKGROUND` ni `HISTORY`.
+  - iOS : entitlement HealthKit sans dossiers cliniques ni background delivery. Aucune écriture demandée (`toShare` absent, vérifié par un test).
+- **Isolation du natif** : le code HealthKit / Health Connect vit dans `src/providers/health.*` uniquement. Le web n'embarque aucun module santé ; l'export web a été vérifié.
+- **Aucune donnée santé** vers :
+  - Supabase : aucune table nouvelle, donc RLS inchangée ;
+  - l'IA ;
+  - les journaux : aucun `console.*` ; les erreurs natives deviennent une erreur générique sans message ;
+  - les statistiques.
+- **Validation** : chaque valeur native passe par Zod et par des bornes. Une valeur invalide est rejetée, jamais corrigée.
+- **Retrait d'accès** : un accès retiré dans les réglages purge le type concerné. La déconnexion purge tout. La déconnexion du compte efface le lien et les valeurs. L'export inclut les valeurs importées.
+- **Pas de double comptage** : un entraînement importé qui correspond à une séance Project You n'est pas recompté. Une pesée manuelle l'emporte sur une pesée importée.
+
+Limites connues :
+
+- Rien n'a été testé sur un iPhone ou un Android réels (`docs/MOBILE_HEALTH_TEST_PLAN.md`).
+- Le stockage local (AsyncStorage) n'est pas chiffré. C'est la même chose que pour les pesées manuelles, et il est protégé par le bac à sable de l'app. À reconsidérer si des données plus sensibles arrivent.
+- La révocation Health Connect ne prend effet qu'au redémarrage de l'app (limite de la plateforme, expliquée à l'écran).

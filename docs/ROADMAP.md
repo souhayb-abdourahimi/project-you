@@ -55,7 +55,7 @@ Statuts : `done` · `in progress` · `todo` · `blocked`. Priorités : P0 (bloqu
 |---|---|---|---|---|---|---|---|
 | P2-01 | Import CIQUAL (remplace le catalogue MOCK) | P0 | todo | M-07 | moyen | unit | plus aucun aliment MOCK en prod |
 | P2-02 | Scan code-barres + Open Food Facts | P1 | todo | P2-01 | moyen | intégration | confirmation avant ajout |
-| P2-03 | HealthKit / Health Connect (lecture) | P1 | todo | M-20 | élevé | intégration | permissions granulaires, déconnexion |
+| P2-03 | HealthKit / Health Connect (lecture) | P1 | done (D-018 ; testé avec modules simulés, à tester sur iPhone/Android réels) | M-20 | élevé | intégration | permissions granulaires, déconnexion |
 | P2-04 | Apple Calendar / Google Calendar | P1 | done (calendrier de l'appareil, D-016 ; à tester sur iPhone/Android réels) | M-17 | élevé | intégration | événements app identifiables, jamais d'édition d'événement perso |
 | P2-05 | Explorer : lieux, salles, parcs (Places/OSM) | P2 | partial (salles et magasins via OSM, D-017 ; parcs/activités à venir) | — | moyen | intégration | données sourcées et datées |
 | P2-06 | Coach IA simple (Edge Function, sorties structurées) | P2 | todo | M-05, M-10 | élevé | unit schémas | toute action validée par schéma + moteur |

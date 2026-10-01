@@ -26,6 +26,15 @@ Project You est un outil de fitness et bien-être ; il ne remplace pas un profes
 - **Calendrier** : seules les heures de début et de fin des événements sont lues (ni titre, ni lieu, ni invités), et gardées sur l'appareil pour la semaine en cours. L'app écrit uniquement dans son propre calendrier « Project You ». Déconnexion (écran Calendrier ou Privacy Center) = suppression de ce calendrier et oubli des heures lues. Inclus dans l'export (`deviceSettings.calendar`) ; effacé à la déconnexion du compte.
 - **Position** : demandée seulement quand l'utilisateur lance une recherche de lieux, arrondie à ~100 m avant l'envoi à OpenStreetMap, jamais enregistrée, synchronisée ni journalisée. Refus = l'app reste utilisable (salle saisie à la main).
 
+## Santé et activité (phase 2, D-018)
+
+- **Facultatif** : Apple Santé (iPhone) ou Health Connect (Android), jamais sur le web. Refuser ne retire l'accès à aucune autre fonction ; la saisie manuelle reste disponible partout.
+- **Lu** : poids, pas, entraînements (date, durée, type, énergie active), énergie active quotidienne, chacun choisi séparément avec sa justification à l'écran. **Jamais** : fréquence cardiaque, sommeil, ECG, dossiers médicaux. **Rien n'est écrit** dans Santé / Health Connect.
+- **Stockage** : uniquement sur l'appareil, 28 derniers jours. Rien n'est envoyé sur le compte Supabase, à l'IA, aux journaux ni aux statistiques. Aucune table serveur, donc aucune règle RLS supplémentaire nécessaire.
+- **Centre de confidentialité › Santé et activité** : connexion, données autorisées, dernière synchronisation, « Synchroniser maintenant », « Déconnecter », explication d'usage.
+- **Export** : `deviceSettings.health` (types partagés, autorisations, valeurs importées).
+- **Suppression** : la déconnexion efface tout ce qui a été importé ; un accès retiré dans les réglages efface le type concerné ; la déconnexion du compte efface le lien.
+
 ## Consentements
 
 Chaque permission (notifications, caméra, calendrier, santé, localisation) est demandée **au moment où elle sert**, avec une explication, et peut être retirée. Refuser ne bloque jamais l'usage de base.

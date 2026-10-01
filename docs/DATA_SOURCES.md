@@ -18,11 +18,34 @@ Toute donnée externe importante transporte `ExternalDataMeta` (`src/domain/shar
 | Recettes | éditoriales Project You | interne | nutrition **calculée** à partir des aliments (donc MOCK tant que le catalogue l'est) |
 | Exercices | bibliothèque éditoriale Project You | interne | consignes générales ; vidéos/illustrations seulement de source légitime |
 | Prix, promotions | aucun fournisseur fiable choisi | indisponible | pas de prix affiché au MVP ; saisie utilisateur (ticket) possible |
-| Magasins, salles, lieux sportifs | Google Places / OpenStreetMap (à évaluer) | phase 2 | horaires et adresses du fournisseur, avec date |
+| Magasins, salles, lieux sportifs | **OpenStreetMap via Overpass** (`PlacesProvider`, D-017/D-019) | phase 2, branché | instance publique = dev/bêta seulement ; fournisseur de production à choisir |
 | Fréquentation des salles | aucune | indisponible | jamais inventée ; on optimise seulement selon horaires/planning |
 | Sécurité d'un parcours | aucune par défaut | indisponible | jamais « safe/dangerous » ; seulement données publiques sourcées et datées |
 | Calendrier | EventKit (iOS), Google Calendar | phase 2 | MVP : créneaux saisis manuellement |
-| Santé | HealthKit, Health Connect | phase 2 | lecture seule, permissions granulaires |
+| Santé | **Apple Santé (HealthKit), Health Connect** (D-018) | phase 2, branché (non testé sur appareil) | lecture seule de 4 types, gardé sur l'appareil, confiance `high` (mesures de l'utilisateur) |
+
+## Serveurs OpenStreetMap publics (D-019)
+
+Lu le 2026-10-01 sur les pages officielles ; à revérifier avant chaque changement de volume.
+
+- **Overpass** (`overpass-api.de`, utilisé pour les lieux) :
+  - Usage ponctuel : moins de 10 000 requêtes et 1 Go par jour.
+  - Application qui l'appelle régulièrement : diviser par 100, soit environ **100 requêtes et 10 Mo par jour**.
+  - Usage commercial : instance auto-hébergée ou payante.
+  - Sur une erreur 429 ou 406 : attendre avant de réessayer.
+- **Nominatim** (`nominatim.openstreetmap.org`, géocodage, **non utilisé**) :
+  - 1 requête par seconde maximum.
+  - User-Agent ou Referer identifiant l'application.
+  - Cache obligatoire.
+  - Attribution visible.
+  - **Autocomplétion interdite**, ainsi que les requêtes systématiques.
+  - Usage plus important : fournisseur tiers ou instance propre.
+- **Attribution ODbL** : « © les contributeurs OpenStreetMap ». La source est affichée sous chaque liste de lieux.
+
+**Conséquence** :
+- Ces serveurs conviennent au développement et à une bêta fermée, pas à la production.
+- Avant le lancement, choisir et brancher derrière `PlacesProvider` une instance auto-hébergée ou un fournisseur sous contrat.
+- L'UI et le moteur n'ont pas à changer.
 
 ## Formules (données internes, pas externes)
 

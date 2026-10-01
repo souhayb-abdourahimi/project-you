@@ -131,3 +131,46 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
 - **Alternatives** : Google Places (clé, coût, conditions d'affichage) ; Foursquare.
 - **Trade-offs** : couverture et fraîcheur variables selon les contributeurs ; serveur public avec limites de débit (cache 10 min, erreur « saturé » affichée).
 - **Date** : 2026-10-01
+
+## D-018 — Santé : Apple Santé et Health Connect en lecture seule, données gardées sur l'appareil
+
+- **Contexte** : éviter de ressaisir pas, entraînements et pesées, sans collecter plus de données de santé que nécessaire.
+- **Décision** :
+  - Bibliothèques : `@kingstinct/react-native-healthkit` (iOS) et `react-native-health-connect` (Android), derrière `HealthProvider` (`src/providers/health.ios.ts`, `health.android.ts`, `health.web.ts`). Aucun écran n'importe de code natif.
+  - V1 : lecture seule de 4 types (poids, pas, entraînements, énergie active). Pas de fréquence cardiaque, sommeil, ECG ni dossiers cliniques. Aucune écriture : aucun type « share » demandé, aucune permission `WRITE_*`.
+  - Moteur pur `src/domain/health` : normalisation des unités (lb, g, kJ, cal…), validation (bornes plausibles, valeur rejetée et non corrigée), dédoublonnage, fusion avec les données Project You.
+  - Pas et énergie active : agrégats quotidiens calculés par la plateforme, qui fusionne téléphone et montre sans les additionner.
+  - Chaque synchronisation relit les 28 derniers jours. Une suppression dans Santé est donc répercutée ; un type en échec garde ses valeurs ; un type retiré est purgé.
+  - Règles de fusion :
+    - une pesée saisie dans Project You l'emporte le même jour ;
+    - un entraînement importé qui chevauche une séance validée dans l'app est « la même séance » et n'est pas compté une deuxième fois ;
+    - les données importées ne modifient jamais le programme, la progression ni les objectifs nutritionnels.
+  - Stockage : sur l'appareil seulement (`py.health.v1`, 28 jours), jamais synchronisé vers Supabase, jamais envoyé à l'IA ni aux statistiques. Inclus dans l'export, effacé à la déconnexion santé et à la déconnexion du compte.
+  - Déconnexion : logique (arrêt de lecture et purge) ; Android révoque aussi, effectif au redémarrage (limite de Health Connect) ; iOS n'a pas d'API, l'utilisateur est guidé vers Réglages › Santé.
+  - `NSHealthUpdateUsageDescription` est renseigné (texte honnête : « n'écrit rien aujourd'hui ») pour éviter un refus de l'App Store lié à la présence des API d'écriture dans le binaire. Background delivery désactivé.
+- **Alternatives** :
+  - Synchroniser les données importées vers Supabase (multi-appareil) : écarté en V1, pas nécessaire au coaching et plus de données sensibles côté serveur.
+  - Lire les échantillons de pas bruts : risque de double comptage téléphone + montre.
+- **Trade-offs** :
+  - Sur iOS, impossible de savoir si la lecture a été refusée (choix d'Apple) : l'app affiche « Demandé » et lit ce qu'on lui donne.
+  - Pas d'historique au-delà de 28 jours.
+  - Un deuxième appareil ne voit pas les données importées sur le premier.
+- **Date** : 2026-10-01
+
+## D-019 — Lieux et cartes : fournisseur interchangeable, serveurs OSM publics réservés au développement
+
+- **Contexte** : la phase 2 utilise l'instance publique d'Overpass. Il faut pouvoir changer de fournisseur (Nominatim, Overpass auto-hébergé, service commercial) sans toucher l'UI ni le moteur de recommandations.
+- **Décision** :
+  - Types neutres `Place` / `PlaceKind` / `GeoPoint` dans `src/domain/places/types.ts`.
+  - L'UI passe uniquement par `providers.places.nearby(kind, point, rayon)` (`PlacesProvider`) et `providers.maps.open(point)` (`MapsProvider`) ; plus aucune URL de carte n'est construite dans une feature.
+  - L'implémentation OSM (`src/providers/osm.ts`) se remplace en changeant une ligne de `src/providers/index.ts`.
+  - Nominatim (géocodage) n'est **pas** utilisé : aucune recherche d'adresse n'en a besoin aujourd'hui.
+  - L'instance publique d'Overpass sert au développement et à la bêta fermée seulement. Raison : sa politique d'usage, lue le 2026-10-01, limite un usage régulier à environ 100 requêtes et 10 Mo par jour.
+- **Avant la production**, choisir :
+  - soit un Overpass auto-hébergé (extrait France),
+  - soit un fournisseur commercial avec contrat et attribution,
+
+  puis l'implémenter derrière `PlacesProvider`.
+- **Alternatives** : appeler Nominatim/Overpass publics en production (contraire à leurs conditions) ; Google Places (coût, conditions d'affichage, données à ne pas stocker).
+- **Trade-offs** : un fournisseur commercial peut exiger une clé : elle irait dans une Edge Function, jamais dans le client.
+- **Date** : 2026-10-01
