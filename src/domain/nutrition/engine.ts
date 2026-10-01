@@ -47,7 +47,7 @@ const CALORIE_FLOOR: Record<Sex, number> = { female: 1200, male: 1500, unspecifi
 export const KCAL_PER_KG = 7700;
 
 export const ADULT_AGE = 18;
-const UNDERWEIGHT_BMI = 18.5;
+export const UNDERWEIGHT_BMI = 18.5;
 const HIGH_BMI = 30;
 const REFERENCE_BMI = 25;
 

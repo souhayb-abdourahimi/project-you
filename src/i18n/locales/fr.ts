@@ -343,6 +343,8 @@ const fr = {
     fat: 'Lipides',
     eaten: 'Consommé',
     markEaten: 'Je l’ai mangé',
+    skipped: 'Pas mangé',
+    markSkipped: 'Je ne l’ai pas mangé',
     replace: 'Remplacer',
     alternatives: {
       replace: 'Autre idée',
@@ -597,7 +599,7 @@ const fr = {
     quoteHint: 'Sans « Citer mes mots », rien de personnel ne s’affiche sur l’écran verrouillé.',
     absenceHint: 'Trois messages au plus (après 2, 5 et 10 jours), puis plus rien jusqu’à ton retour.',
     safetyHint:
-      'Si l’app remarque plusieurs jours notés nettement sous ta cible, une perte de poids très rapide, ou plus de séances que prévu avec de la fatigue, elle t’envoie un message pour ralentir, même si la catégorie est désactivée.',
+      'Si l’app remarque plusieurs jours notés nettement sous ta cible, une perte de poids très rapide (même avec peu de pesées), ou beaucoup plus de séances que prévu, elle t’envoie un message pour ralentir, même si la catégorie est désactivée. Si tes repas restent sans réponse quelques jours, elle te demande simplement comment ça se passe, une seule fois.',
     pause: 'Mettre en pause 7 jours',
     resume: 'Reprendre les rappels',
     pausedUntil: 'Rappels en pause jusqu’au {{date}}.',
@@ -639,6 +641,11 @@ const fr = {
         v2: 'Ton objectif se construit sur la durée.',
         v3: 'Ta santé compte plus que la vitesse.',
       },
+      checkin: {
+        v1: 'Ton plan est fait pour s’adapter à ta vie.',
+        v2: 'On fait le point, sans pression.',
+        v3: 'Chaque semaine est différente, et c’est normal.',
+      },
     },
     title: {
       session_planned: { v1: 'Séance à {{time}}', v2: 'Ta séance de {{time}}', v3: '{{time}} : séance' },
@@ -656,8 +663,9 @@ const fr = {
       fatigue_recovery: { v1: 'Récupérer compte aussi', v2: 'Une journée plus douce' },
       daily_why: { v1: 'Petit rappel', v2: 'Pour toi, aujourd’hui' },
       safety_low_intake: { v1: 'On ralentit un peu', v2: 'Prends soin de ton énergie' },
-      safety_fast_loss: { v1: 'Ton rythme est rapide', v2: 'On ralentit un peu' },
+      safety_fast_loss: { v1: 'Ton rythme est rapide', v2: 'On ralentit un peu', sparse: 'Ton rythme semble rapide' },
       safety_training_load: { v1: 'Place à la récupération', v2: 'On lève le pied' },
+      safety_low_logging: { v1: 'Comment ça se passe ?', v2: 'Petit point sur ta semaine' },
     },
     action: {
       session_planned: {
@@ -732,10 +740,22 @@ const fr = {
       safety_fast_loss: {
         v1: 'Ton poids baisse plus vite que le rythme conseillé depuis deux semaines : cette semaine, mange ta cible complète chaque jour.',
         v2: 'Ajoute une collation à ta journée et garde tes séances comme prévu, sans en faire plus.',
+        sparse1:
+          'Tu te pèses peu souvent, donc la tendance est imprécise, mais elle semble plus rapide que le rythme conseillé : cette semaine, mange ta cible complète chaque jour.',
+        sparse2:
+          'Avec une pesée par semaine environ, la tendance reste imprécise ; elle semble rapide : ajoute une collation à ta journée et, si tu peux, pèse-toi deux fois cette semaine pour y voir plus clair.',
       },
       safety_training_load: {
         v1: 'Tu t’entraînes plus que prévu et tu te sens fatigué·e : remplace ta prochaine séance par du repos ou de la mobilité.',
         v2: 'Cette semaine, reviens au nombre de séances prévu et garde une journée de repos complet.',
+        frequency1:
+          'Depuis plusieurs semaines, tu fais nettement plus de séances que prévu : et si tu gardais une journée de repos en plus cette semaine ?',
+        frequency2:
+          'Tu fais plus de séances que ton programme n’en prévoit depuis plusieurs semaines : tu peux revenir au rythme prévu, ou ajuster ton programme s’il ne te correspond plus.',
+      },
+      safety_low_logging: {
+        v1: 'Comment ça se passe avec tes repas en ce moment ? Si ton plan ne colle plus à tes journées, on peut l’ajuster ensemble.',
+        v2: 'Comment se passent tes repas cette semaine ? Si le plan ne te convient plus, tu peux l’ajuster en quelques secondes.',
       },
     },
     meaning: {
@@ -814,6 +834,11 @@ const fr = {
       safety_training_load: {
         v1: 'Le progrès se fait aussi pendant la récupération. Si la fatigue dure, parles-en à un professionnel de santé.',
         v2: 'Te reposer aujourd’hui, c’est protéger tes prochaines séances. Si la fatigue dure, un professionnel de santé peut t’aider.',
+        frequency: 'Le repos fait partie du programme : c’est pendant la récupération que ton corps progresse.',
+      },
+      safety_low_logging: {
+        v1: 'Un plan qui te ressemble est plus simple à suivre.',
+        v2: 'Ton plan est là pour t’aider, pas pour te compliquer la vie.',
       },
     },
   },

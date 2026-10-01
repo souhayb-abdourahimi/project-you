@@ -5,14 +5,21 @@ const SAFETY_MESSAGE: Record<SafetyFlag, Trigger> = {
   low_intake: 'safety_low_intake',
   fast_weight_loss: 'safety_fast_loss',
   training_load: 'safety_training_load',
+  low_logging: 'safety_low_logging',
 };
 
-/** The message the safety rule asks every channel to show (most important flag), or null. */
+/**
+ * The message the safety rule asks every channel to show (most important flag), or null.
+ * Facts pick the wording: `below_floor`, `sparse` (weight trend from infrequent weigh-ins, said to be
+ * imprecise), `frequency` (load seen on frequency alone), `since` (low-logging episode, one message each).
+ */
 export function safetyMessageFor(safety: SafetyAssessment): { trigger: Trigger; facts: Record<string, string> } | null {
   const [flag] = safety.flags;
   if (!safety.active || !flag) return null;
-  return {
-    trigger: SAFETY_MESSAGE[flag],
-    facts: flag === 'low_intake' && safety.belowFloor ? { below_floor: '1' } : {},
-  };
+  const facts: Record<string, string> = {};
+  if (flag === 'low_intake' && safety.belowFloor) facts.below_floor = '1';
+  if (flag === 'fast_weight_loss' && safety.weightPrecision === 'sparse') facts.sparse = '1';
+  if (flag === 'training_load' && safety.trainingLoadBasis === 'frequency') facts.frequency = '1';
+  if (flag === 'low_logging' && safety.lowLoggingSince) facts.since = safety.lowLoggingSince;
+  return { trigger: SAFETY_MESSAGE[flag], facts };
 }

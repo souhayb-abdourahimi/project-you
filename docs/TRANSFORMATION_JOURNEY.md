@@ -339,7 +339,21 @@ Règle déterministe, évaluée **avant** toute règle de motivation. Elle ne li
 | `fast_weight_loss` | moyenne de poids sur 7 jours en baisse de **plus de 1 % par semaine, deux semaines de suite** (3 fenêtres de 7 jours, au moins 2 pesées chacune) | pesées saisies |
 | `training_load` | **plus de séances faites sur 7 jours que prévu** par semaine **et** fatigue déclarée élevée (fatigue ≥ 4 ou énergie ≤ 2) au moins **2 jours** sur 7 | séances faites, check-ins |
 
-Une journée partiellement notée ne compte jamais : l'app ne sait pas ce qui n'a pas été noté et ne le devine pas. Limite connue : le plan repas local couvre la semaine en cours, donc la détection `low_intake` démarre au plus tôt le mercredi.
+Cas ajoutés pour les utilisateurs qui notent peu (PR #3, D-026) :
+
+| Signal | Condition | Message |
+|---|---|---|
+| `low_logging` | au moins **3 jours passés consécutifs** (jusqu'à hier) avec au moins un repas prévu ni mangé ni sauté, chez quelqu'un qui avait au moins **3 journées notées en entier** dans les **7 jours** précédents | `safety_low_logging` : neutre, demande comment ça se passe et propose d'ajuster le plan ; **une fois par épisode** ; pas de professionnel de santé, pas de reproche |
+| `fast_weight_loss` (pesées rares) | une seule pesée dans au moins une des trois fenêtres de 7 jours, et baisse de **plus de 2 %/semaine deux semaines de suite** | dit que la mesure est peu fréquente et la tendance imprécise ; aucun chiffre |
+| `training_load` (fréquence seule) | au moins `max(prévu + 2, prévu × 1,5)` séances dans chacune des **3** dernières fenêtres de 7 jours, sans fatigue déclarée | proposition de ralentir (journée de repos en plus, revenir au rythme prévu) ; rappels de séance inchangés |
+
+Ordre des signaux : `low_intake`, `fast_weight_loss`, `training_load`, `low_logging`. Le premier choisit le message ; `low_logging` n'apparaît que seul.
+
+Une journée partiellement notée ne compte jamais dans `low_intake` : l'app ne sait pas ce qui n'a pas été noté et ne le devine pas. Elle compte en revanche dans `low_logging`, qui ne dit rien de ce qui a été mangé. Les repas se marquent « mangé » ou « pas mangé » (`skipped`). Le plan de la semaine précédente est gardé sur l'appareil pour que la règle voie les jours d'avant lundi.
+
+**Âge et statut de poids** : `JourneyState.profile` porte l'âge et le statut de poids (IMC < 18,5, dernière pesée sinon poids du profil). Pour un mineur ou un utilisateur en sous-poids (`noPush`), la voix retire toute variante qui pousse vers l'intensité ou le déficit, et le bilan du dimanche ne félicite jamais une baisse de poids. Même logique que `minor_no_deficit` et `underweight_no_deficit` du moteur nutrition.
+
+**Interrupteur général** (D-025) : il coupe toutes les notifications, sécurité comprise. La bannière de l'écran Aujourd'hui affiche le message de sécurité dans tous les cas.
 
 Quand la règle est active :
 
@@ -348,7 +362,7 @@ Quand la règle est active :
 - **Ralentir et expliquer** : un message dédié (au plus un tous les 3 jours), qui dit ce que l'app a vu avec les données de l'utilisateur, propose de réduire (manger sa cible complète, remplacer une séance par du repos) et **recommande un professionnel de santé** (médecin, diététicien·ne) pour `low_intake` et `fast_weight_loss`, et si la fatigue dure pour `training_load`.
 - Ce message passe outre les catégories de notifications désactivées (pas outre l'interrupteur général, la pause ni les heures calmes) et s'affiche aussi sur l'écran Aujourd'hui.
 - **Vocabulaire** : ni diagnostic, ni mot clinique (« trouble », « carence », « surentraînement », « pathologie », « symptôme »…), ni chiffre de ce qui n'a pas été mangé. Les tests de ton refusent ces mots.
-- Les seuils (70 %, 3 jours, 1 %/semaine, 2 jours de fatigue) sont des paramètres de conception à faire relire par un professionnel avant la bêta publique.
+- Les seuils (70 %, 3 jours, 1 %/semaine, 2 jours de fatigue, et ceux de D-026 : 3 jours non notés, 3 journées notées sur 7, 2 %/semaine avec pesées rares, `prévu × 1,5` / `prévu + 2` séances sur 3 semaines, IMC 18,5, 18 ans) sont des paramètres de conception à faire relire par un professionnel avant la bêta publique.
 
 ### 4.6 Progress Journey
 

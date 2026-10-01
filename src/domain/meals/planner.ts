@@ -358,7 +358,7 @@ export function replaceMealInPlan(plan: WeeklyMealPlan, meal: PlannedMeal): Week
 }
 
 /**
- * Meals already eaten stay in the regenerated plan. They are matched by day and slot (and
+ * Meals already marked (eaten or skipped) stay in the regenerated plan. They are matched by day and slot (and
  * occurrence within the slot), not by id: ids contain the meal index, which moves when the
  * number of meals per day changes.
  */
@@ -367,7 +367,7 @@ export function carryOverEaten(next: WeeklyMealPlan, previous: WeeklyMealPlan | 
   const slotKey = (meals: PlannedMeal[], m: PlannedMeal) =>
     `${m.date}|${m.slot}|${meals.filter((x) => x.slot === m.slot).indexOf(m)}`;
   const eaten = new Map(
-    previous.days.flatMap((d) => d.meals.filter((m) => m.status === 'eaten').map((m) => [slotKey(d.meals, m), m])),
+    previous.days.flatMap((d) => d.meals.filter((m) => m.status !== 'planned').map((m) => [slotKey(d.meals, m), m])),
   );
   if (eaten.size === 0) return next;
   return next.days.reduce<WeeklyMealPlan>((plan, day) => {

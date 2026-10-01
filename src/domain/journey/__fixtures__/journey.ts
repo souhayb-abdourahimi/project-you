@@ -59,6 +59,7 @@ export interface StatePatch {
   fatigue?: JourneyState['difficulties']['fatigue'];
   mainMeal?: Record<string, string>;
   safety?: Partial<SafetyAssessment>;
+  profile?: Partial<JourneyState['profile']>;
 }
 
 /** A journey state for tests, flat overrides (default: fat loss, three answers given, nothing logged). */
@@ -79,6 +80,7 @@ export const stateFor = (p: StatePatch = {}): JourneyState => {
     },
     momentum: { lastActivityDate: p.lastActivityDate ?? null, daysSinceActivity: null },
     difficulties: { fatigue: p.fatigue ?? 'unknown' },
+    profile: { age: 30, weightStatus: 'not_underweight', noPush: false, ...p.profile },
     safety: { ...safety, active: safety.flags.length > 0 },
     plan: { mainMeal: p.mainMeal ?? {} },
   };

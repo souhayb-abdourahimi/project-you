@@ -2,7 +2,9 @@
  * The coach's voice: builds one message from the catalog, deterministically, for any channel.
  * 1. anchor: one of the user's own answers (why / change / feel), the least recently recalled;
  *    a generic anchor when the user hid personal words or gave none; a `care` anchor for safety
- *    messages, which never lean on the goal;
+ *    messages, which never lean on the goal; a `checkin` anchor for the low-logging check-in;
+ *    for a minor or an underweight user (state.profile.noPush) the fact `protected` removes every
+ *    variant that encourages intensity or a deficit;
  * 2. title, action and meaning: least recently used variant that fits the tone, goal and facts.
  * Same inputs and history → same message.
  */
@@ -41,24 +43,32 @@ export function composeMessage(input: {
   trigger: Trigger;
   date: string;
   facts: Record<string, string>;
-  state: Pick<JourneyState, 'goal' | 'tone' | 'motivation'>;
+  state: Pick<JourneyState, 'goal' | 'tone' | 'motivation' | 'profile'>;
   quotePersonalWords: boolean;
   /** Messages already used on this channel (rotation). */
   history: VoiceUse[];
 }): ComposedMessage {
   const { trigger, date, facts, state, history } = input;
-  const ctx = { tone: state.tone, family: state.goal.family, facts };
+  // `protected` only filters variants; it is not interpolated anywhere.
+  const ctx = {
+    tone: state.tone,
+    family: state.goal.family,
+    facts: state.profile.noPush ? { ...facts, protected: '1' } : facts,
+  };
   const seed = `${date}|${trigger}`;
 
   // Anchor slot: rotate across the answers the user actually gave.
   const given = PERSONAL.filter((slot) => state.motivation[slot]?.trim());
-  const slots: AnchorSlot[] = SAFETY_TRIGGERS.includes(trigger)
-    ? ['care']
-    : given.length === 0
-      ? ['none']
-      : input.quotePersonalWords
-        ? given
-        : ['private'];
+  const slots: AnchorSlot[] =
+    trigger === 'safety_low_logging'
+      ? ['checkin']
+      : SAFETY_TRIGGERS.includes(trigger)
+        ? ['care']
+        : given.length === 0
+          ? ['none']
+          : input.quotePersonalWords
+            ? given
+            : ['private'];
   const slotUse = lastUses(history, (e) => [e.anchorSlot]);
   const [slot] = leastRecentlyUsed(slots, (s) => slotUse.get(s) ?? '', '');
 

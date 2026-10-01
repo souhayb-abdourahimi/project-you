@@ -41,6 +41,7 @@ export const MOTIVATION_SLOT_ORDER: Trigger[] = [
   'safety_low_intake',
   'safety_fast_loss',
   'safety_training_load',
+  'safety_low_logging',
   'success_session',
   'absence_last',
   'absence_comeback',
@@ -54,6 +55,7 @@ export const TRIGGER_PRIORITY: Record<Trigger, number> = {
   safety_low_intake: 0,
   safety_fast_loss: 0,
   safety_training_load: 0,
+  safety_low_logging: 0,
   session_planned: 0,
   session_planned_tired: 0,
   weigh_in: 1,
@@ -83,7 +85,11 @@ export function collectCandidates(input: {
   const safetyMessage = safetyMessageFor(safety);
   // While the safety rule is active: no congratulations, no push (CLAUDE.md rule 8).
   const celebrate = prefs.celebrations && !safety.active;
-  const lighterSessions = safety.flags.includes('training_load');
+  // Lighter session reminders when the user declared fatigue; on frequency alone the proposal to
+  // slow down is the safety message itself.
+  const lighterSessions = safety.flags.includes('training_load') && safety.trainingLoadBasis !== 'frequency';
+  // A minor or an underweight user is never congratulated on weight going down (no deficit push).
+  const celebrateWeight = !safety.active && !(state.profile.noPush && state.goal.family === 'lose');
   const safetyFacts: Record<string, string> = safety.active ? { safety: '1' } : {};
   const out: Candidate[] = [];
   const workoutDays = new Set<IsoDate>();
@@ -121,7 +127,7 @@ export function collectCandidates(input: {
     if (day.weekday === 7) {
       const sessions = state.progress.sessionsThisWeek;
       out.push(
-        state.progress.weightDirection === 'toward_goal' && !safety.active
+        state.progress.weightDirection === 'toward_goal' && celebrateWeight
           ? {
               trigger: 'weekly_progress',
               date: day.date,

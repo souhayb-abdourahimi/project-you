@@ -46,6 +46,7 @@ Exemple : « Séance à 18:00 — Tu as commencé pour « être fier de moi ». 
 | Déclencheur | Quand | Catégorie |
 |---|---|---|
 | `safety_low_intake` / `safety_fast_loss` / `safety_training_load` | règle de sécurité active (§ ci-dessous), au plus un tous les 3 jours | toujours envoyé si les notifications sont activées |
+| `safety_low_logging` | repas laissés sans réponse plusieurs jours (D-026) : message neutre, une seule fois par épisode | toujours envoyé si les notifications sont activées |
 | `session_planned` | 60 min avant chaque séance prévue non faite (variante courte si créneau court) | Séances |
 | `session_planned_tired` | même chose quand le check-in du jour indique de la fatigue, ou quand la sécurité signale trop d'entraînement | Séances |
 | `meal_planned` | heure choisie ; nomme le repas principal prévu s'il existe | Repas |
@@ -65,7 +66,9 @@ Les relances d'absence sont planifiées à l'avance (le téléphone ne peut pas 
 
 ## Règle de sécurité (CLAUDE.md, règle 8)
 
-Évaluée **avant** toute autre règle, dans `src/domain/journey/safety.ts`, à partir de valeurs saisies uniquement : journées notées en entier nettement sous la cible ou sous le plancher (3 jours de suite), perte de poids de plus de 1 %/semaine deux semaines de suite, plus de séances que prévu avec fatigue déclarée sur 2 jours. Seuils et détails : `docs/TRANSFORMATION_JOURNEY.md` §4.5.
+Évaluée **avant** toute autre règle, dans `src/domain/journey/safety.ts`, à partir de valeurs saisies uniquement : journées notées en entier nettement sous la cible ou sous le plancher (3 jours de suite), perte de poids de plus de 1 %/semaine deux semaines de suite, plus de séances que prévu avec fatigue déclarée sur 2 jours. Depuis D-026 : repas non notés plusieurs jours (`low_logging`, message neutre), perte rapide vue avec une pesée par semaine (message « tendance imprécise »), séances bien au-delà du programme 3 semaines de suite sans fatigue déclarée. Seuils et détails : `docs/TRANSFORMATION_JOURNEY.md` §4.5.
+
+L'interrupteur général coupe aussi ces messages (D-025) ; l'écran Aujourd'hui les affiche toujours.
 
 Quand elle est active, le canal notifications :
 

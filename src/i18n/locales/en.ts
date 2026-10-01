@@ -335,6 +335,8 @@ const en: LocaleShape = {
     fat: 'Fat',
     eaten: 'Eaten',
     markEaten: 'I ate it',
+    skipped: 'Not eaten',
+    markSkipped: 'I didn’t eat it',
     replace: 'Replace',
     alternatives: {
       replace: 'Another idea',
@@ -583,7 +585,7 @@ const en: LocaleShape = {
     quoteHint: 'Without “Quote my own words”, nothing personal shows on the lock screen.',
     absenceHint: 'Three messages at most (after 2, 5 and 10 days), then nothing until you are back.',
     safetyHint:
-      'If the app notices several logged days well below your target, very fast weight loss, or more workouts than planned with tiredness, it sends you a message to slow down, even if that category is off.',
+      'If the app notices several logged days well below your target, very fast weight loss (even with few weigh-ins), or far more workouts than planned, it sends you a message to slow down, even if that category is off. If your meals stay unanswered for a few days, it simply asks how things are going, once.',
     pause: 'Pause for 7 days',
     resume: 'Resume reminders',
     pausedUntil: 'Reminders paused until {{date}}.',
@@ -620,6 +622,11 @@ const en: LocaleShape = {
         v2: 'Your goal is built over time.',
         v3: 'Your health matters more than speed.',
       },
+      checkin: {
+        v1: 'Your plan is made to fit your life.',
+        v2: 'A quick check-in, no pressure.',
+        v3: 'Every week is different, and that’s fine.',
+      },
     },
     title: {
       session_planned: { v1: 'Workout at {{time}}', v2: 'Your {{time}} workout', v3: '{{time}}: workout' },
@@ -637,8 +644,9 @@ const en: LocaleShape = {
       fatigue_recovery: { v1: 'Recovery counts too', v2: 'A gentler day' },
       daily_why: { v1: 'Small reminder', v2: 'For you, today' },
       safety_low_intake: { v1: 'Let’s slow down a little', v2: 'Look after your energy' },
-      safety_fast_loss: { v1: 'Your pace is fast', v2: 'Let’s slow down a little' },
+      safety_fast_loss: { v1: 'Your pace is fast', v2: 'Let’s slow down a little', sparse: 'Your pace seems fast' },
       safety_training_load: { v1: 'Time to recover', v2: 'Easing off' },
+      safety_low_logging: { v1: 'How is it going?', v2: 'A quick check-in on your week' },
     },
     action: {
       session_planned: {
@@ -713,10 +721,22 @@ const en: LocaleShape = {
       safety_fast_loss: {
         v1: 'Your weight has been going down faster than the advised pace for two weeks: this week, eat your full target every day.',
         v2: 'Add a snack to your day and keep your workouts as planned, without doing more.',
+        sparse1:
+          'You weigh yourself only now and then, so the trend is imprecise, but it seems faster than the advised pace: this week, eat your full target every day.',
+        sparse2:
+          'With about one weigh-in a week the trend stays imprecise; it seems fast: add a snack to your day and, if you can, weigh yourself twice this week to see more clearly.',
       },
       safety_training_load: {
         v1: 'You are training more than planned and feel tired: replace your next workout with rest or mobility.',
         v2: 'This week, go back to the planned number of workouts and keep one full rest day.',
+        frequency1:
+          'For several weeks you’ve been doing clearly more workouts than planned: how about one extra rest day this week?',
+        frequency2:
+          'For several weeks you’ve been doing more workouts than your program plans: you can go back to the planned pace, or adjust your program if it no longer fits you.',
+      },
+      safety_low_logging: {
+        v1: 'How are your meals going at the moment? If your plan no longer fits your days, we can adjust it together.',
+        v2: 'How are your meals going this week? If the plan doesn’t suit you anymore, you can adjust it in a few seconds.',
       },
     },
     meaning: {
@@ -794,6 +814,11 @@ const en: LocaleShape = {
       safety_training_load: {
         v1: 'Progress also happens during recovery. If the tiredness goes on, talk to a health professional.',
         v2: 'Resting today protects your next workouts. If the tiredness goes on, a health professional can help.',
+        frequency: 'Rest is part of the program: your body progresses during recovery.',
+      },
+      safety_low_logging: {
+        v1: 'A plan that fits you is easier to follow.',
+        v2: 'Your plan is there to help you, not to make life harder.',
       },
     },
   },

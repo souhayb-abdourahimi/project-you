@@ -17,6 +17,7 @@ export function MealCard({ meal, compact }: { meal: PlannedMeal; compact?: boole
   const lang = i18n.language === 'en' ? 'en' : 'fr';
   const plan = usePlan();
   const markEaten = useDataStore((s) => s.markMealEaten);
+  const markSkipped = useDataStore((s) => s.markMealSkipped);
   const replaceMeal = useDataStore((s) => s.replaceMeal);
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -57,9 +58,13 @@ export function MealCard({ meal, compact }: { meal: PlannedMeal; compact?: boole
       ) : null}
       {meal.status === 'eaten' ? (
         <Text color="success">{t('nutrition.eaten')}</Text>
+      ) : meal.status === 'skipped' ? (
+        <Text color="textMuted">{t('nutrition.skipped')}</Text>
       ) : compact ? null : (
         <Row>
           <Button compact label={t('nutrition.markEaten')} onPress={() => markEaten(meal.id)} />
+          {/* A day counts as logged once each meal is marked; the safety rule reads only marked days. */}
+          <Button compact variant="secondary" label={t('nutrition.markSkipped')} onPress={() => markSkipped(meal.id)} />
           <Button compact variant="secondary" label={t('nutrition.recipe')} onPress={() => setOpen(!open)} />
         </Row>
       )}

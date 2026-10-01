@@ -38,6 +38,7 @@ export const TRIGGER_CATEGORY: Record<Trigger, NotificationCategory> = {
   safety_low_intake: 'progress',
   safety_fast_loss: 'progress',
   safety_training_load: 'progress',
+  safety_low_logging: 'progress',
 };
 
 export interface PlannedNotification extends ComposedMessage {

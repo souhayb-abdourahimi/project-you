@@ -5,6 +5,7 @@
  * Built only from logged or measured values (rule 7): nothing is estimated about the body.
  */
 import type { WeeklyMealPlan } from '../meals/planner';
+import { ADULT_AGE, UNDERWEIGHT_BMI, bmi } from '../nutrition/engine';
 import type { MealSlot } from '../meals/recipes';
 import { weeklyStreak } from '../motivation/anti-abandon';
 import type { GoalType, MotivationProfile } from '../profile/schemas';
@@ -44,6 +45,17 @@ export interface JourneyState {
     /** From today's or yesterday's check-in; `unknown` without one. */
     fatigue: 'high' | 'normal' | 'unknown';
   };
+  /**
+   * Age and weight status, as the nutrition engine sees them (minor_no_deficit,
+   * underweight_no_deficit). `noPush`: minor or underweight, so the coach never encourages
+   * intensity or a calorie deficit (docs/TRANSFORMATION_JOURNEY.md §4.5).
+   */
+  profile: {
+    age: number | null;
+    /** BMI from the latest weigh-in (or the profile weight) and the profile height; never shown. */
+    weightStatus: 'underweight' | 'not_underweight' | 'unknown';
+    noPush: boolean;
+  };
   /** Safety rule (journey/safety.ts): evaluated first, overrides every motivation rule. */
   safety: SafetyAssessment;
   plan: {
@@ -64,22 +76,51 @@ export interface JourneyInput {
   weights: WeightEntry[];
   checkins: CheckinSignal[];
   mealPlan: WeeklyMealPlan | null;
+  /** Last week's plan, so the safety rule still sees the days before Monday. */
+  previousMealPlan?: WeeklyMealPlan | null;
   mealName: (recipeId: string) => string | null;
+  /** Age in years this year (as the nutrition engine computes it); null when unknown. */
+  age: number | null;
+  heightCm: number | null;
+  /** Weight entered in the profile, used when nothing was weighed yet. */
+  profileWeightKg: number | null;
 }
 
 const MAIN_SLOTS: MealSlot[] = ['lunch', 'dinner', 'breakfast', 'snack'];
 
-/** How the user logged each day of the meal plan (only what was marked; nothing guessed). */
-export function loggedDays(mealPlan: WeeklyMealPlan | null): LoggedDay[] {
-  return (mealPlan?.days ?? []).map((day) => {
-    const eaten = day.meals.filter((m) => m.status === 'eaten');
-    return {
-      date: day.date,
-      complete: day.meals.length > 0 && eaten.length > 0 && day.meals.every((m) => m.status !== 'planned'),
-      kcal: eaten.reduce((sum, m) => sum + m.nutrition.kcal, 0),
-      targetKcal: day.targetKcal,
-    };
-  });
+/** How the user logged each day of the meal plans (only what was marked; nothing guessed). */
+export function loggedDays(...mealPlans: (WeeklyMealPlan | null | undefined)[]): LoggedDay[] {
+  const byDate = new Map<IsoDate, LoggedDay>();
+  for (const plan of mealPlans) {
+    for (const day of plan?.days ?? []) {
+      if (byDate.has(day.date)) continue;
+      const eaten = day.meals.filter((m) => m.status === 'eaten');
+      const unmarkedMeals = day.meals.filter((m) => m.status === 'planned').length;
+      byDate.set(day.date, {
+        date: day.date,
+        complete: day.meals.length > 0 && eaten.length > 0 && unmarkedMeals === 0,
+        unmarkedMeals,
+        kcal: eaten.reduce((sum, m) => sum + m.nutrition.kcal, 0),
+        targetKcal: day.targetKcal,
+      });
+    }
+  }
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function journeyProfile(input: JourneyInput): JourneyState['profile'] {
+  const measured = input.weights
+    .filter((w) => w.date <= input.today)
+    .sort((a, b) => b.date.localeCompare(a.date))[0]?.weightKg;
+  const weightKg = measured ?? input.profileWeightKg;
+  const weightStatus: JourneyState['profile']['weightStatus'] =
+    weightKg && input.heightCm
+      ? bmi(weightKg, input.heightCm) < UNDERWEIGHT_BMI
+        ? 'underweight'
+        : 'not_underweight'
+      : 'unknown';
+  const minor = input.age !== null && input.age < ADULT_AGE;
+  return { age: input.age, weightStatus, noPush: minor || weightStatus === 'underweight' };
 }
 
 export function deriveJourneyState(input: JourneyInput): JourneyState {
@@ -144,9 +185,10 @@ export function deriveJourneyState(input: JourneyInput): JourneyState {
       daysSinceActivity: lastActivityDate ? daysBetween(lastActivityDate, today) : null,
     },
     difficulties: { fatigue },
+    profile: journeyProfile(input),
     safety: evaluateSafety({
       today,
-      loggedDays: loggedDays(input.mealPlan),
+      loggedDays: loggedDays(input.mealPlan, input.previousMealPlan),
       floorKcal: input.floorKcal,
       weights: input.weights,
       sessionDates: input.sessionDates,

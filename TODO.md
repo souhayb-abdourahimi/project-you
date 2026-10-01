@@ -22,7 +22,9 @@ Tâches importantes à ne pas perdre entre deux sessions. Référence des IDs : 
 - [ ] Étapes J-2 à J-7 de `docs/TRANSFORMATION_JOURNEY.md` (Daily Coach, Weekly Check-in, Progress Journey, anti-abandon complet, Adaptation Engine).
 - [ ] Faire relire les seuils de la règle de sécurité et les fourchettes de rythme par un professionnel de santé avant la bêta publique.
 - [ ] Règle 7 : retirer l'« énergie active » estimée de l'écran Santé (`HealthCard`, PR #1).
-- [ ] Détection `low_intake` : garder l'historique des repas notés au-delà de la semaine en cours.
+- [x] Détection `low_intake` : la semaine précédente est gardée sur l'appareil (D-026).
+- [ ] Synchroniser le statut « pas mangé » (`skipped`) : la sync n'envoie que les repas mangés (D-026).
+- [ ] Faire relire les nouveaux seuils de D-026 (non-journalisation, pesées rares, fréquence seule) avec ceux de D-024.
 - [ ] Tester les notifications sur un iPhone et un Android réels (ouverture → historique, heures calmes, pause).
 
 ## Données
