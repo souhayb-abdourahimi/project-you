@@ -369,3 +369,23 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
 - **Alternatives** : une liste de sections à contrôler (refusée : chaque nouvelle section devrait y être ajoutée à la main) ; supprimer les mots « rattrapage » ou « échec » des textes (refusé : les phrases rassurantes en ont besoin) ; un relecteur humain seul (refusé : non systématique).
 - **Trade-offs** : des motifs lexicaux ne comprennent pas le sens ; ils attrapent les formulations connues et laissent passer une phrase blessante inédite. La relecture humaine des textes reste utile.
 - **Date** : 2026-10-01
+
+## D-030 — Workout Coach Engine : prévu figé, fait enregistré, écart dérivé (proposition, en attente de validation)
+
+- **Contexte** : demande du 2026-10-01 (phase 5, thread « Workout Coach Engine ») : faire de Project You un coach sportif longitudinal qui sait ce qui était prévu, ce qui a été fait, pourquoi il y a eu une différence et quelle adaptation proposer. Audit : `docs/WORKOUT_ENGINE.md` §1 ; architecture : `docs/TRAINING_ARCHITECTURE.md`. Aucun code applicatif avant validation.
+- **Constat principal** : le programme et la semaine sont recalculés à chaque rendu depuis le profil actuel (`usePlan`) ; `workout_plans` n'est jamais écrite ; la prescription par exercice et la charge proposée ne sont pas gardées. Le « prévu » de l'historique change donc avec le profil (compromis accepté par D-028), ce qui rend la comparaison prévu/fait impossible.
+- **Décision proposée** :
+  - **Pas de nouveau moteur de coaching** (règle 6) : `src/domain/training` reste un moteur de calcul pur (prescrire, figer, comparer, progresser) ; `src/domain/journey` reste le seul état, la seule voix, la seule sécurité et la seule adaptation ; `useJourney` reste le point d'assemblage.
+  - **Prévu figé** : nouvelle table `training_programs` (programme versionné, un seul actif, raison de chaque version) et `planned_exercises` (prescription figée par séance, charge proposée et action de progression) ; `workout_sessions` étendue (programme, focus, durée prévue, raison d'adaptation du jour, report synchronisé, difficulté 1–5) ; `workout_plans`, jamais écrite, supprimée.
+  - **Fait enregistré** : séries modifiables et supprimables (suppression logique), secondes dans `seconds`, heure de début, remplacements choisis par l'utilisateur, raisons `busy_equipment` et `discomfort` ajoutées. La fatigue reste dans `daily_checkins` (une seule source, lue par la sécurité).
+  - **Écart dérivé, raison déclarée** : `training/compare.ts` calcule le statut de chaque exercice et de chaque séance ; la raison vient uniquement de ce qui a été déclaré (remplacement, issue de séance, mode du jour, adaptation du coach, fatigue du jour), sinon « non renseignée ». Rien n'est stocké (comme D-028).
+  - **Adaptations** : nouvelles règles d'entraînement dans `journey/adaptation.ts` (durée de séance, remplaçant permanent, séries, stagnation, fin de cycle), mêmes blocages (sécurité, calibration, faible adhérence) ; `APPLICABLE_CHANGES` += `session_minutes`, `exercise_swap` ; décisions dans `adjustments` (pas de migration).
+  - **Historique antérieur** : rattaché à un programme `reconstructed`, sans prescription inventée.
+- **Alternatives** :
+  - garder le recalcul et stocker seulement un hash du profil : refusé (on saurait que le prévu a changé, pas ce qu'il était) ;
+  - stocker le plan de la semaine en un seul `jsonb` (`workout_plans`) : refusé (sync par différence ligne à ligne, contraintes et RLS par exercice impossibles, taille non bornée) ;
+  - stocker l'écart et la progression côté serveur : refusé (désynchronisation, D-028) ;
+  - un « TrainingCoachEngine » avec ses propres messages et notifications : refusé (règle 6).
+- **Trade-offs** : plus de lignes synchronisées (une séance prévue et ses exercices chaque semaine, même non faite) ; migration locale v4 à tester avec soin ; les seuils (cycle de 6 semaines, stagnation sur 3 séances / 3 semaines, 75 % de la durée, 2 remplacements) sont des paramètres de conception à faire relire avec ceux de D-024, D-026 et D-028.
+- **Points ouverts** : `docs/WORKOUT_ENGINE.md` §7 (cycle, échelle de difficulté, historique reconstitué, nouvelles raisons).
+- **Date** : 2026-10-01
