@@ -22,6 +22,7 @@ import { ExclusionSummary } from '@/features/nutrition/ExclusionSummary';
 import { formatMoney, formatMonth } from '@/lib/format';
 import { spacing } from '@/theme';
 
+import { DietRecap } from './DietRecap';
 import { ListField, NumberField, toggle } from './fields';
 import { ScheduleEditor } from './ScheduleEditor';
 
@@ -429,6 +430,7 @@ function Review({ draft }: { draft: OnboardingDraft }) {
           {t('onboarding.review.sessions', { count: s.training.sessionsPerWeek, minutes: s.training.sessionMinutes })}
         </Text>
       </Card>
+      <DietRecap nutrition={s.nutrition} />
       {targets.warnings
         .filter((w) => w !== 'sex_unspecified_estimate' || s.user.sex === 'unspecified')
         .map((w) => (

@@ -253,3 +253,15 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
 - **Trade-offs** : le manque est une estimation. Le même message s'affiche que le repas manquant soit dû aux contraintes ou au catalogue.
 - **Date** : 2026-10-01
 
+
+## D-023 — « Refaire le questionnaire » prérempli ; suppression d'allergie confirmée
+
+- **Contexte** : revue finale de la PR #1, point bloquant B2. « Refaire le questionnaire » repartait du brouillon local : vide après une reconnexion, ou périmé sur un second appareil. L'étape Allergies étant facultative et le résumé ne montrant ni le régime ni les allergies, il suffisait de tout valider pour effacer une allergie, puis la synchronisation la supprimait partout.
+- **Décision** :
+  - au démarrage, le brouillon est reconstruit à partir du profil enregistré (`draftFromSnapshot`) : toutes les réponses sont préremplies, et le profil du compte l'emporte sur un ancien brouillon local ;
+  - le résumé final affiche toujours une carte « Ton alimentation » : régime, allergies, intolérances et aliments exclus (« aucune » quand la liste est vide) ;
+  - avant l'enregistrement, toute allergie du profil absente des nouvelles réponses (`removedAllergies`) déclenche une confirmation explicite : « Tu es sur le point de supprimer l'allergie suivante : - Soja. Confirmer ? ». « Non » ramène à l'étape Allergies sans rien enregistrer ; seul « Oui, supprimer » enregistre.
+- **Formulation** : tutoiement, comme le reste de l'application (la demande citait « Vous »).
+- **Alternatives** : rendre l'étape Allergies obligatoire. Refusé : beaucoup d'utilisateurs n'ont aucune allergie, et cela ne protégeait pas d'un brouillon périmé.
+- **Trade-offs** : les intolérances et exclusions retirées sont visibles dans le résumé mais ne demandent pas de confirmation ; seule l'allergie la demande, comme demandé.
+- **Date** : 2026-10-01

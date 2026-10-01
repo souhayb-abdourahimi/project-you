@@ -172,6 +172,17 @@ const fr = {
       disclaimer:
         'Ces chiffres sont des estimations, ajustées ensuite selon ta progression réelle. Project You ne remplace pas un professionnel de santé.',
       invalid: 'Certaines réponses manquent : {{steps}}',
+      dietTitle: 'Ton alimentation',
+      diet: 'Régime alimentaire',
+      allergies: 'Allergies',
+      intolerances: 'Intolérances',
+      excluded: 'Aliments exclus',
+      none: 'aucune',
+      removeAllergiesOne: 'Tu es sur le point de supprimer l’allergie suivante :',
+      removeAllergiesMany: 'Tu es sur le point de supprimer les allergies suivantes :',
+      removeAllergiesConfirm: 'Confirmer ?',
+      removeAllergiesYes: 'Oui, supprimer',
+      removeAllergiesNo: 'Non, garder mes allergies',
     },
   },
   enums: {

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-import { emptyDraft, type OnboardingDraft, type OnboardingStepId } from '@/domain/onboarding/steps';
+import { draftFromSnapshot, emptyDraft, type OnboardingDraft, type OnboardingStepId } from '@/domain/onboarding/steps';
 import type { UserContextSnapshot } from '@/domain/profile/schemas';
 
 import { persistStorage } from './storage';
@@ -20,6 +20,7 @@ interface ProfileState {
   /** Replaces the snapshot with the account's version pulled from the server. */
   setSnapshot: (snapshot: UserContextSnapshot | null) => void;
   setLocalMode: (value: boolean) => void;
+  /** Restarts the questionnaire prefilled from the saved profile (never blank, never a stale draft). */
   restartOnboarding: () => void;
   reset: () => void;
 }
@@ -33,7 +34,7 @@ const initial = {
 
 export const useProfileStore = create<ProfileState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...initial,
       updateDraft: (section, patch) =>
         set((s) => ({ draft: { ...s.draft, [section]: { ...s.draft[section], ...patch } } })),
@@ -41,7 +42,10 @@ export const useProfileStore = create<ProfileState>()(
       complete: (snapshot) => set({ snapshot }),
       setSnapshot: (snapshot) => set({ snapshot }),
       setLocalMode: (localMode) => set({ localMode }),
-      restartOnboarding: () => set({ currentStep: 'profile.name' }),
+      restartOnboarding: () => {
+        const { snapshot } = get();
+        set({ currentStep: 'profile.name', ...(snapshot ? { draft: draftFromSnapshot(snapshot) } : {}) });
+      },
       reset: () => set({ ...initial, draft: emptyDraft() }),
     }),
     { name: 'py.profile.v1', storage: persistStorage, version: 1 },

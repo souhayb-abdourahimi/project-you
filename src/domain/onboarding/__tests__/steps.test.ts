@@ -1,10 +1,13 @@
+import type { UserContextSnapshot } from '../../profile/schemas';
 import { SCENARIOS } from '../../scenarios';
 import {
   buildSnapshot,
+  draftFromSnapshot,
   emptyDraft,
   firstIncompleteStep,
   nextStepId,
   progressOf,
+  removedAllergies,
   visibleSteps,
   type OnboardingDraft,
 } from '../steps';
@@ -76,5 +79,43 @@ describe('adaptive onboarding', () => {
     expect(result.snapshot.training.gymName).toBeUndefined();
     expect(result.snapshot.training.equipment).toEqual(['bodyweight', 'dumbbells']);
     expect(result.snapshot.goal.targetWeightKg).toBeUndefined();
+  });
+});
+
+describe('editing preferences (review B2)', () => {
+  const now = new Date('2026-09-30T08:00:00.000Z');
+  const withoutDate = (s: UserContextSnapshot) => ({ ...s, createdAt: '' });
+
+  it('prefills every answer from the saved profile: finishing unchanged gives the same profile', () => {
+    for (const s of Object.values(SCENARIOS)) {
+      const result = buildSnapshot(draftFromSnapshot(s), now);
+      expect(result.ok).toBe(true);
+      if (result.ok) expect(withoutDate(result.snapshot)).toEqual(withoutDate(s));
+    }
+  });
+
+  it('keeps allergies, intolerances, exclusions and diet in the prefilled draft', () => {
+    const draft = draftFromSnapshot(SCENARIOS.freeTextExclusions);
+    expect(draft.nutrition).toMatchObject({
+      diet: 'omnivore',
+      intolerances: ['soja', 'lactose'],
+      excludedFoods: ['Poissons', 'oeufs'],
+    });
+    expect(draftFromSnapshot(SCENARIOS.veganSoyAllergy).nutrition).toMatchObject({ diet: 'vegan', allergies: ['soy'] });
+  });
+
+  it('does not share arrays with the saved profile', () => {
+    const s = SCENARIOS.multipleAllergies;
+    draftFromSnapshot(s).nutrition.allergies!.pop();
+    expect(s.nutrition.allergies).toHaveLength(4);
+  });
+
+  it('lists the saved allergies that the new answers drop', () => {
+    const saved = SCENARIOS.multipleAllergies;
+    const next = { nutrition: { ...saved.nutrition, allergies: ['milk', 'nuts'] as typeof saved.nutrition.allergies } };
+    expect(removedAllergies(saved, next)).toEqual(['gluten', 'fish']);
+    expect(removedAllergies(saved, saved)).toEqual([]);
+    expect(removedAllergies(null, next)).toEqual([]);
+    expect(removedAllergies(SCENARIOS.fatLoss, saved)).toEqual([]);
   });
 });

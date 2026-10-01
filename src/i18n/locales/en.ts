@@ -165,6 +165,17 @@ const en: LocaleShape = {
       disclaimer:
         'These numbers are estimates, adjusted to your real progress. Project You does not replace a health professional.',
       invalid: 'Some answers are missing: {{steps}}',
+      dietTitle: 'Your diet',
+      diet: 'Diet',
+      allergies: 'Allergies',
+      intolerances: 'Intolerances',
+      excluded: 'Excluded foods',
+      none: 'none',
+      removeAllergiesOne: 'You are about to remove the following allergy:',
+      removeAllergiesMany: 'You are about to remove the following allergies:',
+      removeAllergiesConfirm: 'Confirm?',
+      removeAllergiesYes: 'Yes, remove',
+      removeAllergiesNo: 'No, keep my allergies',
     },
   },
   enums: {

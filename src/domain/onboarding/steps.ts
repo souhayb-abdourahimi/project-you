@@ -254,3 +254,47 @@ export function buildSnapshot(draft: OnboardingDraft, now: Date): SnapshotResult
 function withBodyweight<T extends string>(equipment: T[]): (T | 'bodyweight')[] {
   return equipment.includes('bodyweight' as T) ? equipment : ['bodyweight', ...equipment];
 }
+
+/**
+ * Draft prefilled from the saved profile, for "Refaire le questionnaire" (review B2, D-023):
+ * the questionnaire never starts blank or from another device's stale draft, so an allergy the
+ * user did not touch cannot disappear.
+ */
+export function draftFromSnapshot(snapshot: UserContextSnapshot): OnboardingDraft {
+  return {
+    user: { ...snapshot.user },
+    goal: { ...snapshot.goal, priorities: { ...snapshot.goal.priorities } },
+    motivation: { ...snapshot.motivation },
+    nutrition: {
+      ...snapshot.nutrition,
+      allergies: [...snapshot.nutrition.allergies],
+      intolerances: [...snapshot.nutrition.intolerances],
+      excludedFoods: [...snapshot.nutrition.excludedFoods],
+      dislikedFoods: [...snapshot.nutrition.dislikedFoods],
+      likedFoods: [...snapshot.nutrition.likedFoods],
+    },
+    training: {
+      ...snapshot.training,
+      equipment: [...snapshot.training.equipment],
+      likedSports: [...snapshot.training.likedSports],
+      refusedSports: [...snapshot.training.refusedSports],
+      refusedExerciseIds: [...snapshot.training.refusedExerciseIds],
+    },
+    lifestyle: { ...snapshot.lifestyle, kitchen: [...snapshot.lifestyle.kitchen] },
+    budget: { ...snapshot.budget },
+    schedule: {
+      availability: snapshot.schedule.availability.map((s) => ({ ...s })),
+      fixedConstraints: snapshot.schedule.fixedConstraints.map((s) => ({ ...s })),
+    },
+    preferences: { ...snapshot.preferences },
+  };
+}
+
+/** Allergies of the saved profile that the new answers no longer contain: they need an explicit confirmation. */
+export function removedAllergies(
+  saved: UserContextSnapshot | null,
+  next: Pick<UserContextSnapshot, 'nutrition'>,
+): UserContextSnapshot['nutrition']['allergies'] {
+  if (!saved) return [];
+  return saved.nutrition.allergies.filter((a) => !next.nutrition.allergies.includes(a));
+}
