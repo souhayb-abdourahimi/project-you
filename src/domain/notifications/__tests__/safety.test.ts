@@ -119,7 +119,11 @@ describe('matrix: no congratulations or chasing while a safety signal is active'
     'absence_gentle',
     'absence_comeback',
     'absence_last',
+    'milestone_reached',
+    'encouragement_kept_going',
   ];
+  /** What the Daily Coach would celebrate today (D-028): a milestone and yesterday kept in a short version. */
+  const journey = { milestone: { id: 'sessions_10', facts: { sessions: '10' } }, keptGoingDates: ['2026-09-28'] };
   /** Goal-pushing meanings (they also never show for minors and underweight users). */
   const PUSH = /^coach\.meaning\.(session_planned|meal_planned|daily_why)\.(lose|gain|recomp|performance)$/;
 
@@ -172,6 +176,7 @@ describe('matrix: no congratulations or chasing while a safety signal is active'
               const all = plan({
                 prefs: allPrefsOn({ quotePersonalWords }),
                 state: stateFor({ ...eager, goal, tone, profile, safety }),
+                journey,
               });
               const triggers = all.map((n) => n.trigger);
               expect(triggers.filter((x) => FORBIDDEN.includes(x))).toEqual([]);
@@ -189,9 +194,10 @@ describe('matrix: no congratulations or chasing while a safety signal is active'
   it('low logging alone keeps the coaching on: reminders, celebrations and absence messages still go out', () => {
     // An engagement signal, not a danger one (D-027): someone who stops logging is drifting away.
     for (const [, profile] of people.filter(([who]) => who === 'adult')) {
-      const all = plan({ state: stateFor({ ...eager, profile, safety: lowLogging('2026-09-25') }) });
+      const all = plan({ state: stateFor({ ...eager, profile, safety: lowLogging('2026-09-25') }), journey });
       const triggers = new Set(all.map((n) => n.trigger));
-      for (const kept of ['success_streak', 'weekly_progress', 'daily_why'] as Trigger[]) {
+      // success_streak gives way to the milestone the same evening (one celebration).
+      for (const kept of ['milestone_reached', 'weekly_progress', 'daily_why'] as Trigger[]) {
         expect(triggers.has(kept)).toBe(true);
       }
       expect([...triggers].some((x) => x.startsWith('absence_'))).toBe(true);
@@ -215,7 +221,67 @@ describe('matrix: no congratulations or chasing while a safety signal is active'
   it('the same profiles are congratulated and chased without a signal (the matrix is not vacuous)', () => {
     const triggers = new Set(plan({ state: stateFor(eager) }).map((n) => n.trigger));
     expect(triggers.has('success_streak')).toBe(true);
+    const coached = new Set(plan({ state: stateFor(eager), journey }).map((n) => n.trigger));
+    expect(coached.has('milestone_reached')).toBe(true);
+    expect(coached.has('encouragement_kept_going')).toBe(true);
     expect(triggers.has('weekly_progress')).toBe(true);
     expect([...triggers].some((x) => x.startsWith('absence_'))).toBe(true);
+  });
+});
+
+describe('Daily Coach on the notification channel (D-028)', () => {
+  const journey = { milestone: { id: 'sessions_10', facts: { sessions: '10' } } };
+
+  it('a milestone is celebrated once, at 19:00, and never twice across re-plans', () => {
+    const first = plan({ journey });
+    const msgs = ofTrigger(first, 'milestone_reached');
+    expect(msgs.map((n) => [n.date, n.time, n.facts.milestone])).toEqual([['2026-09-28', '19:00', 'sessions_10']]);
+    const { title } = renderMessage(msgs[0], translator('fr'));
+    expect(title).toBe('10 séances terminées 🔥');
+    const history = recordPlanned([], first, '2026-09-28T08:00:00.000Z');
+    expect(
+      ofTrigger(plan({ journey, history, from: { date: '2026-09-28', time: '20:00' } }), 'milestone_reached'),
+    ).toEqual([]);
+  });
+
+  it('the morning after a kept day: "tu as gardé le fil" takes the motivation slot', () => {
+    const all = plan({
+      state: stateFor({ sessionDates: ['2026-09-28'] }),
+      journey: { keptGoingDates: ['2026-09-28'] },
+    });
+    expect(ofTrigger(all, 'encouragement_kept_going').map((n) => n.date)).toEqual(['2026-09-29']);
+    expect(ofTrigger(all, 'success_session').map((n) => n.date)).not.toContain('2026-09-29');
+  });
+
+  it("today's session reminder follows the Daily Coach: none on a rest day, the short version on a difficult day", () => {
+    const today = '2026-09-28';
+    const hasSessionToday = workoutDates.includes(today);
+    const none = plan({ journey: { todaySession: 'none' } });
+    expect(none.some((n) => n.trigger.startsWith('session_planned') && n.date === today)).toBe(false);
+    const short = plan({ journey: { todaySession: { variant: 'short', minutes: 20 } } });
+    const reminder = short.find((n) => n.trigger.startsWith('session_planned') && n.date === today);
+    if (hasSessionToday) expect(reminder?.facts).toMatchObject({ short: '1', minutes: '20' });
+    // Other days keep their planned reminders.
+    expect(ofTrigger(none, 'session_planned').length).toBe(
+      ofTrigger(plan(), 'session_planned').length - (hasSessionToday ? 1 : 0),
+    );
+  });
+
+  it('the screen and the notifications share one voice history', () => {
+    const alone = plan({ journey });
+    const daily = ofTrigger(alone, 'daily_why')[0];
+    const shared = plan({
+      journey,
+      screenHistory: [
+        {
+          templateId: daily.templateId,
+          anchorSlot: daily.anchorSlot,
+          date: '2026-09-27',
+          time: '08:00',
+          channel: 'screen',
+        },
+      ],
+    });
+    expect(ofTrigger(shared, 'daily_why')[0].templateId).not.toBe(daily.templateId);
   });
 });

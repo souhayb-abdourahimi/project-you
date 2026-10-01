@@ -63,7 +63,60 @@ function fullState(): SyncableState {
         ],
       },
     },
-    sessionIds: { [key]: 'aaaaaaaa-0000-4000-8000-000000000005' },
+    sessionIds: {
+      [key]: 'aaaaaaaa-0000-4000-8000-000000000005',
+      [SKIPPED]: 'aaaaaaaa-0000-4000-8000-000000000006',
+    },
+    ...journeyHistory(),
+  };
+}
+
+const SKIPPED = sessionKey('2026-09-28', 1);
+
+/** Journey history (D-028): outcomes, swaps with reasons, day rows, meal journal, check-ins… */
+function journeyHistory(): Partial<SyncableState> {
+  return {
+    sessionOutcomes: { [SKIPPED]: { status: 'replaced', replacedBy: 'walk', reason: 'tired', at: '' } },
+    exerciseSwaps: { [sessionKey('2026-09-30', 0)]: { goblet_squat: 'split_squat' } },
+    swapReasons: { [sessionKey('2026-09-30', 0)]: { goblet_squat: 'dislike' } },
+    dayLogs: [{ date: '2026-09-29', energy: 2, fatigue: 4, mode: 'difficult', activity: 'walk', activityMinutes: 15 }],
+    mealLog: [
+      {
+        id: '2026-09-22-lunch-1',
+        date: '2026-09-22',
+        slot: 'lunch',
+        recipeId: 'lentil_curry',
+        servings: 1,
+        status: 'replaced',
+        reason: 'restaurant',
+        kcal: 0,
+      },
+    ],
+    measurements: [{ id: 'aaaaaaaa-0000-4000-8000-000000000007', date: '2026-09-30', kind: 'arm', cm: 33 }],
+    weeklyCheckins: [
+      {
+        weekStart: '2026-09-21',
+        weekRating: 4,
+        energy: 3,
+        mainProblem: 'time',
+        answeredAt: '2026-09-27T18:00:00.000Z',
+      },
+    ],
+    milestones: { first_session: { reachedOn: '2026-09-23', celebratedAt: '2026-09-24T08:00:00.000Z' } },
+    adjustments: [
+      {
+        id: 'aaaaaaaa-0000-4000-8000-000000000008',
+        kind: 'training',
+        changeKey: 'sessions_per_week',
+        from: 3,
+        to: 2,
+        reasonKey: 'adapt.reason.missed_two_weeks',
+        evidence: { adherence: 50 },
+        status: 'applied',
+        effectiveFrom: '2026-09-28',
+        decidedAt: '2026-09-27T18:05:00.000Z',
+      },
+    ],
   };
 }
 
@@ -153,6 +206,27 @@ describe('applyRemote', () => {
     expect(state.completedSessions).toEqual(source.completedSessions);
     expect(state.setLogs).toEqual(source.setLogs);
     // Nothing to push back right after a pull.
+    expect(diff(project(state, USER), synced)).toEqual({ upserts: [], deletes: [] });
+  });
+
+  it('restores the journey history on a second device (outcomes, swaps, days, meals, check-ins, milestones)', () => {
+    const source = fullState();
+    const { state, synced, rejected } = applyRemote(emptyState(), asServer(source), USER, {});
+    expect(rejected).toBe(0);
+    expect(state.sessionOutcomes).toEqual({
+      [SKIPPED]: { ...source.sessionOutcomes![SKIPPED], at: '2026-09-30T20:00:00.000Z' },
+    });
+    expect(state.exerciseSwaps).toEqual(source.exerciseSwaps);
+    expect(state.swapReasons).toEqual(source.swapReasons);
+    expect(state.dayLogs).toEqual(source.dayLogs);
+    expect(state.measurements).toEqual(source.measurements);
+    expect(state.weeklyCheckins).toEqual(source.weeklyCheckins);
+    expect(state.milestones).toEqual(source.milestones);
+    expect(state.adjustments).toEqual(source.adjustments);
+    expect(state.mealLog).toEqual([
+      expect.objectContaining({ date: '2026-09-22', slot: 'lunch', status: 'replaced', reason: 'restaurant' }),
+    ]);
+    // Nothing to push back right after a pull, and nothing duplicated.
     expect(diff(project(state, USER), synced)).toEqual({ upserts: [], deletes: [] });
   });
 

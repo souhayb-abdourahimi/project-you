@@ -10,11 +10,17 @@
  */
 import type { JourneyState } from '../journey/state';
 import { composeMessage } from '../journey/voice/composer';
-import { SAFETY_TRIGGERS } from '../journey/voice/types';
+import { SAFETY_TRIGGERS, type VoiceUse } from '../journey/voice/types';
 import type { WeeklyPlan } from '../planning/engine';
 import { addDays, parseTime, type IsoDate } from '../shared/dates';
 import { effectiveDailyCap, onCooldown } from './anti-repetition';
-import { MOTIVATION_SLOT_ORDER, TRIGGER_PRIORITY, collectCandidates, type Candidate } from './rules';
+import {
+  MOTIVATION_SLOT_ORDER,
+  TRIGGER_PRIORITY,
+  collectCandidates,
+  type Candidate,
+  type JourneyChannelInput,
+} from './rules';
 import {
   TRIGGER_CATEGORY,
   type NotificationHistoryEntry,
@@ -54,6 +60,10 @@ export function planNotifications(input: {
   completed?: string[];
   /** Reconciled device history (history.ts): past messages only. */
   history?: NotificationHistoryEntry[];
+  /** What the Daily Coach decided today (milestone, kept-going days, today's session). */
+  journey?: JourneyChannelInput;
+  /** Messages the Today screen already said: one voice history across channels (D-028). */
+  screenHistory?: VoiceUse[];
 }): PlannedWithFacts[] {
   const { prefs, state, from } = input;
   if (!prefs.enabled) return [];
@@ -67,6 +77,7 @@ export function planNotifications(input: {
     state,
     completed: new Set(input.completed ?? []),
     fromDate: from.date,
+    journey: input.journey,
   })) {
     // Safety messages ignore category switches (not the master switch, the pause or quiet hours).
     if (!SAFETY_TRIGGERS.includes(c.trigger) && !prefs.categories[TRIGGER_CATEGORY[c.trigger]]) continue;
@@ -121,7 +132,7 @@ export function planNotifications(input: {
       facts: c.facts,
       state,
       quotePersonalWords: prefs.quotePersonalWords,
-      history: working,
+      history: [...(input.screenHistory ?? []), ...working],
     });
     const planned: PlannedWithFacts = {
       ...message,

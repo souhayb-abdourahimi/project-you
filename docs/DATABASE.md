@@ -56,6 +56,14 @@ Supabase / PostgreSQL. Migrations versionnées dans `supabase/migrations/` (horo
 - `prune_notification_history(keep_days default 90)` : `security invoker`, ne supprime que les lignes de l'appelant.
 - Pas encore alimentées par l'app (sync à brancher, voir TODO) ; exportées par le Centre de confidentialité.
 
+## Migration `20261001000004_daily_coach.sql` (D-028)
+
+- `meal_plan_items` : statut `replaced`, `reason` facultative (liste fermée, uniquement pour un repas sauté ou remplacé).
+- `workout_sessions` : statut `replaced`, `outcome_reason` et `replaced_by` (listes fermées).
+- `daily_checkins` : `day_mode`, `activity`, `activity_minutes` ; synchronisée depuis cette phase.
+- Nouvelles tables, RLS propriétaire, aucun privilège `anon`, cascade depuis `auth.users` : `weekly_checkins` (une ligne par semaine, aucun texte libre), `exercise_substitutions` (politique restrictive : la séance doit appartenir au même utilisateur), `journey_milestones` (un jalon par utilisateur, `celebrated_at`), `adjustments` (journal des propositions de l'Adaptation Engine et des décisions ; seul le statut change ; identifiant uuid aléatoire, la semaine de `effective_from` relie la décision à la recommandation).
+- `notification_history` accepte `milestone_reached` et `encouragement_kept_going`.
+
 ## Prévu plus tard (non créé)
 
 `stores`, `prices`, `promotions`, `gyms`, `sports_activities` : phases 2–3, avec la traçabilité complète des données externes. Créés quand un provider réel existe, pour ne pas stocker de données inventées.

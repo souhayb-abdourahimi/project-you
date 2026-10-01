@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+
 import { mergeWeights, type WeightPoint } from '@/domain/health/merge';
 import { useDataStore } from '@/state/data';
 import { useHealthStore } from '@/state/health';
@@ -10,5 +12,5 @@ export function useWeights(): WeightPoint[] {
   const manual = useDataStore((s) => s.weights);
   const imported = useHealthStore((s) => s.data.weights);
   const sharing = useHealthStore((s) => s.connected && s.wanted.includes('weight'));
-  return mergeWeights(manual, sharing ? imported : []);
+  return useMemo(() => mergeWeights(manual, sharing ? imported : []), [manual, imported, sharing]);
 }

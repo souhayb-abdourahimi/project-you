@@ -89,6 +89,17 @@ export function activityFactor(level: ActivityLevel, weeklyTrainingMinutes: numb
   return Math.min(MAX_ACTIVITY_FACTOR, ACTIVITY_FACTOR[level] + bonus);
 }
 
+/**
+ * Minor or underweight: no energy deficit, ever (same rule as the targets below). Adaptations of
+ * the plan (journey/adaptation.ts) and accepted calorie offsets respect it too.
+ */
+export function noDeficitProfile(snapshot: UserContextSnapshot, referenceYear: number): boolean {
+  return (
+    referenceYear - snapshot.user.birthYear < ADULT_AGE ||
+    bmi(snapshot.user.weightKg, snapshot.user.heightCm) < UNDERWEIGHT_BMI
+  );
+}
+
 export function computeNutritionTargets(snapshot: UserContextSnapshot, referenceYear: number): NutritionTargets {
   const { user, goal, training } = snapshot;
   const age = referenceYear - user.birthYear;

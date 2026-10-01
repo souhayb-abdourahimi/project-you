@@ -26,6 +26,17 @@ export const TRIGGERS = [
   'safety_fast_loss',
   'safety_training_load',
   'safety_low_logging',
+  // Daily Coach (D-028): first day, comeback, difficult day, rest day, tip, reflection, progress,
+  // milestone and encouragement. Screen and notifications share them.
+  'first_day',
+  'comeback_welcome',
+  'difficult_day',
+  'rest_day',
+  'daily_tip',
+  'daily_reflection',
+  'progress_note',
+  'milestone_reached',
+  'encouragement_kept_going',
 ] as const;
 export type Trigger = (typeof TRIGGERS)[number];
 
@@ -84,4 +95,6 @@ export interface VoiceUse {
   anchorSlot: AnchorSlot;
   date: string;
   time: string;
+  /** Where it was said; notifications when absent (history written before D-028). */
+  channel?: 'screen' | 'notification';
 }

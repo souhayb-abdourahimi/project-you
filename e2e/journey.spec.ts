@@ -71,7 +71,9 @@ test('first visit: onboarding → today → meals → inventory → workout → 
   await expect(page.getByText(/estimation, pas une promesse/)).toBeVisible();
   await button(page, 'Créer mon programme').click();
 
-  await expect(page.getByText('Bonjour Camille')).toBeVisible();
+  // First day: a welcome, not a progress report (Daily Coach, D-028).
+  await expect(page.getByText('Bienvenue Camille 👋')).toBeVisible();
+  await expect(page.getByText('Ton parcours commence aujourd’hui')).toBeVisible();
 
   // Nutrition: vegan plan with protein coverage, Ciqual source and no MOCK badge.
   await openTab(page, 'Nutrition');
@@ -90,7 +92,7 @@ test('first visit: onboarding → today → meals → inventory → workout → 
   await button(page, 'J’ai 15 minutes').click();
   await expect(page.getByText(/Peu de temps/)).toBeVisible();
   await button(page, 'Séance courte (15–20 min)').click();
-  await expect(page.getByText('Version courte')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Full body B · Version courte' })).toBeVisible();
   await page.getByLabel('Répétitions').first().fill('10');
   await button(page, 'Valider la série').click();
   await button(page, 'Terminer la séance').click();

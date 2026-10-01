@@ -28,7 +28,8 @@ export function ExerciseCard({
   history: SessionLog[];
   training: TrainingProfile;
   onLog: (set: LoggedSet) => void;
-  onSwap: (toId: string) => void;
+  /** The reason picked by the user travels with the swap (journey memory, D-028). */
+  onSwap: (toId: string, reason: ReplacementReason) => void;
 }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language === 'en' ? 'en' : 'fr';
@@ -52,7 +53,7 @@ export function ExerciseCard({
     if (!first) return setNoAlternative(true);
     setNoAlternative(false);
     setReplacing(false);
-    onSwap(first.id);
+    onSwap(first.id, reason);
   };
 
   const unit = prescription.unit === 'seconds' ? t('workout.unitSeconds') : t('workout.unitReps');

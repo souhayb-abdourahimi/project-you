@@ -40,7 +40,12 @@ const base: JourneyInput = {
 describe('journey state (single source of truth)', () => {
   it('starts empty for a new user, without inventing anything', () => {
     const s = deriveJourneyState(base);
-    expect(s.momentum).toEqual({ lastActivityDate: null, daysSinceActivity: null });
+    expect(s.momentum).toEqual({
+      lastActivityDate: null,
+      daysSinceActivity: null,
+      previousActivityDate: null,
+      comeback: false,
+    });
     expect(s.progress).toEqual({ sessionDates: [], sessionsThisWeek: 0, weeklyStreak: 0, weightDirection: 'unknown' });
     expect(s.difficulties.fatigue).toBe('unknown');
     expect(s.safety.active).toBe(false);
@@ -56,7 +61,7 @@ describe('journey state (single source of truth)', () => {
       weights: [{ date: '2026-09-27', weightKg: 80 }],
       mealPlan: mealPlan([{ date: '2026-09-28', meals: [['lunch', 'eaten', 600]] }]),
     });
-    expect(s.momentum).toEqual({ lastActivityDate: '2026-09-28', daysSinceActivity: 3 });
+    expect(s.momentum).toMatchObject({ lastActivityDate: '2026-09-28', daysSinceActivity: 3, comeback: true });
   });
 
   it('counts this week’s sessions and the weekly streak', () => {

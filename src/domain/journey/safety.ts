@@ -86,8 +86,13 @@ export const NO_SAFETY_ISSUE: SafetyAssessment = {
 /** One day of the meal plan as the user logged it. */
 export interface LoggedDay {
   date: IsoDate;
-  /** Every planned meal is marked eaten or skipped, and at least one was eaten. */
+  /** Every planned meal is marked eaten or skipped, and at least one was eaten (energy fully known). */
   complete: boolean;
+  /**
+   * Every planned meal is marked (eaten, skipped or replaced) and at least one was eaten or replaced:
+   * the user logged the day, even if its energy is not fully known. Defaults to `complete`.
+   */
+  marked?: boolean;
   /** Planned meals still neither marked eaten nor skipped. */
   unmarkedMeals: number;
   /** Energy of the meals marked eaten. */
@@ -192,7 +197,8 @@ function lowLogging(input: SafetyInput): { since: IsoDate; days: number } | null
   if (days < SAFETY.lowLoggingDays) return null;
   let loggedBefore = 0;
   for (let i = 1; i <= SAFETY.lowLoggingPriorWindowDays; i++) {
-    if (byDate.get(addDays(since, -i))?.complete) loggedBefore++;
+    const d = byDate.get(addDays(since, -i));
+    if (d && (d.marked ?? d.complete)) loggedBefore++;
   }
   return loggedBefore >= SAFETY.lowLoggingPriorLoggedDays ? { since, days } : null;
 }

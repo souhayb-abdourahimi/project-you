@@ -48,3 +48,55 @@ export const field = (page: Page, label: string | RegExp) => page.getByLabel(lab
 export async function freezeClock(page: Page) {
   await page.clock.setFixedTime(new Date(2026, 8, 30, 10, 0));
 }
+
+/** Seeds the local data store (`py.data.v1`) before the app starts: a recorded history. */
+export async function seedData(page: Page, state: Record<string, unknown>) {
+  await page.addInitScript((value) => {
+    if (!localStorage.getItem('py.data.v1')) {
+      localStorage.setItem('py.data.v1', JSON.stringify({ state: value, version: 3 }));
+    }
+  }, state);
+}
+
+const iso = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/**
+ * A plausible recorded history (MOCK): two sessions a week (Monday, Thursday) from `from` to `to`,
+ * goblet squat loads going up 2 kg a week, weigh-ins three mornings a week, waist every two weeks.
+ */
+export function history({
+  from,
+  to,
+  startKg = 80,
+  kgPerWeek = -0.3,
+  waist = true,
+}: {
+  from: string;
+  to: string;
+  startKg?: number;
+  kgPerWeek?: number;
+  waist?: boolean;
+}) {
+  const completedSessions: { date: string; sessionIndex: number; variant: string; completedAt: string }[] = [];
+  const setLogs: Record<string, Record<string, { reps: number; loadKg: number }[]>> = {};
+  const weights: { id: string; date: string; weightKg: number }[] = [];
+  const waistEntries: { id: string; date: string; cm: number }[] = [];
+  const start = new Date(`${from}T12:00:00`);
+  const end = new Date(`${to}T12:00:00`);
+  for (let d = new Date(start), i = 0; d <= end; d.setDate(d.getDate() + 1), i++) {
+    const date = iso(d);
+    const week = Math.floor(i / 7);
+    const weekday = d.getDay();
+    if (weekday === 1 || weekday === 4) {
+      const sessionIndex = weekday === 1 ? 0 : 1;
+      completedSessions.push({ date, sessionIndex, variant: 'full', completedAt: `${date}T18:00:00.000Z` });
+      setLogs[`${date}#${sessionIndex}`] = { goblet_squat: [{ reps: 8, loadKg: 16 + 2 * week }] };
+    }
+    if (weekday === 1 || weekday === 3 || weekday === 5) {
+      weights.push({ id: `w-${date}`, date, weightKg: Math.round((startKg + (kgPerWeek * i) / 7) * 10) / 10 });
+    }
+    if (waist && i % 14 === 0) waistEntries.push({ id: `c-${date}`, date, cm: 90 - week * 0.5 });
+  }
+  return { completedSessions, setLogs, weights, waist: waistEntries };
+}

@@ -8,6 +8,9 @@ export function Chip({ label, selected, onPress }: { label: string; selected: bo
   const colors = useColors();
   return (
     <Pressable
+      // role/aria-* reach the DOM on web (aria-checked); accessibilityState covers native readers.
+      role="checkbox"
+      aria-checked={selected}
       accessibilityRole="checkbox"
       accessibilityState={{ checked: selected }}
       accessibilityLabel={label}

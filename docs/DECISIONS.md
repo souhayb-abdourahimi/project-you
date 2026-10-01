@@ -327,3 +327,45 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
 - **Pourquoi** : ne pas noter ne dit rien de ce qui a été mangé. C'est un signe que l'utilisateur s'éloigne de l'app, pas un excès. Couper la motivation à ce moment-là accélérerait le décrochage.
 - **Tests** : la matrice « ni félicitation ni relance » couvre seulement les trois signaux de sécurité ; un test vérifie que ces messages continuent de partir avec `low_logging` seul, avec le check-in en plus et sans fait `safety`.
 - **Date** : 2026-10-01
+
+## D-028 — Phase Daily Coach + Progress Journey : le même moteur, étendu ; l'historique du parcours sur le serveur
+
+- **Contexte** : demande du 2026-10-01 (thread « Daily Coach + Progress Journey ») : faire de Project You un compagnon quotidien (Daily Coach, DailyPlan, Progress Journey, Weekly Check-in, adaptation, anti-abandon, anti-répétition, notifications cohérentes), sans fonctionnalités secondaires, sans casser la sécurité (D-024 à D-027). Audit et architecture : `docs/DAILY_COACH.md`, `docs/PROGRESS_JOURNEY.md`, `docs/ADAPTATION_ENGINE.md`, `docs/RETENTION.md`.
+- **Décision** :
+  - **Aucun nouveau moteur** : tout est dans `src/domain/journey` (règle 6). `deriveJourneyState` gagne la date de début, l'adhérence, le retour après absence, le risque et la base de poids ; `DailyPlan`, `ProgressJourney`, les jalons, le Weekly Check-in, l'Adaptation Engine et la mémoire sont des sorties pures du même état. `src/domain/today.ts` (`nextAction`) est remplacé par `journey/daily-plan.ts`, l'écran Progrès ne calcule plus rien lui-même.
+  - **Hiérarchie du jour** : sécurité → contraintes fortes → entraînement → nutrition → récupération → activité → motivation. `low_logging` seul n'est pas une contrainte (D-027 inchangée).
+  - **Voix** : why/change/feel choisis selon le contexte du jour (jamais concaténés), catégories de messages, historique de voix partagé entre l'écran et les notifications.
+  - **Issues enregistrées, raisons jamais devinées** : séances (faite, raccourcie, allégée, remplacée, reportée, sautée), repas (mangé, sauté, remplacé, non renseigné), remplacements d'exercice, avec une raison facultative choisie dans une liste.
+  - **Historique du parcours sur le serveur** (point 37 de la demande) : sync de `daily_checkins` ; `meal_plan_items` et `workout_sessions` élargis (statuts, raison) et synchronisés aussi quand le repas est sauté ou remplacé et la séance sautée ou remplacée (lève le compromis de D-026) ; nouvelles tables `weekly_checkins`, `exercise_substitutions`, `journey_milestones`, `adjustments`, toutes en RLS propriétaire. `JourneyState`, plans du jour, progression, risque et mémoire restent **dérivés et non stockés**.
+  - **Poids de référence** recalculé par paliers de 14 jours (≥ 4 pesées, écart ≥ 1 kg), rejoué depuis le journal des pesées (déterministe, identique sur tous les appareils), gelé sous sécurité.
+  - **Adaptations** : calories et nombre de séances seulement proposés (un geste), bornés (±150 kcal, jamais sous le plancher), jamais pendant la calibration ni sans données suffisantes, jamais quand l'adhérence est faible (on simplifie le plan) ; tracées dans `adjustments`.
+  - **Coach IA** : pas de LLM dans cette phase. `journey/explain.ts` fournit des explications structurées (« Pourquoi ? ») que l'IA ne pourra que reformuler.
+  - **Performance** : pas de cache persistant ; mémorisation dans le hook et test de performance sur un an de données. Un cache ne sera ajouté que si la mesure dépasse le budget.
+- **Alternatives** :
+  - un « DailyCoachEngine » séparé de `journey` : refusé (deux vérités, règle 6) ;
+  - stocker `JourneyState` ou des scores côté serveur : refusé (désynchronisation, données sensibles déduites) ;
+  - garder les nouveaux historiques sur l'appareil : refusé (perdus au changement de téléphone ; la demande exige des structures multi-appareils) ;
+  - recalculer les calories à chaque pesée : refusé (une pesée fluctue de 1 à 2 kg avec l'eau).
+- **Trade-offs** :
+  - les séances prévues des semaines passées sont recalculées avec le profil actuel (le plan de la semaine n'est pas stocké) : si le nombre de séances change, l'adhérence passée est approximative (les adaptations acceptées sont datées, ce qui limite l'écart) ;
+  - les reports restent sur l'appareil (planification de la semaine en cours) ;
+  - les nouveaux seuils (14 jours, 6 pesées, 70 %, ±150 kcal, 28/21 jours pour le plateau, score de risque) sont des paramètres de conception à faire relire avec ceux de D-024/D-026.
+- **Revue finale (2026-10-01)** : trois corrections avant livraison.
+  - Les décisions d'adaptation ont un identifiant uuid aléatoire (la clé primaire est partagée par tous les comptes) ; la semaine de `effective_from` les relie à la recommandation (`decidedRecommendation`). Les recommandations sont identifiées par type, changement et semaine.
+  - Profils protégés (mineur, sous-poids) : aucune proposition ni décalage accepté ne crée de déficit (`noDeficitProfile`, `minimumKcal`), même règle que les cibles (D-022).
+  - « Repos aujourd'hui » à la place d'une séance est une séance **sautée** (sans rattrapage), une marche ou de la mobilité une séance **adaptée**.
+  - Seuls calories, séances par semaine et semaine allégée s'appliquent en un geste ; jour de repos en plus et nouveau jour de séance restent des conseils.
+- **Date** : 2026-10-01
+
+## D-029 — Garde-fou de ton : toutes les chaînes visibles, FR et EN
+
+- **Contexte** : demande du 2026-10-01, avant la fusion de la PR #4. `voice/tone.ts` ne contrôlait que `coach.*` ; la phase D-028 ajoute des textes sur les moments sensibles (journée difficile, pas envie, absence, adaptation, progression, plateau, sécurité) dans `daily`, `explain`, `adaptation`, `checkin`, `progress`.
+- **Décision** :
+  - **Le ton est une contrainte produit**, au même titre que la sécurité (CLAUDE.md règles 3 et 8, `.claude/rules/ui.md`) : un utilisateur qui vit une journée difficile ou revient après une absence abandonne plus facilement s'il se sent jugé. Une phrase culpabilisante est un défaut, pas une question de style.
+  - **Couverture globale** : le test parcourt récursivement tout l'arbre de chaque locale (`localeToneFindings`), FR et EN, au même niveau d'exigence. Une nouvelle section des locales est contrôlée sans rien ajouter. Tout est contrôlé sauf une liste d'exclusions explicite (`TONE_EXCLUSIONS`), courte, justifiée clé par clé et vérifiée (une clé disparue fait échouer le test). Elle est vide aujourd'hui : aucune chaîne des locales n'est cachée à l'utilisateur.
+  - **Formulations rassurantes autorisées** : « pas de rattrapage », « sans rien rattraper », « pas un échec », « jamais culpabilisant » disent à l'utilisateur qu'il n'a rien à se reprocher. Chaque règle peut porter une liste étroite de formes rassurantes (`allow`), retirées avant le test du motif ; chacune est testée dans les deux sens (« sans rattraper » passe, « il faut rattraper » échoue, et une réassurance ne masque pas un reproche dans la même phrase).
+  - **Fait neutre ≠ culpabilisation** : « 2 séances sur 3 ont été réalisées cette semaine » ou « il faut des pesées sur plus d'une semaine » (ce dont le calcul a besoin) sont des constats ; « Tu n'as fait que 2 séances », « Tu as encore raté », « Tu dois te reprendre », « il faut te reprendre » sont des jugements ou des injonctions et sont refusés. Le coach n'est pas artificiellement positif : il peut dire un fait, jamais un reproche.
+  - Deux chaînes reformulées : `adaptation.reason.shorter_sessions` (écart entre le plan et le rythme des deux dernières semaines, sans compter ce qui n'a pas été fait, au conditionnel) et `explain.workout.low_motivation` (répond au choix « Je n'ai pas envie » sans répéter un état négatif ni en inventer un).
+- **Alternatives** : une liste de sections à contrôler (refusée : chaque nouvelle section devrait y être ajoutée à la main) ; supprimer les mots « rattrapage » ou « échec » des textes (refusé : les phrases rassurantes en ont besoin) ; un relecteur humain seul (refusé : non systématique).
+- **Trade-offs** : des motifs lexicaux ne comprennent pas le sens ; ils attrapent les formulations connues et laissent passer une phrase blessante inédite. La relecture humaine des textes reste utile.
+- **Date** : 2026-10-01
