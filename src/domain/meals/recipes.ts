@@ -1,0 +1,477 @@
+import type { KitchenEquipment } from '../profile/schemas';
+
+export type MealSlot = 'breakfast' | 'lunch' | 'snack' | 'dinner';
+
+export interface Ingredient {
+  foodId: string;
+  /** Grams for one base serving. */
+  grams: number;
+}
+
+export interface Recipe {
+  id: string;
+  name: { fr: string; en: string };
+  slots: MealSlot[];
+  ingredients: Ingredient[];
+  minutes: number;
+  difficulty: 1 | 2 | 3;
+  /** All of these are required. An empty list means no cooking appliance is needed. */
+  equipment: KitchenEquipment[];
+  steps: { fr: string[]; en: string[] };
+  /** foodId → foods that can replace it one-for-one. */
+  substitutions: Record<string, string[]>;
+}
+
+/** Editorial recipes (Project You). Nutrition is computed from the food catalogue, never typed in. */
+export const RECIPES: readonly Recipe[] = [
+  {
+    id: 'overnight_oats',
+    name: { fr: 'Overnight oats aux framboises', en: 'Raspberry overnight oats' },
+    slots: ['breakfast'],
+    ingredients: [
+      { foodId: 'oats', grams: 60 },
+      { foodId: 'cottage_cheese', grams: 150 },
+      { foodId: 'raspberries', grams: 80 },
+    ],
+    minutes: 5,
+    difficulty: 1,
+    equipment: [],
+    steps: {
+      fr: ["Mélanger l'avoine et le fromage blanc.", 'Ajouter les framboises.', 'Laisser une nuit au frais.'],
+      en: ['Mix oats and quark.', 'Add the raspberries.', 'Leave overnight in the fridge.'],
+    },
+    substitutions: { cottage_cheese: ['soy_yogurt', 'soy_drink'], raspberries: ['banana', 'apple'] },
+  },
+  {
+    id: 'vegan_oats',
+    name: { fr: 'Porridge soja-banane', en: 'Soy banana porridge' },
+    slots: ['breakfast'],
+    ingredients: [
+      { foodId: 'oats', grams: 60 },
+      { foodId: 'soy_drink', grams: 250 },
+      { foodId: 'banana', grams: 120 },
+    ],
+    minutes: 5,
+    difficulty: 1,
+    equipment: ['microwave'],
+    steps: {
+      fr: ["Chauffer l'avoine avec la boisson soja 2 minutes.", 'Ajouter la banane en rondelles.'],
+      en: ['Microwave oats with soy drink for 2 minutes.', 'Top with sliced banana.'],
+    },
+    substitutions: { banana: ['apple', 'raspberries'] },
+  },
+  {
+    id: 'egg_toast',
+    name: { fr: 'Tartines aux œufs brouillés', en: 'Scrambled eggs on toast' },
+    slots: ['breakfast', 'dinner'],
+    ingredients: [
+      { foodId: 'egg', grams: 165 },
+      { foodId: 'wholemeal_bread', grams: 80 },
+      { foodId: 'tomato', grams: 100 },
+    ],
+    minutes: 10,
+    difficulty: 1,
+    equipment: ['stove'],
+    steps: {
+      fr: ['Brouiller les œufs à feu doux.', 'Servir sur le pain grillé avec la tomate.'],
+      en: ['Scramble the eggs over low heat.', 'Serve on toast with tomato.'],
+    },
+    substitutions: { tomato: ['spinach'], wholemeal_bread: ['rice_cakes'] },
+  },
+  {
+    id: 'yogurt_bowl',
+    name: { fr: 'Bol fromage blanc, pomme et amandes', en: 'Quark bowl with apple and almonds' },
+    slots: ['breakfast', 'snack'],
+    ingredients: [
+      { foodId: 'cottage_cheese', grams: 200 },
+      { foodId: 'apple', grams: 150 },
+      { foodId: 'almonds', grams: 15 },
+    ],
+    minutes: 3,
+    difficulty: 1,
+    equipment: [],
+    steps: { fr: ['Couper la pomme.', 'Mélanger le tout.'], en: ['Slice the apple.', 'Mix everything.'] },
+    substitutions: { almonds: ['oats'], cottage_cheese: ['soy_yogurt'] },
+  },
+  {
+    id: 'pb_banana_snack',
+    name: { fr: 'Banane et beurre de cacahuète', en: 'Banana with peanut butter' },
+    slots: ['snack'],
+    ingredients: [
+      { foodId: 'banana', grams: 120 },
+      { foodId: 'peanut_butter', grams: 20 },
+    ],
+    minutes: 2,
+    difficulty: 1,
+    equipment: [],
+    steps: { fr: ['Tartiner la banane.'], en: ['Spread peanut butter on the banana.'] },
+    substitutions: { peanut_butter: ['almonds'] },
+  },
+  {
+    id: 'chicken_rice_broccoli',
+    name: { fr: 'Poulet, riz et brocoli', en: 'Chicken, rice and broccoli' },
+    slots: ['lunch', 'dinner'],
+    ingredients: [
+      { foodId: 'chicken_breast', grams: 150 },
+      { foodId: 'rice', grams: 80 },
+      { foodId: 'broccoli', grams: 150 },
+      { foodId: 'olive_oil', grams: 8 },
+    ],
+    minutes: 25,
+    difficulty: 1,
+    equipment: ['stove'],
+    steps: {
+      fr: ['Cuire le riz.', 'Saisir le poulet émincé dans l’huile.', 'Cuire le brocoli à la vapeur ou à l’eau.'],
+      en: ['Cook the rice.', 'Sear the sliced chicken in oil.', 'Steam or boil the broccoli.'],
+    },
+    substitutions: { chicken_breast: ['tofu', 'tuna_canned'], rice: ['pasta', 'potato'], broccoli: ['frozen_veg_mix'] },
+  },
+  {
+    id: 'tuna_pasta',
+    name: { fr: 'Pâtes au thon et sauce tomate', en: 'Tuna tomato pasta' },
+    slots: ['lunch', 'dinner'],
+    ingredients: [
+      { foodId: 'pasta', grams: 90 },
+      { foodId: 'tuna_canned', grams: 120 },
+      { foodId: 'tomato_sauce', grams: 150 },
+      { foodId: 'onion', grams: 50 },
+    ],
+    minutes: 15,
+    difficulty: 1,
+    equipment: ['stove'],
+    steps: {
+      fr: ['Cuire les pâtes.', "Faire revenir l'oignon, ajouter la sauce et le thon.", 'Mélanger.'],
+      en: ['Cook the pasta.', 'Sweat the onion, add sauce and tuna.', 'Combine.'],
+    },
+    substitutions: { tuna_canned: ['chickpeas_canned', 'ground_beef_5'], pasta: ['rice'] },
+  },
+  {
+    id: 'lentil_curry',
+    name: { fr: 'Curry de lentilles', en: 'Lentil curry' },
+    slots: ['lunch', 'dinner'],
+    ingredients: [
+      { foodId: 'lentils', grams: 80 },
+      { foodId: 'rice', grams: 60 },
+      { foodId: 'spinach', grams: 100 },
+      { foodId: 'curry_powder', grams: 5 },
+      { foodId: 'onion', grams: 50 },
+    ],
+    minutes: 30,
+    difficulty: 2,
+    equipment: ['stove'],
+    steps: {
+      fr: [
+        "Faire revenir l'oignon avec le curry en poudre.",
+        'Ajouter les lentilles et 3 volumes d’eau, cuire 20 min.',
+        'Ajouter les épinards, servir avec le riz.',
+      ],
+      en: [
+        'Sweat onion with the curry powder.',
+        'Add lentils and 3 volumes of water, simmer 20 min.',
+        'Stir in spinach, serve with rice.',
+      ],
+    },
+    substitutions: { spinach: ['frozen_veg_mix'] },
+  },
+  {
+    id: 'tofu_stir_fry',
+    name: { fr: 'Poêlée de tofu et légumes', en: 'Tofu vegetable stir-fry' },
+    slots: ['lunch', 'dinner'],
+    ingredients: [
+      { foodId: 'tofu', grams: 180 },
+      { foodId: 'frozen_veg_mix', grams: 250 },
+      { foodId: 'rice', grams: 70 },
+      { foodId: 'olive_oil', grams: 8 },
+    ],
+    minutes: 20,
+    difficulty: 1,
+    equipment: ['stove'],
+    steps: {
+      fr: ['Cuire le riz.', 'Dorer le tofu en dés.', 'Ajouter les légumes et cuire 8 minutes.'],
+      en: ['Cook the rice.', 'Brown the diced tofu.', 'Add the vegetables and cook 8 minutes.'],
+    },
+    substitutions: { tofu: ['chicken_breast', 'chickpeas_canned'], rice: ['pasta'] },
+  },
+  {
+    id: 'chickpea_salad',
+    name: { fr: 'Salade de pois chiches', en: 'Chickpea salad' },
+    slots: ['lunch'],
+    ingredients: [
+      { foodId: 'chickpeas_canned', grams: 200 },
+      { foodId: 'tomato', grams: 150 },
+      { foodId: 'carrot', grams: 80 },
+      { foodId: 'olive_oil', grams: 10 },
+      { foodId: 'wholemeal_bread', grams: 60 },
+    ],
+    minutes: 10,
+    difficulty: 1,
+    equipment: [],
+    steps: {
+      fr: ['Rincer les pois chiches.', 'Couper tomate et carotte.', "Assaisonner avec l'huile, servir avec le pain."],
+      en: ['Rinse the chickpeas.', 'Chop tomato and carrot.', 'Dress with oil, serve with bread.'],
+    },
+    substitutions: { chickpeas_canned: ['red_beans_canned', 'tuna_canned'], wholemeal_bread: ['rice_cakes'] },
+  },
+  {
+    id: 'chili_sin_carne',
+    name: { fr: 'Chili sin carne', en: 'Bean chili' },
+    slots: ['lunch', 'dinner'],
+    ingredients: [
+      { foodId: 'red_beans_canned', grams: 200 },
+      { foodId: 'tomato_sauce', grams: 150 },
+      { foodId: 'onion', grams: 60 },
+      { foodId: 'rice', grams: 60 },
+    ],
+    minutes: 25,
+    difficulty: 1,
+    equipment: ['stove'],
+    steps: {
+      fr: ["Faire revenir l'oignon.", 'Ajouter haricots et sauce, mijoter 15 min.', 'Servir avec le riz.'],
+      en: ['Sweat the onion.', 'Add beans and sauce, simmer 15 min.', 'Serve with rice.'],
+    },
+    substitutions: { red_beans_canned: ['chickpeas_canned', 'ground_beef_5'] },
+  },
+  {
+    id: 'salmon_potatoes',
+    name: { fr: 'Saumon, pommes de terre et épinards', en: 'Salmon, potatoes and spinach' },
+    slots: ['dinner'],
+    ingredients: [
+      { foodId: 'salmon', grams: 130 },
+      { foodId: 'potato', grams: 250 },
+      { foodId: 'spinach', grams: 120 },
+    ],
+    minutes: 30,
+    difficulty: 2,
+    equipment: ['oven'],
+    steps: {
+      fr: [
+        'Cuire les pommes de terre au four 25 min à 200 °C.',
+        'Ajouter le saumon les 12 dernières minutes.',
+        'Faire tomber les épinards.',
+      ],
+      en: ['Roast potatoes 25 min at 200 °C.', 'Add salmon for the last 12 minutes.', 'Wilt the spinach.'],
+    },
+    substitutions: { salmon: ['chicken_breast', 'tofu'], potato: ['rice'] },
+  },
+  {
+    id: 'microwave_beef_bowl',
+    name: { fr: 'Bol bœuf-légumes au micro-ondes', en: 'Microwave beef and veg bowl' },
+    slots: ['lunch', 'dinner'],
+    ingredients: [
+      { foodId: 'ground_beef_5', grams: 130 },
+      { foodId: 'frozen_veg_mix', grams: 200 },
+      { foodId: 'potato', grams: 200 },
+    ],
+    minutes: 15,
+    difficulty: 1,
+    equipment: ['microwave'],
+    steps: {
+      fr: [
+        'Cuire les pommes de terre en dés 8 min au micro-ondes.',
+        'Ajouter bœuf et légumes, cuire 5 min en remuant à mi-cuisson.',
+        'Vérifier que la viande est bien cuite.',
+      ],
+      en: [
+        'Microwave diced potatoes 8 min.',
+        'Add beef and vegetables, cook 5 min, stirring halfway.',
+        'Make sure the meat is cooked through.',
+      ],
+    },
+    substitutions: { ground_beef_5: ['red_beans_canned', 'tuna_canned'] },
+  },
+  {
+    id: 'quark_snack',
+    name: { fr: 'Fromage blanc et framboises', en: 'Quark with raspberries' },
+    slots: ['snack'],
+    ingredients: [
+      { foodId: 'cottage_cheese', grams: 150 },
+      { foodId: 'raspberries', grams: 80 },
+    ],
+    minutes: 2,
+    difficulty: 1,
+    equipment: [],
+    steps: { fr: ['Mélanger.'], en: ['Mix.'] },
+    substitutions: { cottage_cheese: ['soy_yogurt'] },
+  },
+  {
+    id: 'apple_almonds_snack',
+    name: { fr: 'Pomme et amandes', en: 'Apple and almonds' },
+    slots: ['snack'],
+    ingredients: [
+      { foodId: 'apple', grams: 150 },
+      { foodId: 'almonds', grams: 20 },
+    ],
+    minutes: 1,
+    difficulty: 1,
+    equipment: [],
+    steps: { fr: ['Prêt à manger.'], en: ['Ready to eat.'] },
+    substitutions: { almonds: ['peanut_butter'] },
+  },
+  {
+    id: 'tofu_scramble',
+    name: { fr: 'Brouillade de tofu aux épinards', en: 'Tofu scramble with spinach' },
+    slots: ['breakfast', 'dinner'],
+    ingredients: [
+      { foodId: 'tofu', grams: 200 },
+      { foodId: 'wholemeal_bread', grams: 60 },
+      { foodId: 'spinach', grams: 80 },
+      { foodId: 'olive_oil', grams: 5 },
+    ],
+    minutes: 10,
+    difficulty: 1,
+    equipment: ['stove'],
+    steps: {
+      fr: [
+        'Émietter le tofu à la fourchette.',
+        "Le dorer 5 min dans l'huile avec les épinards.",
+        'Servir avec le pain.',
+      ],
+      en: ['Crumble the tofu with a fork.', 'Brown it in the oil with the spinach for 5 min.', 'Serve with the bread.'],
+    },
+    substitutions: { tofu: ['egg'], spinach: ['tomato'], wholemeal_bread: ['rice_cakes'] },
+  },
+  {
+    id: 'soy_yogurt_bowl',
+    name: { fr: 'Bol yaourt soja, avoine et framboises', en: 'Soy yogurt, oat and raspberry bowl' },
+    slots: ['breakfast', 'snack'],
+    ingredients: [
+      { foodId: 'soy_yogurt', grams: 250 },
+      { foodId: 'oats', grams: 30 },
+      { foodId: 'raspberries', grams: 80 },
+    ],
+    minutes: 3,
+    difficulty: 1,
+    equipment: [],
+    steps: {
+      fr: ['Mélanger le yaourt et l’avoine.', 'Ajouter les framboises.'],
+      en: ['Mix yogurt and oats.', 'Top with the raspberries.'],
+    },
+    substitutions: { soy_yogurt: ['cottage_cheese'], raspberries: ['banana', 'apple'] },
+  },
+  {
+    id: 'chickpea_snack',
+    name: { fr: "Pois chiches tièdes à l'huile d'olive", en: 'Warm chickpeas with olive oil' },
+    slots: ['snack'],
+    ingredients: [
+      { foodId: 'chickpeas_canned', grams: 150 },
+      { foodId: 'olive_oil', grams: 5 },
+    ],
+    minutes: 5,
+    difficulty: 1,
+    equipment: ['microwave'],
+    steps: {
+      fr: [
+        'Rincer et égoutter les pois chiches.',
+        "Chauffer 1 min au micro-ondes, ajouter l'huile et une pincée de sel.",
+      ],
+      en: ['Rinse and drain the chickpeas.', 'Microwave 1 min, add the oil and a pinch of salt.'],
+    },
+    substitutions: {},
+  },
+  {
+    id: 'tempeh_bowl',
+    name: { fr: 'Bol tempeh, riz et brocoli', en: 'Tempeh, rice and broccoli bowl' },
+    slots: ['lunch', 'dinner'],
+    ingredients: [
+      { foodId: 'tempeh', grams: 200 },
+      { foodId: 'rice', grams: 70 },
+      { foodId: 'broccoli', grams: 200 },
+      { foodId: 'olive_oil', grams: 5 },
+    ],
+    minutes: 25,
+    difficulty: 1,
+    equipment: ['stove'],
+    steps: {
+      fr: ['Cuire le riz.', 'Dorer le tempeh en tranches.', 'Cuire le brocoli à la vapeur ou à l’eau.'],
+      en: ['Cook the rice.', 'Brown the sliced tempeh.', 'Steam or boil the broccoli.'],
+    },
+    substitutions: { tempeh: ['tofu', 'chicken_breast'], rice: ['pasta'], broccoli: ['frozen_veg_mix'] },
+  },
+  {
+    id: 'seitan_stir_fry',
+    name: { fr: 'Sauté de seitan aux légumes', en: 'Seitan vegetable stir-fry' },
+    slots: ['lunch', 'dinner'],
+    ingredients: [
+      { foodId: 'seitan', grams: 200 },
+      { foodId: 'frozen_veg_mix', grams: 250 },
+      { foodId: 'rice', grams: 60 },
+      { foodId: 'olive_oil', grams: 5 },
+    ],
+    minutes: 20,
+    difficulty: 1,
+    equipment: ['stove'],
+    steps: {
+      fr: ['Cuire le riz.', 'Saisir le seitan en lanières.', 'Ajouter les légumes et cuire 8 minutes.'],
+      en: ['Cook the rice.', 'Sear the seitan strips.', 'Add the vegetables and cook 8 minutes.'],
+    },
+    substitutions: { seitan: ['tempeh', 'tofu', 'chicken_breast'] },
+  },
+  {
+    id: 'tvp_bolognese',
+    name: { fr: 'Pâtes bolognaise au soja texturé', en: 'Soy mince bolognese pasta' },
+    slots: ['lunch', 'dinner'],
+    ingredients: [
+      { foodId: 'tvp_rehydrated', grams: 200 },
+      { foodId: 'pasta', grams: 70 },
+      { foodId: 'tomato_sauce', grams: 200 },
+      { foodId: 'onion', grams: 50 },
+    ],
+    minutes: 20,
+    difficulty: 1,
+    equipment: ['stove'],
+    steps: {
+      fr: [
+        "Réhydrater le soja texturé 10 min dans l'eau chaude (200 g une fois égoutté).",
+        "Faire revenir l'oignon, ajouter le soja et la sauce, mijoter 8 min.",
+        'Servir avec les pâtes.',
+      ],
+      en: [
+        'Soak the soy mince in hot water for 10 min (200 g once drained).',
+        'Sweat the onion, add soy and sauce, simmer 8 min.',
+        'Serve with the pasta.',
+      ],
+    },
+    substitutions: { pasta: ['rice'] },
+  },
+  {
+    id: 'microwave_tofu_bowl',
+    name: { fr: 'Bol tofu-légumes au micro-ondes', en: 'Microwave tofu and veg bowl' },
+    slots: ['lunch', 'dinner'],
+    ingredients: [
+      { foodId: 'tofu', grams: 250 },
+      { foodId: 'frozen_veg_mix', grams: 200 },
+      { foodId: 'potato', grams: 150 },
+    ],
+    minutes: 15,
+    difficulty: 1,
+    equipment: ['microwave'],
+    steps: {
+      fr: ['Cuire les pommes de terre en dés 8 min au micro-ondes.', 'Ajouter tofu et légumes, cuire 4 min.'],
+      en: ['Microwave diced potatoes 8 min.', 'Add tofu and vegetables, cook 4 min.'],
+    },
+    substitutions: { tofu: ['chickpeas_canned'] },
+  },
+  {
+    id: 'tuna_potato_salad',
+    name: { fr: 'Salade tiède thon et pommes de terre', en: 'Warm tuna potato salad' },
+    slots: ['lunch', 'dinner'],
+    ingredients: [
+      { foodId: 'potato', grams: 250 },
+      { foodId: 'tuna_canned', grams: 120 },
+      { foodId: 'tomato', grams: 100 },
+      { foodId: 'olive_oil', grams: 8 },
+    ],
+    minutes: 12,
+    difficulty: 1,
+    equipment: ['microwave'],
+    steps: {
+      fr: ['Cuire les pommes de terre en dés 8 min au micro-ondes.', 'Ajouter le thon et la tomate, assaisonner.'],
+      en: ['Microwave diced potatoes 8 min.', 'Add tuna and tomato, dress with oil.'],
+    },
+    substitutions: { tuna_canned: ['egg', 'chickpeas_canned'] },
+  },
+];
+
+export function getRecipe(id: string): Recipe | undefined {
+  return RECIPES.find((r) => r.id === id);
+}

@@ -1,0 +1,88 @@
+{
+  "expo": {
+    "name": "Project You",
+    "slug": "project-you",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "projectyou",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "app.projectyou"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FAF8F5",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "app.projectyou",
+      "permissions": [
+        "android.permission.health.READ_WEIGHT",
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_EXERCISE",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED"
+      ]
+    },
+    "web": {
+      "output": "single",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FAF8F5",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 76,
+          "dark": {
+            "backgroundColor": "#121110"
+          }
+        }
+      ],
+      "expo-localization",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Project You lit les heures occupées de ton agenda pour placer tes séances aux moments où tu es libre, et ajoute tes séances dans un calendrier « Project You » séparé.",
+          "remindersPermission": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Project You utilise ta position, seulement quand tu le demandes, pour trouver les salles et magasins proches. Elle n'est ni enregistrée ni envoyée à ton compte.",
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false,
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
+        }
+      ],
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "Project You lit, seulement si tu l'autorises, ton poids, tes pas, tes entraînements et ton énergie active pour suivre ta progression sans ressaisie. Ces données restent sur ton téléphone et ne sont jamais envoyées à l'IA.",
+          "NSHealthUpdateUsageDescription": "Project You n'écrit rien dans Santé aujourd'hui. Si une future version propose d'y enregistrer tes séances, elle te le demandera d'abord.",
+          "background": false
+        }
+      ],
+      "react-native-health-connect",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
