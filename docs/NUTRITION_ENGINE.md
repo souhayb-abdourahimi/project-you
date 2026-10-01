@@ -39,6 +39,11 @@ Le plan de la semaine est généré une fois par semaine et consomme l'inventair
 
 Actions : « Remplacer », « Je n'ai pas cet ingrédient », « Plus rapide », « Plus riche en protéines ». « Moins cher » renvoie `unavailable` tant qu'aucun prix réel n'existe.
 
+## Exclusions et plan impossible (D-021)
+
+- Les aliments exclus et les intolérances saisis en texte libre sont traduits par `meals/exclusions.ts` en allergènes, origines animales, catégories ou aliments précis. Ce n'est jamais une recherche par sous-chaîne. L'app affiche ce qu'elle a compris.
+- `meals/diagnosis.ts` explique un plan incomplet ou pauvre en protéines : créneaux sans recette, contraintes en cause, ajustements vérifiés par replanification. Le régime, les allergies et les intolérances ne sont jamais proposés à la suppression.
+
 ## Courses et budget
 
 - `shopping.ts` : besoins du plan − inventaire, priorité selon la date du premier repas, coût **null** sans prix réel.

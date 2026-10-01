@@ -210,3 +210,30 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
   - les éléments d'inventaire déjà enregistrés avec un aliment retiré restent affichés sous leur nom, mais ne servent plus au plan ;
   - l'empreinte du fichier n'a pas pu être comparée au site de l'ANSES depuis l'environnement cloud.
 - **Date** : 2026-10-01
+
+## D-021 — Exclusions en texte libre traduites en catégories ; plan incomplet toujours expliqué
+
+- **Contexte** : revue de la PR #1, points critiques C1 et C2.
+  - C1 : les aliments exclus et intolérances saisis en texte libre étaient cherchés comme sous-chaînes des noms d'aliments. Résultat : « soja » laissait le tofu, « poisson » ne retirait rien, « pomme » retirait la pomme de terre.
+  - C2 : végan + allergie au soja donnait des repas manquants sans aucune explication.
+- **Décision C1** (`src/domain/meals/exclusions.ts`) : texte → mots normalisés (minuscules, sans accents, œ → oe, ponctuation, pluriels) → dictionnaire de sens (soja, poisson, viande, œuf, lait, gluten, arachide, fruits à coque…) → allergènes, origines animales, catégories ou aliments précis → filtrage du catalogue.
+  - Une expression connue décide seule (« pomme de terre » ≠ « pomme »).
+  - Sinon, chaque mot connu compte (« lait de soja » exclut lait et soja : exclure trop vaut mieux qu'exclure trop peu).
+  - Les mots sans règle sont comparés aux noms des aliments par mots entiers, jamais par sous-chaîne.
+  - Les intolérances passent par le même dictionnaire.
+  - L'app affiche ce qu'elle a compris pour chaque saisie, y compris « non reconnu, rien n'est exclu », dans l'onboarding et sur l'écran Nutrition.
+- **Décision C2** (`src/domain/meals/diagnosis.ts`) : quand un créneau n'a aucune recette compatible ou que la cible de protéines n'est pas atteinte, le plan porte un diagnostic qui contient :
+  - les créneaux sans recette ;
+  - les contraintes en cause, trouvées en relâchant une contrainte à la fois et en replanifiant un jour ;
+  - des ajustements, chacun vérifié par replanification : autoriser un aliment exclu, plus de temps de cuisine, un équipement, un autre nombre de repas (seulement s'il remplit tous les créneaux), une cible de protéines un peu plus basse (seulement si le meilleur jour atteint au moins 75 % de la cible).
+  - Le régime, les allergies et les intolérances sont nommés mais **jamais** proposés à la suppression.
+  - Affiché sur l'écran Nutrition (détail) et sur Aujourd'hui (résumé).
+- `MEAL_PLANNER_VERSION` passe à 4 : les plans enregistrés sont régénérés.
+- **Alternatives** :
+  - garder la recherche par sous-chaîne en ajoutant des synonymes : les faux positifs demeurent ;
+  - ajouter tout de suite des protéines végétales sans soja ni gluten : utile, mais hors du périmètre demandé pour cette PR (voir TODO).
+- **Trade-offs** :
+  - le dictionnaire est éditorial et en français/anglais : un mot absent est signalé « non reconnu », jamais deviné ;
+  - le diagnostic replanifie une journée par contrainte, ce qui coûte quelques millisecondes à la génération du plan.
+- **Date** : 2026-10-01
+

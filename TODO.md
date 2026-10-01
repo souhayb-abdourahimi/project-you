@@ -18,6 +18,9 @@ Tâches importantes à ne pas perdre entre deux sessions. Référence des IDs : 
 
 ## Données
 
+- [ ] Ajouter des protéines végétales sans soja ni gluten (lentilles corail, pois cassés, haricots blancs… si présents dans Ciqual) et des petits-déjeuners compatibles : végan + allergie au soja n'a aujourd'hui aucun petit-déjeuner (expliqué à l'utilisateur depuis D-021, mais pas résolu).
+- [ ] Dictionnaire des exclusions (D-021) : l'enrichir à partir des saisies « non reconnu » (sans collecter de données de santé).
+
 - [x] **P2-01** Import Ciqual 2025 (ANSES) fait le 2026-10-01 (D-020) : 36 aliments, aucun MOCK, tests de cohérence verts.
 - [ ] Comparer l'empreinte SHA-256 de `data/ciqual/` à un téléchargement direct sur https://ciqual.anses.fr (impossible depuis l'environnement cloud).
 - [ ] Recettes véganes plus riches en protéines : la cible élevée (perte de poids vegan) passe avec peu de marge.
