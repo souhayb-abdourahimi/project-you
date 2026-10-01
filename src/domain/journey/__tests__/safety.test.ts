@@ -158,10 +158,10 @@ describe('safety rule: low logging (PR #3)', () => {
       ...base,
       loggedDays: [...before, logged('2026-09-28', 3, 0), logged('2026-09-29', 2, 0), logged('2026-09-30', 1, 600)],
     });
-    expect(r.flags).toEqual(['low_logging']);
-    expect(r.active).toBe(true);
-    expect(r.lowLoggingSince).toBe('2026-09-28');
-    expect(r.evidence.unloggedDays).toBe('3');
+    expect(r.lowLogging).toEqual({ since: '2026-09-28', days: 3 });
+    // An engagement signal, not a danger one: the safety rule stays inactive (D-027).
+    expect(r.active).toBe(false);
+    expect(r.flags).toEqual([]);
   });
 
   it('counts a partly logged day: one skipped meal left unmarked is enough', () => {
@@ -170,7 +170,7 @@ describe('safety rule: low logging (PR #3)', () => {
       ...base,
       loggedDays: [...before, partly('2026-09-28'), partly('2026-09-29'), partly('2026-09-30')],
     });
-    expect(r.flags).toEqual(['low_logging']);
+    expect(r.lowLogging?.days).toBe(3);
   });
 
   it('keeps the same episode start while the streak grows', () => {
@@ -178,38 +178,39 @@ describe('safety rule: low logging (PR #3)', () => {
       ...before.slice(0, 3),
       ...['2026-09-26', '2026-09-27', '2026-09-28', '2026-09-29', '2026-09-30'].map((d) => logged(d, 3, 0)),
     ];
-    expect(evaluateSafety({ ...base, loggedDays: days }).lowLoggingSince).toBe('2026-09-26');
-    expect(evaluateSafety({ ...base, today: '2026-09-30', loggedDays: days }).lowLoggingSince).toBe('2026-09-26');
+    expect(evaluateSafety({ ...base, loggedDays: days }).lowLogging?.since).toBe('2026-09-26');
+    expect(evaluateSafety({ ...base, today: '2026-09-30', loggedDays: days }).lowLogging?.since).toBe('2026-09-26');
   });
 
   it('stays quiet for someone who never logged, a short streak, a streak that ended, or today', () => {
     const unlogged = (d: string) => logged(d, 3, 0);
     const streak = ['2026-09-28', '2026-09-29', '2026-09-30'].map(unlogged);
     // Never logged before: nothing to compare with, the absence messages handle it.
-    expect(evaluateSafety({ ...base, loggedDays: streak }).active).toBe(false);
-    expect(evaluateSafety({ ...base, loggedDays: [...before.slice(0, 2), ...streak] }).active).toBe(false);
+    expect(evaluateSafety({ ...base, loggedDays: streak }).lowLogging).toBeNull();
+    expect(evaluateSafety({ ...base, loggedDays: [...before.slice(0, 2), ...streak] }).lowLogging).toBeNull();
     // Two days only.
-    expect(evaluateSafety({ ...base, loggedDays: [...before, logged('2026-09-28'), ...streak.slice(1)] }).active).toBe(
-      false,
-    );
+    expect(
+      evaluateSafety({ ...base, loggedDays: [...before, logged('2026-09-28'), ...streak.slice(1)] }).lowLogging,
+    ).toBeNull();
     // Yesterday was fully logged: the episode is over.
     expect(
-      evaluateSafety({ ...base, today: '2026-10-02', loggedDays: [...before, ...streak, logged(today)] }).active,
-    ).toBe(false);
+      evaluateSafety({ ...base, today: '2026-10-02', loggedDays: [...before, ...streak, logged(today)] }).lowLogging,
+    ).toBeNull();
     // Today is never counted (meals may still be eaten later).
     expect(
       evaluateSafety({ ...base, loggedDays: [...before, logged('2026-09-28'), ...streak.slice(1), unlogged(today)] })
-        .active,
-    ).toBe(false);
+        .lowLogging,
+    ).toBeNull();
   });
 
-  it('never replaces the full safety message: it comes last', () => {
+  it('sits next to a real signal without changing it', () => {
     const r = evaluateSafety({
       ...base,
       loggedDays: [...before, logged('2026-09-28', 3, 0), logged('2026-09-29', 3, 0), logged('2026-09-30', 3, 0)],
       weights: weighIns('2026-09-11', 21, 82, 0.2),
     });
-    expect(r.flags).toEqual(['fast_weight_loss', 'low_logging']);
+    expect(r.flags).toEqual(['fast_weight_loss']);
+    expect(r.lowLogging?.since).toBe('2026-09-28');
   });
 });
 

@@ -343,11 +343,11 @@ Cas ajoutés pour les utilisateurs qui notent peu (PR #3, D-026) :
 
 | Signal | Condition | Message |
 |---|---|---|
-| `low_logging` | au moins **3 jours passés consécutifs** (jusqu'à hier) avec au moins un repas prévu ni mangé ni sauté, chez quelqu'un qui avait au moins **3 journées notées en entier** dans les **7 jours** précédents | `safety_low_logging` : neutre, demande comment ça se passe et propose d'ajuster le plan ; **une fois par épisode** ; pas de professionnel de santé, pas de reproche |
+| `low_logging` | au moins **3 jours passés consécutifs** (jusqu'à hier) avec au moins un repas prévu ni mangé ni sauté, chez quelqu'un qui avait au moins **3 journées notées en entier** dans les **7 jours** précédents | `safety_low_logging` : neutre, demande comment ça se passe et propose d'ajuster le plan ; **une fois par épisode** ; pas de professionnel de santé, pas de reproche. Signal d'engagement, pas de danger (D-027) : il **n'active pas** la règle, l'accompagnement continue (rappel quotidien, célébrations, relances d'absence) |
 | `fast_weight_loss` (pesées rares) | une seule pesée dans au moins une des trois fenêtres de 7 jours, et baisse de **plus de 2 %/semaine deux semaines de suite** | dit que la mesure est peu fréquente et la tendance imprécise ; aucun chiffre |
 | `training_load` (fréquence seule) | au moins `max(prévu + 2, prévu × 1,5)` séances dans chacune des **3** dernières fenêtres de 7 jours, sans fatigue déclarée | proposition de ralentir (journée de repos en plus, revenir au rythme prévu) ; rappels de séance inchangés |
 
-Ordre des signaux : `low_intake`, `fast_weight_loss`, `training_load`, `low_logging`. Le premier choisit le message ; `low_logging` n'apparaît que seul.
+Ordre des signaux : `low_intake`, `fast_weight_loss`, `training_load` ; le premier choisit le message. `low_logging` est un champ à part (`SafetyAssessment.lowLogging`) : son check-in ne part que si aucun de ces trois signaux n'est actif.
 
 Une journée partiellement notée ne compte jamais dans `low_intake` : l'app ne sait pas ce qui n'a pas été noté et ne le devine pas. Elle compte en revanche dans `low_logging`, qui ne dit rien de ce qui a été mangé. Les repas se marquent « mangé » ou « pas mangé » (`skipped`). Le plan de la semaine précédente est gardé sur l'appareil pour que la règle voie les jours d'avant lundi.
 

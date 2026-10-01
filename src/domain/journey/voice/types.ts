@@ -31,7 +31,8 @@ export type Trigger = (typeof TRIGGERS)[number];
 
 /**
  * Messages of the safety rule (journey/safety.ts): they slow down, never push. `safety_low_logging`
- * is the neutral check-in of the low-logging signal, not a full safety message.
+ * is the neutral check-in of the low-logging signal (D-027): not a safety message, it slows nothing
+ * down; it is listed here so it reaches the user whatever the category switches.
  */
 export const SAFETY_TRIGGERS: readonly Trigger[] = [
   'safety_low_intake',

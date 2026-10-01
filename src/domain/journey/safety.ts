@@ -5,12 +5,13 @@
  * - weight going down faster than the safe rate for two weeks in a row;
  * - more sessions than planned in a week together with high declared fatigue.
  * It also covers the users who log little, the profile most at risk (docs/TRANSFORMATION_JOURNEY.md §4.5):
- * - low_logging: several recent days with meals neither marked eaten nor skipped, from someone who
- *   logged before; a neutral check-in, not the full safety message;
  * - fast_weight_loss with one weigh-in per week: speaks only when the trend is clearly above the
  *   safe rate, and says the measure is infrequent so the trend is imprecise;
  * - training_load on frequency alone: far more sessions than planned several weeks in a row,
  *   without declared fatigue (check-ins are optional); a proposal to slow down, not an alert.
+ * Separately, `lowLogging` (several recent days with meals neither marked eaten nor skipped, from
+ * someone who logged before) is an engagement signal, not a danger one (D-027): it never makes the
+ * rule active; it only adds a neutral check-in, once per episode, while coaching goes on as usual.
  * When active, every channel slows down: no congratulations, no push, an explanation instead.
  * It is evaluated before any motivation rule. Thresholds are design parameters (to be reviewed by
  * a health professional before the public beta), not external data.
@@ -50,8 +51,8 @@ export const SAFETY = {
   loadFrequencyWeeks: 3,
 } as const;
 
-/** Most important first; `low_logging` is the weakest signal (a neutral check-in). */
-export type SafetyFlag = 'low_intake' | 'fast_weight_loss' | 'training_load' | 'low_logging';
+/** Signals of excess, most important first. Only these make the rule active. */
+export type SafetyFlag = 'low_intake' | 'fast_weight_loss' | 'training_load';
 
 export interface SafetyAssessment {
   active: boolean;
@@ -63,8 +64,11 @@ export interface SafetyAssessment {
   weightPrecision: 'regular' | 'sparse' | null;
   /** `frequency`: the load rule spoke on session frequency alone, without declared fatigue. */
   trainingLoadBasis: 'fatigue' | 'frequency' | null;
-  /** First day of the current low-logging episode (one check-in per episode). */
-  lowLoggingSince: IsoDate | null;
+  /**
+   * Low logging: an engagement signal, never a reason to slow down (`active` ignores it). `since` is
+   * the first unlogged day of the episode (one neutral check-in per episode).
+   */
+  lowLogging: { since: IsoDate; days: number } | null;
   /** Logged values that triggered the rule (never estimates). */
   evidence: Record<string, string>;
 }
@@ -75,7 +79,7 @@ export const NO_SAFETY_ISSUE: SafetyAssessment = {
   belowFloor: false,
   weightPrecision: null,
   trainingLoadBasis: null,
-  lowLoggingSince: null,
+  lowLogging: null,
   evidence: {},
 };
 
@@ -214,18 +218,13 @@ export function evaluateSafety(input: SafetyInput): SafetyAssessment {
     evidence.plannedSessionsPerWeek = String(input.plannedSessionsPerWeek);
     if (load.basis === 'frequency') evidence.loadWeeks = String(SAFETY.loadFrequencyWeeks);
   }
-  const logging = lowLogging(input);
-  if (logging) {
-    flags.push('low_logging');
-    evidence.unloggedDays = String(logging.days);
-  }
   return {
     active: flags.length > 0,
     flags,
     belowFloor: intake?.belowFloor ?? false,
     weightPrecision,
     trainingLoadBasis: load?.basis ?? null,
-    lowLoggingSince: logging?.since ?? null,
+    lowLogging: lowLogging(input),
     evidence,
   };
 }

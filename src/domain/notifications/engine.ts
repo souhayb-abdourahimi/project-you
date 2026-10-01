@@ -81,8 +81,15 @@ export function planNotifications(input: {
   // 2. One motivation message per day, the most relevant one.
   const slotRank = (c: Candidate) => MOTIVATION_SLOT_ORDER.indexOf(c.trigger);
   const bestSlot = new Map<IsoDate, Candidate>();
-  for (const c of allowed) {
+  // The low-logging check-in is sent once per episode: once it holds a day's slot, later days keep
+  // their usual message instead of losing it to a check-in that the cooldown would drop (D-027).
+  let checkinDate: IsoDate | null = null;
+  for (const c of [...allowed].sort((a, b) => a.date.localeCompare(b.date))) {
     if (slotRank(c) < 0) continue;
+    if (c.trigger === 'safety_low_logging') {
+      if (checkinDate !== null && checkinDate !== c.date) continue;
+      checkinDate = c.date;
+    }
     const current = bestSlot.get(c.date);
     if (!current || slotRank(c) < slotRank(current)) bestSlot.set(c.date, c);
   }

@@ -20,7 +20,8 @@ const plan = (input: Partial<Parameters<typeof planNotifications>[0]> = {}) =>
   planNotifications({ prefs: allPrefsOn(), week, state: stateFor(), from, ...input });
 const ofTrigger = (list: PlannedWithFacts[], trigger: Trigger) => list.filter((n) => n.trigger === trigger);
 
-const lowLogging = (since: string): Partial<SafetyAssessment> => ({ flags: ['low_logging'], lowLoggingSince: since });
+/** Low logging alone: an engagement signal, the safety rule stays inactive (D-027). */
+const lowLogging = (since: string): Partial<SafetyAssessment> => ({ lowLogging: { since, days: 3 } });
 
 describe('low logging: one neutral check-in per episode', () => {
   it('sends a single check-in for the episode, even across re-plans and weeks', () => {
@@ -56,7 +57,7 @@ describe('low logging: one neutral check-in per episode', () => {
 
   it('is replaced by the full safety message when another signal is active', () => {
     const all = plan({
-      state: stateFor({ safety: { flags: ['low_intake', 'low_logging'], lowLoggingSince: '2026-09-25' } }),
+      state: stateFor({ safety: { flags: ['low_intake'], lowLogging: { since: '2026-09-25', days: 3 } } }),
     });
     expect(ofTrigger(all, 'safety_low_logging')).toEqual([]);
     expect(ofTrigger(all, 'safety_low_intake').length).toBeGreaterThan(0);
@@ -129,10 +130,12 @@ describe('matrix: no congratulations or chasing while a safety signal is active'
     ['fast loss, few weigh-ins', { flags: ['fast_weight_loss'], weightPrecision: 'sparse' }],
     ['load with fatigue', { flags: ['training_load'], trainingLoadBasis: 'fatigue' }],
     ['load on frequency', { flags: ['training_load'], trainingLoadBasis: 'frequency' }],
-    ['low logging', lowLogging('2026-09-25')],
     [
       'everything',
-      { flags: ['low_intake', 'fast_weight_loss', 'training_load', 'low_logging'], lowLoggingSince: '2026-09-25' },
+      {
+        flags: ['low_intake', 'fast_weight_loss', 'training_load'],
+        lowLogging: { since: '2026-09-25', days: 3 },
+      },
     ],
   ];
   const goals = [
@@ -182,6 +185,32 @@ describe('matrix: no congratulations or chasing while a safety signal is active'
       }
     });
   }
+
+  it('low logging alone keeps the coaching on: reminders, celebrations and absence messages still go out', () => {
+    // An engagement signal, not a danger one (D-027): someone who stops logging is drifting away.
+    for (const [, profile] of people.filter(([who]) => who === 'adult')) {
+      const all = plan({ state: stateFor({ ...eager, profile, safety: lowLogging('2026-09-25') }) });
+      const triggers = new Set(all.map((n) => n.trigger));
+      for (const kept of ['success_streak', 'weekly_progress', 'daily_why'] as Trigger[]) {
+        expect(triggers.has(kept)).toBe(true);
+      }
+      expect([...triggers].some((x) => x.startsWith('absence_'))).toBe(true);
+      // The check-in is added once; reminders carry no `safety` fact and sessions are not lightened.
+      expect(ofTrigger(all, 'safety_low_logging').length).toBe(1);
+      for (const n of all) expect(n.facts.safety).toBeUndefined();
+      // Only today's session is lightened, because of today's declared fatigue, as without the signal.
+      expect(ofTrigger(all, 'session_planned_tired').map((n) => n.date)).toEqual(['2026-09-28']);
+      expect(ofTrigger(all, 'session_planned').length).toBe(workoutDates.length - 1);
+      expect(ofTrigger(all, 'meal_planned').some((n) => n.body[2].key === 'coach.meaning.meal_planned.lose')).toBe(
+        true,
+      );
+    }
+    // The day after a session, it is celebrated as usual unless the check-in takes that day's slot.
+    const celebrated = plan({
+      state: stateFor({ sessionDates: ['2026-09-28'], safety: lowLogging('2026-09-25') }),
+    });
+    expect(ofTrigger(celebrated, 'success_session').map((n) => n.date)).toEqual(['2026-09-29']);
+  });
 
   it('the same profiles are congratulated and chased without a signal (the matrix is not vacuous)', () => {
     const triggers = new Set(plan({ state: stateFor(eager) }).map((n) => n.trigger));

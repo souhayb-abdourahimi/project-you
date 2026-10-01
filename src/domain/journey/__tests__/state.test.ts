@@ -159,10 +159,10 @@ describe('journey state (single source of truth)', () => {
     );
     const current = mealPlan([day('2026-09-28', 'planned'), day('2026-09-29', 'planned')]);
     const monday = { ...base, today: '2026-09-28', mealPlan: current };
-    expect(deriveJourneyState(monday).safety.active).toBe(false);
+    expect(deriveJourneyState(monday).safety.lowLogging).toBeNull();
     const s = deriveJourneyState({ ...monday, previousMealPlan: previous });
-    expect(s.safety.flags).toEqual(['low_logging']);
-    expect(s.safety.lowLoggingSince).toBe('2026-09-25');
+    expect(s.safety.active).toBe(false);
+    expect(s.safety.lowLogging?.since).toBe('2026-09-25');
     // The current plan wins for a date present in both.
     expect(loggedDays(current, mealPlan([day('2026-09-28', 'eaten')]))[0].unmarkedMeals).toBe(2);
   });
