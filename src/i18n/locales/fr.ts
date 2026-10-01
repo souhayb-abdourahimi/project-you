@@ -354,6 +354,7 @@ const fr = {
     steps: 'Préparation',
     usesInventory: 'Utilise {{count}} aliment(s) déjà chez toi',
     adapted: 'Adaptée à tes contraintes : {{to}} à la place de {{from}}',
+    source: 'Valeurs nutritionnelles : estimations d’après la table Ciqual 2025 de l’ANSES.',
     proteinPlanned: 'Protéines prévues aujourd’hui : {{planned}} g sur {{target}} g (estimation)',
     proteinShort:
       'Avec tes contraintes actuelles, les recettes disponibles restent sous ta cible de protéines aujourd’hui. Ajouter une source de protéines que tu tolères aiderait.',
@@ -460,7 +461,7 @@ const fr = {
       shorter_sessions:
         'Prévoir des séances plus courtes les jours chargés (le mode « J’ai 15 minutes » est là pour ça).',
       lighter_week: 'Une semaine un peu plus légère pour récupérer, sans augmenter les charges.',
-      protein_sources: 'Ajouter à l’inventaire une source de protéines que tu aimes (tofu, lentilles, œufs, skyr…).',
+      protein_sources: 'Ajouter à l’inventaire une source de protéines que tu aimes (tofu, lentilles, œufs, fromage blanc…).',
       measure_waist: 'Mesurer ton tour de taille : pour une recomposition, c’est plus parlant que la balance.',
       use_inventory: 'Cuisiner d’abord ce que tu as déjà : la liste de courses le prend en compte.',
     },

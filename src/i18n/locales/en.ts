@@ -346,6 +346,7 @@ const en: LocaleShape = {
     steps: 'Steps',
     usesInventory: 'Uses {{count}} food(s) you already have',
     adapted: 'Adapted to your constraints: {{to}} instead of {{from}}',
+    source: 'Nutrition values: estimates based on the ANSES Ciqual 2025 table.',
     proteinPlanned: 'Protein planned today: {{planned}} g of {{target}} g (estimate)',
     proteinShort:
       'With your current constraints, the available recipes stay under your protein target today. Adding a protein source you tolerate would help.',
@@ -451,7 +452,7 @@ const en: LocaleShape = {
       start_small: 'Restart with a single short workout, at the easiest moment of your week.',
       shorter_sessions: 'Plan shorter workouts on busy days (the "I have 15 minutes" mode is there for that).',
       lighter_week: 'A slightly lighter week to recover, without increasing loads.',
-      protein_sources: 'Add a protein source you like to your inventory (tofu, lentils, eggs, skyr…).',
+      protein_sources: 'Add a protein source you like to your inventory (tofu, lentils, eggs, quark…).',
       measure_waist: 'Measure your waist: for recomposition it says more than the scale.',
       use_inventory: 'Cook what you already have first: the shopping list takes it into account.',
     },

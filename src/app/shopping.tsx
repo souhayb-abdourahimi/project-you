@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
-import { Button, Card, EmptyState, MockBadge, Row, Screen, Text } from '@/components/ui';
+import { Button, Card, EmptyState, Row, Screen, Text } from '@/components/ui';
 import { getFood } from '@/domain/meals/catalog';
 import { getRecipe } from '@/domain/meals/recipes';
 import { buildShoppingList } from '@/domain/meals/shopping';
@@ -38,12 +38,9 @@ export default function ShoppingScreen() {
           <Text variant="caption" color="textMuted">
             {t('shopping.forRecipes', { recipes: item.recipeIds.map((id) => getRecipe(id)?.name[lang]).join(', ') })}
           </Text>
-          <Row>
-            <Text variant="caption" color="textMuted" style={{ flex: 1 }}>
-              {item.estimatedCostCents === null ? t('shopping.costUnknown') : t('shopping.cost')}
-            </Text>
-            <MockBadge />
-          </Row>
+          <Text variant="caption" color="textMuted">
+            {item.estimatedCostCents === null ? t('shopping.costUnknown') : t('shopping.cost')}
+          </Text>
         </Card>
       ))}
     </Screen>

@@ -1,18 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import {
-  Banner,
-  Button,
-  Card,
-  ChoiceGroup,
-  EmptyState,
-  MockBadge,
-  Row,
-  Screen,
-  Text,
-  TextField,
-} from '@/components/ui';
+import { Banner, Button, Card, ChoiceGroup, EmptyState, Row, Screen, Text, TextField } from '@/components/ui';
 import { FOOD_CATALOG } from '@/domain/meals/catalog';
 import { isExpiringSoon, type InventoryUnit } from '@/domain/meals/inventory';
 import { toIsoDate } from '@/domain/shared/dates';
@@ -81,12 +70,7 @@ export default function InventoryScreen() {
         </Card>
       ))}
       <Card muted>
-        <Row>
-          <Text variant="heading" style={{ flex: 1 }}>
-            {t('common.add')}
-          </Text>
-          <MockBadge />
-        </Row>
+        <Text variant="heading">{t('common.add')}</Text>
         <Text variant="label">{t('inventory.pick')}</Text>
         <ChoiceGroup
           options={FOOD_CATALOG.map((f) => ({ value: f.id, label: f.name[lang] }))}

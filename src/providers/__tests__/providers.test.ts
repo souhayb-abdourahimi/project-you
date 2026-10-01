@@ -1,4 +1,4 @@
-import { mockFoodProvider } from '../mock-food';
+import { ciqualFoodProvider } from '../ciqual-food';
 import { providers } from '../unavailable';
 
 describe('providers', () => {
@@ -10,10 +10,13 @@ describe('providers', () => {
     expect(await providers.gym.nearby({ lat: 0, lng: 0 }, 1000)).toMatchObject({ status: 'unavailable' });
   });
 
-  it('flags mock food results as MOCK', async () => {
-    const result = await mockFoodProvider.search('riz', 'fr');
+  it('returns catalogue foods with their Ciqual provenance, never as MOCK', async () => {
+    const result = await ciqualFoodProvider.search('riz', 'fr');
     expect(result.status).toBe('ok');
-    if (result.status === 'ok') expect(result.meta.isMock).toBe(true);
-    expect((await mockFoodProvider.search('zzz', 'fr')).status).toBe('unavailable');
+    if (result.status === 'ok') {
+      expect(result.meta).toMatchObject({ provider: 'anses-ciqual', isMock: false, confidence: 'high' });
+      expect(result.data.map((f) => f.id)).toContain('rice');
+    }
+    expect((await ciqualFoodProvider.search('zzz', 'fr')).status).toBe('unavailable');
   });
 });

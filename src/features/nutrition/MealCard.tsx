@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import { Button, Card, MockBadge, Rationale, Row, Text } from '@/components/ui';
-import { getFood } from '@/domain/meals/catalog';
+import { getFood, hasMockFood } from '@/domain/meals/catalog';
 import { alternativesFor, type PlannedMeal, type ReplaceReason } from '@/domain/meals/planner';
 import { getRecipe } from '@/domain/meals/recipes';
 import { usePlan } from '@/hooks/usePlan';
@@ -38,7 +38,7 @@ export function MealCard({ meal, compact }: { meal: PlannedMeal; compact?: boole
           {t(`enums.slot.${meal.slot}`)} · {t('common.kcal', { value: Math.round(meal.nutrition.kcal) })} ·{' '}
           {t('common.minutes', { count: recipe.minutes })}
         </Text>
-        <MockBadge />
+        {hasMockFood(meal.ingredients.map((i) => i.foodId)) ? <MockBadge /> : null}
       </Row>
       <Text variant="heading">{recipe.name[lang]}</Text>
       <Text variant="caption" color="textMuted">
@@ -97,6 +97,9 @@ export function MealCard({ meal, compact }: { meal: PlannedMeal; compact?: boole
             ))}
           </Row>
           {message ? <Text color="textMuted">{message}</Text> : null}
+          <Text variant="caption" color="textMuted">
+            {t('nutrition.source')}
+          </Text>
           <Rationale data={meal.rationale} />
         </View>
       ) : null}

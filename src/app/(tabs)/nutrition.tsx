@@ -53,6 +53,9 @@ export default function NutritionScreen() {
         ) : (
           <Text color="textMuted">{t('common.loading')}</Text>
         )}
+        <Text variant="caption" color="textMuted">
+          {t('nutrition.source')}
+        </Text>
       </Section>
     </Screen>
   );

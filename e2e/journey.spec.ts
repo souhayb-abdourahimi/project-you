@@ -73,10 +73,11 @@ test('first visit: onboarding → today → meals → inventory → workout → 
 
   await expect(page.getByText('Bonjour Camille')).toBeVisible();
 
-  // Nutrition: vegan plan with protein coverage and MOCK badge.
+  // Nutrition: vegan plan with protein coverage, Ciqual source and no MOCK badge.
   await openTab(page, 'Nutrition');
   await expect(page.getByText(/Protéines prévues aujourd’hui/)).toBeVisible();
-  await expect(page.getByText('MOCK').filter({ visible: true }).first()).toBeVisible();
+  await expect(page.getByText(/d’après la table Ciqual 2025 de l’ANSES/).filter({ visible: true })).toBeVisible();
+  await expect(page.getByText('MOCK').filter({ visible: true })).toHaveCount(0);
   await expect(page.getByText(/Blanc de poulet|Thon|Saumon|Skyr/).filter({ visible: true })).toHaveCount(0);
 
   // Inventory.

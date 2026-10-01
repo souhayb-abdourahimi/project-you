@@ -63,7 +63,7 @@ export interface WeeklyMealPlan {
 }
 
 /** Bump when the planner's output changes meaning, so stored plans are regenerated. */
-export const MEAL_PLANNER_VERSION = 2;
+export const MEAL_PLANNER_VERSION = 3;
 
 const SLOT_SHARES: Record<number, [MealSlot, number][]> = {
   2: [

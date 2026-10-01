@@ -38,8 +38,37 @@ function ctxFor(s: UserContextSnapshot, inventory: InventoryItem[] = []): Planne
 }
 
 describe('catalogue', () => {
-  it('is entirely flagged as MOCK until CIQUAL is imported', () => {
-    expect(FOOD_CATALOG.every((f) => f.meta.isMock)).toBe(true);
+  it('comes from Ciqual, not from demo data (consistency suite: ciqual/__tests__)', () => {
+    expect(FOOD_CATALOG.length).toBeGreaterThan(0);
+    expect(FOOD_CATALOG.every((f) => !f.meta.isMock && f.meta.provider === 'anses-ciqual')).toBe(true);
+  });
+});
+
+describe('low budget (Ciqual values)', () => {
+  const s = SCENARIOS.studentLowBudget;
+  const ctx = ctxFor(s);
+  const plan = planWeek('2026-09-28', ctx);
+
+  it('plans meals that need at most a microwave and reach the protein target', () => {
+    for (const day of plan.days) {
+      expect(day.protein.met).toBe(true);
+      for (const meal of day.meals)
+        for (const tool of getRecipe(meal.recipeId)!.equipment) expect(tool).toBe('microwave');
+    }
+  });
+
+  it('builds a shopping list from catalogue foods without inventing a price', () => {
+    const list = buildShoppingList(
+      plan.days.flatMap((d) => d.meals),
+      [],
+      '2026-09-28',
+    );
+    expect(list.items.length).toBeGreaterThan(0);
+    for (const i of list.items) {
+      expect(getFood(i.foodId)?.meta.isMock).toBe(false);
+      expect(i.estimatedCostCents).toBeNull();
+    }
+    expect(list.knownCostCents).toBeNull();
   });
 });
 
@@ -55,6 +84,17 @@ describe('hard constraints', () => {
       expect(f.allergens).not.toContain('peanuts');
       expect(isFoodAllowed(f, c)).toBe(true);
     }
+  });
+
+  it('never plans meat or fish for a vegetarian, but may use eggs and dairy', () => {
+    const s = { ...SCENARIOS.fatLoss, nutrition: { ...SCENARIOS.fatLoss.nutrition, diet: 'vegetarian' as const } };
+    const plan = planWeek('2026-09-28', ctxFor(s));
+    const origins = new Set(
+      plan.days.flatMap((d) => d.meals.flatMap((m) => m.ingredients.map((i) => getFood(i.foodId)!.animal))),
+    );
+    expect(origins.has('meat')).toBe(false);
+    expect(origins.has('fish')).toBe(false);
+    for (const day of plan.days) expect(day.protein.met).toBe(true);
   });
 
   it('treats lactose intolerance as a milk exclusion', () => {

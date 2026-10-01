@@ -38,7 +38,8 @@ for (const key of ['vegan', 'veganFatLoss', 'multipleAllergies', 'studentLowBudg
     await seedProfile(page, scenario);
     await page.goto('/nutrition');
     await expect(text(page, /Protéines prévues aujourd’hui/)).toBeVisible();
-    await expect(page.getByText('MOCK').filter({ visible: true }).first()).toBeVisible();
+    await expect(page.getByText(/d’après la table Ciqual 2025 de l’ANSES/).filter({ visible: true })).toBeVisible();
+    await expect(page.getByText('MOCK').filter({ visible: true })).toHaveCount(0);
     await expectNone(page, forbidden);
     expect(errors).toEqual([]);
   });
