@@ -1,6 +1,6 @@
 # Transformation Journey Engine — conception
 
-Statut : **conception validée par étapes**. Première brique livrée (D-024) : l'état du parcours (`src/domain/journey/state.ts`), la règle de sécurité (`src/domain/journey/safety.ts`), la voix du coach (`src/domain/journey/voice/`) et son premier canal de sortie, les notifications (`src/domain/notifications/`). Le reste (Daily Coach à l'écran, Weekly Check-in, Adaptation Engine, Progress Journey) est décrit ici et pas encore codé.
+Statut : **conception validée par étapes**. Première brique livrée (D-024) : l'état du parcours (`src/domain/journey/state.ts`), la règle de sécurité (`src/domain/journey/safety.ts`), la voix du coach (`src/domain/journey/voice/`) et son premier canal de sortie, les notifications (`src/domain/notifications/`). Le reste (Daily Coach à l'écran, Weekly Check-in, Adaptation Engine, Progress Journey) est précisé par la phase D-028 : `docs/DAILY_COACH.md`, `docs/PROGRESS_JOURNEY.md`, `docs/ADAPTATION_ENGINE.md`, `docs/RETENTION.md`.
 Date : 2026-10-01.
 
 Ce document décrit comment Project You passe d'un générateur de plans à un **accompagnement de plusieurs mois jusqu'à l'objectif physique**. Il fixe l'architecture métier, les modèles de données, les règles et les parcours utilisateur avant d'écrire le code.

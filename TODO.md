@@ -16,10 +16,30 @@ Tâches importantes à ne pas perdre entre deux sessions. Référence des IDs : 
 - [ ] Manifeste Android : `READ/WRITE_EXTERNAL_STORAGE` (≤ API 32) et `SYSTEM_ALERT_WINDOW` viennent du template Expo ; vérifier s'ils sont utiles et les bloquer sinon (`android.blockedPermissions`).
 - [ ] Parcs et activités (SportsProvider) ; prix et promotions réels (aucune source choisie).
 
+## Daily Coach + Progress Journey (D-028)
+
+Plan de la phase (ordre demandé) ; détail dans `docs/DAILY_COACH.md`, `docs/PROGRESS_JOURNEY.md`, `docs/ADAPTATION_ENGINE.md`, `docs/RETENTION.md`.
+
+- [x] Audit et architecture (2026-10-01)
+- [ ] 1. DailyPlan (`journey/daily-plan.ts`, remplace `today.ts`)
+- [ ] 2. Daily Coach : sélection why/change/feel, catégories de messages, historique de voix partagé, journée difficile, 15 min, pas envie, retour après absence
+- [ ] 3. Progress Journey : modèle, issues de séances/repas/exercices, jalons, objectifs intermédiaires
+- [ ] 4. Weekly Check-in + « Ton bilan »
+- [ ] 5. Adaptation Engine : adhérence, base de poids, plateau, recommandations
+- [ ] 6. Notifications : `milestone_reached`, `encouragement_kept_going`, lecture du DailyPlan
+- [ ] 7. Écran Aujourd'hui (premium, responsive, accessible ; `aria-checked` des chips sur le web)
+- [ ] 8. Écran Mon évolution
+- [ ] 9. E2E
+- [ ] 10. Revue finale (produit, UX, QA, sécurité)
+- [ ] Migration : statuts élargis, `weekly_checkins`, `exercise_substitutions`, `journey_milestones`, `adjustments`, sync `daily_checkins`, nouveaux déclencheurs dans `notification_history`
+- [ ] Faire relire les seuils de D-028 (calibration, adhérence, ±150 kcal, plateau, score de risque) avec ceux de D-024/D-026
+- [ ] Photos de progression : section masquée tant que les politiques Storage n'existent pas (voir Sécurité)
+- [ ] `coach_memory` : réaffecter ou supprimer quand le coach IA arrive (D-028 : mémoire dérivée, rien à y stocker)
+
 ## Transformation Journey (D-024)
 
 - [ ] Synchroniser `notification_settings` et `notification_history` (tables et RLS prêtes, l'app garde tout sur l'appareil pour l'instant), puis `daily_checkins`.
-- [ ] Étapes J-2 à J-7 de `docs/TRANSFORMATION_JOURNEY.md` (Daily Coach, Weekly Check-in, Progress Journey, anti-abandon complet, Adaptation Engine).
+- [ ] Étapes J-2 à J-7 de `docs/TRANSFORMATION_JOURNEY.md` : reprises par la phase D-028 ci-dessus.
 - [ ] Faire relire les seuils de la règle de sécurité et les fourchettes de rythme par un professionnel de santé avant la bêta publique.
 - [ ] Règle 7 : retirer l'« énergie active » estimée de l'écran Santé (`HealthCard`, PR #1).
 - [x] Détection `low_intake` : la semaine précédente est gardée sur l'appareil (D-026).

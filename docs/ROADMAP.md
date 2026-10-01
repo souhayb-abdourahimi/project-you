@@ -44,7 +44,7 @@ Statuts : `done` · `in progress` · `todo` · `blocked`. Priorités : P0 (bloqu
 | M-17 | PlanningEngine (créneaux manuels) + calendrier basique | P1 | done | M-10 | moyen | unit | séances placées dans de vrais créneaux, fallback maison |
 | M-18 | Notifications locales par catégorie | P1 | done (mobile ; non supporté sur web) | M-14 | moyen | unit | réglables, plafond anti-spam |
 | J-1 | Transformation Journey : état unique, règle de sécurité, voix du coach, canal notifications (D-024) | P1 | done (PR empilée sur la PR #1) | M-16, M-18 | moyen | unit + RLS | messages personnalisés why/change/feel, jamais culpabilisants, la sécurité d'abord |
-| J-2…J-7 | Daily Coach, Weekly Check-in, Progress Journey, anti-abandon complet, Adaptation Engine, sync | P1 | conçu (`docs/TRANSFORMATION_JOURNEY.md`) | J-1 | élevé | unit + E2E | voir le plan de livraison du document |
+| J-2…J-7 | Daily Coach, Weekly Check-in, Progress Journey, anti-abandon complet, Adaptation Engine, sync | P1 | en cours (D-028 : `docs/DAILY_COACH.md`, `PROGRESS_JOURNEY.md`, `ADAPTATION_ENGINE.md`, `RETENTION.md`) | J-1 | élevé | unit + E2E | voir le plan de livraison du document |
 | M-19 | Synchronisation Supabase (diff d'états, D-015) | P0 | done (testée sur le vrai schéma ; à valider sur le projet réel) | F-08, F-10 | **élevé** | unit + intégration | hors ligne → en ligne sans perte |
 | M-20 | Privacy Center (export, suppression compte/photos) | P0 | done (suppression de compte à valider sur le projet réel) | M-01, M-19 | élevé | intégration | suppression complète vérifiée |
 | M-21 | Web responsive (sidebar ≥ 1024 px) | P1 | done | M-14 | faible | UI | toutes les pages MVP utilisables au clavier |

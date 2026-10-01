@@ -327,3 +327,27 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
 - **Pourquoi** : ne pas noter ne dit rien de ce qui a été mangé. C'est un signe que l'utilisateur s'éloigne de l'app, pas un excès. Couper la motivation à ce moment-là accélérerait le décrochage.
 - **Tests** : la matrice « ni félicitation ni relance » couvre seulement les trois signaux de sécurité ; un test vérifie que ces messages continuent de partir avec `low_logging` seul, avec le check-in en plus et sans fait `safety`.
 - **Date** : 2026-10-01
+
+## D-028 — Phase Daily Coach + Progress Journey : le même moteur, étendu ; l'historique du parcours sur le serveur
+
+- **Contexte** : demande du 2026-10-01 (thread « Daily Coach + Progress Journey ») : faire de Project You un compagnon quotidien (Daily Coach, DailyPlan, Progress Journey, Weekly Check-in, adaptation, anti-abandon, anti-répétition, notifications cohérentes), sans fonctionnalités secondaires, sans casser la sécurité (D-024 à D-027). Audit et architecture : `docs/DAILY_COACH.md`, `docs/PROGRESS_JOURNEY.md`, `docs/ADAPTATION_ENGINE.md`, `docs/RETENTION.md`.
+- **Décision** :
+  - **Aucun nouveau moteur** : tout est dans `src/domain/journey` (règle 6). `deriveJourneyState` gagne la date de début, l'adhérence, le retour après absence, le risque et la base de poids ; `DailyPlan`, `ProgressJourney`, les jalons, le Weekly Check-in, l'Adaptation Engine et la mémoire sont des sorties pures du même état. `src/domain/today.ts` (`nextAction`) est remplacé par `journey/daily-plan.ts`, l'écran Progrès ne calcule plus rien lui-même.
+  - **Hiérarchie du jour** : sécurité → contraintes fortes → entraînement → nutrition → récupération → activité → motivation. `low_logging` seul n'est pas une contrainte (D-027 inchangée).
+  - **Voix** : why/change/feel choisis selon le contexte du jour (jamais concaténés), catégories de messages, historique de voix partagé entre l'écran et les notifications.
+  - **Issues enregistrées, raisons jamais devinées** : séances (faite, raccourcie, allégée, remplacée, reportée, sautée), repas (mangé, sauté, remplacé, non renseigné), remplacements d'exercice, avec une raison facultative choisie dans une liste.
+  - **Historique du parcours sur le serveur** (point 37 de la demande) : sync de `daily_checkins` ; `meal_plan_items` et `workout_sessions` élargis (statuts, raison) et synchronisés aussi quand le repas est sauté ou remplacé et la séance sautée ou remplacée (lève le compromis de D-026) ; nouvelles tables `weekly_checkins`, `exercise_substitutions`, `journey_milestones`, `adjustments`, toutes en RLS propriétaire. `JourneyState`, plans du jour, progression, risque et mémoire restent **dérivés et non stockés**.
+  - **Poids de référence** recalculé par paliers de 14 jours (≥ 4 pesées, écart ≥ 1 kg), rejoué depuis le journal des pesées (déterministe, identique sur tous les appareils), gelé sous sécurité.
+  - **Adaptations** : calories et nombre de séances seulement proposés (un geste), bornés (±150 kcal, jamais sous le plancher), jamais pendant la calibration ni sans données suffisantes, jamais quand l'adhérence est faible (on simplifie le plan) ; tracées dans `adjustments`.
+  - **Coach IA** : pas de LLM dans cette phase. `journey/explain.ts` fournit des explications structurées (« Pourquoi ? ») que l'IA ne pourra que reformuler.
+  - **Performance** : pas de cache persistant ; mémorisation dans le hook et test de performance sur un an de données. Un cache ne sera ajouté que si la mesure dépasse le budget.
+- **Alternatives** :
+  - un « DailyCoachEngine » séparé de `journey` : refusé (deux vérités, règle 6) ;
+  - stocker `JourneyState` ou des scores côté serveur : refusé (désynchronisation, données sensibles déduites) ;
+  - garder les nouveaux historiques sur l'appareil : refusé (perdus au changement de téléphone ; la demande exige des structures multi-appareils) ;
+  - recalculer les calories à chaque pesée : refusé (une pesée fluctue de 1 à 2 kg avec l'eau).
+- **Trade-offs** :
+  - les séances prévues des semaines passées sont recalculées avec le profil actuel (le plan de la semaine n'est pas stocké) : si le nombre de séances change, l'adhérence passée est approximative (les adaptations acceptées sont datées, ce qui limite l'écart) ;
+  - les reports restent sur l'appareil (planification de la semaine en cours) ;
+  - les nouveaux seuils (14 jours, 6 pesées, 70 %, ±150 kcal, 28/21 jours pour le plateau, score de risque) sont des paramètres de conception à faire relire avec ceux de D-024/D-026.
+- **Date** : 2026-10-01
