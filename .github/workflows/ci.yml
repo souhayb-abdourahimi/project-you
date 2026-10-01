@@ -23,6 +23,11 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test -- --ci
+      # The committed Ciqual extract must match the official file in data/ciqual (D-020).
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install openpyxl==3.1.5 && npm run ciqual:check
       - run: npm run build:web
 
   e2e:

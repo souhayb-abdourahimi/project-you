@@ -1,0 +1,1752 @@
+{
+  "source": {
+    "publisher": "ANSES",
+    "dataset": "Table de composition nutritionnelle des aliments Ciqual 2025",
+    "file": "Table_Ciqual_2025_FR_2025_11_03.xlsx",
+    "sha256": "5555c572fa3735991298d832d0427788fa69a11b4fd20a5d580d58942369fbb0",
+    "publishedOn": "2025-11-03",
+    "url": "https://ciqual.anses.fr/",
+    "licence": "Licence Ouverte / Open Licence (Etalab)",
+    "rows": 3484,
+    "components": {
+      "energyKcal": "Energie, Règlement UE N° 1169/2011 (kcal/100 g)",
+      "proteinG": "Protéines, N x facteur de Jones (g/100 g)",
+      "carbsG": "Glucides (g/100 g)",
+      "fatG": "Lipides (g/100 g)",
+      "fibreG": "Fibres alimentaires (g/100 g)",
+      "polyolsG": "Polyols totaux (g/100 g)",
+      "alcoholG": "Alcool (éthanol) (g/100 g)",
+      "organicAcidsG": "Acides organiques (g/100 g)"
+    }
+  },
+  "foods": {
+    "4008": {
+      "code": "4008",
+      "name": "Pomme de terre, sans peau, crue",
+      "group": "fruits, légumes,\nlégumineuses et\noléagineux",
+      "subgroup": "pommes de terre et\nautres tubercules",
+      "values": {
+        "energyKcal": {
+          "raw": "80",
+          "value": 80.0,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "2,02",
+          "value": 2.02,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "16,2",
+          "value": 16.2,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "0,09",
+          "value": 0.09,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "2,2",
+          "value": 2.2,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0,61",
+          "value": 0.61,
+          "status": "value"
+        }
+      }
+    },
+    "6250": {
+      "code": "6250",
+      "name": "Boeuf, steak haché 5% MG cru",
+      "group": "viandes, oeufs,\npoissons",
+      "subgroup": "viandes crues",
+      "values": {
+        "energyKcal": {
+          "raw": "130",
+          "value": 130.0,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "21,9",
+          "value": 21.9,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "0,3",
+          "value": 0.3,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "4,59",
+          "value": 4.59,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        }
+      }
+    },
+    "7110": {
+      "code": "7110",
+      "name": "Pain complet ou intégral (à la farine T150)",
+      "group": "produits\ncéréaliers",
+      "subgroup": "pains et assimilés",
+      "values": {
+        "energyKcal": {
+          "raw": "234",
+          "value": 234.0,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "8,66",
+          "value": 8.66,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "41,2",
+          "value": 41.2,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "1,7",
+          "value": 1.7,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "7,3",
+          "value": 7.3,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0,37",
+          "value": 0.37,
+          "status": "value"
+        }
+      }
+    },
+    "7352": {
+      "code": "7352",
+      "name": "Galette de riz complet soufflé",
+      "group": "produits\ncéréaliers",
+      "subgroup": "pains et assimilés",
+      "values": {
+        "energyKcal": {
+          "raw": "381",
+          "value": 381.0,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "8,39",
+          "value": 8.39,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "77,9",
+          "value": 77.9,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "3",
+          "value": 3.0,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "3,4",
+          "value": 3.4,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0,074",
+          "value": 0.074,
+          "status": "value"
+        }
+      }
+    },
+    "9100": {
+      "code": "9100",
+      "name": "Riz blanc, cru",
+      "group": "produits\ncéréaliers",
+      "subgroup": "pâtes, riz et\ncéréales",
+      "values": {
+        "energyKcal": {
+          "raw": "350",
+          "value": 350.0,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "7,02",
+          "value": 7.02,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "77,5",
+          "value": 77.5,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "0,79",
+          "value": 0.79,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "1,53",
+          "value": 1.53,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        }
+      }
+    },
+    "9810": {
+      "code": "9810",
+      "name": "Pâtes sèches, standard, crues",
+      "group": "produits\ncéréaliers",
+      "subgroup": "pâtes, riz et\ncéréales",
+      "values": {
+        "energyKcal": {
+          "raw": "364",
+          "value": 364.0,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "12",
+          "value": 12.0,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "72,7",
+          "value": 72.7,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "1,6",
+          "value": 1.6,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "2,91",
+          "value": 2.91,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        }
+      }
+    },
+    "11005": {
+      "code": "11005",
+      "name": "Curry, poudre",
+      "group": "aides culinaires et\ningrédients divers",
+      "subgroup": "épices",
+      "values": {
+        "energyKcal": {
+          "raw": "301",
+          "value": 301.0,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "14,5",
+          "value": 14.5,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "2,63",
+          "value": 2.63,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "14",
+          "value": 14.0,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "53,2",
+          "value": 53.2,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "traces",
+          "value": 0,
+          "status": "traces"
+        }
+      }
+    },
+    "11107": {
+      "code": "11107",
+      "name": "Sauce tomate aux oignons, préemballée",
+      "group": "aides culinaires et\ningrédients divers",
+      "subgroup": "sauces",
+      "values": {
+        "energyKcal": {
+          "raw": "78,8",
+          "value": 78.8,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "1,52",
+          "value": 1.52,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "7,69",
+          "value": 7.69,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "4,18",
+          "value": 4.18,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "2,17",
+          "value": 2.17,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "traces",
+          "value": 0,
+          "status": "traces"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "-",
+          "value": null,
+          "status": "missing"
+        }
+      }
+    },
+    "12118": {
+      "code": "12118",
+      "name": "Emmental ou emmenthal, râpé",
+      "group": "produits laitiers",
+      "subgroup": "fromages et\nalternatives\nvégétales",
+      "values": {
+        "energyKcal": {
+          "raw": "368",
+          "value": 368.0,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "27,6",
+          "value": 27.6,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "0,58",
+          "value": 0.58,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "28,2",
+          "value": 28.2,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "0,042",
+          "value": 0.042,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "1,11",
+          "value": 1.11,
+          "status": "value"
+        }
+      }
+    },
+    "13005": {
+      "code": "13005",
+      "name": "Banane, chair sans peau, crue",
+      "group": "fruits, légumes,\nlégumineuses et\noléagineux",
+      "subgroup": "fruits",
+      "values": {
+        "energyKcal": {
+          "raw": "87,6",
+          "value": 87.6,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "1,06",
+          "value": 1.06,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "19,7",
+          "value": 19.7,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "< 0,5",
+          "value": 0,
+          "status": "below_limit"
+        },
+        "fibreG": {
+          "raw": "2,7",
+          "value": 2.7,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "< 0,5",
+          "value": 0,
+          "status": "below_limit"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0,13",
+          "value": 0.13,
+          "status": "value"
+        }
+      }
+    },
+    "13015": {
+      "code": "13015",
+      "name": "Framboise, crue",
+      "group": "fruits, légumes,\nlégumineuses et\noléagineux",
+      "subgroup": "fruits",
+      "values": {
+        "energyKcal": {
+          "raw": "47,9",
+          "value": 47.9,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "1,19",
+          "value": 1.19,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "5,83",
+          "value": 5.83,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "0,8",
+          "value": 0.8,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "4,3",
+          "value": 4.3,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "< 0,5",
+          "value": 0,
+          "status": "below_limit"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "1,9",
+          "value": 1.9,
+          "status": "value"
+        }
+      }
+    },
+    "13039": {
+      "code": "13039",
+      "name": "Pomme, chair et peau, crue",
+      "group": "fruits, légumes,\nlégumineuses et\noléagineux",
+      "subgroup": "fruits",
+      "values": {
+        "energyKcal": {
+          "raw": "54",
+          "value": 54.0,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "0,25",
+          "value": 0.25,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "11,6",
+          "value": 11.6,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "0,25",
+          "value": 0.25,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "1,4",
+          "value": 1.4,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "-",
+          "value": null,
+          "status": "missing"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0,46",
+          "value": 0.46,
+          "status": "value"
+        }
+      }
+    },
+    "15000": {
+      "code": "15000",
+      "name": "Amande, avec peau, sans sel ajouté",
+      "group": "fruits, légumes,\nlégumineuses et\noléagineux",
+      "subgroup": "fruits à coque et\ngraines\noléagineuses",
+      "values": {
+        "energyKcal": {
+          "raw": "615",
+          "value": 615.0,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "18,8",
+          "value": 18.8,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "9,51",
+          "value": 9.51,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "51,3",
+          "value": 51.3,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "12,5",
+          "value": 12.5,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "-",
+          "value": null,
+          "status": "missing"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        }
+      }
+    },
+    "15202": {
+      "code": "15202",
+      "name": "Beurre de cacahuète ou pâte d'arachide",
+      "group": "fruits, légumes,\nlégumineuses et\noléagineux",
+      "subgroup": "fruits à coque et\ngraines\noléagineuses",
+      "values": {
+        "energyKcal": {
+          "raw": "643",
+          "value": 643.0,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "22,2",
+          "value": 22.2,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "17,3",
+          "value": 17.3,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "51,4",
+          "value": 51.4,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "5",
+          "value": 5.0,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "-",
+          "value": null,
+          "status": "missing"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        }
+      }
+    },
+    "17270": {
+      "code": "17270",
+      "name": "Huile d'olive vierge extra",
+      "group": "matières grasses",
+      "subgroup": "huiles et graisses\nvégétales",
+      "values": {
+        "energyKcal": {
+          "raw": "899",
+          "value": 899.0,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "0,25",
+          "value": 0.25,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "traces",
+          "value": 0,
+          "status": "traces"
+        },
+        "fatG": {
+          "raw": "99,9",
+          "value": 99.9,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "traces",
+          "value": 0,
+          "status": "traces"
+        }
+      }
+    },
+    "18900": {
+      "code": "18900",
+      "name": "Boisson au soja, nature, non enrichie, préemballée",
+      "group": "eaux et autres\nboissons",
+      "subgroup": "boissons sans\nalcool",
+      "values": {
+        "energyKcal": {
+          "raw": "42,4",
+          "value": 42.4,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "3,19",
+          "value": 3.19,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "1,87",
+          "value": 1.87,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "2,1",
+          "value": 2.1,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "0,71",
+          "value": 0.71,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "< 0,01",
+          "value": 0,
+          "status": "below_limit"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0,18",
+          "value": 0.18,
+          "status": "value"
+        }
+      }
+    },
+    "19644": {
+      "code": "19644",
+      "name": "Fromage blanc, nature, 0% MG",
+      "group": "produits laitiers",
+      "subgroup": "produits laitiers frais\net alternatives\nvégétales",
+      "values": {
+        "energyKcal": {
+          "raw": "48,4",
+          "value": 48.4,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "7,34",
+          "value": 7.34,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "4,22",
+          "value": 4.22,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "< 0,1",
+          "value": 0,
+          "status": "below_limit"
+        },
+        "fibreG": {
+          "raw": "0,042",
+          "value": 0.042,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0,92",
+          "value": 0.92,
+          "status": "value"
+        }
+      }
+    },
+    "19693": {
+      "code": "19693",
+      "name": "Dessert au soja, nature, sans sucres ajoutés, non\nenrichi, fermenté, rayon frais",
+      "group": "produits laitiers",
+      "subgroup": "produits laitiers frais\net alternatives\nvégétales",
+      "values": {
+        "energyKcal": {
+          "raw": "44,7",
+          "value": 44.7,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "3,76",
+          "value": 3.76,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "2,05",
+          "value": 2.05,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "1,9",
+          "value": 1.9,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "0,8",
+          "value": 0.8,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "traces",
+          "value": 0,
+          "status": "traces"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0,45",
+          "value": 0.45,
+          "status": "value"
+        }
+      }
+    },
+    "20009": {
+      "code": "20009",
+      "name": "Carotte, crue",
+      "group": "fruits, légumes,\nlégumineuses et\noléagineux",
+      "subgroup": "légumes",
+      "values": {
+        "energyKcal": {
+          "raw": "30,2",
+          "value": 30.2,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "0,78",
+          "value": 0.78,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "5,16",
+          "value": 5.16,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "< 0,5",
+          "value": 0,
+          "status": "below_limit"
+        },
+        "fibreG": {
+          "raw": "2,9",
+          "value": 2.9,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "< 0,01",
+          "value": 0,
+          "status": "below_limit"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0,2",
+          "value": 0.2,
+          "status": "value"
+        }
+      }
+    },
+    "20034": {
+      "code": "20034",
+      "name": "Oignon, cru",
+      "group": "fruits, légumes,\nlégumineuses et\noléagineux",
+      "subgroup": "légumes",
+      "values": {
+        "energyKcal": {
+          "raw": "39",
+          "value": 39.0,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "1,1",
+          "value": 1.1,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "6,25",
+          "value": 6.25,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "0,62",
+          "value": 0.62,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "1,7",
+          "value": 1.7,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "-",
+          "value": null,
+          "status": "missing"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0,21",
+          "value": 0.21,
+          "status": "value"
+        }
+      }
+    },
+    "20057": {
+      "code": "20057",
+      "name": "Brocoli, cru",
+      "group": "fruits, légumes,\nlégumineuses et\noléagineux",
+      "subgroup": "légumes",
+      "values": {
+        "energyKcal": {
+          "raw": "31,9",
+          "value": 31.9,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "2,9",
+          "value": 2.9,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "2,15",
+          "value": 2.15,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "0,36",
+          "value": 0.36,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "2,6",
+          "value": 2.6,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "-",
+          "value": null,
+          "status": "missing"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "1,1",
+          "value": 1.1,
+          "status": "value"
+        }
+      }
+    },
+    "20059": {
+      "code": "20059",
+      "name": "Épinard, cru",
+      "group": "fruits, légumes,\nlégumineuses et\noléagineux",
+      "subgroup": "légumes",
+      "values": {
+        "energyKcal": {
+          "raw": "33,3",
+          "value": 33.3,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "2,68",
+          "value": 2.68,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "3,06",
+          "value": 3.06,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "0,39",
+          "value": 0.39,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "2,6",
+          "value": 2.6,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "-",
+          "value": null,
+          "status": "missing"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0,55",
+          "value": 0.55,
+          "status": "value"
+        }
+      }
+    },
+    "20101": {
+      "code": "20101",
+      "name": "Légumes, mélange surgelé, crus",
+      "group": "fruits, légumes,\nlégumineuses et\noléagineux",
+      "subgroup": "légumes",
+      "values": {
+        "energyKcal": {
+          "raw": "65,1",
+          "value": 65.1,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "2,26",
+          "value": 2.26,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "5,71",
+          "value": 5.71,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "2,65",
+          "value": 2.65,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "4,7",
+          "value": 4.7,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "0,03",
+          "value": 0.03,
+          "status": "value"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "-",
+          "value": null,
+          "status": "missing"
+        }
+      }
+    },
+    "20359": {
+      "code": "20359",
+      "name": "Lentille, sèche (aliment moyen)",
+      "group": "fruits, légumes,\nlégumineuses et\noléagineux",
+      "subgroup": "légumineuses",
+      "values": {
+        "energyKcal": {
+          "raw": "327",
+          "value": 327.0,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "25,1",
+          "value": 25.1,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "44,5",
+          "value": 44.5,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "1,8",
+          "value": 1.8,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "16,3",
+          "value": 16.3,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "-",
+          "value": null,
+          "status": "missing"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "traces",
+          "value": 0,
+          "status": "traces"
+        }
+      }
+    },
+    "20385": {
+      "code": "20385",
+      "name": "Tomate sans précision, crue (aliment moyen)",
+      "group": "fruits, légumes,\nlégumineuses et\noléagineux",
+      "subgroup": "légumes",
+      "values": {
+        "energyKcal": {
+          "raw": "19,2",
+          "value": 19.2,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "0,6",
+          "value": 0.6,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "3,69",
+          "value": 3.69,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "< 0,5",
+          "value": 0,
+          "status": "below_limit"
+        },
+        "fibreG": {
+          "raw": "1,02",
+          "value": 1.02,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "< 0,5",
+          "value": 0,
+          "status": "below_limit"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0,5",
+          "value": 0.5,
+          "status": "value"
+        }
+      }
+    },
+    "20524": {
+      "code": "20524",
+      "name": "Haricot rouge, appertisé, égoutté",
+      "group": "fruits, légumes,\nlégumineuses et\noléagineux",
+      "subgroup": "légumineuses",
+      "values": {
+        "energyKcal": {
+          "raw": "108",
+          "value": 108.0,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "8,31",
+          "value": 8.31,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "13",
+          "value": 13.0,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "0,97",
+          "value": 0.97,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "7",
+          "value": 7.0,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "-",
+          "value": null,
+          "status": "missing"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "traces",
+          "value": 0,
+          "status": "traces"
+        }
+      }
+    },
+    "20532": {
+      "code": "20532",
+      "name": "Pois chiche, appertisé, égoutté",
+      "group": "fruits, légumes,\nlégumineuses et\noléagineux",
+      "subgroup": "légumineuses",
+      "values": {
+        "energyKcal": {
+          "raw": "122",
+          "value": 122.0,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "6,74",
+          "value": 6.74,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "15",
+          "value": 15.0,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "2,68",
+          "value": 2.68,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "5,45",
+          "value": 5.45,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "-",
+          "value": null,
+          "status": "missing"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "traces",
+          "value": 0,
+          "status": "traces"
+        }
+      }
+    },
+    "20591": {
+      "code": "20591",
+      "name": "Protéine de soja texturée, réhydratée",
+      "group": "aides culinaires et\ningrédients divers",
+      "subgroup": "ingrédients pour\nvégétariens",
+      "values": {
+        "energyKcal": {
+          "raw": "150",
+          "value": 150.0,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "18,6",
+          "value": 18.6,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "7,03",
+          "value": 7.03,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "2,9",
+          "value": 2.9,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "5,61",
+          "value": 5.61,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "traces",
+          "value": 0,
+          "status": "traces"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0,89",
+          "value": 0.89,
+          "status": "value"
+        }
+      }
+    },
+    "20904": {
+      "code": "20904",
+      "name": "Tofu nature, préemballé",
+      "group": "aides culinaires et\ningrédients divers",
+      "subgroup": "ingrédients pour\nvégétariens",
+      "values": {
+        "energyKcal": {
+          "raw": "147",
+          "value": 147.0,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "13,4",
+          "value": 13.4,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "2,87",
+          "value": 2.87,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "8,5",
+          "value": 8.5,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "< 0,5",
+          "value": 0,
+          "status": "below_limit"
+        },
+        "polyolsG": {
+          "raw": "traces",
+          "value": 0,
+          "status": "traces"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0,16",
+          "value": 0.16,
+          "status": "value"
+        }
+      }
+    },
+    "20917": {
+      "code": "20917",
+      "name": "Tempeh",
+      "group": "aides culinaires et\ningrédients divers",
+      "subgroup": "ingrédients pour\nvégétariens",
+      "values": {
+        "energyKcal": {
+          "raw": "157",
+          "value": 157.0,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "16,1",
+          "value": 16.1,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "7,89",
+          "value": 7.89,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "4,7",
+          "value": 4.7,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "6,2",
+          "value": 6.2,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "traces",
+          "value": 0,
+          "status": "traces"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0,25",
+          "value": 0.25,
+          "status": "value"
+        }
+      }
+    },
+    "22000": {
+      "code": "22000",
+      "name": "Oeuf cru",
+      "group": "viandes, oeufs,\npoissons",
+      "subgroup": "oeufs",
+      "values": {
+        "energyKcal": {
+          "raw": "140",
+          "value": 140.0,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "12,8",
+          "value": 12.8,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "0,06",
+          "value": 0.06,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "9,83",
+          "value": 9.83,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        }
+      }
+    },
+    "25598": {
+      "code": "25598",
+      "name": "Seitan, préemballé",
+      "group": "aides culinaires et\ningrédients divers",
+      "subgroup": "ingrédients pour\nvégétariens",
+      "values": {
+        "energyKcal": {
+          "raw": "134",
+          "value": 134.0,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "20,6",
+          "value": 20.6,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "6,74",
+          "value": 6.74,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "2,5",
+          "value": 2.5,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "0,9",
+          "value": 0.9,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0,16",
+          "value": 0.16,
+          "status": "value"
+        }
+      }
+    },
+    "26036": {
+      "code": "26036",
+      "name": "Saumon, élevage, cru",
+      "group": "viandes, oeufs,\npoissons",
+      "subgroup": "poissons crus",
+      "values": {
+        "energyKcal": {
+          "raw": "193",
+          "value": 193.0,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "20,5",
+          "value": 20.5,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "traces",
+          "value": 0,
+          "status": "traces"
+        },
+        "fatG": {
+          "raw": "12,4",
+          "value": 12.4,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "< 0,25",
+          "value": 0,
+          "status": "below_limit"
+        },
+        "polyolsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        }
+      }
+    },
+    "26039": {
+      "code": "26039",
+      "name": "Thon, au naturel, appertisé, égoutté",
+      "group": "viandes, oeufs,\npoissons",
+      "subgroup": "produits à base de\npoissons et produits\nde la mer",
+      "values": {
+        "energyKcal": {
+          "raw": "143",
+          "value": 143.0,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "26,8",
+          "value": 26.8,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "3,94",
+          "value": 3.94,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        }
+      }
+    },
+    "32140": {
+      "code": "32140",
+      "name": "Flocons d'avoine",
+      "group": "produits sucrés",
+      "subgroup": "céréales de\npetit-déjeuner",
+      "values": {
+        "energyKcal": {
+          "raw": "369",
+          "value": 369.0,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "10,6",
+          "value": 10.6,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "57,7",
+          "value": 57.7,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "7,82",
+          "value": 7.82,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "11,2",
+          "value": 11.2,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        }
+      }
+    },
+    "36017": {
+      "code": "36017",
+      "name": "Poulet, filet sans peau cru",
+      "group": "viandes, oeufs,\npoissons",
+      "subgroup": "viandes crues",
+      "values": {
+        "energyKcal": {
+          "raw": "110",
+          "value": 110.0,
+          "status": "value"
+        },
+        "proteinG": {
+          "raw": "23,4",
+          "value": 23.4,
+          "status": "value"
+        },
+        "carbsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "fatG": {
+          "raw": "1,5",
+          "value": 1.5,
+          "status": "value"
+        },
+        "fibreG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "polyolsG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "alcoholG": {
+          "raw": "0",
+          "value": 0.0,
+          "status": "value"
+        },
+        "organicAcidsG": {
+          "raw": "0,75",
+          "value": 0.75,
+          "status": "value"
+        }
+      }
+    }
+  }
+}

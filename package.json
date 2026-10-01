@@ -64,6 +64,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
+    "ciqual:import": "python3 scripts/ciqual/import_ciqual.py",
+    "ciqual:check": "python3 scripts/ciqual/import_ciqual.py --check",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:db": "bash scripts/db-test.sh",
