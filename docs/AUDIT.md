@@ -20,14 +20,14 @@ Légende : **DONE** (fonctionne et testé) · **PARTIAL** · **BROKEN** · **MIS
 | CI | lint, typecheck, tests, export web, migrations + RLS | DONE | DONE | + tests d'intégration de la synchronisation sur Postgres |
 | Navigation | Onglets natifs + barre latérale web ≥ 1024 px | BROKEN | DONE | la barre latérale alignait les onglets en ligne : seul « Aujourd’hui » était cliquable sur grand écran (trouvé par l'E2E, corrigé) |
 | Navigation | Protection des routes | PARTIAL | DONE | redirection connexion/onboarding ; attente du premier pull sur un nouvel appareil |
-| Auth | Inscription, connexion, déconnexion (UI + service) | PARTIAL | PARTIAL | code prêt, tests live écrits (`npm run test:live`), **non exécutés** faute d'accès réseau |
+| Auth | Inscription, connexion, déconnexion (UI + service) | PARTIAL | PARTIAL | connexion au projet réel validée manuellement par Souhayb (requêtes curl avec la clé publishable et un compte de test, 2026-10-01) ; `npm run test:live` échouait sous Jest (fetch d'Expo), corrigé, à relancer pour valider RLS et sync automatiquement |
 | Auth | Session persistante / rafraîchissement | PARTIAL | PARTIAL | AsyncStorage + rafraîchissement limité au premier plan (recommandation Supabase RN) ; test live écrit |
 | Auth | Clé client | PARTIAL | DONE | clé publishable (`EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`), clés `sb_secret_`/`service_role` refusées au démarrage |
 | Base | Schéma v1 + RLS | DONE | DONE | |
 | Base | FK vers catalogues non peuplés | BROKEN | DONE | migration `20261001000001` (D-014) |
 | Base | Rattachement à la séance/au plan d'un autre utilisateur | NEEDS REVIEW | DONE | politiques restrictives |
 | Base | Tests RLS | PARTIAL (5 tables) | DONE | toutes les tables à `user_id`, découvertes automatiquement ; validés par injection de failles |
-| Base | Migrations appliquées au projet Supabase réel | MISSING | MISSING | à exécuter dans le SQL Editor (2 fichiers) |
+| Base | Migrations appliquées au projet Supabase réel | MISSING | DONE | appliquées par Souhayb le 2026-10-01 (SQL Editor) ; Edge Function `delete-account` déployée |
 | Sync | Envoi | PARTIAL (inventaire, poids, taille, dépenses) | DONE | + profil, objectif, motivation, préférences, séances, séries, repas consommés |
 | Sync | Réception (pull) | MISSING | DONE | nouvel appareil restauré ; testé contre le vrai schéma |
 | Sync | Données d'un autre compte sur l'appareil | MISSING | DONE | effacées avant synchronisation ; déconnexion = effacement local |
@@ -59,7 +59,11 @@ Légende : **DONE** (fonctionne et testé) · **PARTIAL** · **BROKEN** · **MIS
 - Historique linéaire, commits conventionnels ; `main` créée depuis le commit initial pour servir de base à la PR #1.
 - La PR #1 reste le bon véhicule (brouillon, non fusionnée, CI verte) : on continue dessus plutôt que d'ouvrir une nouvelle PR. Pas de fusion automatique.
 
-## Ce qui bloque la validation réelle
+## Validation réelle (2026-10-01)
+
+Souhayb a appliqué les deux migrations, déployé `delete-account` et vérifié la communication avec le projet par des requêtes curl (clé publishable + compte de test) : **connexion validée manuellement**. `npm run test:live` échouait à la connexion avec `AuthUnknownError: "undefined" is not valid JSON` : le preset jest-expo remplace `fetch` par celui d'Expo, inutilisable hors application. Les tests live tournent maintenant dans Node pur (`jest.live.config.js`) ; problème reproduit puis corrigé contre un faux serveur local. Il reste à relancer `npm run test:live` pour valider automatiquement l'isolation RLS et la synchronisation sur le projet réel.
+
+## Ce qui restait à faire pour la validation réelle (fait, sauf la relance de `test:live`)
 
 1. Accès réseau à `krcqdrrfnvfpvczxwrmt.supabase.co` depuis l'environnement d'exécution (ou exécution de `npm run test:live` depuis un poste qui y a accès).
 2. Migrations à appliquer sur le projet Supabase (SQL Editor) : `20260930000001_core.sql` puis `20261001000001_sync_hardening.sql`.
