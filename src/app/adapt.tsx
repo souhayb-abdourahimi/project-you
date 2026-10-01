@@ -6,6 +6,7 @@ import { Banner, Button, Card, ChoiceGroup, Screen, Text } from '@/components/ui
 import { suggestAlternatives, type Alternative, type Level } from '@/domain/motivation/anti-abandon';
 import { rescheduleOptions } from '@/domain/planning/engine';
 import { usePlan } from '@/hooks/usePlan';
+import { sessionKey } from '@/domain/sync/projection';
 import { formatDate } from '@/lib/format';
 import { useDataStore } from '@/state/data';
 
@@ -19,6 +20,7 @@ export default function AdaptScreen() {
   const plan = usePlan();
   const reschedule = useDataStore((s) => s.reschedule);
   const logDay = useDataStore((s) => s.logDay);
+  const setSessionOutcome = useDataStore((s) => s.setSessionOutcome);
   const [energy, setEnergy] = useState<Level>(3);
   const [motivation, setMotivation] = useState<Level>(mode === 'motivation' ? 2 : 3);
   const [fatigue, setFatigue] = useState<Level>(3);
@@ -55,6 +57,21 @@ export default function AdaptScreen() {
       if (!first) return setMessage(t('antiAbandon.noRescheduleSlot'));
       reschedule(plan.today, first.date);
       return setMessage(t('antiAbandon.rescheduled', { date: formatDate(first.date, i18n.language) }));
+    }
+    // A walk, mobility or rest instead of today's session: the session counts as adapted, not missed.
+    // The reason is the one the user gave by opening this screen, never guessed.
+    const workout = plan.schedule.days.find((d) => d.date === plan.today)?.items.find((i) => i.kind === 'workout');
+    if (option !== 'rest') logDay(plan.today, { activity: option, activityMinutes: option === 'walk' ? 20 : 10 });
+    if (workout?.kind === 'workout') {
+      setSessionOutcome(sessionKey(plan.today, workout.sessionIndex), {
+        status: 'replaced',
+        replacedBy: option,
+        ...(mode === 'time'
+          ? { reason: 'no_time' as const }
+          : mode === 'motivation'
+            ? { reason: 'no_motivation' as const }
+            : {}),
+      });
     }
     setMessage(t('antiAbandon.restLogged'));
   };

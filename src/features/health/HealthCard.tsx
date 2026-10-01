@@ -15,7 +15,7 @@ export function HealthCard({ plan }: { plan: Plan | null }) {
   const summary = useActivitySummary(plan);
   const wanted = useHealthStore((s) => s.wanted);
   if (!summary) return null;
-  const { stepsToday: steps, activeKcalToday, extraWorkouts, latestWeight } = summary;
+  const { stepsToday: steps, extraWorkouts, latestWeight } = summary;
   const lastWorkout = extraWorkouts[0];
 
   return (
@@ -37,9 +37,7 @@ export function HealthCard({ plan }: { plan: Plan | null }) {
           />
         </Row>
       ) : null}
-      {wanted.includes('activeCalories') && activeKcalToday !== null ? (
-        <Text color="textMuted">{t('health.card.activeKcal', { value: activeKcalToday })}</Text>
-      ) : null}
+      {/* Active energy is the device's estimate: never shown as a measured value (CLAUDE.md rule 7). */}
       {wanted.includes('workouts') && lastWorkout ? (
         <Text color="textMuted">
           {t('health.card.otherWorkout', {

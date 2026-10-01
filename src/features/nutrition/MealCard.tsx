@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
-import { Button, Card, MockBadge, Rationale, Row, Text } from '@/components/ui';
+import { Button, Card, ChoiceGroup, MockBadge, Rationale, Row, Text } from '@/components/ui';
+import { MEAL_REASONS, type MealReason } from '@/domain/journey/outcomes';
 import { getFood, hasMockFood } from '@/domain/meals/catalog';
 import { alternativesFor, type PlannedMeal, type ReplaceReason } from '@/domain/meals/planner';
 import { getRecipe } from '@/domain/meals/recipes';
@@ -18,6 +19,8 @@ export function MealCard({ meal, compact }: { meal: PlannedMeal; compact?: boole
   const plan = usePlan();
   const markEaten = useDataStore((s) => s.markMealEaten);
   const markSkipped = useDataStore((s) => s.markMealSkipped);
+  const markReplaced = useDataStore((s) => s.markMealReplaced);
+  const unmark = useDataStore((s) => s.unmarkMeal);
   const replaceMeal = useDataStore((s) => s.replaceMeal);
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -58,13 +61,42 @@ export function MealCard({ meal, compact }: { meal: PlannedMeal; compact?: boole
       ) : null}
       {meal.status === 'eaten' ? (
         <Text color="success">{t('nutrition.eaten')}</Text>
-      ) : meal.status === 'skipped' ? (
-        <Text color="textMuted">{t('nutrition.skipped')}</Text>
+      ) : meal.status === 'skipped' || meal.status === 'replaced' ? (
+        <View style={{ gap: spacing.xs }}>
+          <Text color="textMuted">
+            {t(meal.status === 'skipped' ? 'nutrition.skipped' : 'nutrition.replaced')}
+            {meal.reason ? ` · ${t(`nutrition.reason.${meal.reason}`)}` : ''}
+          </Text>
+          {compact ? null : (
+            <>
+              {/* The reason is optional and never guessed: without an answer it stays empty. */}
+              <Text variant="caption" color="textMuted">
+                {t('nutrition.reasonQuestion')}
+              </Text>
+              <ChoiceGroup
+                options={MEAL_REASONS.map((r) => ({ value: r, label: t(`nutrition.reason.${r}`) }))}
+                selected={meal.reason ? [meal.reason] : []}
+                onToggle={(r: MealReason) => {
+                  const mark = meal.status === 'skipped' ? markSkipped : markReplaced;
+                  mark(meal.id, meal.reason === r ? undefined : r);
+                }}
+              />
+              <Button compact variant="ghost" label={t('nutrition.undo')} onPress={() => unmark(meal.id)} />
+            </>
+          )}
+        </View>
       ) : compact ? null : (
         <Row>
           <Button compact label={t('nutrition.markEaten')} onPress={() => markEaten(meal.id)} />
           {/* A day counts as logged once each meal is marked; the safety rule reads only marked days. */}
           <Button compact variant="secondary" label={t('nutrition.markSkipped')} onPress={() => markSkipped(meal.id)} />
+          {/* Eaten something else: logged, but its calories are unknown (never counted as complete). */}
+          <Button
+            compact
+            variant="secondary"
+            label={t('nutrition.markReplaced')}
+            onPress={() => markReplaced(meal.id)}
+          />
           <Button compact variant="secondary" label={t('nutrition.recipe')} onPress={() => setOpen(!open)} />
         </Row>
       )}

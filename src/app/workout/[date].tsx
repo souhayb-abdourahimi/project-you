@@ -68,7 +68,7 @@ export default function WorkoutScreen() {
             history={historyFor(exerciseId)}
             training={plan.snapshot.training}
             onLog={(s) => logSet(key, exerciseId, s)}
-            onSwap={(toId) => swapExercise(key, p.exerciseId, toId)}
+            onSwap={(toId, reason) => swapExercise(key, p.exerciseId, toId, reason)}
           />
         );
       })}
