@@ -110,6 +110,12 @@ export const SCENARIOS = {
     goal: { type: 'fat_loss', targetWeightKg: 70, targetDate: '2027-06-30' },
     nutrition: { diet: 'vegan', allergies: ['soy'] },
   }),
+  /** 50 kg vegan, soy allergy, 10 min of cooking: two meals out of three impossible (review B1, D-022). */
+  veganSoyAllergySmall: scenario({
+    user: { displayName: 'Camille (MOCK)', weightKg: 50, heightCm: 157, sex: 'female' },
+    goal: { type: 'maintenance' },
+    nutrition: { diet: 'vegan', allergies: ['soy'], cookingMinutes: 10 },
+  }),
   /** Free-text exclusions and intolerances (review C1, D-021). */
   freeTextExclusions: scenario({
     nutrition: { excludedFoods: ['Poissons', 'oeufs'], intolerances: ['soja', 'lactose'] },

@@ -56,6 +56,8 @@ export type NutritionWarning =
 
 export interface NutritionTargets {
   bmr: number;
+  /** Lowest daily energy a plan may show without a warning: BMR or absolute floor, never above the target. */
+  floorKcal: number;
   maintenance: number;
   calories: number;
   proteinG: number;
@@ -126,6 +128,7 @@ export function computeNutritionTargets(snapshot: UserContextSnapshot, reference
 
   return {
     bmr: Math.round(bmr),
+    floorKcal: Math.round(Math.min(floor, roundedCalories)),
     maintenance: roundTo(maintenance, 10),
     calories: roundedCalories,
     proteinG: Math.round(proteinG),

@@ -35,16 +35,35 @@ export interface ProteinCoverage {
   met: boolean;
 }
 
+/** Energy of a day against its target (B1, D-022): never a day too low without saying so. */
+export interface EnergyCoverage {
+  /** Rounded planned energy (estimate). */
+  plannedKcal: number;
+  /** Target minus planned, rounded up to 50 kcal; 0 when the target is reached. */
+  missingKcal: number;
+  /** BMR or absolute floor (see NutritionTargets.floorKcal); null when unknown. */
+  floorKcal: number | null;
+  /** Meal slots of the day without any possible recipe. */
+  missingSlots: MealSlot[];
+  /** Planned energy under the floor. */
+  belowFloor: boolean;
+  /** The day must show "Cette journée est incomplète" with missingKcal. */
+  incomplete: boolean;
+}
+
 export interface DailyMealPlan {
   date: IsoDate;
   meals: PlannedMeal[];
   totals: Nutrients;
   targetKcal: number;
   protein: ProteinCoverage;
+  energy: EnergyCoverage;
 }
 
 /** A day counts as meeting its protein target from 90 % of it (estimates, not lab values). */
 export const PROTEIN_MET_RATIO = 0.9;
+/** An impossible meal that leaves at least this share of the energy target uncovered is reported. */
+export const ENERGY_GAP_RATIO = 0.1;
 
 /** Recipes kept per slot for the day-level search: best-ranked plus most protein-dense (≤ 7⁵ combinations). */
 const CANDIDATES_PER_SLOT = 4;
@@ -66,7 +85,7 @@ export interface WeeklyMealPlan {
 }
 
 /** Bump when the planner's output changes meaning, so stored plans are regenerated. */
-export const MEAL_PLANNER_VERSION = 4;
+export const MEAL_PLANNER_VERSION = 5;
 
 const SLOT_SHARES: Record<number, [MealSlot, number][]> = {
   2: [
@@ -94,7 +113,7 @@ const SLOT_SHARES: Record<number, [MealSlot, number][]> = {
 };
 
 export interface PlannerContext {
-  targets: Pick<NutritionTargets, 'calories' | 'proteinG'>;
+  targets: Pick<NutritionTargets, 'calories' | 'proteinG'> & Partial<Pick<NutritionTargets, 'floorKcal'>>;
   constraints: FoodConstraints;
   preferences: Pick<NutritionProfile, 'likedFoods' | 'dislikedFoods' | 'mealsPerDay'>;
   inventory: InventoryItem[];
@@ -257,27 +276,36 @@ export function planDay(
   usage = new Map<string, number>(),
 ): DailyMealPlan {
   const shares = SLOT_SHARES[ctx.preferences.mealsPerDay] ?? SLOT_SHARES[3];
+  const ranked = shares.map(([slot]) => rankRecipes(slot, ctx, stock, usage));
+  const missingSlots = [...new Set(shares.filter((_, i) => ranked[i].length === 0).map(([slot]) => slot))];
+  // A meal with no possible recipe hands its share to the others; the 2.5-serving cap of planMeal
+  // keeps portions reasonable, and what it cannot cover is reported (energy.incomplete).
+  const coveredShare = shares.reduce((sum, [, share], i) => sum + (ranked[i].length > 0 ? share : 0), 0);
   const options = shares.map(([slot, share], index) => {
-    const ranked = rankRecipes(slot, ctx, stock, usage);
-    const byProtein = [...ranked].sort((a, b) => proteinRatio(b.recipe) - proteinRatio(a.recipe));
-    const kept = new Set([...ranked.slice(0, CANDIDATES_PER_SLOT), ...byProtein.slice(0, PROTEIN_DENSE_PER_SLOT)]);
-    return ranked
+    const byProtein = [...ranked[index]].sort((a, b) => proteinRatio(b.recipe) - proteinRatio(a.recipe));
+    const kept = new Set([
+      ...ranked[index].slice(0, CANDIDATES_PER_SLOT),
+      ...byProtein.slice(0, PROTEIN_DENSE_PER_SLOT),
+    ]);
+    const targetKcal = (ctx.targets.calories * share) / (coveredShare || 1);
+    return ranked[index]
       .filter((c) => kept.has(c))
-      .map((candidate) => ({ candidate, meal: planMeal(date, index, slot, ctx.targets.calories * share, candidate) }));
+      .map((candidate) => ({ candidate, meal: planMeal(date, index, slot, targetKcal, candidate) }));
   });
   const meals = bestCombination(options, ctx).map((p) => p.meal);
   for (const meal of meals) {
     usage.set(meal.recipeId, (usage.get(meal.recipeId) ?? 0) + 1);
     subtract(stock, meal.ingredients);
   }
-  return summarizeDay(date, meals, ctx.targets);
+  return summarizeDay(date, meals, ctx.targets, missingSlots);
 }
 
 /** Totals and protein coverage of a day; call again whenever a meal is replaced. */
 export function summarizeDay(
   date: IsoDate,
   meals: PlannedMeal[],
-  targets: Pick<NutritionTargets, 'calories' | 'proteinG'>,
+  targets: PlannerContext['targets'],
+  missingSlots: MealSlot[] = [],
 ): DailyMealPlan {
   const totals = sumNutrients(meals.map((m) => m.nutrition));
   return {
@@ -290,6 +318,25 @@ export function summarizeDay(
       plannedG: Math.round(totals.proteinG),
       met: totals.proteinG >= targets.proteinG * PROTEIN_MET_RATIO,
     },
+    energy: energyCoverage(totals.kcal, targets, missingSlots),
+  };
+}
+
+export function energyCoverage(
+  plannedKcal: number,
+  targets: PlannerContext['targets'],
+  missingSlots: MealSlot[],
+): EnergyCoverage {
+  const gap = Math.max(0, targets.calories - plannedKcal);
+  const floorKcal = targets.floorKcal ?? null;
+  const belowFloor = floorKcal !== null && plannedKcal < floorKcal;
+  return {
+    plannedKcal: Math.round(plannedKcal),
+    missingKcal: Math.ceil(gap / 50) * 50,
+    floorKcal,
+    missingSlots,
+    belowFloor,
+    incomplete: belowFloor || (missingSlots.length > 0 && gap >= targets.calories * ENERGY_GAP_RATIO),
   };
 }
 
@@ -302,7 +349,8 @@ export function replaceMealInPlan(plan: WeeklyMealPlan, meal: PlannedMeal): Week
         ? summarizeDay(
             d.date,
             d.meals.map((m) => (m.id === meal.id ? meal : m)),
-            { calories: d.targetKcal, proteinG: d.protein?.targetG ?? 0 },
+            { calories: d.targetKcal, proteinG: d.protein?.targetG ?? 0, floorKcal: d.energy?.floorKcal ?? undefined },
+            d.energy?.missingSlots ?? [],
           )
         : d,
     ),

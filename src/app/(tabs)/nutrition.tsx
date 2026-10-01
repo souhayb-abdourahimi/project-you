@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { Banner, Button, Card, ProgressBar, Rationale, Row, Screen, Section, StatTile, Text } from '@/components/ui';
 import { BudgetCard } from '@/features/nutrition/BudgetCard';
+import { DayEnergyWarning } from '@/features/nutrition/DayEnergyWarning';
 import { ExclusionSummary } from '@/features/nutrition/ExclusionSummary';
 import { MealCard } from '@/features/nutrition/MealCard';
 import { PlanDiagnosisCard } from '@/features/nutrition/PlanDiagnosisCard';
@@ -52,6 +53,7 @@ export default function NutritionScreen() {
       ) : null}
       <BudgetCard />
       <Section title={t('today.meals')}>
+        <DayEnergyWarning day={today} />
         {today?.protein ? (
           <Text variant="caption" color="textMuted">
             {t('nutrition.proteinPlanned', { planned: today.protein.plannedG, target: today.protein.targetG })}

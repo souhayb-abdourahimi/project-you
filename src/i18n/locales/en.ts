@@ -347,6 +347,12 @@ const en: LocaleShape = {
     usesInventory: 'Uses {{count}} food(s) you already have',
     adapted: 'Adapted to your constraints: {{to}} instead of {{from}}',
     source: 'Nutrition values: estimates based on the ANSES Ciqual 2025 table.',
+    dayIncomplete: {
+      title: 'This day is incomplete.',
+      missing: 'About {{kcal}} kcal are missing.',
+      action: 'Add a meal or a suitable food supplement.',
+      belowFloor: 'As it stands, it is below your basal metabolic rate (estimate): do not follow it as is.',
+    },
     proteinPlanned: 'Protein planned today: {{planned}} g of {{target}} g (estimate)',
     proteinShort:
       'With your current constraints, the available recipes stay under your protein target today. Adding a protein source you tolerate would help.',

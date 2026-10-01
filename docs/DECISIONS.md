@@ -237,3 +237,19 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
   - le diagnostic replanifie une journée par contrainte, ce qui coûte quelques millisecondes à la génération du plan.
 - **Date** : 2026-10-01
 
+## D-022 — Journée incomplète : calories redistribuées, manque toujours affiché
+
+- **Contexte** : revue finale de la PR #1, point bloquant B1. Quand un repas n'avait aucune recette possible, les autres repas gardaient leur part. Exemple : femme végane de 50 kg, allergie soja, 10 min de cuisine : journée à 664 kcal pour une cible de 1 850 kcal (métabolisme de base 1 210), sans aucun message sur les calories.
+- **Décision** :
+  - la part d'un repas impossible est redistribuée sur les repas possibles de la journée, dans la limite existante de 2,5 portions par recette ;
+  - chaque journée porte `energy` : calories prévues, manque (arrondi au-dessus, par 50 kcal), créneaux impossibles, plancher et deux drapeaux, `belowFloor` et `incomplete` ;
+  - plancher (`NutritionTargets.floorKcal`) = le plus haut entre le métabolisme de base et le plancher absolu (1 200 / 1 500 / 1 350 kcal), jamais au-dessus de la cible ;
+  - `incomplete` est vrai quand un repas impossible laisse au moins 10 % de la cible non couverte, ou quand la journée passe sous le plancher, même sans repas impossible ;
+  - l'app affiche alors sur Nutrition et Aujourd'hui : « Cette journée est incomplète. Il manque environ X kcal. Ajoute un repas ou un complément alimentaire adapté. ». Sous le plancher, elle ajoute que la journée est sous le métabolisme de base et ne doit pas être suivie telle quelle.
+- `MEAL_PLANNER_VERSION` passe à 5.
+- **Alternatives** :
+  - lever la limite de 2,5 portions : refusé, les portions deviendraient irréalistes ;
+  - compléter avec un aliment « de secours » : refusé, ce serait une recette non relue.
+- **Trade-offs** : le manque est une estimation. Le même message s'affiche que le repas manquant soit dû aux contraintes ou au catalogue.
+- **Date** : 2026-10-01
+

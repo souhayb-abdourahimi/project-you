@@ -44,6 +44,11 @@ Actions : « Remplacer », « Je n'ai pas cet ingrédient », « Plus rapide »,
 - Les aliments exclus et les intolérances saisis en texte libre sont traduits par `meals/exclusions.ts` en allergènes, origines animales, catégories ou aliments précis. Ce n'est jamais une recherche par sous-chaîne. L'app affiche ce qu'elle a compris.
 - `meals/diagnosis.ts` explique un plan incomplet ou pauvre en protéines : créneaux sans recette, contraintes en cause, ajustements vérifiés par replanification. Le régime, les allergies et les intolérances ne sont jamais proposés à la suppression.
 
+## Journée incomplète (D-022)
+
+- Un repas sans recette possible cède sa part de calories aux autres repas du jour (limite de 2,5 portions).
+- Si cela ne suffit pas (manque ≥ 10 % de la cible), ou si la journée passe sous le plancher (métabolisme de base ou plancher absolu), l'app affiche « Cette journée est incomplète. Il manque environ X kcal… ». Aucune journée sous le plancher ne s'affiche sans ce message.
+
 ## Courses et budget
 
 - `shopping.ts` : besoins du plan − inventaire, priorité selon la date du premier repas, coût **null** sans prix réel.

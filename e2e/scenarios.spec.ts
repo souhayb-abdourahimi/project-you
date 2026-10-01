@@ -68,6 +68,28 @@ test('vegan with a soy allergy: missing meals are explained with adjustments', a
   expect(errors).toEqual([]);
 });
 
+test('incomplete day: the missing energy is stated, never a silent low day', async ({ page }) => {
+  const errors = collectErrors(page);
+  await seedProfile(page, SCENARIOS.veganSoyAllergySmall);
+  await page.goto('/nutrition');
+  await expect(text(page, /Cette journée est incomplète\./)).toBeVisible();
+  await expect(text(page, /Il manque environ 550 kcal\./)).toBeVisible();
+  await expect(text(page, /Ajoute un repas ou un complément alimentaire adapté\./)).toBeVisible();
+  await page.goto('/');
+  await expect(text(page, /Cette journée est incomplète\./)).toBeVisible();
+  await expect(text(page, /Il manque environ 550 kcal\./)).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('vegan with a soy allergy: the missing breakfast is absorbed by the other meals, no energy warning', async ({
+  page,
+}) => {
+  await seedProfile(page, SCENARIOS.veganSoyAllergy);
+  await page.goto('/nutrition');
+  await expect(text(page, 'Ton plan de repas est incomplet')).toBeVisible();
+  await expect(page.getByText(/Cette journée est incomplète/).filter({ visible: true })).toHaveCount(0);
+});
+
 test('low budget: the shopping list never shows an invented price', async ({ page }) => {
   await seedProfile(page, SCENARIOS.studentLowBudget);
   await page.goto('/shopping');

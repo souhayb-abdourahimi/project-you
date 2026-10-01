@@ -355,6 +355,13 @@ const fr = {
     usesInventory: 'Utilise {{count}} aliment(s) déjà chez toi',
     adapted: 'Adaptée à tes contraintes : {{to}} à la place de {{from}}',
     source: 'Valeurs nutritionnelles : estimations d’après la table Ciqual 2025 de l’ANSES.',
+    dayIncomplete: {
+      title: 'Cette journée est incomplète.',
+      missing: 'Il manque environ {{kcal}} kcal.',
+      action: 'Ajoute un repas ou un complément alimentaire adapté.',
+      belowFloor:
+        'En l’état, elle reste sous ton métabolisme de base (estimation) : ne la suis pas telle quelle.',
+    },
     proteinPlanned: 'Protéines prévues aujourd’hui : {{planned}} g sur {{target}} g (estimation)',
     proteinShort:
       'Avec tes contraintes actuelles, les recettes disponibles restent sous ta cible de protéines aujourd’hui. Ajouter une source de protéines que tu tolères aiderait.',
