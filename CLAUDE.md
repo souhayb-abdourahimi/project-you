@@ -12,7 +12,7 @@ Expo SDK 57 · Expo Router (routes in `src/app`) · React Native Web · TypeScri
 app → features → components / state / services / providers → domain
 ```
 
-- `src/domain`: pure, deterministic engines (nutrition, meals, training, planning, progress, motivation, sync). No React/Expo/Supabase imports (ESLint-enforced). Source of truth for every calculation.
+- `src/domain`: pure, deterministic engines (nutrition, meals, training, planning, progress, journey, notifications, sync). No React/Expo/Supabase imports (ESLint-enforced). Source of truth for every calculation.
 - `src/providers`: interfaces for all external data + clearly flagged MOCK implementations.
 - `supabase/migrations`: versioned SQL; every table has RLS.
 - Details: `docs/ARCHITECTURE.md`, decisions in `docs/DECISIONS.md`.
@@ -40,6 +40,9 @@ Expo changes every SDK: check https://docs.expo.dev/versions/v57.0.0/ before usi
 3. **Honesty and safety**: no guaranteed results, no extreme restriction, no deficit for minors/underweight users, no medical diagnosis, never guilt the user.
 4. **Security**: RLS on every table (+ test in `supabase/tests/rls.sql`); only `EXPO_PUBLIC_SUPABASE_URL` / `_ANON_KEY` in the client; never commit `.env*`; never log health data.
 5. No business logic in components; no hard-coded UI strings or colours.
+6. **One coaching engine.** The Transformation Journey Engine (`src/domain/journey`) is the only motivation engine. `deriveJourneyState` is the single source of truth for the user's state (goal, progress, momentum, difficulties, safety); notifications, the Today screen, check-ins and progress screens consume it and never compute their own copy. Notifications are an output channel of the journey (`src/domain/notifications`), not a parallel system. Design: `docs/TRANSFORMATION_JOURNEY.md`.
+7. **No invented estimates.** If a value is not measured by the app or entered by the user, it does not exist: never show muscle gained, fat lost, calories burned or any other estimate about the user's body or activity. Progress uses only real data: weight, waist, loads, reps, regularity, sessions done. (Planning targets such as a calorie target are recommendations, labelled "estimation", not measurements.)
+8. **Safety before motivation.** A deterministic safety rule (`src/domain/journey/safety.ts`) detects excess: several consecutive logged days well under the calorie target or under BMR, weight loss faster than the safe rate over several weeks, training above the planned frequency combined with high declared fatigue. When it fires the app never congratulates or pushes: it slows down, explains, proposes to reduce, and suggests a health professional when relevant. No diagnosis, no clinical vocabulary. This rule overrides every motivation, celebration or reminder rule.
 
 Specialised rules: `.claude/rules/` (nutrition, security, ui, database, external-data, testing, privacy, ai).
 
