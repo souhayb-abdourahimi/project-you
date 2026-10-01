@@ -244,6 +244,7 @@ export function useJourney(plan: Plan | null): Journey | null {
           : null,
       targets: plan.targets,
       calorieOffset: appliedCalorieOffset(data.adjustments),
+      noDeficit: state.profile.noPush,
       sessionsPerWeek: { profile: snapshot.training.sessionsPerWeek, current: plan.sessionsPerWeek },
       adjustments: data.adjustments,
     };

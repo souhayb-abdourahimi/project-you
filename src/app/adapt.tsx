@@ -58,22 +58,23 @@ export default function AdaptScreen() {
       reschedule(plan.today, first.date);
       return setMessage(t('antiAbandon.rescheduled', { date: formatDate(first.date, i18n.language) }));
     }
-    // A walk, mobility or rest instead of today's session: the session counts as adapted, not missed.
-    // The reason is the one the user gave by opening this screen, never guessed.
+    // A walk or mobility instead of today's session: adapted, not missed. Rest: the session is
+    // skipped, without catch-up. The reason is the one the user gave by opening this screen.
     const workout = plan.schedule.days.find((d) => d.date === plan.today)?.items.find((i) => i.kind === 'workout');
     if (option !== 'rest') logDay(plan.today, { activity: option, activityMinutes: option === 'walk' ? 20 : 10 });
     if (workout?.kind === 'workout') {
-      setSessionOutcome(sessionKey(plan.today, workout.sessionIndex), {
-        status: 'replaced',
-        replacedBy: option,
-        ...(mode === 'time'
+      const reason =
+        mode === 'time'
           ? { reason: 'no_time' as const }
           : mode === 'motivation'
             ? { reason: 'no_motivation' as const }
-            : {}),
-      });
+            : {};
+      setSessionOutcome(
+        sessionKey(plan.today, workout.sessionIndex),
+        option === 'rest' ? { status: 'skipped', ...reason } : { status: 'replaced', replacedBy: option, ...reason },
+      );
     }
-    setMessage(t('antiAbandon.restLogged'));
+    setMessage(t(option === 'rest' ? 'antiAbandon.restLogged' : 'antiAbandon.activityLogged'));
   };
 
   const scale = (label: string, value: Level, set: (v: Level) => void) => (

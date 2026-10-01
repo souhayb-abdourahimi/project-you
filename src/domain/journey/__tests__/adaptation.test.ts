@@ -1,4 +1,5 @@
 import { addDays } from '../../shared/dates';
+import { decidedRecommendation } from '../adjustments';
 import { adapt, ADAPTATION, APPLICABLE_CHANGES, plateau, type AdaptationInput } from '../adaptation';
 import type { Adherence } from '../adherence';
 import type { Adjustment } from '../adjustments';
@@ -144,9 +145,45 @@ describe('Adaptation Engine', () => {
     expect(kinds(adapt(input({ dayLogs })))).toContain('reduce_load:light_week');
   });
 
+  it('a decision has its own id and points back to the recommendation of its week', () => {
+    const r = adapt(input({ safety: { active: true, flags: ['training_load'] } }));
+    expect(new Set(r.map((x) => x.id)).size).toBe(r.length);
+    const light = r.find((x) => x.change.key === 'light_week')!;
+    const decision: Adjustment = {
+      id: '0b1c2d3e-0000-4000-8000-000000000001',
+      kind: 'reduce_load',
+      changeKey: 'light_week',
+      from: null,
+      to: 'light',
+      reasonKey: light.reason.key,
+      evidence: light.evidence,
+      status: 'applied',
+      effectiveFrom: '2026-10-01',
+      decidedAt: '2026-10-01T09:00:00.000Z',
+    };
+    expect(decidedRecommendation(decision)).toBe(light.id);
+  });
+
   it('sessions moved twice to the same weekday: planning proposes that day', () => {
     const r = adapt(input({ rescheduled: { '2026-09-21': '2026-09-23', '2026-09-28': '2026-09-30' } }));
     expect(r[0]).toMatchObject({ kind: 'planning', change: { key: 'session_day', to: 3 }, mode: 'advice' });
+  });
+
+  it('minor or underweight: never a calorie decrease below their target, even when the loss is slow', () => {
+    const targets = { calories: 2400, floorKcal: 1600, maintenance: 2400 };
+    const r = adapt(input({ weights: daily(80, -0.05), targets, noDeficit: true }));
+    expect(r.some((x) => x.change.key === 'calories_per_day')).toBe(false);
+    const gaining = { goal: 'maintenance' as const, weights: daily(80, 0.6), targets };
+    expect(adapt(input(gaining)).some((x) => x.change.key === 'calories_per_day' && Number(x.change.to) < 0)).toBe(
+      true,
+    );
+    const drift = adapt(input({ ...gaining, noDeficit: true }));
+    expect(drift.some((x) => x.change.key === 'calories_per_day' && Number(x.change.to) < 0)).toBe(false);
+    // An offset accepted earlier is clamped too.
+    const base = computeNutritionTargets(SCENARIOS.fatLoss, 2026);
+    expect(withCalorieOffset(base, -150, true).calories).toBeGreaterThanOrEqual(
+      Math.min(base.calories, Math.round(base.maintenance)),
+    );
   });
 
   it('every amount stays within ±150 kcal', () => {

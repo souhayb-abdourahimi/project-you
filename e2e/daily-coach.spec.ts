@@ -146,3 +146,15 @@ test('safety rule active: the notice first, no congratulation, no motivation pus
   await expect(button(page, 'Merci !')).toBeHidden();
   expect(errors).toEqual([]);
 });
+
+test('no motivation: a walk instead of the session counts as adapted, not missed', async ({ page }) => {
+  await freezeClock(page);
+  await seedProfile(page, SCENARIOS.beginner);
+  await seedData(page, history({ from: '2026-08-03', to: '2026-09-29' }));
+  await page.goto('/');
+  await button(page, 'Je n’ai pas envie').click();
+  await button(page, 'Marche de 20 minutes').click();
+  await expect(text(page, 'C’est noté : bouger un peu compte vraiment.')).toBeVisible();
+  await page.goBack();
+  await expect(text(page, /Marche faite/)).toBeVisible();
+});

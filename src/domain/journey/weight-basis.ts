@@ -55,9 +55,19 @@ export function weightBasis(input: {
  * Applies an accepted calorie offset (Adaptation Engine, `adjustments`) on top of the targets:
  * carbohydrates absorb the change, and the result never goes below the floor (BMR, D-022).
  */
-export function withCalorieOffset(targets: NutritionTargets, offsetKcal: number): NutritionTargets {
+/** The lowest daily target an adaptation may reach: the floor, and no deficit for a protected profile. */
+export function minimumKcal(
+  targets: Pick<NutritionTargets, 'calories' | 'floorKcal' | 'maintenance'>,
+  noDeficit: boolean,
+): number {
+  return noDeficit
+    ? Math.max(targets.floorKcal, Math.min(targets.calories, Math.round(targets.maintenance)))
+    : targets.floorKcal;
+}
+
+export function withCalorieOffset(targets: NutritionTargets, offsetKcal: number, noDeficit = false): NutritionTargets {
   if (offsetKcal === 0) return targets;
-  const calories = Math.max(targets.floorKcal, targets.calories + offsetKcal);
+  const calories = Math.max(minimumKcal(targets, noDeficit), targets.calories + offsetKcal);
   const delta = calories - targets.calories;
   return {
     ...targets,

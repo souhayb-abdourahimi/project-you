@@ -21,17 +21,12 @@ Tâches importantes à ne pas perdre entre deux sessions. Référence des IDs : 
 Plan de la phase (ordre demandé) ; détail dans `docs/DAILY_COACH.md`, `docs/PROGRESS_JOURNEY.md`, `docs/ADAPTATION_ENGINE.md`, `docs/RETENTION.md`.
 
 - [x] Audit et architecture (2026-10-01)
-- [ ] 1. DailyPlan (`journey/daily-plan.ts`, remplace `today.ts`)
-- [ ] 2. Daily Coach : sélection why/change/feel, catégories de messages, historique de voix partagé, journée difficile, 15 min, pas envie, retour après absence
-- [ ] 3. Progress Journey : modèle, issues de séances/repas/exercices, jalons, objectifs intermédiaires
-- [ ] 4. Weekly Check-in + « Ton bilan »
-- [ ] 5. Adaptation Engine : adhérence, base de poids, plateau, recommandations
-- [ ] 6. Notifications : `milestone_reached`, `encouragement_kept_going`, lecture du DailyPlan
-- [ ] 7. Écran Aujourd'hui (premium, responsive, accessible ; `aria-checked` des chips sur le web)
-- [ ] 8. Écran Mon évolution
-- [ ] 9. E2E
-- [ ] 10. Revue finale (produit, UX, QA, sécurité)
-- [ ] Migration : statuts élargis, `weekly_checkins`, `exercise_substitutions`, `journey_milestones`, `adjustments`, sync `daily_checkins`, nouveaux déclencheurs dans `notification_history`
+- [x] 1–10 : DailyPlan, Daily Coach, Progress Journey, Weekly Check-in + « Ton bilan », Adaptation Engine, notifications, écran Aujourd'hui, Mon évolution, E2E, revue finale (PR #4, 2026-10-01)
+- [x] Migration `20261001000004_daily_coach.sql`
+- [ ] E2E `low_logging` seul et application d'une proposition calorique : couverts en unitaires seulement (historique repas non semable de façon fiable)
+- [ ] Mémoire du coach : écran de confirmation des suggestions (exercice refusé deux fois, recette non aimée/aimée) ; aujourd'hui calculées, pas encore affichées
+- [ ] Adhérence des semaines passées : les créneaux occupés du calendrier ne sont pas rejoués (seulement la semaine en cours)
+- [ ] Chemin de « Mon évolution » : rendre chaque étape focalisable au lecteur d'écran sur le web (aujourd'hui un libellé sur un conteneur)
 - [ ] Faire relire les seuils de D-028 (calibration, adhérence, ±150 kcal, plateau, score de risque) avec ceux de D-024/D-026
 - [ ] Photos de progression : section masquée tant que les politiques Storage n'existent pas (voir Sécurité)
 - [ ] `coach_memory` : réaffecter ou supprimer quand le coach IA arrive (D-028 : mémoire dérivée, rien à y stocker)

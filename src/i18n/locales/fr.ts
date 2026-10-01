@@ -410,6 +410,7 @@ const fr = {
     available: 'Temps disponible',
     rescheduled: 'Séance reportée au {{date}}.',
     noRescheduleSlot: 'Aucun créneau libre cette semaine. Une séance courte ou du repos, c’est très bien aussi.',
+    activityLogged: 'C’est noté : bouger un peu compte vraiment.',
     restLogged: 'Repos noté. À demain !',
   },
   program: {

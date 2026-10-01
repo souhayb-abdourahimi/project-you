@@ -3,7 +3,7 @@ import { useEffect, useMemo } from 'react';
 import { constraintsFrom } from '@/domain/meals/constraints';
 import { planWeekWithDiagnosis as planMeals } from '@/domain/meals/diagnosis';
 import { carryOverEaten, mealPlanKey } from '@/domain/meals/planner';
-import { assessGoalFeasibility, computeNutritionTargets } from '@/domain/nutrition/engine';
+import { assessGoalFeasibility, computeNutritionTargets, noDeficitProfile } from '@/domain/nutrition/engine';
 import { planWeek as planSchedule, type PlannedDay, type WeeklyPlan } from '@/domain/planning/engine';
 import { appliedCalorieOffset, appliedSessionsPerWeek } from '@/domain/journey/adjustments';
 import { evaluateSafety } from '@/domain/journey/safety';
@@ -107,7 +107,12 @@ export function usePlan() {
       user: { ...snapshot.user, weightKg: basis.weightKg },
       training: { ...snapshot.training, sessionsPerWeek },
     };
-    const targets = withCalorieOffset(computeNutritionTargets(effective, year), appliedCalorieOffset(adjustments));
+    // An accepted offset never creates a deficit for a minor or an underweight profile.
+    const targets = withCalorieOffset(
+      computeNutritionTargets(effective, year),
+      appliedCalorieOffset(adjustments),
+      noDeficitProfile(effective, year),
+    );
     const feasibility = assessGoalFeasibility(snapshot, today);
     const workoutPlan = generateWorkoutPlan({ goal: snapshot.goal.type, training: effective.training });
     // Busy times from the user's calendar count as fixed constraints for this week only.

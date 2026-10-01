@@ -59,8 +59,10 @@ Exemple : « Séance à 18:00 — Tu as commencé pour « être fier de moi ». 
 | `absence_gentle` / `absence_comeback` / `absence_last` | 2, 5 et 10 jours après la dernière activité notée, sauf jour de séance prévue ; puis silence | Motivation |
 | `fatigue_recovery` | check-in du jour fatigué, sans séance prévue | Motivation |
 | `daily_why` | chaque jour à l'heure choisie | Motivation |
+| `milestone_reached` (D-028) | 19:00 le jour où un jalon est atteint (`journey/milestones.ts`), une fois par jalon ; remplace `success_streak` ce soir-là ; jamais sous sécurité ; jamais de jalon de baisse de poids ou de tour de taille pour un profil protégé (mineur, sous-poids) | Bilan |
+| `encouragement_kept_going` (D-028) | le lendemain matin d'une journée tenue en version courte, difficile ou remplacée ; cooldown 2 jours ; jamais sous sécurité | Motivation |
 
-**Un seul message « motivation » par jour**, dans cet ordre : sécurité → séance réussie → absence (la plus longue) → récupération → rappel quotidien.
+**Un seul message « motivation » par jour**, dans cet ordre : sécurité → journée tenue → séance réussie → absence (la plus longue) → récupération → rappel quotidien.
 
 Les relances d'absence sont planifiées à l'avance (le téléphone ne peut pas « remarquer » une absence app fermée) et annulées dès que l'utilisateur note une activité, puisque l'app replanifie tout à chaque changement.
 
@@ -85,6 +87,7 @@ L'écran Aujourd'hui affiche le même message (`SafetyNotice`) et masque la cart
 - **Déjà envoyé aujourd'hui** : un déclencheur déjà délivré ce jour n'est pas replanifié (par exemple si l'utilisateur change l'heure après coup).
 - **Cooldowns** : pesée, bilans et série 6 jours ; récupération 2 jours ; sécurité 3 jours ; une série n'est fêtée qu'une fois par palier ; chaque étape d'absence une seule fois par épisode (épisode = dernier jour actif).
 - **Messages ignorés** : après 5 messages délivrés de suite sans ouverture, le plafond quotidien baisse de 1 (minimum 1) jusqu'à la prochaine ouverture.
+- **Historique de voix partagé** (D-028) : ce que l'écran Aujourd'hui a dit (`screenVoice`, 90 jours, une entrée par jour) compte dans la rotation des notifications, et inversement : le même message n'apparaît pas le matin en notification puis à l'écran. Un jalon célébré par notification ne l'est pas une seconde fois à l'écran.
 - **Plafond** : 3 par jour par défaut (1 à 4 dans l'écran), écart minimal de 60 minutes, heures calmes (22:00 → 07:30 par défaut ; un rappel du matin est décalé à la fin des heures calmes, un rappel du soir est supprimé).
 
 ## Historique

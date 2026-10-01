@@ -2,7 +2,7 @@
  * Adaptation decisions (docs/ADAPTATION_ENGINE.md §9): the journal of what the Adaptation Engine
  * proposed and what the user decided. Append-only: only `status` changes.
  */
-import type { IsoDate } from '../shared/dates';
+import { startOfWeek, type IsoDate } from '../shared/dates';
 
 export const ADAPTATION_KINDS = [
   'nutrition',
@@ -47,4 +47,17 @@ export function appliedSessionsPerWeek(adjustments: Adjustment[]): number | null
     .sort((a, b) => a.decidedAt.localeCompare(b.decidedAt))
     .at(-1);
   return latest ? Number(latest.to) : null;
+}
+
+/** Identifies a recommendation across openings: one per change and week. */
+export function recommendationKey(kind: AdaptationKind, changeKey: string, weekStart: IsoDate): string {
+  return `${kind}:${changeKey}:${weekStart}`;
+}
+
+/**
+ * The recommendation a decision answered. Decisions get their own random id (a uuid, shared by
+ * every account's table); the week of `effectiveFrom` links them back to the recommendation.
+ */
+export function decidedRecommendation(a: Adjustment): string {
+  return recommendationKey(a.kind, a.changeKey, startOfWeek(a.effectiveFrom));
 }

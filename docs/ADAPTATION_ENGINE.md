@@ -62,7 +62,7 @@ Le poids saisi à l'onboarding ne sert pas indéfiniment, mais une pesée isolé
 - **Paliers** tous les **14 jours** depuis le début du parcours.
 - À chaque palier : s'il y a au moins **4 pesées dans les 14 derniers jours**, la moyenne des 7 derniers jours (au moins 2 pesées, sinon des 14) devient candidate.
 - La base change seulement si l'écart avec la base actuelle est d'au moins **1 kg** ; elle est arrondie à 0,5 kg.
-- **Gelée** tant qu'une règle de sécurité est active (aucun recalcul qui augmenterait le déficit).
+- **Gelée vers le bas** tant qu'une règle de sécurité est active : elle ne baisse pas (ce qui augmenterait le déficit), elle peut monter.
 - Calcul **déterministe à partir du journal des pesées** (rejoué du début à aujourd'hui) : rien à stocker, deux appareils obtiennent la même base.
 - La base remplace `snapshot.user.weightKg` dans le calcul des cibles (`computeNutritionTargets`) ; le plancher (métabolisme de base, D-022) est recalculé avec elle. Le plan repas est régénéré (repas déjà notés gardés). L'écran Nutrition dit : « Tes besoins ont été recalculés avec ta moyenne de poids récente (78,5 kg). »
 
@@ -88,6 +88,12 @@ Le poids saisi à l'onboarding ne sert pas indéfiniment, mais une pesée isolé
 8. **Planning** : 2 reports ou plus sur 2 semaines vers le même autre jour, ou disponibilités modifiées → `planning` (déplacer la séance vers le créneau réellement utilisé).
 9. **Budget** : dépenses au-dessus du budget 2 semaines → conseil `nutrition` (utiliser l'inventaire) ; aucun prix inventé.
 10. **4 semaines à 100 %** après une réduction de séances → proposer de revenir au nombre initial.
+
+Pas utilisés : 120 kcal (`kcalStep`) et 100 kcal (`smallKcalStep`, gain trop rapide, recomposition, dérive).
+
+**Ce qui s'applique en un geste** (`APPLICABLE_CHANGES`) : calories par jour, nombre de séances par semaine, semaine allégée (variante `light` de chaque séance pendant 7 jours à partir du jour accepté, expliquée par la décision). Un jour de repos en plus et un nouveau jour de séance sont des **conseils** : l'app ne choisit pas à la place de l'utilisateur quelle séance sauter ni ne modifie ses disponibilités. Chaque proposition se décide une fois par semaine (Appliquer / Pas maintenant) ; la dernière décision appliquée peut être annulée (« Revenir à avant »).
+
+**Profils protégés** (mineur, sous-poids, `noDeficitProfile`) : aucune baisse de calories sous leur repère ni sous le maintien, même si la perte est lente ; un décalage accepté plus tôt est borné de la même façon.
 
 Bornes : jamais plus de ±150 kcal/jour par adaptation, jamais sous `floorKcal`, jamais au-dessus du maintien + 20 % en prise de masse. Le décalage calorique accepté est stocké (`adjustments`) et appliqué par le moteur nutrition, qui revérifie le plancher.
 

@@ -401,6 +401,7 @@ const en: LocaleShape = {
     available: 'Time available',
     rescheduled: 'Session moved to {{date}}.',
     noRescheduleSlot: 'No free slot this week. A short session or rest is perfectly fine too.',
+    activityLogged: 'Logged: moving a little really counts.',
     restLogged: 'Rest logged. See you tomorrow!',
   },
   program: {

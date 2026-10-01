@@ -3,10 +3,11 @@ import { View } from 'react-native';
 
 import { Button, Card, Row, Text } from '@/components/ui';
 import { APPLICABLE_CHANGES, type Recommendation } from '@/domain/journey/adaptation';
-import type { Adjustment } from '@/domain/journey/adjustments';
+import { decidedRecommendation, type Adjustment } from '@/domain/journey/adjustments';
 import { explainPlanChange } from '@/domain/journey/explain';
 import type { IsoDate } from '@/domain/shared/dates';
 import { formatDate } from '@/lib/format';
+import { newId } from '@/lib/id';
 import { useDataStore } from '@/state/data';
 import { spacing } from '@/theme';
 
@@ -48,13 +49,13 @@ export function Recommendations({ recommendations, today }: { recommendations: R
   const { t } = useTranslation();
   const adjustments = useDataStore((s) => s.adjustments);
   const saveAdjustment = useDataStore((s) => s.saveAdjustment);
-  const decided = new Set(adjustments.filter((a) => a.status !== 'proposed').map((a) => a.id));
+  const decided = new Set(adjustments.filter((a) => a.status !== 'proposed').map(decidedRecommendation));
   const visible = recommendations.filter((r) => !decided.has(r.id));
 
   const decide = (r: Recommendation, status: 'applied' | 'declined') => {
     if (r.kind === 'none') return;
     saveAdjustment({
-      id: r.id,
+      id: newId(),
       kind: r.kind,
       changeKey: r.change.key,
       from: r.change.from ?? null,

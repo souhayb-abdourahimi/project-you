@@ -350,4 +350,9 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
   - les séances prévues des semaines passées sont recalculées avec le profil actuel (le plan de la semaine n'est pas stocké) : si le nombre de séances change, l'adhérence passée est approximative (les adaptations acceptées sont datées, ce qui limite l'écart) ;
   - les reports restent sur l'appareil (planification de la semaine en cours) ;
   - les nouveaux seuils (14 jours, 6 pesées, 70 %, ±150 kcal, 28/21 jours pour le plateau, score de risque) sont des paramètres de conception à faire relire avec ceux de D-024/D-026.
+- **Revue finale (2026-10-01)** : trois corrections avant livraison.
+  - Les décisions d'adaptation ont un identifiant uuid aléatoire (la clé primaire est partagée par tous les comptes) ; la semaine de `effective_from` les relie à la recommandation (`decidedRecommendation`). Les recommandations sont identifiées par type, changement et semaine.
+  - Profils protégés (mineur, sous-poids) : aucune proposition ni décalage accepté ne crée de déficit (`noDeficitProfile`, `minimumKcal`), même règle que les cibles (D-022).
+  - « Repos aujourd'hui » à la place d'une séance est une séance **sautée** (sans rattrapage), une marche ou de la mobilité une séance **adaptée**.
+  - Seuls calories, séances par semaine et semaine allégée s'appliquent en un geste ; jour de repos en plus et nouveau jour de séance restent des conseils.
 - **Date** : 2026-10-01

@@ -8,10 +8,11 @@ import type { GoalType } from '../profile/schemas';
 import { addDays, daysBetween, startOfWeek, weekdayOf, type IsoDate } from '../shared/dates';
 import type { LoggedSet } from '../training/progression';
 import type { Adherence } from './adherence';
-import type { Adjustment, AdaptationKind } from './adjustments';
+import { recommendationKey, type Adjustment, type AdaptationKind } from './adjustments';
 import type { DayLog } from './outcomes';
 import type { ExerciseTrend } from './progress-facts';
 import { weightAverageAt } from './progress-facts';
+import { minimumKcal } from './weight-basis';
 import type { SafetyFlag } from './safety';
 
 /**
@@ -52,7 +53,7 @@ export const ADAPTATION = {
 export type BlockReason = 'safety' | 'calibration' | 'not_enough_data' | 'cooldown' | 'low_adherence';
 
 export interface Recommendation {
-  /** `${kind}:${weekStart}`: one recommendation per kind and week. */
+  /** `${kind}:${changeKey}:${weekStart}` (recommendationKey): one per change and week. */
   id: string;
   kind: AdaptationKind;
   change: { key: string; from?: number | string; to?: number | string };
@@ -83,6 +84,8 @@ export interface AdaptationInput {
   /** Food spending of the last two full weeks (oldest first); null without a budget. */
   spending: [{ spentCents: number; budgetCents: number }, { spentCents: number; budgetCents: number }] | null;
   targets: { calories: number; floorKcal: number; maintenance: number };
+  /** Minor or underweight (nutrition/engine.ts noDeficitProfile): never a deficit. */
+  noDeficit?: boolean;
   /** Offset already applied (kcal/day). */
   calorieOffset: number;
   sessionsPerWeek: { profile: number; current: number };
@@ -181,7 +184,8 @@ function calorieChange(input: AdaptationInput, step: number): { from: number; to
   const bounded = Math.max(-ADAPTATION.maxKcalStep, Math.min(ADAPTATION.maxKcalStep, step));
   const target = input.targets.calories + bounded;
   const ceiling = input.targets.maintenance * (1 + ADAPTATION.gainCapOverMaintenance);
-  const allowed = Math.round(Math.min(ceiling, Math.max(input.targets.floorKcal, target)) - input.targets.calories);
+  const floor = minimumKcal(input.targets, input.noDeficit ?? false);
+  const allowed = Math.round(Math.min(ceiling, Math.max(floor, target)) - input.targets.calories);
   if (allowed === 0 || Math.sign(allowed) !== Math.sign(bounded)) return null;
   return { from: input.calorieOffset, to: input.calorieOffset + allowed };
 }
@@ -190,7 +194,10 @@ export function adapt(input: AdaptationInput): Recommendation[] {
   const { today, goal } = input;
   const week = startOfWeek(today);
   const out: Recommendation[] = [];
-  const rec = (r: Omit<Recommendation, 'id'>): Recommendation => ({ ...r, id: `${r.kind}:${week}` });
+  const rec = (r: Omit<Recommendation, 'id'>): Recommendation => ({
+    ...r,
+    id: recommendationKey(r.kind, r.change.key, week),
+  });
   const nutrition = (step: number, reasonKey: string, evidence: Recommendation['evidence']) => {
     const change = calorieChange(input, step);
     if (!change) return;
