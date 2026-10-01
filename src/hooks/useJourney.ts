@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { adapt, plateau, type Recommendation } from '@/domain/journey/adaptation';
+import { adapt, LIGHT_WEEK_DAYS, plateau, type Recommendation } from '@/domain/journey/adaptation';
 import { adherence } from '@/domain/journey/adherence';
 import { appliedCalorieOffset } from '@/domain/journey/adjustments';
 import { buildDailyPlan, type DailyPlan } from '@/domain/journey/daily-plan';
@@ -17,7 +17,7 @@ import { weeklyCheckinDue } from '@/domain/journey/weekly-checkin';
 import { summarizeWeek } from '@/domain/meals/budget';
 import type { PlannedMeal } from '@/domain/meals/planner';
 import { getRecipe } from '@/domain/meals/recipes';
-import { addDays, weekdayOf, type IsoDate } from '@/domain/shared/dates';
+import { addDays, daysBetween, weekdayOf, type IsoDate } from '@/domain/shared/dates';
 import { sessionKey } from '@/domain/sync/projection';
 import { useCalendarStore } from '@/state/calendar';
 import { useDataStore } from '@/state/data';
@@ -163,6 +163,14 @@ export function useJourney(plan: Plan | null): Journey | null {
     const busyToday = calendarBusy?.weekStart === plan.weekStart ? calendarBusy.slots : [];
     const history: VoiceUse[] = [...notificationHistory, ...screenVoice];
 
+    // A light week accepted in "Mon évolution" lasts 7 days from the day it was applied.
+    const lightWeek = data.adjustments.some(
+      (a) =>
+        a.changeKey === 'light_week' &&
+        a.status === 'applied' &&
+        daysBetween(a.effectiveFrom, today) >= 0 &&
+        daysBetween(a.effectiveFrom, today) < LIGHT_WEEK_DAYS,
+    );
     const daily = buildDailyPlan({
       state,
       day,
@@ -186,6 +194,7 @@ export function useJourney(plan: Plan | null): Journey | null {
       },
       milestone: celebration ? milestoneFacts(celebration.id) : null,
       keptGoingYesterday: keptGoingDates.includes(yesterday),
+      lightWeek,
       history,
     });
 

@@ -20,6 +20,7 @@ export const DATA_BY_REASON: Record<string, string[]> = {
   'workout.short_day': ['data.day_mode', 'data.schedule'],
   'workout.short_slot': ['data.schedule', 'data.availability'],
   'workout.light': ['data.checkin', 'data.sessions'],
+  'workout.light_week': ['data.adjustment'],
   'workout.difficult': ['data.day_mode', 'data.checkin'],
   'workout.comeback': ['data.last_activity'],
   'workout.low_motivation': ['data.day_mode'],

@@ -1,5 +1,5 @@
 import { addDays } from '../../shared/dates';
-import { adapt, ADAPTATION, plateau, type AdaptationInput } from '../adaptation';
+import { adapt, ADAPTATION, APPLICABLE_CHANGES, plateau, type AdaptationInput } from '../adaptation';
 import type { Adherence } from '../adherence';
 import type { Adjustment } from '../adjustments';
 import { weightBasis, withCalorieOffset } from '../weight-basis';
@@ -86,6 +86,11 @@ describe('Adaptation Engine', () => {
     );
     expect(kinds(r)).toEqual(['add_recovery:rest_days', 'reduce_load:light_week', 'nutrition:calories_per_day']);
     expect(r[2].change.to).toBe(120);
+    // Only what the app can apply in one gesture is proposed; the extra rest day is advice.
+    expect(r.map((x) => x.mode)).toEqual(['advice', 'proposed', 'proposed']);
+    for (const x of r.filter((y) => y.mode === 'proposed')) {
+      expect(APPLICABLE_CHANGES).toContain(x.change.key);
+    }
   });
 
   it('calibration: no calorie change in the first 14 days', () => {
@@ -141,7 +146,7 @@ describe('Adaptation Engine', () => {
 
   it('sessions moved twice to the same weekday: planning proposes that day', () => {
     const r = adapt(input({ rescheduled: { '2026-09-21': '2026-09-23', '2026-09-28': '2026-09-30' } }));
-    expect(r[0]).toMatchObject({ kind: 'planning', change: { key: 'session_day', to: 3 } });
+    expect(r[0]).toMatchObject({ kind: 'planning', change: { key: 'session_day', to: 3 }, mode: 'advice' });
   });
 
   it('every amount stays within ±150 kcal', () => {

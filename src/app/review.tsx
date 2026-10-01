@@ -5,6 +5,8 @@ import { Banner, Button, Card, EmptyState, Row, Screen, StatTile, Text } from '@
 import { personalRecords } from '@/domain/journey/progress-facts';
 import { checkinWeek } from '@/domain/journey/weekly-checkin';
 import { weeklyReview, type ReviewPoint } from '@/domain/progress/weekly-review';
+import { Recommendations } from '@/features/journey/Recommendations';
+import { useJourney } from '@/hooks/useJourney';
 import { scheduleOfWeek, usePlan } from '@/hooks/usePlan';
 import { addDays } from '@/domain/shared/dates';
 import { formatMoney } from '@/lib/format';
@@ -29,6 +31,7 @@ export default function ReviewScreen() {
   const plan = usePlan();
   const data = useDataStore();
   const weights = useWeights();
+  const journey = useJourney(plan);
   if (!plan) return <EmptyState message={t('review.noProfile')} />;
 
   // Friday to Sunday: this week; Monday and Tuesday: the week that just ended (with its check-in).
@@ -88,6 +91,8 @@ export default function ReviewScreen() {
       <Points title={t('review.workedTitle')} points={r.worked} />
       <Points title={t('review.hardTitle')} points={r.hard} />
       <Points title={t('review.adaptTitle')} points={r.adapt} />
+      {/* The Adaptation Engine's proposals for the coming week, with their data (§8). */}
+      {journey ? <Recommendations recommendations={journey.recommendations} today={plan.today} /> : null}
       <Points title={t('review.nextTitle')} points={r.nextWeek} />
       {r.missing.length > 0 ? <Points title={t('review.missingTitle')} points={r.missing} /> : null}
     </Screen>

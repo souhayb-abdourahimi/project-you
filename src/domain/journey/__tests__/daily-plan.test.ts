@@ -151,6 +151,16 @@ describe('DailyPlan', () => {
     expect(p.items.find((i) => i.kind === 'workout')?.params).toMatchObject({ variant: 'light' });
   });
 
+  it('accepted light week: the light version, explained by the decision', () => {
+    const p = buildDailyPlan(input({ lightWeek: true }));
+    const w = p.items.find((i) => i.kind === 'workout');
+    expect(w?.params).toMatchObject({ variant: 'light' });
+    expect(w?.reason).toBe('workout.light_week');
+    // A difficult day still wins over the light week (strong constraints first).
+    const hard = buildDailyPlan(input({ lightWeek: true, dayLog: { date: '2026-09-30', mode: 'difficult' } }));
+    expect(hard.items.find((i) => i.kind === 'workout')?.reason ?? 'none').not.toBe('workout.light_week');
+  });
+
   it('low_logging alone: coaching goes on (celebration kept) and a neutral check-in is added', () => {
     const p = buildDailyPlan(
       input({ milestone: { sessions: '10' } }, { safety: { lowLogging: { since: '2026-09-27', days: 3 } } }),

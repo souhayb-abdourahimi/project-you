@@ -75,6 +75,8 @@ export interface DailyPlanInput {
   milestone?: Record<string, string> | null;
   /** Yesterday was kept in a short, difficult or replaced version. */
   keptGoingYesterday?: boolean;
+  /** A light week the user accepted (Adaptation Engine, `light_week`) covers today. */
+  lightWeek?: boolean;
   /** Everything the voice already said, on every channel. */
   history: VoiceUse[];
 }
@@ -217,6 +219,13 @@ function decideWorkout(input: DailyPlanInput, mode: DayMode, difficult: boolean,
       ...none,
       item: workout('light', Math.round(session.minutes * 0.7), 'workout.light'),
       adaptations: [{ key: 'daily.adapt.light', params: {} }],
+    };
+  }
+  if (input.lightWeek) {
+    return {
+      ...none,
+      item: workout('light', Math.round(session.minutes * 0.7), 'workout.light_week'),
+      adaptations: [{ key: 'daily.adapt.light_week', params: {} }],
     };
   }
   if (planned.variant === 'short' || (dayLog?.availableMinutes ?? Infinity) < session.minutes) {

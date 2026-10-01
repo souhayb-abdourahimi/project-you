@@ -4,8 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import { Banner, Button, Card, LoadingScreen, Row, Screen, Section, Text } from '@/components/ui';
+import { MILESTONES } from '@/domain/journey/milestones';
 import type { DayMode } from '@/domain/journey/outcomes';
 import { renderMessage } from '@/domain/journey/voice/composer';
+import { daysBetween } from '@/domain/shared/dates';
 import { HealthCard } from '@/features/health/HealthCard';
 import { DailyItemRow, itemLabel, useItemAction, WhyToggle } from '@/features/journey/DailyItemRow';
 import { SafetyNotice } from '@/features/journey/SafetyNotice';
@@ -190,6 +192,11 @@ function Celebration({ journey }: { journey: Journey }) {
   const markCelebrated = useDataStore((s) => s.markCelebrated);
   const { celebration, daily } = journey;
   if (!celebration) return null;
+  // One celebration covers every milestone still waiting (10 sessions is also step 2 of the path):
+  // the next one is never queued right behind it.
+  const sameDay = journey.progress.milestones
+    .filter((m) => daysBetween(m.reachedOn, journey.daily.date) <= MILESTONES.celebrateWithinDays)
+    .map((m) => m.id);
   // The coach message of the day already names the milestone with its real number.
   const { title } = renderMessage(daily.message, (key, params) => t(key, params));
   return (
@@ -198,13 +205,13 @@ function Celebration({ journey }: { journey: Journey }) {
         {daily.message.templateId.startsWith('milestone_reached|') ? title : t('daily.celebration.title')}
       </Text>
       <Row>
-        <Button compact label={t('daily.celebration.seen')} onPress={() => markCelebrated([celebration.id])} />
+        <Button compact label={t('daily.celebration.seen')} onPress={() => markCelebrated(sameDay)} />
         <Button
           compact
           variant="secondary"
           label={t('daily.celebration.open')}
           onPress={() => {
-            markCelebrated([celebration.id]);
+            markCelebrated(sameDay);
             router.push('/progress');
           }}
         />

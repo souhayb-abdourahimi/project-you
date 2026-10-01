@@ -14,6 +14,15 @@ import type { ExerciseTrend } from './progress-facts';
 import { weightAverageAt } from './progress-facts';
 import type { SafetyFlag } from './safety';
 
+/**
+ * Change keys the app applies in one gesture (usePlan, useJourney). Every other recommendation is
+ * advice: shown with its reason, nothing changes in the plan.
+ */
+export const APPLICABLE_CHANGES = ['calories_per_day', 'sessions_per_week', 'light_week'] as const;
+
+/** Days a light week lasts from the day it is applied. */
+export const LIGHT_WEEK_DAYS = 7;
+
 /** Design parameters, to be reviewed by a professional with those of D-024/D-026. */
 export const ADAPTATION = {
   calibrationDays: 14,
@@ -211,7 +220,8 @@ export function adapt(input: AdaptationInput): Recommendation[] {
           change: { key: 'rest_days', to: 1 },
           reason: { key: 'adaptation.reason.training_load', params: {} },
           evidence: { fatigueDays },
-          mode: 'proposed',
+          // Advice: the user picks the day (skip or move a session, never a catch-up).
+          mode: 'advice',
         }),
       );
       out.push(
@@ -261,7 +271,8 @@ export function adapt(input: AdaptationInput): Recommendation[] {
         change: { key: 'session_day', to: usedDay },
         reason: { key: 'adaptation.reason.moved_sessions', params: { count, weekday: usedDay } },
         evidence: { moves: count },
-        mode: 'proposed',
+        // Advice: the availabilities are the user's to change (profile), never moved silently.
+        mode: 'advice',
       }),
     );
   }
