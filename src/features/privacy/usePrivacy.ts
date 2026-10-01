@@ -46,10 +46,13 @@ async function share(json: string, fileName: string) {
 /** Privacy Center actions; the screen only renders their state. */
 function deviceSettings() {
   const { connected, readBusy, writeSessions, busy, written } = useCalendarStore.getState();
-  const { prefs } = useNotificationStore.getState();
+  const { prefs, history, checkins } = useNotificationStore.getState();
   const health = useHealthStore.getState();
   return {
     notifications: prefs,
+    // Which coach messages were scheduled (template ids, never the text) and the check-ins they used.
+    notificationHistory: history,
+    checkins,
     calendar: { connected, readBusy, writeSessions, busy, writtenEvents: written },
     // Imported from Apple Health / Health Connect: kept on this device only.
     health: {

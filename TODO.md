@@ -16,6 +16,15 @@ Tâches importantes à ne pas perdre entre deux sessions. Référence des IDs : 
 - [ ] Manifeste Android : `READ/WRITE_EXTERNAL_STORAGE` (≤ API 32) et `SYSTEM_ALERT_WINDOW` viennent du template Expo ; vérifier s'ils sont utiles et les bloquer sinon (`android.blockedPermissions`).
 - [ ] Parcs et activités (SportsProvider) ; prix et promotions réels (aucune source choisie).
 
+## Transformation Journey (D-024)
+
+- [ ] Synchroniser `notification_settings` et `notification_history` (tables et RLS prêtes, l'app garde tout sur l'appareil pour l'instant), puis `daily_checkins`.
+- [ ] Étapes J-2 à J-7 de `docs/TRANSFORMATION_JOURNEY.md` (Daily Coach, Weekly Check-in, Progress Journey, anti-abandon complet, Adaptation Engine).
+- [ ] Faire relire les seuils de la règle de sécurité et les fourchettes de rythme par un professionnel de santé avant la bêta publique.
+- [ ] Règle 7 : retirer l'« énergie active » estimée de l'écran Santé (`HealthCard`, PR #1).
+- [ ] Détection `low_intake` : garder l'historique des repas notés au-delà de la semaine en cours.
+- [ ] Tester les notifications sur un iPhone et un Android réels (ouverture → historique, heures calmes, pause).
+
 ## Données
 
 - [ ] Ajouter des protéines végétales sans soja ni gluten (lentilles corail, pois cassés, haricots blancs… si présents dans Ciqual) et des petits-déjeuners compatibles : végan + allergie au soja n'a aujourd'hui aucun petit-déjeuner (expliqué à l'utilisateur depuis D-021, mais pas résolu).

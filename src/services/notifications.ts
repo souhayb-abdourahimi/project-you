@@ -83,3 +83,16 @@ async function applySchedule(rendered: { n: PlannedNotification; title: string; 
   }
   return count;
 }
+
+/** Calls `cb` with the id of a reminder the user tapped (feeds the history, never sent anywhere). */
+export function onNotificationOpened(cb: (id: string) => void): () => void {
+  try {
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const { identifier, content } = response.notification.request;
+      if (content.data?.tag === APP_TAG) cb(identifier);
+    });
+    return () => sub.remove();
+  } catch {
+    return () => undefined;
+  }
+}

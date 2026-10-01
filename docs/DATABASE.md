@@ -36,6 +36,7 @@ Supabase / PostgreSQL. Migrations versionnées dans `supabase/migrations/` (horo
 | `progress_photos` | ProgressPhoto | chemin dans le bucket **privé** `progress-photos/<user_id>/…` |
 | `daily_checkins` / `weekly_reviews` | check-ins, WeeklyReview | |
 | `notification_preferences` | Notification | une ligne par catégorie |
+| `notification_settings` / `notification_history` | préférences et historique du canal notifications | D-024, voir ci-dessous |
 | `integration_connections` | CalendarConnection, HealthConnection | `kind` = calendar/health, scopes, statut ; aucun token en clair côté client |
 | `coach_memory` | mémoire structurée du coach | `kind` énuméré (aliment détesté, créneau préféré…) |
 | `ai_conversations` / `ai_messages` | AIConversation, AIMessage | phase 3 ; tables créées mais inutilisées au MVP |
@@ -46,6 +47,14 @@ Supabase / PostgreSQL. Migrations versionnées dans `supabase/migrations/` (horo
 - Politiques restrictives : une séance ne peut pointer que vers un plan du même utilisateur, une série que vers une séance du même utilisateur (sinon la suppression par B aurait effacé des lignes de A par cascade).
 - `exercise_logs` : unicité `(session_id, exercise_id, set_index)` pour des upserts idempotents.
 - `weekly_reviews.deleted_at` ; privilèges par défaut retirés à `anon` pour les futures tables.
+
+## Migration `20261001000002_notification_engine.sql` (D-024)
+
+- `notification_settings` (clé `user_id`) : interrupteur, plafond quotidien (1–6), heures calmes, heures des rappels, options du coach (citer ses mots, relances d'absence, célébrations), `paused_until`.
+- `notification_history` : un message planifié par ligne, `unique (user_id, client_id)` (`client_id` = `date:déclencheur`, upsert idempotent), déclencheur et catégorie énumérés, `template_id` limité par une expression régulière aux identifiants du catalogue (aucun texte libre, donc jamais les mots de l'utilisateur), `facts jsonb` ≤ 512 octets, statut `scheduled` / `delivered` / `opened`.
+- RLS propriétaire sur les deux, aucun privilège `anon`, cascade depuis `auth.users`.
+- `prune_notification_history(keep_days default 90)` : `security invoker`, ne supprime que les lignes de l'appelant.
+- Pas encore alimentées par l'app (sync à brancher, voir TODO) ; exportées par le Centre de confidentialité.
 
 ## Prévu plus tard (non créé)
 

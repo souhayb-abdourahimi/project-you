@@ -370,8 +370,7 @@ const fr = {
       title: 'Cette journée est incomplète.',
       missing: 'Il manque environ {{kcal}} kcal.',
       action: 'Ajoute un repas ou un complément alimentaire adapté.',
-      belowFloor:
-        'En l’état, elle reste sous ton métabolisme de base (estimation) : ne la suis pas telle quelle.',
+      belowFloor: 'En l’état, elle reste sous ton métabolisme de base (estimation) : ne la suis pas telle quelle.',
     },
     proteinPlanned: 'Protéines prévues aujourd’hui : {{planned}} g sur {{target}} g (estimation)',
     proteinShort:
@@ -444,7 +443,8 @@ const fr = {
       cooking_time: 'Temps de cuisine limité à {{minutes}} min',
       kitchen: 'Équipement de cuisine non coché : {{equipment}}',
     },
-    respected: 'Ton régime, tes allergies et tes intolérances restent toujours respectés : nous ne te proposerons jamais de les ignorer.',
+    respected:
+      'Ton régime, tes allergies et tes intolérances restent toujours respectés : nous ne te proposerons jamais de les ignorer.',
     adjustmentsTitle: 'Tu peux modifier :',
     noAdjustment:
       'Aucun ajustement simple ne suffit avec nos recettes actuelles. Tu peux compléter avec des repas de ton choix.',
@@ -545,7 +545,8 @@ const fr = {
       shorter_sessions:
         'Prévoir des séances plus courtes les jours chargés (le mode « J’ai 15 minutes » est là pour ça).',
       lighter_week: 'Une semaine un peu plus légère pour récupérer, sans augmenter les charges.',
-      protein_sources: 'Ajouter à l’inventaire une source de protéines que tu aimes (tofu, lentilles, œufs, fromage blanc…).',
+      protein_sources:
+        'Ajouter à l’inventaire une source de protéines que tu aimes (tofu, lentilles, œufs, fromage blanc…).',
       measure_waist: 'Mesurer ton tour de taille : pour une recomposition, c’est plus parlant que la balance.',
       use_inventory: 'Cuisiner d’abord ce que tu as déjà : la liste de courses le prend en compte.',
     },
@@ -585,17 +586,235 @@ const fr = {
       weighInTime: 'Pesée hebdomadaire (HH:MM)',
     },
     invalidTime: 'Format attendu : HH:MM',
-    messages: {
-      training: {
-        title: 'Séance prévue à {{time}}',
-        body: 'Ta séance t’attend. Même une version courte compte.',
-        body_short: 'Un créneau court aujourd’hui : 15 minutes suffisent.',
+    coachTitle: 'Messages du coach',
+    coachIntro:
+      'Tes rappels s’appuient sur tes réponses : pourquoi tu as commencé, ce que tu veux changer, ce que tu veux ressentir. Chaque message propose une petite action et dit pourquoi elle compte. Jamais de reproche.',
+    coachOptions: {
+      quotePersonalWords: 'Citer mes mots',
+      absenceReminders: 'Me relancer après quelques jours sans activité',
+      celebrations: 'Fêter mes séances et mes semaines régulières',
+    },
+    quoteHint: 'Sans « Citer mes mots », rien de personnel ne s’affiche sur l’écran verrouillé.',
+    absenceHint: 'Trois messages au plus (après 2, 5 et 10 jours), puis plus rien jusqu’à ton retour.',
+    safetyHint:
+      'Si l’app remarque plusieurs jours notés nettement sous ta cible, une perte de poids très rapide, ou plus de séances que prévu avec de la fatigue, elle t’envoie un message pour ralentir, même si la catégorie est désactivée.',
+    pause: 'Mettre en pause 7 jours',
+    resume: 'Reprendre les rappels',
+    pausedUntil: 'Rappels en pause jusqu’au {{date}}.',
+  },
+  /**
+   * Motivation & Notification Engine (src/domain/notifications/catalog.ts). Every message =
+   * anchor (why the user started) + action (one small thing now) + meaning (why it matters).
+   * Checked by the tone guard: no blame, no pressure, never counts what was not done.
+   */
+  coach: {
+    anchor: {
+      why: {
+        v1: 'Tu as commencé pour « {{why}} ».',
+        v2: 'Rappelle-toi : « {{why}} ».',
+        v3: 'Ta raison de départ : « {{why}} ».',
       },
-      meals: { title: 'Ton repas du midi', body: 'Ton plan du jour est prêt si tu en as besoin.' },
-      weigh_in: { title: 'Pesée de la semaine', body: 'Une pesée le matin, au calme. C’est la tendance qui compte.' },
-      shopping: { title: 'Courses', body: 'Ta liste est prête, calculée selon ce que tu as déjà.' },
-      progress: { title: 'Ta semaine', body: 'Prends une minute pour voir ce qui a marché cette semaine.' },
-      motivation: { title: 'Petit rappel' },
+      change: {
+        v1: 'Tu voulais que ça change : « {{change}} ».',
+        v2: 'Ce que tu veux changer : « {{change}} ».',
+        v3: 'Tu l’as écrit toi-même : « {{change}} ».',
+      },
+      feel: {
+        v1: 'Tu veux te sentir ainsi : « {{feel}} ».',
+        v2: 'Ce que tu veux ressentir : « {{feel}} ».',
+        v3: 'Pense à ce que tu veux ressentir : « {{feel}} ».',
+      },
+      private: {
+        v1: 'Repense à la raison pour laquelle tu as commencé.',
+        v2: 'Tu sais pourquoi tu as commencé.',
+        v3: 'Ta raison de départ est toujours là.',
+      },
+      none: {
+        v1: 'Tu as choisi de prendre soin de toi.',
+        v2: 'Tu as fait le choix de commencer, et ça compte.',
+        v3: 'Ce projet, c’est pour toi.',
+      },
+      care: {
+        v1: 'Prendre soin de toi passe avant le rythme.',
+        v2: 'Ton objectif se construit sur la durée.',
+        v3: 'Ta santé compte plus que la vitesse.',
+      },
+    },
+    title: {
+      session_planned: { v1: 'Séance à {{time}}', v2: 'Ta séance de {{time}}', v3: '{{time}} : séance' },
+      session_planned_tired: { v1: 'Séance allégée possible', v2: 'Écoute ton énergie' },
+      meal_planned: { v1: 'Ton repas du jour', v2: 'Pause repas' },
+      weigh_in: { v1: 'Pesée de la semaine' },
+      shopping: { v1: 'Courses' },
+      weekly_progress: { v1: 'Ta semaine', v2: 'Ça avance' },
+      weekly_checkin: { v1: 'Ton bilan de la semaine', v2: 'Une minute pour ta semaine' },
+      success_session: { v1: 'Bien joué pour hier', v2: 'Une séance de plus' },
+      success_streak: { v1: '{{weeks}} semaines d’affilée' },
+      absence_gentle: { v1: 'Un petit pas ?', v2: 'On reprend quand tu veux' },
+      absence_comeback: { v1: 'Ton plan t’attend', v2: 'Une reprise en douceur' },
+      absence_last: { v1: 'On est là quand tu veux' },
+      fatigue_recovery: { v1: 'Récupérer compte aussi', v2: 'Une journée plus douce' },
+      daily_why: { v1: 'Petit rappel', v2: 'Pour toi, aujourd’hui' },
+      safety_low_intake: { v1: 'On ralentit un peu', v2: 'Prends soin de ton énergie' },
+      safety_fast_loss: { v1: 'Ton rythme est rapide', v2: 'On ralentit un peu' },
+      safety_training_load: { v1: 'Place à la récupération', v2: 'On lève le pied' },
+    },
+    action: {
+      session_planned: {
+        v1: 'Ta séance de {{time}} t’attend : prépare tes affaires maintenant.',
+        v2: 'Garde 5 minutes avant {{time}} pour t’échauffer tranquillement.',
+        v3: 'Pose ta tenue de sport à portée de main pour {{time}}.',
+        v4: 'Séance à {{time}} : prépare ton sac maintenant.',
+        short1: 'Un créneau court à {{time}} : 15 minutes suffisent.',
+        short2: 'À {{time}}, une version courte de ta séance : commence par l’échauffement.',
+      },
+      session_planned_tired: {
+        v1: 'Tu sembles fatigué·e : choisis la version allégée de ta séance de {{time}}, ou 10 minutes de mobilité.',
+        v2: 'À {{time}}, version courte ou allégée : c’est toi qui choisis.',
+      },
+      meal_planned: {
+        v1: 'Au menu : {{meal}}. Sors les ingrédients maintenant.',
+        v2: '{{meal}} est prévu : jette un œil à la recette.',
+        generic: 'Ton plan repas est prêt : regarde ce qui est prévu.',
+      },
+      weigh_in: {
+        v1: 'Pèse-toi ce matin, avant le petit-déjeuner.',
+        v2: 'Une pesée rapide au réveil, et c’est noté.',
+      },
+      shopping: {
+        v1: 'Ta liste est prête : ouvre-la avant de partir.',
+        v2: 'Jette un œil à ta liste de courses, elle tient compte de ce que tu as déjà.',
+      },
+      weekly_progress: {
+        v1: 'Prends une minute pour regarder ton bilan de la semaine.',
+        v2: 'Ouvre ton bilan : {{sessions}} séance(s) cette semaine.',
+      },
+      weekly_checkin: {
+        v1: 'Prends une minute pour noter ton ressenti de la semaine.',
+        v2: 'Regarde ce qui a marché cette semaine, en une minute.',
+      },
+      success_session: {
+        v1: 'Aujourd’hui, bois un grand verre d’eau et étire-toi 5 minutes.',
+        v2: 'Note comment tu te sens après ta séance d’hier.',
+        v3: 'Prends un moment pour regarder ce que tu as soulevé hier.',
+      },
+      success_streak: {
+        v1: 'Regarde ta progression dans l’onglet Progrès.',
+        v2: 'Choisis le jour de ta première séance de la semaine.',
+      },
+      absence_gentle: {
+        v1: 'Une marche de 10 minutes aujourd’hui, c’est déjà reprendre.',
+        v2: 'Ouvre l’app et choisis la plus petite action du jour.',
+      },
+      absence_comeback: {
+        v1: 'Une séance courte de 15 minutes suffit pour reprendre.',
+        v2: 'Choisis une seule chose pour aujourd’hui : une marche, une séance courte ou un repas prévu.',
+      },
+      absence_last: {
+        v1: 'Quand tu seras prêt·e, une marche de 10 minutes suffit pour reprendre.',
+      },
+      fatigue_recovery: {
+        v1: 'Ce soir, couche-toi 30 minutes plus tôt si tu peux.',
+        v2: 'Fais 10 minutes de mobilité douce aujourd’hui.',
+      },
+      daily_why: {
+        v1: 'Choisis une action pour aujourd’hui : une séance, un repas prévu ou une marche.',
+        v2: 'Bois un grand verre d’eau maintenant.',
+        v3: 'Regarde ton plan du jour, ça prend une minute.',
+        v4: 'Une action aujourd’hui : choisis-la maintenant.',
+      },
+      safety_low_intake: {
+        v1: 'Ces derniers jours, tes repas notés sont bien en dessous de ta cible : ajoute un repas ou une collation aujourd’hui.',
+        v2: 'Aujourd’hui, vise ta cible du jour en entier, sans chercher à manger moins.',
+        floor:
+          'Ces derniers jours, tes repas notés sont sous le minimum dont ton corps a besoin au repos : mange ta cible du jour en entier aujourd’hui.',
+      },
+      safety_fast_loss: {
+        v1: 'Ton poids baisse plus vite que le rythme conseillé depuis deux semaines : cette semaine, mange ta cible complète chaque jour.',
+        v2: 'Ajoute une collation à ta journée et garde tes séances comme prévu, sans en faire plus.',
+      },
+      safety_training_load: {
+        v1: 'Tu t’entraînes plus que prévu et tu te sens fatigué·e : remplace ta prochaine séance par du repos ou de la mobilité.',
+        v2: 'Cette semaine, reviens au nombre de séances prévu et garde une journée de repos complet.',
+      },
+    },
+    meaning: {
+      session_planned: {
+        v1: 'Chaque séance faite rend la suivante plus facile.',
+        v2: 'Une séance, même courte, entretient l’habitude.',
+        lose: 'Des séances régulières t’aident à garder ta force pendant que ton poids baisse.',
+        gain: 'C’est l’entraînement régulier qui fait progresser tes charges.',
+        recomp:
+          'Tes séances comptent même quand la balance bouge peu : regarde aussi ton tour de taille et tes charges.',
+        health: 'Chaque séance renforce ta forme, pas à pas.',
+        performance: 'La régularité construit la performance.',
+      },
+      session_planned_tired: {
+        v1: 'S’adapter à son énergie, c’est ce qui permet de tenir sur plusieurs mois.',
+        v2: 'Une séance légère vaut mieux qu’une séance forcée.',
+      },
+      meal_planned: {
+        v1: 'Manger à heure régulière soutient ton énergie toute la journée.',
+        lose: 'Un repas prévu, c’est une décision de moins quand la faim arrive.',
+        gain: 'Les protéines de ce repas soutiennent ta récupération après l’entraînement.',
+      },
+      weigh_in: {
+        v1: 'C’est la tendance sur plusieurs semaines qui compte, pas un chiffre isolé.',
+        v2: 'Des pesées régulières rendent ta progression visible.',
+      },
+      shopping: {
+        v1: 'Avoir les bons aliments chez toi rend la semaine plus simple.',
+        v2: 'Une liste prête, c’est moins d’achats imprévus et un budget respecté.',
+      },
+      weekly_progress: {
+        v1: 'Ta tendance va dans le sens de ton objectif : ta régularité paie.',
+        v2: 'Voir le chemin parcouru aide à continuer.',
+      },
+      weekly_checkin: {
+        v1: 'Ton bilan sert à adapter la semaine prochaine à ta vraie vie.',
+        v2: 'Repérer ce qui marche aide à le refaire.',
+      },
+      success_session: {
+        v1: 'Chaque séance faite montre que tu peux le faire.',
+        v2: 'Tu construis une habitude, une séance après l’autre.',
+      },
+      success_streak: {
+        v1: '{{weeks}} semaines avec au moins une séance : c’est comme ça qu’une habitude s’installe.',
+        v2: 'La constance compte plus que la perfection.',
+      },
+      absence_gentle: {
+        v1: 'Ce n’est pas la journée parfaite qui compte, c’est de revenir.',
+        v2: 'Les petits pas gardent le cap.',
+      },
+      absence_comeback: {
+        v1: 'Reprendre doucement, c’est la façon la plus sûre de continuer.',
+        v2: 'Ta progression ne repart pas de zéro.',
+      },
+      absence_last: {
+        v1: 'Ton parcours t’attend, sans pression. Pas d’autre rappel de ce type avant ton retour.',
+      },
+      fatigue_recovery: {
+        v1: 'Le repos fait partie du programme : c’est là que ton corps progresse.',
+        v2: 'Écouter ta fatigue aujourd’hui t’aide à tenir sur plusieurs mois.',
+      },
+      daily_why: {
+        v1: 'Chaque petit pas te rapproche de ce que tu veux.',
+        v2: 'Ce sont les petites actions répétées qui changent les choses.',
+        lose: 'Chaque journée suivie fait avancer la tendance.',
+        gain: 'Chaque repas et chaque séance nourrissent ta progression.',
+      },
+      safety_low_intake: {
+        v1: 'Manger trop peu plusieurs jours de suite fatigue et rend l’objectif plus dur à tenir. Si ça dure, parles-en à un professionnel de santé (médecin, diététicien·ne).',
+        v2: 'Ton corps a besoin d’énergie pour progresser. Si manger assez est difficile en ce moment, un professionnel de santé peut t’aider.',
+      },
+      safety_fast_loss: {
+        v1: 'Perdre plus lentement aide à garder ta force et à tenir dans le temps. Si tu te sens fatigué·e ou si ce rythme t’inquiète, parles-en à un professionnel de santé.',
+        v2: 'Un rythme plus doux se maintient mieux sur plusieurs mois. Un professionnel de santé peut t’aider à trouver le bon.',
+      },
+      safety_training_load: {
+        v1: 'Le progrès se fait aussi pendant la récupération. Si la fatigue dure, parles-en à un professionnel de santé.',
+        v2: 'Te reposer aujourd’hui, c’est protéger tes prochaines séances. Si la fatigue dure, un professionnel de santé peut t’aider.',
+      },
     },
   },
   calendar: {
@@ -639,13 +858,16 @@ const fr = {
     availability: {
       available: 'Disponible',
       not_supported: 'Les données santé ne sont pas disponibles sur cette plateforme.',
-      not_installed: 'Health Connect n’est pas disponible sur cet appareil. Installe-le depuis le Play Store pour relier tes données, ou continue avec la saisie manuelle.',
-      update_required: 'Health Connect doit être mis à jour avant de pouvoir être relié. Mets-le à jour depuis le Play Store, puis réessaie.',
+      not_installed:
+        'Health Connect n’est pas disponible sur cet appareil. Installe-le depuis le Play Store pour relier tes données, ou continue avec la saisie manuelle.',
+      update_required:
+        'Health Connect doit être mis à jour avant de pouvoir être relié. Mets-le à jour depuis le Play Store, puis réessaie.',
       unavailable: 'Apple Santé n’est pas disponible sur cet appareil. La saisie manuelle reste disponible.',
     },
     denied:
       'Accès refusé : aucune donnée n’est lue. Tout le reste de l’app fonctionne. Tu peux changer d’avis à tout moment dans les réglages de {{store}}.',
-    partial: 'Une partie seulement des données est autorisée. Le coach utilise ce qu’il a, le reste se saisit à la main.',
+    partial:
+      'Une partie seulement des données est autorisée. Le coach utilise ce qu’il a, le reste se saisit à la main.',
     error: 'La lecture n’a pas pu se terminer. Les données déjà importées sont conservées, on réessaiera plus tard.',
     notice: {
       withdrawn: 'Un accès a été retiré dans les réglages : les données correspondantes ont été supprimées de l’app.',
@@ -659,8 +881,10 @@ const fr = {
     why: {
       weight: 'Pour suivre ta tendance de poids sans ressaisir les pesées de ta balance connectée.',
       steps: 'Pour voir ton activité quotidienne et ta tendance, à titre indicatif.',
-      workouts: 'Pour tenir compte des activités faites hors de Project You, sans compter deux fois une séance déjà notée.',
-      activeCalories: 'Pour afficher l’énergie active estimée par ton appareil. Elle ne modifie jamais tes objectifs nutritionnels.',
+      workouts:
+        'Pour tenir compte des activités faites hors de Project You, sans compter deux fois une séance déjà notée.',
+      activeCalories:
+        'Pour afficher l’énergie active estimée par ton appareil. Elle ne modifie jamais tes objectifs nutritionnels.',
     },
     permission: {
       granted: 'Autorisé',
@@ -687,11 +911,14 @@ const fr = {
     notUsed:
       'Elles ne sont ni envoyées sur ton compte, ni à l’assistant IA, ni à des statistiques. Rien n’est écrit dans l’app Santé. Pas de fréquence cardiaque, de sommeil ni de dossier médical.',
     disconnectHint: {
-      apple: 'Déconnecter arrête toute lecture et supprime de l’app les données importées. Apple ne permet pas à une app de retirer elle-même l’autorisation : tu peux le faire dans Réglages › Santé.',
-      google: 'Déconnecter arrête toute lecture, supprime de l’app les données importées et retire les autorisations Health Connect.',
+      apple:
+        'Déconnecter arrête toute lecture et supprime de l’app les données importées. Apple ne permet pas à une app de retirer elle-même l’autorisation : tu peux le faire dans Réglages › Santé.',
+      google:
+        'Déconnecter arrête toute lecture, supprime de l’app les données importées et retire les autorisations Health Connect.',
     },
     disconnect: 'Déconnecter',
-    disconnectConfirm: 'Déconnecter {{store}} et supprimer de l’app les données importées ? Tes saisies manuelles sont conservées.',
+    disconnectConfirm:
+      'Déconnecter {{store}} et supprimer de l’app les données importées ? Tes saisies manuelles sont conservées.',
     privacy: {
       title: 'Santé et activité',
       allowed: 'Données autorisées : {{list}}',
@@ -892,14 +1119,6 @@ const fr = {
         add_reps: 'Vise une répétition de plus.',
       },
     },
-  },
-  motivation: {
-    why_reminder: 'Tu as commencé parce que tu voulais « {{why}} ». Chaque petit pas compte.',
-    why_small_step: 'Souviens-toi : « {{why}} ». Aujourd’hui, un petit pas suffit.',
-    why_today: '« {{why}} » : c’est pour ça que tu es là. On avance à ton rythme.',
-    generic_consistency: 'La régularité bat l’intensité. Une séance courte reste une séance.',
-    generic_small_wins: 'Chaque repas, chaque séance, chaque nuit de sommeil compte.',
-    generic_rest_counts: 'Le repos fait partie du programme. Tu progresses aussi en récupérant.',
   },
   comeback: {
     simple_restart: 'Content de te revoir ! On reprend simplement là où tu en étais.',

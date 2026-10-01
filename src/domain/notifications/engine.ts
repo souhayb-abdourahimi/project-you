@@ -1,85 +1,31 @@
 /**
- * NotificationEngine (docs/NOTIFICATIONS.md): turns the week plan and the user's preferences into
- * a small list of local reminders. Deterministic and pure; the service only schedules the result.
- * Rules: category opt-in, quiet hours respected, daily cap, never two reminders within an hour,
- * warm wording only (keys in the locale files, reviewed for guilt-free tone).
+ * Notification channel of the Transformation Journey Engine (docs/NOTIFICATIONS.md, D-024):
+ * turns the week plan, the journey state and the user's preferences into a short list of
+ * personalised local reminders. Deterministic and pure; the service only schedules the result.
+ *
+ * Pipeline: rules (rules.ts, safety first) → preferences, pause, quiet hours, cooldowns
+ * (anti-repetition.ts) → one motivation message per day → daily cap and minimum gap → wording by
+ * the journey's voice (journey/voice). Every message = why the user started + one small action
+ * now + why it matters. No generative AI.
  */
-import type { MotivationProfile } from '../profile/schemas';
+import type { JourneyState } from '../journey/state';
+import { composeMessage } from '../journey/voice/composer';
+import { SAFETY_TRIGGERS } from '../journey/voice/types';
 import type { WeeklyPlan } from '../planning/engine';
-import { dailyMotivation } from '../motivation/messages';
-import { addDays, formatTime, parseTime, type IsoDate } from '../shared/dates';
+import { addDays, parseTime, type IsoDate } from '../shared/dates';
+import { effectiveDailyCap, onCooldown } from './anti-repetition';
+import { MOTIVATION_SLOT_ORDER, TRIGGER_PRIORITY, collectCandidates, type Candidate } from './rules';
+import {
+  TRIGGER_CATEGORY,
+  type NotificationHistoryEntry,
+  type NotificationPreferences,
+  type PlannedNotification,
+} from './types';
 
-export const NOTIFICATION_CATEGORIES = [
-  'training',
-  'meals',
-  'weigh_in',
-  'shopping',
-  'progress',
-  'motivation',
-  'calendar',
-] as const;
-export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number];
-
-export interface NotificationPreferences {
-  /** Master switch; off by default until the user opts in (permission asked at that moment). */
-  enabled: boolean;
-  categories: Record<NotificationCategory, boolean>;
-  /** "22:00" → "07:30": nothing is scheduled inside. */
-  quietStart: string;
-  quietEnd: string;
-  maxPerDay: number;
-  /** Local times chosen by the user. */
-  mealReminderTime: string;
-  motivationTime: string;
-  /** ISO weekday (1 = Monday) for the weekly weigh-in and the weekly review. */
-  weighInDay: number;
-  weighInTime: string;
-}
-
-export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
-  enabled: false,
-  categories: {
-    training: true,
-    meals: false,
-    weigh_in: true,
-    shopping: true,
-    progress: true,
-    motivation: false,
-    calendar: false,
-  },
-  quietStart: '22:00',
-  quietEnd: '07:30',
-  maxPerDay: 3,
-  mealReminderTime: '12:00',
-  motivationTime: '08:30',
-  weighInDay: 1,
-  weighInTime: '08:00',
-};
-
-export interface PlannedNotification {
-  id: string;
-  category: NotificationCategory;
-  date: IsoDate;
-  /** Local "HH:MM". */
-  time: string;
-  titleKey: string;
-  bodyKey: string;
-  params: Record<string, string>;
-}
-
-/** Lower number = kept first when the daily cap is reached. */
-const PRIORITY: Record<NotificationCategory, number> = {
-  training: 0,
-  weigh_in: 1,
-  meals: 2,
-  shopping: 3,
-  calendar: 4,
-  progress: 5,
-  motivation: 6,
-};
+export * from './types';
+export { renderMessage } from '../journey/voice/composer';
 
 const MIN_GAP_MINUTES = 60;
-const TRAINING_LEAD_MINUTES = 60;
 
 export function isQuiet(time: string, quietStart: string, quietEnd: string): boolean {
   const t = parseTime(time);
@@ -95,111 +41,105 @@ function outOfQuietHours(time: string, prefs: NotificationPreferences): string |
   return parseTime(time) < parseTime(prefs.quietEnd) ? prefs.quietEnd : null;
 }
 
+export type PlannedWithFacts = PlannedNotification & { facts: Record<string, string> };
+
 export function planNotifications(input: {
   prefs: NotificationPreferences;
   week: WeeklyPlan;
-  motivation: MotivationProfile;
+  /** The single source of truth for the user's state (journey/state.ts). */
+  state: JourneyState;
   /** Only reminders at or after this moment are planned. */
   from: { date: IsoDate; time: string };
   /** Sessions already done (`${date}#${index}`): no reminder for them. */
   completed?: string[];
-}): PlannedNotification[] {
-  const { prefs, week, motivation, from } = input;
+  /** Reconciled device history (history.ts): past messages only. */
+  history?: NotificationHistoryEntry[];
+}): PlannedWithFacts[] {
+  const { prefs, state, from } = input;
   if (!prefs.enabled) return [];
-  const completed = new Set(input.completed ?? []);
-  const candidates: PlannedNotification[] = [];
-  /** `before`: a reminder moved out of quiet hours must still come before the event it announces. */
-  const add = (n: Omit<PlannedNotification, 'id'>, before?: string) => {
-    if (!prefs.categories[n.category]) return;
-    const time = outOfQuietHours(n.time, prefs);
-    if (!time || (before && time >= before)) return;
-    if (n.date < from.date || (n.date === from.date && time < from.time)) return;
-    candidates.push({ ...n, time, id: `${n.date}:${n.category}:${n.titleKey}` });
-  };
+  const history = input.history ?? [];
 
-  for (const day of week.days) {
-    for (const item of day.items) {
-      if (item.kind === 'workout' && item.start && !completed.has(`${day.date}#${item.sessionIndex}`)) {
-        add(
-          {
-            category: 'training',
-            date: day.date,
-            time: formatTime(Math.max(0, parseTime(item.start) - TRAINING_LEAD_MINUTES)),
-            titleKey: 'notifications.messages.training.title',
-            bodyKey:
-              item.variant === 'short'
-                ? 'notifications.messages.training.body_short'
-                : 'notifications.messages.training.body',
-            params: { time: item.start },
-          },
-          item.start,
-        );
-      }
-      if (item.kind === 'shopping') {
-        add({
-          category: 'shopping',
-          date: day.date,
-          time: item.start,
-          titleKey: 'notifications.messages.shopping.title',
-          bodyKey: 'notifications.messages.shopping.body',
-          params: {},
-        });
-      }
-    }
-    add({
-      category: 'meals',
-      date: day.date,
-      time: prefs.mealReminderTime,
-      titleKey: 'notifications.messages.meals.title',
-      bodyKey: 'notifications.messages.meals.body',
-      params: {},
-    });
-    if (day.weekday === prefs.weighInDay) {
-      add({
-        category: 'weigh_in',
-        date: day.date,
-        time: prefs.weighInTime,
-        titleKey: 'notifications.messages.weigh_in.title',
-        bodyKey: 'notifications.messages.weigh_in.body',
-        params: {},
-      });
-    }
-    if (day.weekday === 7) {
-      add({
-        category: 'progress',
-        date: day.date,
-        time: '18:00',
-        titleKey: 'notifications.messages.progress.title',
-        bodyKey: 'notifications.messages.progress.body',
-        params: {},
-      });
-    }
-    const message = dailyMotivation(motivation, day.date);
-    add({
-      category: 'motivation',
-      date: day.date,
-      time: prefs.motivationTime,
-      titleKey: 'notifications.messages.motivation.title',
-      bodyKey: message.key,
-      params: message.params,
-    });
+  // 1. Rules → candidates allowed by preferences, pause, quiet hours, the clock and cooldowns.
+  const allowed: Candidate[] = [];
+  for (const c of collectCandidates({
+    prefs,
+    week: input.week,
+    state,
+    completed: new Set(input.completed ?? []),
+    fromDate: from.date,
+  })) {
+    // Safety messages ignore category switches (not the master switch, the pause or quiet hours).
+    if (!SAFETY_TRIGGERS.includes(c.trigger) && !prefs.categories[TRIGGER_CATEGORY[c.trigger]]) continue;
+    if (prefs.pausedUntil && c.date < prefs.pausedUntil) continue;
+    const time = outOfQuietHours(c.time, prefs);
+    if (!time || (c.before && time >= c.before)) continue;
+    if (c.date < from.date || (c.date === from.date && time < from.time)) continue;
+    if (onCooldown(c, history)) continue;
+    allowed.push({ ...c, time });
   }
 
-  // Per day: highest priority first, respect the cap and the minimum gap.
-  const kept: PlannedNotification[] = [];
-  const days = [...new Set(candidates.map((c) => c.date))].sort();
-  for (const date of days) {
-    const today: PlannedNotification[] = [];
+  // 2. One motivation message per day, the most relevant one.
+  const slotRank = (c: Candidate) => MOTIVATION_SLOT_ORDER.indexOf(c.trigger);
+  const bestSlot = new Map<IsoDate, Candidate>();
+  for (const c of allowed) {
+    if (slotRank(c) < 0) continue;
+    const current = bestSlot.get(c.date);
+    if (!current || slotRank(c) < slotRank(current)) bestSlot.set(c.date, c);
+  }
+  const candidates = allowed.filter((c) => slotRank(c) < 0 || bestSlot.get(c.date) === c);
+
+  // 3. Per day: highest priority first, respect the (possibly lowered) cap and the minimum gap.
+  const cap = effectiveDailyCap(prefs.maxPerDay, history);
+  const kept: Candidate[] = [];
+  for (const date of [...new Set(candidates.map((c) => c.date))].sort()) {
+    const today: Candidate[] = [];
     for (const c of candidates
       .filter((x) => x.date === date)
-      .sort((a, b) => PRIORITY[a.category] - PRIORITY[b.category] || a.time.localeCompare(b.time))) {
-      if (today.length >= prefs.maxPerDay) break;
+      .sort((a, b) => TRIGGER_PRIORITY[a.trigger] - TRIGGER_PRIORITY[b.trigger] || a.time.localeCompare(b.time))) {
+      if (today.length >= cap) break;
       if (today.some((k) => Math.abs(parseTime(k.time) - parseTime(c.time)) < MIN_GAP_MINUTES)) continue;
       today.push(c);
     }
     kept.push(...today.sort((a, b) => a.time.localeCompare(b.time)));
   }
-  return kept;
+
+  // 4. Wording, in chronological order so each message sees the ones planned before it.
+  const working = [...history];
+  const out: PlannedWithFacts[] = [];
+  for (const c of kept) {
+    if (onCooldown(c, working)) continue;
+    const message = composeMessage({
+      trigger: c.trigger,
+      date: c.date,
+      facts: c.facts,
+      state,
+      quotePersonalWords: prefs.quotePersonalWords,
+      history: working,
+    });
+    const planned: PlannedWithFacts = {
+      ...message,
+      id: `${c.date}:${c.trigger}`,
+      trigger: c.trigger,
+      category: TRIGGER_CATEGORY[c.trigger],
+      date: c.date,
+      time: c.time,
+      facts: c.facts,
+    };
+    out.push(planned);
+    working.push({
+      id: planned.id,
+      trigger: planned.trigger,
+      category: planned.category,
+      templateId: planned.templateId,
+      anchorSlot: planned.anchorSlot,
+      date: planned.date,
+      time: planned.time,
+      status: 'scheduled',
+      facts: planned.facts,
+      scheduledAt: '',
+    });
+  }
+  return out;
 }
 
 /** Next week's start helper for rescheduling at the end of the week. */
