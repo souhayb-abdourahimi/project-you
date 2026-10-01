@@ -112,6 +112,9 @@ insert into public.progress_photos (user_id, taken_on, pose, storage_path) value
 insert into public.daily_checkins (user_id, date, energy) values ('00000000-0000-0000-0000-00000000000a', '2026-09-30', 3);
 insert into public.weekly_reviews (user_id, week_start) values ('00000000-0000-0000-0000-00000000000a', '2026-09-28');
 insert into public.notification_preferences (user_id, category) values ('00000000-0000-0000-0000-00000000000a', 'training');
+insert into public.notification_settings (user_id) values ('00000000-0000-0000-0000-00000000000a');
+insert into public.notification_history (user_id, client_id, trigger, category, template_id, anchor_slot, local_date, local_time, status, facts)
+  values ('00000000-0000-0000-0000-00000000000a', '2026-06-01:daily_why', 'daily_why', 'motivation', 'daily_why|v1|why.v1|v1|v1', 'why', '2026-06-01', '08:30', 'delivered', '{}');
 insert into public.integration_connections (user_id, kind, provider) values ('00000000-0000-0000-0000-00000000000a', 'calendar', 'google_calendar');
 insert into public.coach_memory (user_id, kind, value) values ('00000000-0000-0000-0000-00000000000a', 'disliked_food', 'brocoli');
 insert into public.ai_messages (conversation_id, user_id, role, content) values ('00000000-0000-0000-0000-0000000000c1', '00000000-0000-0000-0000-00000000000a', 'user', 'hello');
@@ -234,6 +237,53 @@ begin
 end;
 $$;
 
+-- Notification engine tables (D-024): content checks and the owner-only prune function.
+begin;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+insert into public.notification_history (user_id, client_id, trigger, category, template_id, anchor_slot, local_date, local_time, facts)
+  values ('00000000-0000-0000-0000-00000000000a', '2026-09-30:absence_gentle', 'absence_gentle', 'motivation', 'absence_gentle|v1|change.v2|v1|v2', 'change', current_date, '08:30', '{"since":"2026-09-28","days":"2"}');
+insert into public.notification_history (user_id, client_id, trigger, category, template_id, anchor_slot, local_date, local_time)
+  values ('00000000-0000-0000-0000-00000000000a', '2026-09-30:absence_gentle', 'absence_gentle', 'motivation', 'absence_gentle|v2|change.v1|v2|v1', 'change', current_date, '09:30')
+  on conflict (user_id, client_id) do update set template_id = excluded.template_id, local_time = excluded.local_time;
+select pg_temp.expect((select count(*) from public.notification_history where client_id = '2026-09-30:absence_gentle') = 1, 'a re-plan upserts the same history entry');
+select pg_temp.expect(public.prune_notification_history(90) = 1, 'owner prunes own history older than 90 days');
+select pg_temp.expect((select count(*) from public.notification_history) = 1, 'recent history is kept');
+commit;
+
+begin;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+insert into public.notification_history (user_id, client_id, trigger, category, template_id, anchor_slot, local_date, local_time)
+  values ('00000000-0000-0000-0000-00000000000b', '2020-01-01:daily_why', 'daily_why', 'motivation', 'daily_why|v1|none.v1|v1|v1', 'none', '2020-01-01', '08:30');
+select pg_temp.expect(public.prune_notification_history(90) = 1, 'B prunes only own history');
+reset role;
+select pg_temp.expect((select count(*) from public.notification_history where user_id = '00000000-0000-0000-0000-00000000000a') = 1, 'prune by B leaves A history untouched');
+commit;
+
+do $$
+begin
+  begin
+    insert into public.notification_history (user_id, client_id, trigger, category, template_id, anchor_slot, local_date, local_time)
+      values ('00000000-0000-0000-0000-00000000000a', '2026-09-30:daily_why', 'daily_why', 'motivation', 'Tu as commencé pour perdre 10 kg', 'why', '2026-09-30', '08:30');
+    raise exception 'TEST FAILED: free text accepted as template_id';
+  exception when check_violation then
+    raise notice 'ok - history stores template ids, never message text';
+  end;
+  begin
+    insert into public.notification_history (user_id, client_id, trigger, category, template_id, anchor_slot, local_date, local_time, facts)
+      values ('00000000-0000-0000-0000-00000000000a', '2026-09-30:daily_why', 'daily_why', 'motivation', 'daily_why|v1|why.v1|v1|v1', 'why', '2026-09-30', '08:30', jsonb_build_object('note', repeat('x', 600)));
+    raise exception 'TEST FAILED: large facts accepted';
+  exception when check_violation then
+    raise notice 'ok - history facts stay small';
+  end;
+  begin
+    insert into public.notification_settings (user_id, max_per_day) values ('00000000-0000-0000-0000-00000000000b', 20);
+    raise exception 'TEST FAILED: max_per_day 20 accepted';
+  exception when check_violation then
+    raise notice 'ok - daily cap bounded';
+  end;
+end;
+$$;
+
 -- Deleting the auth user cascades to all personal data.
 delete from auth.users where id = '00000000-0000-0000-0000-00000000000a';
 do $$
@@ -251,3 +301,4 @@ begin
   end if;
 end;
 $$;
+

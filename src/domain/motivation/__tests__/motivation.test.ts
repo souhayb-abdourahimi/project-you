@@ -1,14 +1,4 @@
 import { comebackPlan, suggestAlternatives, weeklyStreak } from '../anti-abandon';
-import { dailyMotivation } from '../messages';
-
-describe('motivation', () => {
-  it('uses the user’s own reason when given, deterministically', () => {
-    const a = dailyMotivation({ why: 'être fier de moi' }, '2026-09-30');
-    expect(a.params.why).toBe('être fier de moi');
-    expect(dailyMotivation({ why: 'être fier de moi' }, '2026-09-30')).toEqual(a);
-    expect(dailyMotivation({}, '2026-09-30').params).toEqual({});
-  });
-});
 
 describe('anti-abandon', () => {
   it('prioritises recovery when exhausted', () => {

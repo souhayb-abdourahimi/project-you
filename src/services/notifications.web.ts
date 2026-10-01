@@ -15,3 +15,7 @@ export async function replaceScheduled(
 ): Promise<number> {
   return 0;
 }
+
+export function onNotificationOpened(_cb: (id: string) => void): () => void {
+  return () => undefined;
+}

@@ -18,6 +18,7 @@ Project You est un outil de fitness et bien-être ; il ne remplace pas un profes
 - **Supprimer le compte** : Edge Function `delete-account` (JWT de l'appelant, jamais d'identifiant venant du corps de la requête) → photos du bucket `progress-photos/<user_id>/` → `auth.users` (cascade sur toutes les tables, testée dans `rls.sql`). Puis effacement local et annulation des rappels.
 - **Connexions** calendrier / santé : affichées « Non connecté » tant que les intégrations n'existent pas.
 - **Autorisations** : lien vers les réglages de l'appareil ; **notifications** : écran `/notifications`.
+- **Coach et notifications** (D-024) : l'historique des messages planifiés (identifiants de modèles, jamais le texte ni les mots de l'utilisateur) et les check-ins du jour restent sur l'appareil, 90 et 30 entrées au plus ; ils figurent dans l'export (réglages de l'appareil) et sont effacés avec les données de l'appareil. Option « Citer mes mots » : désactivée, aucune réponse personnelle n'apparaît sur l'écran verrouillé.
 - Toute action destructive passe par une confirmation explicite (`ConfirmButton`).
 - Suppressions courantes (une pesée, un article d'inventaire) : suppression logique pour la synchronisation multi-appareil. TODO : purge serveur des lignes `deleted_at` anciennes.
 

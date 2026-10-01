@@ -2,12 +2,14 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import { Banner, Button, Card, Row, Screen, Section, Text } from '@/components/ui';
-import { dailyMotivation } from '@/domain/motivation/messages';
+import { composeMessage, renderMessage } from '@/domain/journey/voice/composer';
 import { nextAction } from '@/domain/today';
 import { HealthCard } from '@/features/health/HealthCard';
+import { SafetyNotice } from '@/features/journey/SafetyNotice';
 import { DayEnergyWarning } from '@/features/nutrition/DayEnergyWarning';
 import { MealCard } from '@/features/nutrition/MealCard';
 import { PlanDiagnosisCard } from '@/features/nutrition/PlanDiagnosisCard';
+import { useJourneyState } from '@/hooks/useJourneyState';
 import { usePlan } from '@/hooks/usePlan';
 import { useWeights } from '@/hooks/useWeights';
 import { nowTime } from '@/lib/format';
@@ -17,6 +19,7 @@ import { useDataStore } from '@/state/data';
 export default function TodayScreen() {
   const { t } = useTranslation();
   const plan = usePlan();
+  const journey = useJourneyState(plan);
   const completed = useDataStore((s) => s.completedSessions);
   const weights = useWeights();
   if (!plan) return null;
@@ -32,7 +35,20 @@ export default function TodayScreen() {
     weightLoggedThisWeek: weights.some((w) => w.date >= plan.weekStart),
     now: nowTime(),
   });
-  const motivation = dailyMotivation(plan.snapshot.motivation, plan.today);
+  // Same voice as the notifications: why + one small action + why it matters (rule 6).
+  const motivation = journey
+    ? renderMessage(
+        composeMessage({
+          trigger: 'daily_why',
+          date: plan.today,
+          facts: {},
+          state: journey,
+          quotePersonalWords: true,
+          history: [],
+        }),
+        (key, params) => t(key, params),
+      ).body
+    : null;
   const focus = workout?.kind === 'workout' ? plan.workoutPlan.sessions[workout.sessionIndex]?.focus : undefined;
 
   const primary = () => {
@@ -50,6 +66,7 @@ export default function TodayScreen() {
         <Button compact variant="ghost" label={t('settings.title')} onPress={() => router.push('/settings')} />
       </Row>
       {!isSupabaseConfigured ? <Banner message={t('common.localMode')} /> : null}
+      <SafetyNotice state={journey} />
 
       <Card>
         <Text variant="caption" color="textMuted">
@@ -92,12 +109,15 @@ export default function TodayScreen() {
 
       <HealthCard plan={plan} />
 
-      <Card muted>
-        <Text variant="caption" color="textMuted">
-          {t('today.motivation')}
-        </Text>
-        <Text>{t(motivation.key, motivation.params)}</Text>
-      </Card>
+      {/* While the safety rule is active, the coach slows down instead of motivating (rule 8). */}
+      {!motivation || journey?.safety.active ? null : (
+        <Card muted>
+          <Text variant="caption" color="textMuted">
+            {t('today.motivation')}
+          </Text>
+          <Text>{motivation}</Text>
+        </Card>
+      )}
 
       {day?.items.some((i) => i.kind !== 'workout') ? (
         <Section title={t('today.plan')}>

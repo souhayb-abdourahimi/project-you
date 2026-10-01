@@ -8,6 +8,7 @@ import { rescheduleOptions } from '@/domain/planning/engine';
 import { usePlan } from '@/hooks/usePlan';
 import { formatDate } from '@/lib/format';
 import { useDataStore } from '@/state/data';
+import { useNotificationStore } from '@/state/notifications';
 
 const LEVELS: Level[] = [1, 2, 3, 4, 5];
 const MINUTES = [10, 15, 20, 30, 45, 60];
@@ -18,6 +19,7 @@ export default function AdaptScreen() {
   const { mode } = useLocalSearchParams<{ mode?: 'time' | 'motivation' }>();
   const plan = usePlan();
   const reschedule = useDataStore((s) => s.reschedule);
+  const logCheckin = useNotificationStore((s) => s.logCheckin);
   const [energy, setEnergy] = useState<Level>(3);
   const [motivation, setMotivation] = useState<Level>(mode === 'motivation' ? 2 : 3);
   const [fatigue, setFatigue] = useState<Level>(3);
@@ -31,6 +33,8 @@ export default function AdaptScreen() {
   );
 
   const choose = (option: Alternative) => {
+    // Today's state feeds the coach messages (a tired day gets a lighter reminder), on this device only.
+    logCheckin({ date: plan.today, energy, motivation, fatigue });
     if (option === 'full_session') return router.replace(`/workout/${plan.today}`);
     if (option === 'short_session')
       return router.replace({ pathname: '/workout/[date]', params: { date: plan.today, variant: 'short' } });

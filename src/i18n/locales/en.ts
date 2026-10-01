@@ -572,17 +572,229 @@ const en: LocaleShape = {
       weighInTime: 'Weekly weigh-in (HH:MM)',
     },
     invalidTime: 'Expected format: HH:MM',
-    messages: {
-      training: {
-        title: 'Workout planned at {{time}}',
-        body: 'Your workout is ready. Even a short version counts.',
-        body_short: 'A short slot today: 15 minutes is enough.',
+    coachTitle: 'Coach messages',
+    coachIntro:
+      'Your reminders build on your answers: why you started, what you want to change, how you want to feel. Each message suggests one small action and why it matters. Never any blame.',
+    coachOptions: {
+      quotePersonalWords: 'Quote my own words',
+      absenceReminders: 'Check in after a few days without activity',
+      celebrations: 'Celebrate my workouts and regular weeks',
+    },
+    quoteHint: 'Without “Quote my own words”, nothing personal shows on the lock screen.',
+    absenceHint: 'Three messages at most (after 2, 5 and 10 days), then nothing until you are back.',
+    safetyHint:
+      'If the app notices several logged days well below your target, very fast weight loss, or more workouts than planned with tiredness, it sends you a message to slow down, even if that category is off.',
+    pause: 'Pause for 7 days',
+    resume: 'Resume reminders',
+    pausedUntil: 'Reminders paused until {{date}}.',
+  },
+  coach: {
+    anchor: {
+      why: {
+        v1: 'You started for this: “{{why}}”.',
+        v2: 'Remember: “{{why}}”.',
+        v3: 'Your reason to start: “{{why}}”.',
       },
-      meals: { title: 'Your lunch', body: "Today's plan is ready if you need it." },
-      weigh_in: { title: 'Weekly weigh-in', body: 'One calm morning weigh-in. The trend is what matters.' },
-      shopping: { title: 'Shopping', body: 'Your list is ready, based on what you already have.' },
-      progress: { title: 'Your week', body: 'Take a minute to see what worked this week.' },
-      motivation: { title: 'A small reminder' },
+      change: {
+        v1: 'You wanted this to change: “{{change}}”.',
+        v2: 'What you want to change: “{{change}}”.',
+        v3: 'In your own words: “{{change}}”.',
+      },
+      feel: {
+        v1: 'This is how you want to feel: “{{feel}}”.',
+        v2: 'What you want to feel: “{{feel}}”.',
+        v3: 'Think of how you want to feel: “{{feel}}”.',
+      },
+      private: {
+        v1: 'Think back to why you started.',
+        v2: 'You know why you started.',
+        v3: 'Your reason to start is still there.',
+      },
+      none: {
+        v1: 'You chose to take care of yourself.',
+        v2: 'You chose to start, and that counts.',
+        v3: 'This project is for you.',
+      },
+      care: {
+        v1: 'Taking care of yourself comes before the pace.',
+        v2: 'Your goal is built over time.',
+        v3: 'Your health matters more than speed.',
+      },
+    },
+    title: {
+      session_planned: { v1: 'Workout at {{time}}', v2: 'Your {{time}} workout', v3: '{{time}}: workout' },
+      session_planned_tired: { v1: 'A lighter workout is fine', v2: 'Listen to your energy' },
+      meal_planned: { v1: 'Your meal today', v2: 'Meal break' },
+      weigh_in: { v1: 'Weekly weigh-in' },
+      shopping: { v1: 'Groceries' },
+      weekly_progress: { v1: 'Your week', v2: 'Moving forward' },
+      weekly_checkin: { v1: 'Your weekly check-in', v2: 'One minute for your week' },
+      success_session: { v1: 'Nice work yesterday', v2: 'One more workout' },
+      success_streak: { v1: '{{weeks}} weeks in a row' },
+      absence_gentle: { v1: 'A small step?', v2: 'Pick it up whenever you like' },
+      absence_comeback: { v1: 'Your plan is waiting', v2: 'An easy restart' },
+      absence_last: { v1: 'We are here when you are ready' },
+      fatigue_recovery: { v1: 'Recovery counts too', v2: 'A gentler day' },
+      daily_why: { v1: 'Small reminder', v2: 'For you, today' },
+      safety_low_intake: { v1: 'Let’s slow down a little', v2: 'Look after your energy' },
+      safety_fast_loss: { v1: 'Your pace is fast', v2: 'Let’s slow down a little' },
+      safety_training_load: { v1: 'Time to recover', v2: 'Easing off' },
+    },
+    action: {
+      session_planned: {
+        v1: 'Your {{time}} workout is ready: get your things together now.',
+        v2: 'Keep 5 minutes before {{time}} for an easy warm-up.',
+        v3: 'Put your workout clothes within reach for {{time}}.',
+        v4: 'Workout at {{time}}: pack your bag now.',
+        short1: 'A short slot at {{time}}: 15 minutes is enough.',
+        short2: 'At {{time}}, a short version of your workout: start with the warm-up.',
+      },
+      session_planned_tired: {
+        v1: 'You seem tired: pick the lighter version of your {{time}} workout, or 10 minutes of mobility.',
+        v2: 'At {{time}}, short or light version: your choice.',
+      },
+      meal_planned: {
+        v1: 'On the menu: {{meal}}. Get the ingredients out now.',
+        v2: '{{meal}} is planned: take a look at the recipe.',
+        generic: 'Your meal plan is ready: see what is planned.',
+      },
+      weigh_in: {
+        v1: 'Weigh yourself this morning, before breakfast.',
+        v2: 'A quick weigh-in when you wake up, and it is logged.',
+      },
+      shopping: {
+        v1: 'Your list is ready: open it before you go.',
+        v2: 'Take a look at your grocery list, it accounts for what you already have.',
+      },
+      weekly_progress: {
+        v1: 'Take a minute to look at your weekly review.',
+        v2: 'Open your review: {{sessions}} workout(s) this week.',
+      },
+      weekly_checkin: {
+        v1: 'Take a minute to note how your week felt.',
+        v2: 'See what worked this week, in one minute.',
+      },
+      success_session: {
+        v1: 'Today, drink a big glass of water and stretch for 5 minutes.',
+        v2: 'Note how you feel after yesterday’s workout.',
+        v3: 'Take a moment to look at what you lifted yesterday.',
+      },
+      success_streak: {
+        v1: 'Look at your progress in the Progress tab.',
+        v2: 'Choose the day of your first workout this week.',
+      },
+      absence_gentle: {
+        v1: 'A 10-minute walk today is already a restart.',
+        v2: 'Open the app and pick the smallest action of the day.',
+      },
+      absence_comeback: {
+        v1: 'A short 15-minute workout is enough to restart.',
+        v2: 'Pick one thing for today: a walk, a short workout or a planned meal.',
+      },
+      absence_last: {
+        v1: 'When you are ready, a 10-minute walk is enough to restart.',
+      },
+      fatigue_recovery: {
+        v1: 'Tonight, go to bed 30 minutes earlier if you can.',
+        v2: 'Do 10 minutes of gentle mobility today.',
+      },
+      daily_why: {
+        v1: 'Pick one action for today: a workout, a planned meal or a walk.',
+        v2: 'Drink a big glass of water now.',
+        v3: 'Look at today’s plan, it takes a minute.',
+        v4: 'One action today: pick it now.',
+      },
+      safety_low_intake: {
+        v1: 'These last days, your logged meals are well below your target: add a meal or a snack today.',
+        v2: 'Today, aim for your full daily target, without trying to eat less.',
+        floor:
+          'These last days, your logged meals are below what your body needs at rest: eat your full daily target today.',
+      },
+      safety_fast_loss: {
+        v1: 'Your weight has been going down faster than the advised pace for two weeks: this week, eat your full target every day.',
+        v2: 'Add a snack to your day and keep your workouts as planned, without doing more.',
+      },
+      safety_training_load: {
+        v1: 'You are training more than planned and feel tired: replace your next workout with rest or mobility.',
+        v2: 'This week, go back to the planned number of workouts and keep one full rest day.',
+      },
+    },
+    meaning: {
+      session_planned: {
+        v1: 'Every workout you do makes the next one easier.',
+        v2: 'A workout, even a short one, keeps the habit alive.',
+        lose: 'Regular workouts help you keep your strength while your weight goes down.',
+        gain: 'Regular training is what makes your loads go up.',
+        recomp: 'Your workouts count even when the scale barely moves: look at your waist and loads too.',
+        health: 'Every workout builds your fitness, step by step.',
+        performance: 'Consistency builds performance.',
+      },
+      session_planned_tired: {
+        v1: 'Adapting to your energy is what lets you keep going for months.',
+        v2: 'A light workout beats a forced one.',
+      },
+      meal_planned: {
+        v1: 'Eating at regular times supports your energy all day.',
+        lose: 'A planned meal is one less decision when hunger shows up.',
+        gain: 'The protein in this meal supports your recovery after training.',
+      },
+      weigh_in: {
+        v1: 'The trend over several weeks matters, not a single number.',
+        v2: 'Regular weigh-ins make your progress visible.',
+      },
+      shopping: {
+        v1: 'Having the right food at home makes the week simpler.',
+        v2: 'A ready list means fewer impulse buys and a budget kept.',
+      },
+      weekly_progress: {
+        v1: 'Your trend is heading toward your goal: your consistency is paying off.',
+        v2: 'Seeing how far you have come helps you keep going.',
+      },
+      weekly_checkin: {
+        v1: 'Your check-in helps fit next week to your real life.',
+        v2: 'Spotting what works helps you do it again.',
+      },
+      success_session: {
+        v1: 'Every workout you do shows you can do it.',
+        v2: 'You are building a habit, one workout at a time.',
+      },
+      success_streak: {
+        v1: '{{weeks}} weeks with at least one workout: that is how a habit settles in.',
+        v2: 'Consistency matters more than perfection.',
+      },
+      absence_gentle: {
+        v1: 'It is not the perfect day that counts, it is coming back.',
+        v2: 'Small steps keep you on course.',
+      },
+      absence_comeback: {
+        v1: 'Restarting gently is the surest way to keep going.',
+        v2: 'Your progress does not start from zero.',
+      },
+      absence_last: {
+        v1: 'Your journey is waiting, no pressure. No other reminder like this until you are back.',
+      },
+      fatigue_recovery: {
+        v1: 'Rest is part of the program: it is when your body progresses.',
+        v2: 'Listening to your tiredness today helps you keep going for months.',
+      },
+      daily_why: {
+        v1: 'Every small step brings you closer to what you want.',
+        v2: 'Small repeated actions are what change things.',
+        lose: 'Every day you follow moves the trend forward.',
+        gain: 'Every meal and every workout feeds your progress.',
+      },
+      safety_low_intake: {
+        v1: 'Eating too little several days in a row is tiring and makes the goal harder to keep. If it goes on, talk to a health professional (doctor, dietitian).',
+        v2: 'Your body needs energy to progress. If eating enough is hard right now, a health professional can help.',
+      },
+      safety_fast_loss: {
+        v1: 'Losing more slowly helps you keep your strength and keep going. If you feel tired or this pace worries you, talk to a health professional.',
+        v2: 'A gentler pace is easier to keep for months. A health professional can help you find the right one.',
+      },
+      safety_training_load: {
+        v1: 'Progress also happens during recovery. If the tiredness goes on, talk to a health professional.',
+        v2: 'Resting today protects your next workouts. If the tiredness goes on, a health professional can help.',
+      },
     },
   },
   calendar: {
@@ -622,8 +834,10 @@ const en: LocaleShape = {
     availability: {
       available: 'Available',
       not_supported: 'Health data is not available on this platform.',
-      not_installed: 'Health Connect is not available on this device. Install it from the Play Store to link your data, or keep using manual entry.',
-      update_required: 'Health Connect needs an update before it can be linked. Update it from the Play Store, then try again.',
+      not_installed:
+        'Health Connect is not available on this device. Install it from the Play Store to link your data, or keep using manual entry.',
+      update_required:
+        'Health Connect needs an update before it can be linked. Update it from the Play Store, then try again.',
       unavailable: 'Apple Health is not available on this device. Manual entry stays available.',
     },
     denied:
@@ -642,7 +856,8 @@ const en: LocaleShape = {
     why: {
       weight: 'To follow your weight trend without retyping your smart scale weigh-ins.',
       steps: 'To show your daily activity and its trend, as an indication.',
-      workouts: 'To account for activities done outside Project You, without counting a session you already logged twice.',
+      workouts:
+        'To account for activities done outside Project You, without counting a session you already logged twice.',
       activeCalories: 'To show the active energy estimated by your device. It never changes your nutrition targets.',
     },
     permission: {
@@ -670,8 +885,10 @@ const en: LocaleShape = {
     notUsed:
       'It is not sent to your account, to the AI assistant or to analytics. Nothing is written to your health app. No heart rate, sleep or medical records.',
     disconnectHint: {
-      apple: 'Disconnecting stops all reading and deletes imported data from the app. Apple does not let an app remove the permission itself: you can do it in Settings › Health.',
-      google: 'Disconnecting stops all reading, deletes imported data from the app and removes the Health Connect permissions.',
+      apple:
+        'Disconnecting stops all reading and deletes imported data from the app. Apple does not let an app remove the permission itself: you can do it in Settings › Health.',
+      google:
+        'Disconnecting stops all reading, deletes imported data from the app and removes the Health Connect permissions.',
     },
     disconnect: 'Disconnect',
     disconnectConfirm: 'Disconnect {{store}} and delete imported data from the app? Your manual entries are kept.',
@@ -866,14 +1083,6 @@ const en: LocaleShape = {
         add_reps: 'Aim for one more rep.',
       },
     },
-  },
-  motivation: {
-    why_reminder: 'You started because you wanted “{{why}}”. Every small step counts.',
-    why_small_step: 'Remember: “{{why}}”. Today, a small step is enough.',
-    why_today: '“{{why}}”: that is why you are here. We move at your pace.',
-    generic_consistency: 'Consistency beats intensity. A short session is still a session.',
-    generic_small_wins: 'Every meal, every session, every night of sleep counts.',
-    generic_rest_counts: 'Rest is part of the program. You also progress while recovering.',
   },
   comeback: {
     simple_restart: 'Good to see you! Let’s simply pick up where you left off.',

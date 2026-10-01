@@ -35,6 +35,8 @@ export const EXPORT_ONLY_TABLES = [
   'daily_checkins',
   'weekly_reviews',
   'notification_preferences',
+  'notification_settings',
+  'notification_history',
   'integration_connections',
   'coach_memory',
   'progress_photos',

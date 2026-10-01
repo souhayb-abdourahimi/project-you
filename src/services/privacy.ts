@@ -8,6 +8,8 @@ import { fetchAllPages } from './paging';
 const EXPORT_ORDER: Record<string, string> = {
   ...Object.fromEntries(SYNC_TABLE_ORDER.map((t) => [t, SYNC_TABLES[t].key])),
   notification_preferences: 'category',
+  notification_settings: 'user_id',
+  notification_history: 'local_date',
 };
 
 /** Reads everything the account holds (RLS limits it to the signed-in user). */

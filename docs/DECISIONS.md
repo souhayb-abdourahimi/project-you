@@ -265,3 +265,23 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
 - **Alternatives** : rendre l'étape Allergies obligatoire. Refusé : beaucoup d'utilisateurs n'ont aucune allergie, et cela ne protégeait pas d'un brouillon périmé.
 - **Trade-offs** : les intolérances et exclusions retirées sont visibles dans le résumé mais ne demandent pas de confirmation ; seule l'allergie la demande, comme demandé.
 - **Date** : 2026-10-01
+
+## D-024 — Transformation Journey Engine : un seul moteur, la sécurité d'abord ; notifications = canal de sortie
+
+- **Contexte** : demande du 2026-10-01 (thread « Transformation Journey ») : concevoir le Transformation Journey Engine, puis construire un Motivation & Notification Engine personnalisé (why / change / feel), sans IA générative, jamais culpabilisant. Puis trois contraintes ajoutées avant le code : un seul moteur de motivation, aucune estimation inventée, détection de l'excès par une règle de sécurité déterministe (CLAUDE.md règles 6 à 8).
+- **Décision** :
+  - `src/domain/journey/state.ts` : `deriveJourneyState` calcule le seul état de l'utilisateur (objectif, mots de motivation, progression, momentum, difficultés, sécurité), à partir de données saisies uniquement ; non stocké, recalculé. Côté app, un seul hook `useJourneyState()` le fournit à l'écran Aujourd'hui et aux notifications.
+  - `src/domain/journey/safety.ts` : règle de sécurité (3 journées notées en entier sous 70 % de la cible ou sous le plancher ; perte > 1 %/semaine deux semaines de suite ; plus de séances que prévu + fatigue déclarée 2 jours sur 7). Prioritaire sur toute règle de motivation.
+  - `src/domain/journey/voice/` : catalogue de variantes (titre, ancre, action, sens) dans les fichiers de traduction, composeur déterministe avec rotation LRU, garde de ton testée sur chaque texte FR/EN (reproche, pression, vocabulaire clinique, estimations non mesurées). Remplace `motivation/messages.ts` : l'écran Aujourd'hui utilise la même voix.
+  - `src/domain/notifications/` devient le canal de sortie : règles (sécurité → anti-abandon → motivation), un message « motivation » par jour, cooldowns, épisodes d'absence (J+2, J+5, J+10 puis silence, planifiés à l'avance et annulés au retour), plafond baissé après 5 messages ignorés, pause de 7 jours, historique local de 90 jours (ids de modèles, jamais le texte).
+  - Tables `notification_settings` et `notification_history` (RLS, aucun texte libre possible dans `template_id`), pas encore synchronisées.
+- **Alternatives** :
+  - un moteur de notifications autonome avec ses propres signaux : refusé (deux vérités sur l'état de l'utilisateur) ;
+  - générer chaque message avec un LLM : refusé (non déterministe, ton non garanti, données personnelles envoyées) ;
+  - estimer l'apport réel à partir des repas non notés : refusé (règle 7) ; une journée partiellement notée ne compte pas.
+- **Trade-offs** :
+  - la détection `low_intake` ne voit que la semaine en cours (le plan repas local), donc pas avant le mercredi ; un utilisateur qui mange hors plan et marque ses repas « sautés » peut recevoir le message à tort (il dit « tes repas notés ») ;
+  - « délivré » signifie « l'heure est passée sans replanification » : le système peut avoir masqué la notification ;
+  - les seuils de sécurité sont des paramètres de conception, à faire relire par un professionnel de santé avant la bêta publique ;
+  - l'écran Santé (PR #1) affiche encore l'« énergie active » estimée par l'appareil, contraire à la règle 7 : signalé, non modifié ici.
+- **Date** : 2026-10-01
