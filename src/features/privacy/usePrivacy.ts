@@ -12,7 +12,9 @@ import { resetDeviceData } from '@/hooks/deviceData';
 import { signOut, useSession } from '@/services/auth';
 import { deleteAccount, deleteRemoteCategory, fetchAccountData } from '@/services/privacy';
 import { supabase } from '@/services/supabase';
+import { useCalendarStore } from '@/state/calendar';
 import { useDataStore } from '@/state/data';
+import { useNotificationStore } from '@/state/notifications';
 import { useProfileStore } from '@/state/profile';
 
 import appJson from '../../../app.json';
@@ -41,6 +43,12 @@ async function share(json: string, fileName: string) {
 }
 
 /** Privacy Center actions; the screen only renders their state. */
+function deviceSettings() {
+  const { connected, readBusy, writeSessions, busy, written } = useCalendarStore.getState();
+  const { prefs } = useNotificationStore.getState();
+  return { notifications: prefs, calendar: { connected, readBusy, writeSessions, busy, writtenEvents: written } };
+}
+
 export function usePrivacy() {
   const { session } = useSession();
   const userId = session?.user.id ?? null;
@@ -73,6 +81,7 @@ export function usePrivacy() {
       const generatedAt = new Date().toISOString();
       const data = buildExport({
         device: localState(),
+        deviceSettings: deviceSettings(),
         account: remote?.account ?? null,
         unavailable: remote?.unavailable ?? [],
         generatedAt,

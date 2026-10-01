@@ -30,9 +30,11 @@ export const providers = {
   sports: { activities: notConfigured } satisfies SportsProvider,
   calendar: {
     requestAccess: notConfigured,
-    events: notConfigured,
+    busyEvents: notConfigured,
     createAppEvent: notConfigured,
+    updateAppEvent: notConfigured,
     deleteAppEvent: notConfigured,
+    disconnect: notConfigured,
   } satisfies CalendarProvider,
   health: { requestAccess: notConfigured, read: notConfigured, disconnect: async () => {} } satisfies HealthProvider,
 };

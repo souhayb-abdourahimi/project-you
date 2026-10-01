@@ -44,13 +44,19 @@ export interface Promotion {
   endsOn: string;
 }
 
-export interface CalendarEvent {
-  id: string;
-  title: string;
+/** A personal calendar event, reduced to its time range: titles and details are never read. */
+export interface CalendarBusyEvent {
   start: string;
   end: string;
-  /** Events created by Project You carry this marker so they can be synced or deleted cleanly. */
-  createdByApp: boolean;
+  allDay: boolean;
+}
+
+/** An event Project You writes in its own calendar. */
+export interface AppCalendarEventInput {
+  title: string;
+  start: Date;
+  end: Date;
+  notes?: string;
 }
 
 export interface HealthSample {
@@ -83,12 +89,22 @@ export interface GymProvider {
 export interface SportsProvider {
   activities(near: GeoPoint, radiusMeters: number): Promise<ProviderResult<Place[]>>;
 }
+/**
+ * Project You writes only in a dedicated "Project You" calendar it creates. Personal calendars are
+ * read for busy times only; their events are never created, modified or deleted.
+ */
 export interface CalendarProvider {
   requestAccess(): Promise<ProviderResult<true>>;
-  events(from: string, to: string): Promise<ProviderResult<CalendarEvent[]>>;
-  /** Only ever creates events marked `createdByApp`; never edits personal events. */
-  createAppEvent(event: Omit<CalendarEvent, 'id' | 'createdByApp'>): Promise<ProviderResult<CalendarEvent>>;
+  /** Busy times from the user's calendars (the app calendar excluded). */
+  busyEvents(from: Date, to: Date): Promise<ProviderResult<CalendarBusyEvent[]>>;
+  /** Returns the new event id. */
+  createAppEvent(event: AppCalendarEventInput): Promise<ProviderResult<string>>;
+  /** Refused (`permission_denied`) for an event outside the app calendar. */
+  updateAppEvent(id: string, event: AppCalendarEventInput): Promise<ProviderResult<true>>;
+  /** Refused (`permission_denied`) for an event outside the app calendar. */
   deleteAppEvent(id: string): Promise<ProviderResult<true>>;
+  /** Deletes the app calendar and therefore every event the app wrote. */
+  disconnect(): Promise<ProviderResult<true>>;
 }
 export interface HealthProvider {
   requestAccess(types: HealthSample['type'][]): Promise<ProviderResult<true>>;

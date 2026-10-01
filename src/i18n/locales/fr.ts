@@ -512,6 +512,35 @@ const fr = {
       motivation: { title: 'Petit rappel' },
     },
   },
+  calendar: {
+    title: 'Calendrier',
+    open: 'Calendrier',
+    intro:
+      'Relie ton calendrier pour placer les séances là où tu es vraiment libre, et retrouver tes séances dans ton agenda.',
+    why: 'L’app lit seulement les heures occupées (jamais les titres ni les détails) et écrit uniquement dans un calendrier « Project You » qu’elle crée. Tes événements personnels ne sont jamais modifiés ni supprimés.',
+    connect: 'Connecter mon calendrier',
+    webUnsupported:
+      'Le calendrier de l’appareil n’est pas disponible sur le web. Tes créneaux saisis à la main restent utilisés.',
+    denied:
+      'Accès au calendrier refusé. Tu peux l’autoriser dans les réglages de ton appareil ; l’app reste utilisable sans.',
+    error: 'Le calendrier n’a pas pu être lu. Tes créneaux saisis à la main restent utilisés.',
+    readBusy: 'Tenir compte de mes événements',
+    readBusyHint:
+      'Les séances évitent les heures occupées de cette semaine (les événements « toute la journée » sont ignorés).',
+    lastRead: 'Lu {{date}} : {{count}} créneau(x) occupé(s).',
+    writeSessions: 'Ajouter mes séances à mon agenda',
+    writeSessionsHint: 'Dans un calendrier séparé « Project You », mis à jour quand ton programme change.',
+    disconnect: 'Déconnecter le calendrier',
+    disconnectHint:
+      'Supprime le calendrier « Project You » et ses événements, et oublie les heures occupées lues. Tes autres calendriers ne sont pas touchés.',
+    disconnectConfirm: 'Le calendrier « Project You » et ses événements seront supprimés. Continuer ?',
+    events: {
+      workout: 'Séance Project You',
+      workout_short: 'Séance courte Project You',
+      meal_prep: 'Préparation des repas',
+      shopping: 'Courses',
+    },
+  },
   privacy: {
     title: 'Centre de confidentialité',
     intro:
@@ -538,6 +567,8 @@ const fr = {
     calendar: 'Calendrier',
     health: 'Données santé',
     notConnected: 'Non connecté',
+    connected: 'Connecté',
+    manageCalendar: 'Gérer ou déconnecter le calendrier',
     permissions: 'Autorisations',
     permissionsHint:
       'L’app ne demande une autorisation qu’au moment où une fonction en a besoin. Tu peux les retirer à tout moment dans les réglages de ton appareil.',

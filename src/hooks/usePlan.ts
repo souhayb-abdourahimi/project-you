@@ -6,6 +6,7 @@ import { assessGoalFeasibility, computeNutritionTargets } from '@/domain/nutriti
 import { planWeek as planSchedule, type PlannedDay, type WeeklyPlan } from '@/domain/planning/engine';
 import { startOfWeek, toIsoDate } from '@/domain/shared/dates';
 import { generateWorkoutPlan } from '@/domain/training/engine';
+import { useCalendarStore } from '@/state/calendar';
 import { useDataStore } from '@/state/data';
 import { useProfileStore } from '@/state/profile';
 
@@ -33,6 +34,7 @@ export function usePlan() {
   const mealPlan = useDataStore((s) => s.mealPlan);
   const setMealPlan = useDataStore((s) => s.setMealPlan);
   const rescheduled = useDataStore((s) => s.rescheduled);
+  const calendarBusy = useCalendarStore((s) => (s.connected && s.readBusy ? s.busy : null));
 
   const today = toIsoDate(new Date());
   const weekStart = startOfWeek(today);
@@ -43,9 +45,15 @@ export function usePlan() {
     const targets = computeNutritionTargets(snapshot, year);
     const feasibility = assessGoalFeasibility(snapshot, today);
     const workoutPlan = generateWorkoutPlan({ goal: snapshot.goal.type, training: snapshot.training });
-    const schedule = planSchedule({ weekStart, schedule: snapshot.schedule, training: snapshot.training });
+    // Busy times from the user's calendar count as fixed constraints for this week only.
+    const busy = calendarBusy?.weekStart === weekStart ? calendarBusy.slots : [];
+    const schedule = planSchedule({
+      weekStart,
+      schedule: { ...snapshot.schedule, fixedConstraints: [...snapshot.schedule.fixedConstraints, ...busy] },
+      training: snapshot.training,
+    });
     return { targets, feasibility, workoutPlan, schedule };
-  }, [snapshot, year, today, weekStart]);
+  }, [snapshot, year, today, weekStart, calendarBusy]);
 
   const planKey = useMemo(
     () =>

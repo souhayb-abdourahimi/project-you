@@ -101,6 +101,8 @@ export interface DataExport {
   notice: string;
   /** What this device holds (may include changes not synced yet). */
   device: SyncableState;
+  /** Settings kept only on this device (reminders, calendar link and the busy times it read). */
+  deviceSettings: Record<string, unknown>;
   /** What the account holds on the server, per table; null in local mode or offline. */
   account: Record<string, unknown[]> | null;
   /** Tables that could not be read (the export says so instead of pretending they are empty). */
@@ -109,6 +111,7 @@ export interface DataExport {
 
 export function buildExport(input: {
   device: SyncableState;
+  deviceSettings?: Record<string, unknown>;
   account: Record<string, unknown[]> | null;
   unavailable: string[];
   generatedAt: string;
@@ -122,6 +125,7 @@ export function buildExport(input: {
     notice:
       'Export complet de tes données Project You. Les valeurs nutritionnelles des aliments de démonstration sont MOCK.',
     device: input.device,
+    deviceSettings: input.deviceSettings ?? {},
     account: input.account,
     unavailable: input.unavailable,
   };

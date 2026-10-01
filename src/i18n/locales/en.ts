@@ -502,6 +502,31 @@ const en: LocaleShape = {
       motivation: { title: 'A small reminder' },
     },
   },
+  calendar: {
+    title: 'Calendar',
+    open: 'Calendar',
+    intro: 'Link your calendar to place sessions when you are really free, and see your sessions in your agenda.',
+    why: 'The app only reads busy times (never titles or details) and only writes to a “Project You” calendar it creates. Your personal events are never changed or deleted.',
+    connect: 'Connect my calendar',
+    webUnsupported: 'The device calendar is not available on the web. The time slots you entered are still used.',
+    denied: 'Calendar access was refused. You can allow it in your device settings; the app works without it.',
+    error: 'The calendar could not be read. The time slots you entered are still used.',
+    readBusy: 'Take my events into account',
+    readBusyHint: 'Sessions avoid this week’s busy times (all-day events are ignored).',
+    lastRead: 'Read {{date}}: {{count}} busy slot(s).',
+    writeSessions: 'Add my sessions to my agenda',
+    writeSessionsHint: 'In a separate “Project You” calendar, updated when your programme changes.',
+    disconnect: 'Disconnect the calendar',
+    disconnectHint:
+      'Deletes the “Project You” calendar and its events, and forgets the busy times read. Your other calendars are not touched.',
+    disconnectConfirm: 'The “Project You” calendar and its events will be deleted. Continue?',
+    events: {
+      workout: 'Project You session',
+      workout_short: 'Project You short session',
+      meal_prep: 'Meal prep',
+      shopping: 'Groceries',
+    },
+  },
   privacy: {
     title: 'Privacy Center',
     intro:
@@ -528,6 +553,8 @@ const en: LocaleShape = {
     calendar: 'Calendar',
     health: 'Health data',
     notConnected: 'Not connected',
+    connected: 'Connected',
+    manageCalendar: 'Manage or disconnect the calendar',
     permissions: 'Permissions',
     permissionsHint:
       'The app only asks for a permission when a feature needs it. You can revoke them at any time in your device settings.',

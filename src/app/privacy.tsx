@@ -5,6 +5,7 @@ import { Linking, Platform } from 'react-native';
 import { Banner, Button, Card, ConfirmButton, Row, Screen, Text } from '@/components/ui';
 import { DELETABLE_CATEGORIES, type PrivacyCategory } from '@/domain/privacy/data';
 import { usePrivacy } from '@/features/privacy/usePrivacy';
+import { useCalendarStore } from '@/state/calendar';
 
 const ALL: PrivacyCategory[] = ['profile', ...DELETABLE_CATEGORIES];
 
@@ -12,6 +13,7 @@ export default function PrivacyScreen() {
   const { t } = useTranslation();
   const { counts, status, signedIn, exportData, deleteCategory, deleteEverything } = usePrivacy();
   const busy = status.kind === 'busy' ? status.action : null;
+  const calendarConnected = useCalendarStore((s) => s.connected);
 
   return (
     <Screen>
@@ -55,8 +57,9 @@ export default function PrivacyScreen() {
         <Text variant="heading">{t('privacy.connections')}</Text>
         <Row>
           <Text style={{ flex: 1 }}>{t('privacy.calendar')}</Text>
-          <Text color="textMuted">{t('privacy.notConnected')}</Text>
+          <Text color="textMuted">{t(calendarConnected ? 'privacy.connected' : 'privacy.notConnected')}</Text>
         </Row>
+        <Button variant="secondary" label={t('privacy.manageCalendar')} onPress={() => router.push('/calendar')} />
         <Row>
           <Text style={{ flex: 1 }}>{t('privacy.health')}</Text>
           <Text color="textMuted">{t('privacy.notConnected')}</Text>

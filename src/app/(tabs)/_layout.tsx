@@ -2,6 +2,7 @@ import { Redirect } from 'expo-router';
 
 import AppTabs from '@/components/navigation/AppTabs';
 import { LoadingScreen } from '@/components/ui';
+import { CalendarSync } from '@/features/calendar/CalendarSync';
 import { NotificationScheduler } from '@/features/notifications/NotificationScheduler';
 import { useSession } from '@/services/auth';
 import { isSupabaseConfigured } from '@/services/supabase';
@@ -22,6 +23,7 @@ export default function TabsLayout() {
   return (
     <>
       <NotificationScheduler />
+      <CalendarSync />
       <AppTabs />
     </>
   );

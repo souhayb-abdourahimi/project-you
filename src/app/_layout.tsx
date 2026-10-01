@@ -46,6 +46,7 @@ export default function RootLayout() {
         <Stack.Screen name="review" options={{ headerShown: true, title: t('review.title') }} />
         <Stack.Screen name="privacy" options={{ headerShown: true, title: t('privacy.title') }} />
         <Stack.Screen name="notifications" options={{ headerShown: true, title: t('notifications.title') }} />
+        <Stack.Screen name="calendar" options={{ headerShown: true, title: t('calendar.title') }} />
         <Stack.Screen
           name="adapt"
           options={{ presentation: 'modal', headerShown: true, title: t('antiAbandon.title') }}

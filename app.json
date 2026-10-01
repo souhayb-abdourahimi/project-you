@@ -38,7 +38,24 @@
           }
         }
       ],
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Project You lit les heures occupées de ton agenda pour placer tes séances aux moments où tu es libre, et ajoute tes séances dans un calendrier « Project You » séparé.",
+          "remindersPermission": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Project You utilise ta position, seulement quand tu le demandes, pour trouver les salles et magasins proches. Elle n'est ni enregistrée ni envoyée à ton compte.",
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false,
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
