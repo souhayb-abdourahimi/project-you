@@ -7,7 +7,7 @@ Légende : **DONE** (fonctionne et testé) · **PARTIAL** · **BROKEN** · **MIS
 ## Synthèse
 
 - Base saine : architecture en couches respectée (`app → features → components/state/services/providers → domain`), moteurs purs testés, RLS sur toutes les tables, CI verte.
-- Rien n'est **PROD READY** : catalogue d'aliments MOCK, connexion Supabase réelle jamais exécutée (le réseau de l'environnement cloud bloque `*.supabase.co`).
+- Rien n'est **PROD READY** : tests automatiques contre le Supabase réel à relancer, santé et calendrier jamais testés sur appareil. Les valeurs nutritionnelles viennent de Ciqual 2025 depuis le 2026-10-01 (D-020).
 - Défauts réels trouvés et corrigés : plan repas sous la cible protéique (vegan et perte de gras), synchronisation qui n'envoyait que 4 types de données et ne tirait rien, clés étrangères qui auraient fait échouer toute synchronisation, plan repas non régénéré après un changement de régime ou d'allergie, date d'objectif affichée au jour près.
 
 ## Détail
@@ -37,7 +37,7 @@ Légende : **DONE** (fonctionne et testé) · **PARTIAL** · **BROKEN** · **MIS
 | Nutrition | Plan repas : contraintes dures | DONE | DONE | |
 | Nutrition | Plan repas : cible protéique | BROKEN | DONE | D-013, 30 tests de régression |
 | Nutrition | Régénération après changement de profil | BROKEN | DONE | `mealPlanKey` |
-| Nutrition | Catalogue aliments / recettes | MOCK | MOCK | badge MOCK ; CIQUAL requis avant bêta (P2-01) |
+| Nutrition | Catalogue aliments / recettes | MOCK | DONE | valeurs Ciqual 2025 (ANSES), source affichée, aucun badge MOCK ; voir revue import Ciqual |
 | Nutrition | Budget | PARTIAL | PARTIAL | suivi prévu/dépensé OK ; aucun prix réel, donc pas d'influence sur les recettes |
 | Courses | Liste = plan − inventaire, sans prix inventé | DONE | DONE | |
 | Entraînement | WorkoutEngine, remplacement, progression prudente, séance guidée | DONE | DONE | historique synchronisé désormais |
@@ -118,3 +118,25 @@ Limites connues :
 - Rien n'a été testé sur un iPhone ou un Android réels (`docs/MOBILE_HEALTH_TEST_PLAN.md`).
 - Le stockage local (AsyncStorage) n'est pas chiffré. C'est la même chose que pour les pesées manuelles, et il est protégé par le bac à sable de l'app. À reconsidérer si des données plus sensibles arrivent.
 - La révocation Health Connect ne prend effet qu'au redémarrage de l'app (limite de la plateforme, expliquée à l'écran).
+
+## Revue critique — import Ciqual 2025 (2026-10-01)
+
+**Vérifié**
+
+- Aucune valeur nutritionnelle saisie à la main : le catalogue se construit depuis `foods.generated.json`, lui-même identique à ce que le script extrait du fichier source (contrôlé en CI). Un test recalcule chaque recette directement depuis l'extrait.
+- Fichier source non modifié : empreinte SHA-256 vérifiée par le script et par un test.
+- Unités : uniquement des composants « pour 100 g » ; énergie en kcal (colonne du règlement UE 1169/2011). L'énergie recalculée depuis les macronutriments s'écarte d'au plus 5 % de la valeur Ciqual (soja texturé, amandes, beurre de cacahuète). Hypothèse non vérifiée : un facteur de conversion des protéines différent dans la colonne énergie.
+- Valeurs manquantes : aucune sur ce qui sert aux calculs ; un aliment incomplet serait exclu, jamais complété.
+- Contraintes dures retestées avec les valeurs réelles : vegan, végétarien, allergies multiples, intolérance au lactose, cuisine micro-ondes seulement, petit budget (aucun prix inventé), cible de protéines ≥ 90 % pour 7 profils, inventaire limité. E2E 32/32.
+
+**Points d'attention**
+
+| Gravité | Constat | Suite |
+|---|---|---|
+| Moyenne | Cibles de protéines élevées en vegan : marge faible (127,6 g pour 126,9 g requis au pire jour du test « inventaire limité »). Les tests n'ont pas été assouplis ; des portions éditoriales ont été augmentées (D-020). | TODO : recettes véganes plus riches en protéines |
+| Moyenne | Allergènes et régime restent éditoriaux (Ciqual ne les décrit pas) et ne couvrent pas les traces propres à une marque (ex. sauce tomate préemballée). | à rappeler dans l'UI des allergies avant la bêta |
+| Basse | Recettes renommées (`skyr_snack` → `quark_snack`, `edamame_snack` → `chickpea_snack`) : un repas déjà coché cette semaine avec l'ancien identifiant n'a plus de fiche et disparaît de la liste, tout en restant compté dans les calories consommées. Concerne seulement la semaine en cours des installations existantes. | accepté (aucune version publiée) |
+| Basse | Un élément d'inventaire enregistré avec un aliment retiré (skyr, edamame…) reste affiché sous son nom, mais ne sert plus au plan. | accepté, documenté (D-020) |
+| Basse | Les repas passés gardent les valeurs calculées à l'époque (MOCK) dans l'historique. | accepté : l'historique n'est pas réécrit |
+| Basse | Le millilitre est compté comme un gramme (boisson au soja) : approximation existante, environ 3 %. | inchangé |
+| Info | L'empreinte du fichier n'a pas pu être comparée à un téléchargement direct sur ciqual.anses.fr (réseau bloqué). | à vérifier une fois depuis un poste avec accès |

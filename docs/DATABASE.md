@@ -42,7 +42,7 @@ Supabase / PostgreSQL. Migrations versionnées dans `supabase/migrations/` (horo
 
 ## Migration `20261001000001_sync_hardening.sql`
 
-- Plus de clé étrangère des tables utilisateur vers les catalogues (`foods`, `recipes`, `exercises`) : ces catalogues sont livrés avec l'app et non peuplés côté serveur (MOCK aujourd'hui, CIQUAL demain, identifiants appelés à changer). Les FK faisaient échouer toute synchronisation d'inventaire, de repas et de séries. Remplacées par un `check` de format d'identifiant (D-014).
+- Plus de clé étrangère des tables utilisateur vers les catalogues (`foods`, `recipes`, `exercises`) : ces catalogues sont livrés avec l'app et non peuplés côté serveur (valeurs Ciqual 2025 depuis D-020 ; les identifiants d'aliments de l'app sont restés stables, le code Ciqual est porté à part). Les FK faisaient échouer toute synchronisation d'inventaire, de repas et de séries. Remplacées par un `check` de format d'identifiant (D-014).
 - Politiques restrictives : une séance ne peut pointer que vers un plan du même utilisateur, une série que vers une séance du même utilisateur (sinon la suppression par B aurait effacé des lignes de A par cascade).
 - `exercise_logs` : unicité `(session_id, exercise_id, set_index)` pour des upserts idempotents.
 - `weekly_reviews.deleted_at` ; privilèges par défaut retirés à `anon` pour les futures tables.

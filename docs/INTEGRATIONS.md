@@ -1,6 +1,6 @@
 # Intégrations
 
-Toutes passent par les interfaces de `src/providers/types.ts`. Câblage : `src/providers/index.ts` (registre importé par les features). Ce qui n'est pas branché reste dans `src/providers/unavailable.ts` (tout renvoie `unavailable`, rien n'est inventé) ; `mock-food.ts` = catalogue MOCK.
+Toutes passent par les interfaces de `src/providers/types.ts`. Câblage : `src/providers/index.ts` (registre importé par les features). Ce qui n'est pas branché reste dans `src/providers/unavailable.ts` (tout renvoie `unavailable`, rien n'est inventé) ; `ciqual-food.ts` = recherche dans le catalogue issu de Ciqual 2025 (D-020).
 
 | Provider | Cible | Phase | Notes |
 |---|---|---|---|

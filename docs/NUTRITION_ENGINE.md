@@ -47,4 +47,4 @@ Actions : « Remplacer », « Je n'ai pas cet ingrédient », « Plus rapide »,
 
 ## Limites connues
 
-Aucun prix réel : le budget ne peut pas encore départager les recettes. Catalogue d'aliments **MOCK** (D-011) → remplacé par CIQUAL avant la bêta. Recalibrage par la tendance de poids réelle à venir.
+Aucun prix réel : le budget ne peut pas encore départager les recettes. Les valeurs des aliments viennent de la table **Ciqual 2025 de l'ANSES** (D-020) et restent des estimations : un produit réel varie selon la marque, la variété et la cuisson. Les cibles de protéines élevées des profils véganes sont atteintes avec peu de marge (D-020). Recalibrage par la tendance de poids réelle à venir.

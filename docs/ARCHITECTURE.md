@@ -43,12 +43,12 @@ src/
   i18n/                i18next, fr (défaut) + en
   state/               zustand + persistance (AsyncStorage / localStorage)
   services/            supabase client, repositories, sync, notifications
-  providers/           FoodProvider, CalendarProvider, … + implémentations MOCK
+  providers/           FoodProvider, CalendarProvider, … + implémentations (réelles ou « indisponible »)
   domain/
     profile/           UserProfile, GoalProfile, …, UserContextSnapshot
     onboarding/        étapes adaptatives
     nutrition/         NutritionEngine (BMR, TDEE, macros, réalisme)
-    meals/             recettes, plan alimentaire, courses, budget
+    meals/             recettes, plan alimentaire, courses, budget ; ciqual/ = extrait Ciqual 2025 validé (D-020)
     training/          bibliothèque, WorkoutEngine, remplacement, progression
     planning/          PlanningEngine (WeeklyPlan), modes 15 min / pas envie
     progress/          moyennes de poids, tendances, check-ins
@@ -59,7 +59,8 @@ supabase/
   migrations/          SQL versionné (tables + RLS)
   tests/               tests SQL RLS (psql)
   seed.sql             données de démonstration (MOCK)
-scripts/               outils dev (db-test.sh)
+scripts/               outils dev (db-test.sh) ; ciqual/import_ciqual.py (import Ciqual, D-020)
+data/ciqual/           fichier officiel Ciqual 2025, non modifié
 ```
 
 ## Données et offline-first

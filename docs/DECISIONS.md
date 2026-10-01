@@ -80,6 +80,8 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
 
 ## D-011 — Catalogue d'aliments MOCK en attendant CIQUAL
 
+> **Remplacée par D-020 le 2026-10-01** (import de la table Ciqual 2025).
+
 - **Reason** : la fondation a besoin de données pour tester les moteurs ; nous ne pouvons pas vérifier ici les valeurs officielles CIQUAL → valeurs de démonstration explicitement `isMock: true`, affichées avec badge MOCK.
 - **Alternatives** : bloquer le plan alimentaire jusqu'à l'import CIQUAL.
 - **Trade-offs** : les apports affichés sont approximatifs tant que P2-01 n'est pas fait ; bloquant pour la bêta.
@@ -173,4 +175,38 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
   puis l'implémenter derrière `PlacesProvider`.
 - **Alternatives** : appeler Nominatim/Overpass publics en production (contraire à leurs conditions) ; Google Places (coût, conditions d'affichage, données à ne pas stocker).
 - **Trade-offs** : un fournisseur commercial peut exiger une clé : elle irait dans une Edge Function, jamais dans le client.
+- **Date** : 2026-10-01
+
+## D-020 — Valeurs nutritionnelles : import de la table Ciqual 2025 (ANSES)
+
+- **Décision** : les nutriments des aliments viennent uniquement du fichier officiel `Table Ciqual 2025_FR_2025_11_03.xlsx`, conservé tel quel dans `data/ciqual/`. Un script (`scripts/ciqual/import_ciqual.py`) vérifie la structure puis extrait les aliments utilisés vers `src/domain/meals/ciqual/foods.generated.json`, avec le texte brut de chaque cellule. Le client valide ce fichier avec Zod au chargement. Provenance et conventions : `docs/DATA_SOURCES.md`.
+- **Identifiants** : les identifiants d'aliments de l'app (`tofu`, `rice`…) restent stables, car l'inventaire et les plans enregistrés les utilisent. Le code Ciqual (`alim_code`) est porté par `food.ciqualCode` et `meta.externalId`. L'association est éditoriale, dans `mapping.json`.
+- **Choix d'association** :
+  - on prend l'état réellement pesé dans les recettes : riz et pâtes crus, lentilles sèches, conserves égouttées, viandes et poissons crus ;
+  - les protéines de soja texturées sont désormais comptées **réhydratées** (`tvp_rehydrated`, code 20591), car c'est la seule forme présente dans la table ;
+  - le « yaourt au soja » correspond au « Dessert au soja, nature, sans sucres ajoutés, non enrichi, fermenté » (19693).
+- **Aliments retirés** (aucun équivalent fidèle dans la table), remplacés dans les recettes :
+  - skyr et yaourt grec → fromage blanc 0 % ;
+  - edamame → pois chiches en conserve (recette « Pois chiches tièdes à l'huile d'olive ») ;
+  - fruits rouges surgelés → framboises crues ;
+  - pâte de curry → curry en poudre ;
+  - protéines de soja texturées sèches → réhydratées.
+- **Conventions** : « traces » et « < x » comptent pour 0 (statuts `traces` / `below_limit` conservés), « - » est une valeur manquante. Un aliment sans énergie ou sans l'un des 3 macronutriments est exclu, jamais complété.
+- **Portions des recettes véganes revues** : avec les valeurs réelles (tofu 13,4 g de protéines/100 g, soja texturé réhydraté 18,6 g, dessert au soja 3,76 g), les plans « véganes en perte de poids » passaient sous 90 % de la cible de protéines (121,6 g pour 126,9 g requis). Les tests n'ont pas été assouplis. Nous avons ajusté des portions éditoriales, toutes calculées avec les valeurs Ciqual :
+  - seitan 150 → 200 g ;
+  - tempeh 150 → 200 g ;
+  - soja texturé réhydraté 200 g et pâtes 70 g ;
+  - bol tofu au micro-ondes : tofu 250 g et pommes de terre 150 g ;
+  - bol au dessert de soja : 250 g, soit deux pots de 125 g.
+
+  `MEAL_PLANNER_VERSION` passe à 3 : les plans enregistrés sont régénérés.
+- **Données MOCK** : il n'existe plus de valeur nutritionnelle de démonstration dans l'app. Les scénarios de profils MOCK (`src/domain/scenarios`) restent réservés aux tests et au mode développement. Le mécanisme `isMock` / badge MOCK est conservé (`hasMockFood`) pour toute future donnée de démonstration.
+- **Alternatives** :
+  - embarquer toute la table (3 484 aliments, environ 1,5 Mo) : inutile tant que les recettes n'utilisent que 36 aliments ;
+  - une table `foods` dans Supabase : ajoutée quand la recherche d'aliments libre arrivera ;
+  - « corriger » les cellules « < x » ou estimer les valeurs manquantes : refusé.
+- **Trade-offs** :
+  - la cible de protéines des profils véganes à cible élevée est atteinte avec une marge faible (environ 1 % au pire dans le test « inventaire limité ») ;
+  - les éléments d'inventaire déjà enregistrés avec un aliment retiré restent affichés sous leur nom, mais ne servent plus au plan ;
+  - l'empreinte du fichier n'a pas pu être comparée au site de l'ANSES depuis l'environnement cloud.
 - **Date** : 2026-10-01

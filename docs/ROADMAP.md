@@ -53,7 +53,7 @@ Statuts : `done` · `in progress` · `todo` · `blocked`. Priorités : P0 (bloqu
 
 | ID | FEATURE | PRIORITY | STATUS | DEPENDENCIES | RISK | TESTS | DEFINITION OF DONE |
 |---|---|---|---|---|---|---|---|
-| P2-01 | Import CIQUAL (remplace le catalogue MOCK) | P0 | todo | M-07 | moyen | unit | plus aucun aliment MOCK en prod |
+| P2-01 | Import CIQUAL (remplace le catalogue MOCK) | P0 | done (Ciqual 2025, 36 aliments, D-020 ; tests de cohérence verts) | M-07 | moyen | unit | plus aucun aliment MOCK en prod |
 | P2-02 | Scan code-barres + Open Food Facts | P1 | todo | P2-01 | moyen | intégration | confirmation avant ajout |
 | P2-03 | HealthKit / Health Connect (lecture) | P1 | done (D-018 ; testé avec modules simulés, à tester sur iPhone/Android réels) | M-20 | élevé | intégration | permissions granulaires, déconnexion |
 | P2-04 | Apple Calendar / Google Calendar | P1 | done (calendrier de l'appareil, D-016 ; à tester sur iPhone/Android réels) | M-17 | élevé | intégration | événements app identifiables, jamais d'édition d'événement perso |
