@@ -2,7 +2,11 @@ import { expect, test } from '@playwright/test';
 
 import { SCENARIOS } from '../src/domain/scenarios';
 
-import { button, collectErrors, field, openTab, seedProfile, text } from './helpers';
+import { button, collectErrors, field, freezeClock, openTab, seedProfile, text } from './helpers';
+
+test.beforeEach(async ({ page }) => {
+  await freezeClock(page);
+});
 
 test('first visit: onboarding → today → meals → inventory → workout → progress → weekly review → privacy', async ({
   page,

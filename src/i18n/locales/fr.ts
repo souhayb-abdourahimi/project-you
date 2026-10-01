@@ -388,6 +388,7 @@ const fr = {
   shopping: {
     title: 'Liste de courses',
     empty: 'Rien à acheter : ton inventaire couvre la semaine.',
+    nearbyStores: 'Magasins proches',
     forRecipes: 'Pour : {{recipes}}',
     priority: { high: 'Urgent', medium: 'Bientôt', low: 'Plus tard' },
     cost: 'Coût estimé',
@@ -540,6 +541,33 @@ const fr = {
       meal_prep: 'Préparation des repas',
       shopping: 'Courses',
     },
+  },
+  places: {
+    title: 'Salles et magasins proches',
+    open: 'Salles et magasins proches',
+    intro: 'Données OpenStreetMap, saisies par des contributeurs : vérifie les horaires avant de te déplacer.',
+    kinds: { gym: 'Salles de sport', store: 'Magasins d’alimentation' },
+    locationWhy:
+      'Ta position est demandée seulement quand tu lances la recherche. Elle est arrondie (environ 100 m) avant l’envoi et n’est jamais enregistrée.',
+    search: 'Chercher autour de moi',
+    locating: 'Localisation…',
+    locationDenied:
+      'Position refusée : la recherche autour de toi n’est pas possible. Tu peux toujours indiquer ta salle dans ton profil.',
+    locationError: 'Position indisponible pour le moment. Réessaie dans un instant.',
+    none: 'Donnée indisponible : aucun lieu trouvé autour de toi sur OpenStreetMap.',
+    busy: 'Le service OpenStreetMap est saturé. Réessaie dans quelques minutes.',
+    error: 'Impossible de joindre OpenStreetMap. Vérifie ta connexion.',
+    distance: '≈ {{distance}} à vol d’oiseau',
+    noAddress: 'Adresse : donnée indisponible',
+    hours: 'Horaires indiqués sur OpenStreetMap (à vérifier) : {{hours}}',
+    noHours: 'Horaires : donnée indisponible',
+    map: 'Voir sur la carte',
+    choose: 'C’est ma salle',
+    isMine: 'Ta salle',
+    currentGym: 'Ta salle : {{name}}. Elle ne change que si tu en choisis une autre.',
+    equipmentHint:
+      'Après avoir choisi une salle, mets à jour ton matériel disponible dans ton profil : l’app ne le devine pas.',
+    source: 'Source : {{source}}, lu le {{date}}.',
   },
   privacy: {
     title: 'Centre de confidentialité',

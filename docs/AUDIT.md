@@ -41,13 +41,13 @@ Légende : **DONE** (fonctionne et testé) · **PARTIAL** · **BROKEN** · **MIS
 | Nutrition | Budget | PARTIAL | PARTIAL | suivi prévu/dépensé OK ; aucun prix réel, donc pas d'influence sur les recettes |
 | Courses | Liste = plan − inventaire, sans prix inventé | DONE | DONE | |
 | Entraînement | WorkoutEngine, remplacement, progression prudente, séance guidée | DONE | DONE | historique synchronisé désormais |
-| Planning | Créneaux manuels | DONE | DONE | calendrier réel : MISSING (P2-04) |
+| Planning | Créneaux manuels | DONE | DONE | + heures occupées du calendrier de l'appareil (P2-04, D-016), non testé sur appareil réel |
 | Progrès | Poids, moyenne mobile, tour de taille | DONE | DONE | autres mensurations, photos : MISSING |
 | Motivation | Messages personnels, anti-abandon, modes 15 min / Pas envie | DONE | DONE | à étendre (marche, mobilité, repas express) |
 | Bilan hebdo | Weekly review | MISSING | DONE | calculé uniquement depuis les données saisies ; séance courte = victoire ; données absentes nommées comme absentes |
 | Notifications | Moteur + préférences | MISSING | PARTIAL | opt-in, heures calmes, plafond quotidien, écart minimal ; mobile uniquement (web : non supporté, affiché) ; non testé sur appareil réel |
 | Privacy Center | Export, suppression | MISSING | PARTIAL | export JSON et suppression par catégorie testés (unitaires + E2E local) ; suppression de compte via Edge Function testée en unitaire, **non déployée** sur le projet réel |
-| Providers | Interfaces (prix, promos, magasins, lieux, salles, calendrier, santé, IA) | DONE | DONE | implémentations réelles : MISSING (phase 2) |
+| Providers | Interfaces (prix, promos, magasins, lieux, salles, calendrier, santé, IA) | DONE | DONE | branchés : calendrier, position, salles et magasins (OSM) ; prix, promos, santé, IA : MISSING |
 | IA | Schémas de sortie Zod | PARTIAL | PARTIAL | coach non branché |
 | E2E | Parcours web Playwright | MISSING | DONE (mode local) | 22 tests, mobile + desktop, en CI ; parcours avec compte réel non couvert |
 | Accessibilité | Rôles, labels, cibles 44 px, contraste testé | DONE | NEEDS REVIEW | revue complète en M-23 |

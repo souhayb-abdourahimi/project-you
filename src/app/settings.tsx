@@ -46,6 +46,7 @@ export default function SettingsScreen() {
         <Text variant="heading">{t('settings.notifications')}</Text>
         <Button variant="secondary" label={t('privacy.notifications')} onPress={() => router.push('/notifications')} />
         <Button variant="secondary" label={t('calendar.open')} onPress={() => router.push('/calendar')} />
+        <Button variant="secondary" label={t('places.open')} onPress={() => router.push('/places')} />
       </Card>
       <Card>
         <Text variant="heading">{t('settings.privacy')}</Text>

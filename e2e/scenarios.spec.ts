@@ -5,7 +5,11 @@ import { RECIPES } from '../src/domain/meals/recipes';
 import { SCENARIOS } from '../src/domain/scenarios';
 import { EXERCISES, isAvailable } from '../src/domain/training/exercises';
 
-import { button, collectErrors, openTab, seedProfile, text } from './helpers';
+import { button, collectErrors, freezeClock, openTab, seedProfile, text } from './helpers';
+
+test.beforeEach(async ({ page }) => {
+  await freezeClock(page);
+});
 
 type Scenario = (typeof SCENARIOS)[keyof typeof SCENARIOS];
 

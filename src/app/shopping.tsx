@@ -1,6 +1,7 @@
+import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
-import { Card, EmptyState, MockBadge, Row, Screen, Text } from '@/components/ui';
+import { Button, Card, EmptyState, MockBadge, Row, Screen, Text } from '@/components/ui';
 import { getFood } from '@/domain/meals/catalog';
 import { getRecipe } from '@/domain/meals/recipes';
 import { buildShoppingList } from '@/domain/meals/shopping';
@@ -22,6 +23,7 @@ export default function ShoppingScreen() {
 
   return (
     <Screen>
+      <Button variant="secondary" label={t('shopping.nearbyStores')} onPress={() => router.push('/places')} />
       {list.items.length === 0 ? <EmptyState message={t('shopping.empty')} /> : null}
       {list.items.map((item) => (
         <Card key={item.foodId}>

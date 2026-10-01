@@ -21,6 +21,11 @@ Project You est un outil de fitness et bien-être ; il ne remplace pas un profes
 - Toute action destructive passe par une confirmation explicite (`ConfirmButton`).
 - Suppressions courantes (une pesée, un article d'inventaire) : suppression logique pour la synchronisation multi-appareil. TODO : purge serveur des lignes `deleted_at` anciennes.
 
+## Calendrier et position (phase 2)
+
+- **Calendrier** : seules les heures de début et de fin des événements sont lues (ni titre, ni lieu, ni invités), et gardées sur l'appareil pour la semaine en cours. L'app écrit uniquement dans son propre calendrier « Project You ». Déconnexion (écran Calendrier ou Privacy Center) = suppression de ce calendrier et oubli des heures lues. Inclus dans l'export (`deviceSettings.calendar`) ; effacé à la déconnexion du compte.
+- **Position** : demandée seulement quand l'utilisateur lance une recherche de lieux, arrondie à ~100 m avant l'envoi à OpenStreetMap, jamais enregistrée, synchronisée ni journalisée. Refus = l'app reste utilisable (salle saisie à la main).
+
 ## Consentements
 
 Chaque permission (notifications, caméra, calendrier, santé, localisation) est demandée **au moment où elle sert**, avec une explication, et peut être retirée. Refuser ne bloque jamais l'usage de base.

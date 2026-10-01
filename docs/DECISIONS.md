@@ -115,3 +115,19 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
 - **Alternatives** : compléter l'outbox action par action (oubli facile, c'était déjà le cas), PowerSync / ElectricSQL (dépendance lourde).
 - **Trade-offs** : la projection est recalculée à chaque tour (quelques centaines de lignes : négligeable) ; conflit simultané sur deux appareils = le changement non poussé de l'appareil qui synchronise gagne.
 - **Date** : 2026-10-01
+
+## D-016 — Calendrier : un calendrier dédié « Project You », lecture des heures occupées seulement
+
+- **Contexte** : placer les séances aux vrais moments libres et les retrouver dans l'agenda, sans jamais toucher aux événements personnels.
+- **Décision** : `expo-calendar` (API `legacy`, compatible Expo Go). Lecture : uniquement début/fin des événements des autres calendriers (pas de titre, lieu ni invités), transformés en créneaux occupés pour la semaine (`src/domain/calendar`). Écriture : uniquement dans un calendrier « Project You » créé par l'app ; modification et suppression refusées pour tout événement hors de ce calendrier (vérifié avant chaque appel). Déconnexion = suppression de ce calendrier.
+- **Alternatives** : Google Calendar API (OAuth, serveur, données personnelles hors appareil) ; marquer les événements dans le calendrier principal (risque de toucher un événement personnel).
+- **Trade-offs** : rien sur le web ; les événements « toute la journée » sont ignorés (anniversaires, congés) ; l'état du lien reste sur l'appareil (non synchronisé).
+- **Date** : 2026-10-01
+
+## D-017 — Lieux : OpenStreetMap (Overpass), position arrondie, aucun champ deviné
+
+- **Contexte** : trouver salles et magasins proches sans inventer horaires, adresses, fréquentation ni matériel.
+- **Décision** : API Overpass publique (sans clé), données ODbL, confiance « medium », source et date affichées. Position demandée seulement au moment de la recherche, arrondie à 3 décimales (~100 m) avant l'envoi, jamais enregistrée. Horaires affichés tels que saisis sur OSM, « à vérifier », jamais interprétés en « ouvert maintenant ». Distance à vol d'oiseau, pas de temps de trajet. Choisir une salle met à jour le nom de la salle du profil, jamais son matériel.
+- **Alternatives** : Google Places (clé, coût, conditions d'affichage) ; Foursquare.
+- **Trade-offs** : couverture et fraîcheur variables selon les contributeurs ; serveur public avec limites de débit (cache 10 min, erreur « saturé » affichée).
+- **Date** : 2026-10-01

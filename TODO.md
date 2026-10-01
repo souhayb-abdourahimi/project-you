@@ -8,7 +8,10 @@ Tâches importantes à ne pas perdre entre deux sessions. Référence des IDs : 
 - [ ] Tester la suppression de compte sur le projet réel (fonction déployée le 2026-10-01).
 - [ ] E2E avec un vrai compte (inscription → sync → second appareil) une fois le réseau vers Supabase disponible.
 - [ ] Notifications sur le web (Web Push) : non supporté pour l'instant, l'écran le dit.
-- [ ] Phase 2 : calendrier (événements de l'app uniquement), HealthKit / Health Connect, lieux, magasins, prix réels.
+- [ ] Tester le calendrier sur un iPhone et un Android réels (permission, création du calendrier « Project You », déconnexion).
+- [ ] Tester la recherche de lieux sur appareil (Overpass n'est pas joignable depuis l'environnement cloud : testé avec des réponses simulées).
+- [ ] P2-03 HealthKit / Health Connect (décision build natif en attente).
+- [ ] Parcs et activités (SportsProvider / PlacesProvider) ; prix et promotions réels (aucune source choisie).
 
 ## Données
 

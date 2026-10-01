@@ -40,3 +40,11 @@ export const button = (page: Page, name: string | RegExp) =>
 export const text = (page: Page, value: string | RegExp) => page.getByText(value).filter({ visible: true }).first();
 
 export const field = (page: Page, label: string | RegExp) => page.getByLabel(label).filter({ visible: true }).first();
+
+/**
+ * Screens depend on the day and time (session of the day, week review). Tests run at a fixed
+ * moment: Wednesday 30 September 2026, 10:00 local time, when the sample profiles have a session.
+ */
+export async function freezeClock(page: Page) {
+  await page.clock.setFixedTime(new Date(2026, 8, 30, 10, 0));
+}

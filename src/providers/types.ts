@@ -4,6 +4,7 @@
  * and report missing data as `unavailable` rather than inventing it.
  */
 import type { Food } from '@/domain/meals/catalog';
+import type { GeoPoint, OsmPlace } from '@/domain/places/osm';
 import type { ExternalDataMeta } from '@/domain/shared/external';
 
 export type ProviderResult<T> =
@@ -11,21 +12,9 @@ export type ProviderResult<T> =
   | { status: 'unavailable'; reason: 'not_configured' | 'no_data' | 'not_supported_on_platform' | 'permission_denied' }
   | { status: 'error'; error: 'timeout' | 'rate_limited' | 'network' | 'auth' | 'unknown'; retryable: boolean };
 
-export interface GeoPoint {
-  lat: number;
-  lng: number;
-}
-
-export interface Place {
-  id: string;
-  name: string;
-  category: string;
-  location: GeoPoint;
-  address: string | null;
-  openingHours: string | null;
-  website: string | null;
-  distanceMeters: number | null;
-}
+export type { GeoPoint } from '@/domain/places/osm';
+/** A place as listed by a provider: only fields the source really has, the rest `null`. */
+export type Place = OsmPlace;
 
 export interface Price {
   foodId: string;
@@ -110,6 +99,10 @@ export interface HealthProvider {
   requestAccess(types: HealthSample['type'][]): Promise<ProviderResult<true>>;
   read(type: HealthSample['type'], from: string, to: string): Promise<ProviderResult<HealthSample[]>>;
   disconnect(): Promise<void>;
+}
+export interface LocationProvider {
+  /** Asks for the foreground permission when needed, then reads the current position once. */
+  current(): Promise<ProviderResult<GeoPoint>>;
 }
 export interface MapsProvider {
   openDirections(to: GeoPoint): Promise<ProviderResult<true>>;
