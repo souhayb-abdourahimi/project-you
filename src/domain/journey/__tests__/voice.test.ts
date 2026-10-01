@@ -32,13 +32,7 @@ describe('coach voice: catalog and locales', () => {
     expect([...strings.keys()].filter((k) => !catalogKeys.has(k))).toEqual([]);
   });
 
-  it.each([
-    ['fr', fr],
-    ['en', en],
-  ] as const)('no %s coach string blames, pressures, sounds clinical or states an estimate', (_, locale) => {
-    const bad = [...coach(locale)].map(([k, text]) => [k, toneIssues(text)]).filter(([, issues]) => issues.length > 0);
-    expect(bad).toEqual([]);
-  });
+  // The tone of every locale string (coach included) is checked in tone.test.ts (D-029).
 
   it('every trigger can always be worded, whatever the goal, tone and facts', () => {
     const facts: Record<string, string>[] = [
@@ -71,35 +65,6 @@ describe('coach voice: catalog and locales', () => {
         }
       }
     }
-  });
-});
-
-describe('coach voice: tone guard', () => {
-  it.each([
-    'Tu n’as pas fait ta séance hier.',
-    'Encore une séance manquée.',
-    'Il faut te reprendre en main.',
-    'Pas d’excuse aujourd’hui !!',
-    'Ne sois pas paresseux.',
-    'Tu risques une carence.',
-    'Attention au surentraînement.',
-    'Cela ressemble à un trouble alimentaire.',
-    'Tu as perdu 1 kg de masse grasse.',
-    'Séance terminée : 450 calories brûlées.',
-    'You missed your workout.',
-    'You should try harder.',
-    'Watch out for overtraining.',
-    'You gained 1 kg of muscle mass.',
-  ])('refuses “%s”', (text) => {
-    expect(toneIssues(text).length).toBeGreaterThan(0);
-  });
-
-  it.each([
-    'Une séance courte compte.',
-    'Le repos fait partie du programme.',
-    'Parles-en à un professionnel de santé.',
-  ])('accepts “%s”', (text) => {
-    expect(toneIssues(text)).toEqual([]);
   });
 });
 

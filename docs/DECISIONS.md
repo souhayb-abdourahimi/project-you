@@ -356,3 +356,16 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
   - « Repos aujourd'hui » à la place d'une séance est une séance **sautée** (sans rattrapage), une marche ou de la mobilité une séance **adaptée**.
   - Seuls calories, séances par semaine et semaine allégée s'appliquent en un geste ; jour de repos en plus et nouveau jour de séance restent des conseils.
 - **Date** : 2026-10-01
+
+## D-029 — Garde-fou de ton : toutes les chaînes visibles, FR et EN
+
+- **Contexte** : demande du 2026-10-01, avant la fusion de la PR #4. `voice/tone.ts` ne contrôlait que `coach.*` ; la phase D-028 ajoute des textes sur les moments sensibles (journée difficile, pas envie, absence, adaptation, progression, plateau, sécurité) dans `daily`, `explain`, `adaptation`, `checkin`, `progress`.
+- **Décision** :
+  - **Le ton est une contrainte produit**, au même titre que la sécurité (CLAUDE.md règles 3 et 8, `.claude/rules/ui.md`) : un utilisateur qui vit une journée difficile ou revient après une absence abandonne plus facilement s'il se sent jugé. Une phrase culpabilisante est un défaut, pas une question de style.
+  - **Couverture globale** : le test parcourt récursivement tout l'arbre de chaque locale (`localeToneFindings`), FR et EN, au même niveau d'exigence. Une nouvelle section des locales est contrôlée sans rien ajouter. Tout est contrôlé sauf une liste d'exclusions explicite (`TONE_EXCLUSIONS`), courte, justifiée clé par clé et vérifiée (une clé disparue fait échouer le test). Elle est vide aujourd'hui : aucune chaîne des locales n'est cachée à l'utilisateur.
+  - **Formulations rassurantes autorisées** : « pas de rattrapage », « sans rien rattraper », « pas un échec », « jamais culpabilisant » disent à l'utilisateur qu'il n'a rien à se reprocher. Chaque règle peut porter une liste étroite de formes rassurantes (`allow`), retirées avant le test du motif ; chacune est testée dans les deux sens (« sans rattraper » passe, « il faut rattraper » échoue, et une réassurance ne masque pas un reproche dans la même phrase).
+  - **Fait neutre ≠ culpabilisation** : « 2 séances sur 3 ont été réalisées cette semaine » ou « il faut des pesées sur plus d'une semaine » (ce dont le calcul a besoin) sont des constats ; « Tu n'as fait que 2 séances », « Tu as encore raté », « Tu dois te reprendre », « il faut te reprendre » sont des jugements ou des injonctions et sont refusés. Le coach n'est pas artificiellement positif : il peut dire un fait, jamais un reproche.
+  - Deux chaînes reformulées : `adaptation.reason.shorter_sessions` (écart entre le plan et le rythme des deux dernières semaines, sans compter ce qui n'a pas été fait, au conditionnel) et `explain.workout.low_motivation` (répond au choix « Je n'ai pas envie » sans répéter un état négatif ni en inventer un).
+- **Alternatives** : une liste de sections à contrôler (refusée : chaque nouvelle section devrait y être ajoutée à la main) ; supprimer les mots « rattrapage » ou « échec » des textes (refusé : les phrases rassurantes en ont besoin) ; un relecteur humain seul (refusé : non systématique).
+- **Trade-offs** : des motifs lexicaux ne comprennent pas le sens ; ils attrapent les formulations connues et laissent passer une phrase blessante inédite. La relecture humaine des textes reste utile.
+- **Date** : 2026-10-01

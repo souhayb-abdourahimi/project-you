@@ -349,7 +349,7 @@ const en: LocaleShape = {
       light: 'You declared fatigue: a lighter version moves you forward without wearing you out.',
       difficult: 'Difficult day: a minimal version keeps the habit without forcing.',
       comeback: 'After a few days without activity, we restart gently, without catching up.',
-      low_motivation: 'You don’t feel like it: starting small is enough, you decide afterwards.',
+      low_motivation: 'We keep today simple: a short version is enough, you decide afterwards whether to go on.',
       light_week: 'You accepted a lighter week to recover: your workouts are in their light version for 7 days.',
     },
     activity: {
@@ -744,7 +744,8 @@ const en: LocaleShape = {
       budget: 'Your spending went over your budget two weeks in a row.',
       back_to_plan: 'You did all your workouts for 4 weeks: you can go back to your initial pace.',
       fewer_sessions: 'Two workouts not done two weeks in a row: a slightly lighter pace holds better.',
-      shorter_sessions: 'Some workouts were not done: short versions help keep going.',
+      shorter_sessions:
+        'Over the last two weeks, your plan included more workouts than your current pace: shorter versions can make it easier to follow.',
       simplify_tracking:
         'Few meals logged: weigh yourself twice a week and mark one "typical" meal in one tap, that is enough.',
     },

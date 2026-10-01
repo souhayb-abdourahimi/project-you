@@ -357,7 +357,7 @@ const fr = {
       light: 'Tu as déclaré de la fatigue : une version allégée te fait avancer sans t’épuiser.',
       difficult: 'Journée difficile : une version minimale garde le fil sans forcer.',
       comeback: 'Après quelques jours sans activité, on reprend en douceur, sans rattraper.',
-      low_motivation: 'Tu n’as pas envie : commencer petit suffit, tu décides ensuite.',
+      low_motivation: 'On simplifie aujourd’hui : une version courte suffit, tu décides ensuite si tu continues.',
       light_week:
         'Tu as accepté une semaine allégée pour récupérer : tes séances sont en version allégée pendant 7 jours.',
     },
@@ -757,7 +757,8 @@ const fr = {
       budget: 'Tes dépenses ont dépassé ton budget deux semaines de suite.',
       back_to_plan: 'Tu as fait toutes tes séances depuis 4 semaines : tu peux revenir à ton rythme initial.',
       fewer_sessions: 'Deux séances non faites deux semaines de suite : un rythme un peu plus léger tient mieux.',
-      shorter_sessions: 'Une partie des séances n’a pas été faite : des versions courtes aident à garder le fil.',
+      shorter_sessions:
+        'Ces deux dernières semaines, ton plan prévoyait plus de séances que ton rythme actuel : des versions courtes peuvent le rendre plus simple à suivre.',
       simplify_tracking:
         'Peu de repas notés : pèse-toi deux fois par semaine et marque un repas « type » en un geste, cela suffit.',
     },
