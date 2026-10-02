@@ -369,3 +369,84 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
 - **Alternatives** : une liste de sections à contrôler (refusée : chaque nouvelle section devrait y être ajoutée à la main) ; supprimer les mots « rattrapage » ou « échec » des textes (refusé : les phrases rassurantes en ont besoin) ; un relecteur humain seul (refusé : non systématique).
 - **Trade-offs** : des motifs lexicaux ne comprennent pas le sens ; ils attrapent les formulations connues et laissent passer une phrase blessante inédite. La relecture humaine des textes reste utile.
 - **Date** : 2026-10-01
+
+## D-030 — Workout Coach Engine : prévu figé, fait enregistré, écart dérivé (validée le 2026-10-02, voir D-031)
+
+- **Contexte** : demande du 2026-10-01 (phase 5, thread « Workout Coach Engine ») : faire de Project You un coach sportif longitudinal qui sait ce qui était prévu, ce qui a été fait, pourquoi il y a eu une différence et quelle adaptation proposer. Audit : `docs/WORKOUT_ENGINE.md` §1 ; architecture : `docs/TRAINING_ARCHITECTURE.md`. Aucun code applicatif avant validation.
+- **Constat principal** : le programme et la semaine sont recalculés à chaque rendu depuis le profil actuel (`usePlan`) ; `workout_plans` n'est jamais écrite ; la prescription par exercice et la charge proposée ne sont pas gardées. Le « prévu » de l'historique change donc avec le profil (compromis accepté par D-028), ce qui rend la comparaison prévu/fait impossible.
+- **Décision proposée** :
+  - **Pas de nouveau moteur de coaching** (règle 6) : `src/domain/training` reste un moteur de calcul pur (prescrire, figer, comparer, progresser) ; `src/domain/journey` reste le seul état, la seule voix, la seule sécurité et la seule adaptation ; `useJourney` reste le point d'assemblage.
+  - **Prévu figé** : nouvelle table `training_programs` (programme versionné, un seul actif, raison de chaque version) et `planned_exercises` (prescription figée par séance, charge proposée et action de progression) ; `workout_sessions` étendue (programme, focus, durée prévue, raison d'adaptation du jour, report synchronisé, difficulté 1–5) ; `workout_plans`, jamais écrite, supprimée.
+  - **Fait enregistré** : séries modifiables et supprimables (suppression logique), secondes dans `seconds`, heure de début, remplacements choisis par l'utilisateur, raisons `busy_equipment` et `discomfort` ajoutées. La fatigue reste dans `daily_checkins` (une seule source, lue par la sécurité).
+  - **Écart dérivé, raison déclarée** : `training/compare.ts` calcule le statut de chaque exercice et de chaque séance ; la raison vient uniquement de ce qui a été déclaré (remplacement, issue de séance, mode du jour, adaptation du coach, fatigue du jour), sinon « non renseignée ». Rien n'est stocké (comme D-028).
+  - **Adaptations** : nouvelles règles d'entraînement dans `journey/adaptation.ts` (durée de séance, remplaçant permanent, séries, stagnation, fin de cycle), mêmes blocages (sécurité, calibration, faible adhérence) ; `APPLICABLE_CHANGES` += `session_minutes`, `exercise_swap` ; décisions dans `adjustments` (pas de migration).
+  - **Historique antérieur** : rattaché à un programme `reconstructed`, sans prescription inventée.
+- **Alternatives** :
+  - garder le recalcul et stocker seulement un hash du profil : refusé (on saurait que le prévu a changé, pas ce qu'il était) ;
+  - stocker le plan de la semaine en un seul `jsonb` (`workout_plans`) : refusé (sync par différence ligne à ligne, contraintes et RLS par exercice impossibles, taille non bornée) ;
+  - stocker l'écart et la progression côté serveur : refusé (désynchronisation, D-028) ;
+  - un « TrainingCoachEngine » avec ses propres messages et notifications : refusé (règle 6).
+- **Trade-offs** : plus de lignes synchronisées (une séance prévue et ses exercices chaque semaine, même non faite) ; migration locale v4 à tester avec soin ; les seuils (cycle de 6 semaines, stagnation sur 3 séances / 3 semaines, 75 % de la durée, 2 remplacements) sont des paramètres de conception à faire relire avec ceux de D-024, D-026 et D-028.
+- **Points ouverts** : tranchés le 2026-10-02 (D-031).
+- **Date** : 2026-10-01
+
+## D-031 — Workout Coach : décisions validées et W-1 (modèle de données)
+
+- **Contexte** : validation de l'architecture D-030 par Souhayb le 2026-10-02, avec quatre réponses et sept décisions (A à G), puis demande de W-1 seul : le modèle de données persistant, sans UI ni sync. Détail : `docs/WORKOUT_ENGINE.md` §6–7, `docs/TRAINING_ARCHITECTURE.md` §2–6.
+- **Réponses** : cycle de 6 semaines, semaine allégée de fin de cycle proposée (accepter, refuser, reporter : `adjustments.status = 'postponed'` ajouté), jamais imposée ; difficulté en 5 mots (Très facile → Très difficile), stockée 1–5, sans obliger l'utilisateur à connaître le RPE ; historique rattaché à un programme « reconstitué » sans prescription inventée ; raisons de remplacement : machine prise, gêne / inconfort, technique inconnue, trop difficile aujourd'hui, matériel indisponible, manque de temps, préférence personnelle, autre (douleur : jamais de diagnostic ni d'encouragement à continuer).
+- **Décision (W-1)** :
+  - **A. Immuabilité** : `training_programs`, une ligne par **version publiée** (`lineage_id` + `version`), jamais réécrite ; seuls avancent le statut (`active` → `superseded` / `ended`) et la date de fin (posée une fois). Une adaptation publie v+1, l'historique garde v1. Triggers sur `training_programs`, `workout_sessions` (prescription figée, jamais de changement de programme) et `planned_exercises` (aucune modification ; un upsert identique d'un second appareil est accepté).
+  - **B. Types de données** : FACT, USER_REPORTED, RECOMMENDATION stockés, DERIVED jamais (table dans `docs/TRAINING_ARCHITECTURE.md` §2.6 et `TRAINING_DATA_KINDS`, testée).
+  - **C. Raison de prescription** structurée (`purpose` + `purpose_target`) sur la séance et chaque exercice ; pas de texte libre.
+  - **D. Préférences** : un remplacement répété (préférence, n'aime pas, technique inconnue) devient une question à l'utilisateur ; seule sa confirmation enregistre une préférence durable. Une gêne, une machine prise, un manque de temps ne deviennent jamais une préférence.
+  - **E. Prévu vs réalisé** : `planned_exercises` (exercice, ordre, séries, fourchette, unité, repos, RPE cible, charge proposée ou nulle, action et raison de progression, raison, variante) relié à la séance (focus, durée prévue, durée adaptée, raison) et à la version ; le réalisé (`exercise_logs`, `exercise_substitutions`, `workout_sessions` : séries, répétitions ou secondes, charge, difficulté, statut, remplacement, raison déclarée, notes) pointe vers la prescription (`planned_exercise_id`).
+  - **F.** Aucun second Adaptation Engine : le Workout Coach produit signaux et recommandations, `journey/adaptation.ts` décide.
+  - **G.** Les deux bugs confirmés (fatigue codée en dur dans `ExerciseCard`, séance courte toujours de 15 min) sont corrigés en **W-3**, avec l'écran de séance ; W-1 ne touche pas l'UI.
+  - **Étendre plutôt que doubler** : seules `training_programs` et `planned_exercises` sont nouvelles ; `workout_sessions`, `exercise_logs`, `exercise_substitutions`, `adjustments` sont étendues. Une seule table pour les programmes et leurs versions (une ligne = une version) plutôt que deux.
+  - **Historique** : fonction `attach_reconstructed_training_history()` (RLS appliquée, idempotente) : un programme reconstitué par utilisateur, sans paramètre (contraintes), séances `prescription_source = 'unknown'`, aucune ligne `planned_exercises`. Même règle côté domaine (`reconstructedProgram`, `attachLegacySessions`).
+- **Alternatives** :
+  - réutiliser `workout_plans` pour les versions : refusé (un `jsonb` hebdomadaire `unique (user_id, week_start)` ne porte ni lignée, ni version, ni contraintes par paramètre) ; laissée en place, inutilisée, sa suppression est une décision séparée ;
+  - une table `training_program_versions` séparée : refusé (une ligne par version suffit, la lignée regroupe les versions) ;
+  - réécrire la prescription du jour lors d'une adaptation : refusé (A) ; la variante adaptée a ses propres lignes ;
+  - autoriser la suppression logique d'une prescription : refusé ; seul l'effacement par l'utilisateur (Privacy Center, compte) supprime, ce qui n'est pas une réécriture.
+- **Trade-offs** :
+  - l'app n'écrit pas encore ces colonnes (W-2) ; jusque-là le comportement est inchangé ;
+  - deux appareils hors connexion qui publient chacun une version : l'index « un seul actif » refuse la seconde, à résoudre en W-2 ;
+  - `effective_from` d'un programme reconstitué = première séance connue au moment du rattachement ; une séance plus ancienne arrivée plus tard le rejoint sans changer cette date ;
+  - l'adaptation du jour (`adapted_minutes`, `adaptation_reason`) est modifiable jusqu'à la fin de la séance (un utilisateur peut passer de « courte » à « allégée » avant de commencer ; les deux prescriptions restent).
+- **Date** : 2026-10-02
+
+## D-032 — Workout Coach W-2 : publication, stockage local, sync et conflits
+
+- **Contexte** : demande de W-2 seul par Souhayb le 2026-10-02 (W-1 validé) : publier et relire la prescription, versionner, idempotence, conflit multi-appareil, hors connexion, historique reconstitué, variantes, hors programme, reports, erreurs structurées. Détail : `docs/TRAINING_ARCHITECTURE.md` §4–6.
+- **Décision** :
+  - **Publication** : `usePlan` lit l'existant ; sinon `ensureProgram` publie, `ensureWeek` fige la semaine, puis l'app relit la prescription enregistrée (`plan.sessionTemplate`). Le moteur ne sert plus qu'à proposer (hors programme).
+  - **Ids stables** (`trainingIds`) dérivés du compte, de la version, de `date#index`, de la variante et de la position : un redémarrage, une nouvelle tentative, un plantage ou un second appareil produisent les mêmes ids.
+  - **Déclencheurs de version** (`versionReason`) : fréquence (adaptation si décision `adjustments`), matériel, objectif, niveau, durée, exercices exclus, version du moteur, reprise. Rien d'autre. Première version effective au début de la semaine, les suivantes à partir d'aujourd'hui.
+  - **Source de vérité** : programmes et prescriptions = serveur (immuables), la copie locale est un cache ; réalisé = local d'abord (modification en attente gagne), puis serveur ; dérivé jamais stocké.
+  - **Conflit** : programme, le serveur gagne (sauf fermeture locale d'une version inchangée sur le serveur, vérifiée à trois points) ; même id avec paramètres différents → version locale perdue, séances non commencées et non poussées re-prescrites ; plusieurs actives → la plus haute gagne, à égalité le serveur ; la perdante est abandonnée (locale, sans séance commencée) ou fermée ; colonnes de prescription d'une séance toujours celles du serveur ; puis réévaluation et éventuelle v+1. Les faits ne sont jamais abandonnés.
+  - **Report** : la séance d'origine garde sa prescription (`rescheduled`, `rescheduled_to`), une copie est créée à la nouvelle date (contrainte W-1).
+  - **Hors programme** : `prescription_source = 'off_plan'`, aucune prescription inventée. Les séances antérieures sont rattachées par `attach_reconstructed_training_history()`, appelée avant le pull tant que nécessaire.
+  - **Erreurs** : `conflict`, `offline`, `rls`, `validation`, `server`, `invalid_data` (phase, table, nombre), jamais montrées en détail technique.
+  - **Stockage local v4** : relecture complète du compte une fois après la mise à jour.
+  - **Charge proposée** : progression sur l'historique réel, sinon `null`.
+- **Alternatives** : ids aléatoires (refusé : doublons après une nouvelle tentative ou sur un second appareil) ; dernière écriture gagne pour les programmes (refusé : écraserait silencieusement le serveur) ; réécrire la séance reportée (refusé : la prescription d'origine doit rester) ; une migration W-2 (inutile, le schéma W-1 suffit).
+- **Trade-offs** : une séance avec faits enregistrée sous une version perdante adopte la prescription du serveur si la même séance existe, sinon sa prescription locale est poussée sous la version du serveur ; collision de clé laissant une ligne serveur `planned` ; jours passés encore affichés depuis le planning courant (W-6) ; anciennes versions de l'app ignorent `superseded` ; aucune purge locale ; charge proposée avec fatigue « normale » (W-4) ; `SHORT_SESSION_MINUTES` = 15 (bug W-3) ; avant le premier pull la lignée dépend de la graine (`local` ou compte), ce qui peut créer une version de plus, puis converge.
+- **Date** : 2026-10-02
+
+## D-033 — Workout Coach : le serveur gagne pour le futur, la prescription utilisée gagne pour l'histoire
+
+- **Contexte** : revue W-2, points 3 et 4. Souhayb (2026-10-02) : une séance commencée ou contenant des faits ne doit jamais être rattachée après coup à une prescription différente de celle réellement présentée. Avec D-032, une séance avec faits enregistrée sous une version perdante prenait la prescription du serveur si celui-ci avait la même séance ; une collision `date#index` laissait la ligne du serveur `planned`. Détail : `docs/TRAINING_ARCHITECTURE.md` §5.
+- **Décision** :
+  - **Deux règles** : convergence de la sync (le serveur décide de la version active future) ; préservation de l'histoire (une prescription déjà utilisée reste liée aux faits produits sous elle).
+  - **Séance utilisée** : ouverte (`workout_sessions.started_at`, enregistré quand l'écran de séance montre la prescription le jour même ou après), une série, un remplacement, une issue ou une difficulté. Sa prescription devient historique ; un conflit ne peut plus la remplacer. Ouvrir n'empêche pas de reporter (la copie garde la même prescription).
+  - **Version perdante mais utilisée** : conservée, fermée (`superseded`, statut existant, aucune migration), sous sa propre lignée dérivée de son contenu (`trainingIds.archivedLineage`) car `(lineage_id, version)` est unique. Les séances utilisées sont gardées sous de nouveaux ids stables avec un contenu identique (`keptSession`), toujours `prescription_source = 'engine'`, jamais `off_plan`. La version du serveur reste la seule active.
+  - **Même séance prescrite deux fois** (même version, autre prescription sur le serveur) : la séance utilisée est gardée sous `trainingIds.kept`, même version.
+  - **Collision `date#index`** : la séance utilisée est celle du créneau ; une séance seulement prévue en face devient `superseded` (gardée, jamais comptée). Deux séances utilisées : les deux sont gardées ; la plus petite id garde le créneau sur tous les appareils, l'autre est affichée dans un créneau libre du même jour (`sessionSlots`, local) et sa ligne serveur garde sa date et son index.
+- **Alternatives** :
+  - un statut `conflict_archived` : refusé (migration et nouveau statut inutiles, `superseded` suffit) ;
+  - supprimer la version perdante ou ses séances : refusé (perte de faits) ;
+  - marquer la séance `off_plan` : refusé (elle était prescrite) ;
+  - garder la version perdante dans la même lignée avec un autre numéro : refusé (l'ordre des numéros décide de la version active).
+- **Trade-offs** : une version archivée apparaît comme une seconde « v2 » dans une autre lignée ; deux séances réelles pour le même créneau comptent chacune une fois (ce sont deux séances), la seconde dans un créneau `#6` sans modèle de séance associé jusqu'à l'historique W-6 ; ouvrir une séance future (avant son jour) ne l'enregistre pas comme vue.
+- **Date** : 2026-10-02

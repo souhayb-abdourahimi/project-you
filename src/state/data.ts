@@ -24,8 +24,11 @@ import type {
   SessionOutcome,
 } from '@/domain/journey/outcomes';
 import type { WeeklyCheckin } from '@/domain/journey/weekly-checkin';
+import type { SessionVariant } from '@/domain/training/adapt';
+import type { PrescribedSession, ProgramVersion } from '@/domain/training/program';
 import type { LoggedSet } from '@/domain/training/progression';
 import type { ReplacementReason } from '@/domain/training/replacement';
+import { rescheduleSession, type SessionSource, type TrainingRecords } from '@/domain/training/week';
 import { newId } from '@/lib/id';
 
 import { persistStorage } from './storage';
@@ -60,6 +63,21 @@ interface DataState {
   weeklyCheckins: WeeklyCheckin[];
   milestones: Record<string, MilestoneRecord>;
   adjustments: Adjustment[];
+  // Workout Coach (W-2, D-032): published versions and frozen prescriptions, synced.
+  programs: ProgramVersion[];
+  /** Prescribed sessions by id (live ones are in sessionIds; superseded ones are flagged). */
+  prescriptions: Record<string, PrescribedSession>;
+  superseded: Record<string, true>;
+  /** Sessions without prescription: done off plan, or recorded before W-1. */
+  sessionSources: Record<SessionKey, SessionSource>;
+  /** Variant chosen for a session in progress. */
+  sessionVariants: Record<SessionKey, SessionVariant>;
+  /** Felt difficulty 1–5 (W-3 asks it; synced from W-2). */
+  sessionDifficulty: Record<SessionKey, number>;
+  /** When a prescribed session was opened: its prescription is then what the user saw (D-033). */
+  sessionOpened: Record<SessionKey, string>;
+  /** Local slot → own slot of a session moved aside by a sync conflict (D-033). */
+  sessionSlots: Record<SessionKey, SessionKey>;
   /** Account the local data belongs to (null = local mode, not attached to an account yet). */
   ownerId: string | null;
   synced: SyncedHashes;
@@ -93,6 +111,13 @@ interface DataState {
   swapExercise: (session: SessionKey, fromId: string, toId: string, reason?: ReplacementReason) => void;
   completeSession: (session: Omit<CompletedSession, 'completedAt'>) => void;
   reschedule: (from: IsoDate, to: IsoDate) => void;
+  /** Stores what `ensureProgram` / `ensureWeek` published or froze (never called with an unchanged week). */
+  applyTraining: (records: TrainingRecords) => void;
+  /** Variant of the day; its persisted rows come with it the first time it is chosen. */
+  chooseVariant: (session: SessionKey, variant: SessionVariant, adapted: PrescribedSession | null) => void;
+  rateSession: (session: SessionKey, difficulty: number) => void;
+  /** The prescription of a session was shown to the user (first time only). */
+  openSession: (session: SessionKey) => void;
   applySync: (patch: Partial<SyncableState> & { synced?: SyncedHashes; lastPulledAt?: string | null }) => void;
   setOwner: (ownerId: string | null) => void;
   /** Drops sync fingerprints of tables whose server rows were deleted outside the sync. */
@@ -122,6 +147,14 @@ const initial = {
   weeklyCheckins: [],
   milestones: {},
   adjustments: [],
+  programs: [],
+  prescriptions: {},
+  superseded: {},
+  sessionSources: {},
+  sessionVariants: {},
+  sessionDifficulty: {},
+  sessionOpened: {},
+  sessionSlots: {},
   ownerId: null,
   synced: {},
   lastPulledAt: null,
@@ -185,9 +218,19 @@ function markMeal(
   };
 }
 
-/** Server id for a workout session, created the first time the session is touched. */
-function withSessionId(ids: Record<SessionKey, string>, key: SessionKey) {
-  return ids[key] ? ids : { ...ids, [key]: newId() };
+/**
+ * The session a fact is recorded on: the prescribed one when the day has one, otherwise a new
+ * session marked `off_plan` (a real session with no invented prescription).
+ */
+function withSession(
+  s: Pick<DataState, 'sessionIds' | 'sessionSources'>,
+  key: SessionKey,
+): Pick<DataState, 'sessionIds' | 'sessionSources'> {
+  if (s.sessionIds[key]) return { sessionIds: s.sessionIds, sessionSources: s.sessionSources };
+  return {
+    sessionIds: { ...s.sessionIds, [key]: newId() },
+    sessionSources: { ...s.sessionSources, [key]: { source: 'off_plan', programId: null } },
+  };
 }
 
 export const useDataStore = create<DataState>()(
@@ -242,7 +285,7 @@ export const useDataStore = create<DataState>()(
         set((s) => {
           const { [session]: _old, ...rest } = s.sessionOutcomes;
           return {
-            sessionIds: outcome ? withSessionId(s.sessionIds, session) : s.sessionIds,
+            ...(outcome ? withSession(s, session) : {}),
             sessionOutcomes: outcome ? { ...rest, [session]: { ...outcome, at: now() } } : rest,
           };
         }),
@@ -307,7 +350,7 @@ export const useDataStore = create<DataState>()(
         }),
       logSet: (session, exerciseId, loggedSet) =>
         set((s) => ({
-          sessionIds: withSessionId(s.sessionIds, session),
+          ...withSession(s, session),
           setLogs: {
             ...s.setLogs,
             [session]: {
@@ -318,7 +361,7 @@ export const useDataStore = create<DataState>()(
         })),
       swapExercise: (session, fromId, toId, reason) =>
         set((s) => ({
-          sessionIds: withSessionId(s.sessionIds, session),
+          ...withSession(s, session),
           exerciseSwaps: { ...s.exerciseSwaps, [session]: { ...s.exerciseSwaps[session], [fromId]: toId } },
           swapReasons: reason
             ? { ...s.swapReasons, [session]: { ...s.swapReasons[session], [fromId]: reason } }
@@ -326,13 +369,45 @@ export const useDataStore = create<DataState>()(
         })),
       completeSession: (session) =>
         set((s) => ({
-          sessionIds: withSessionId(s.sessionIds, sessionKey(session.date, session.sessionIndex)),
+          ...withSession(s, sessionKey(session.date, session.sessionIndex)),
           completedSessions: [
             ...s.completedSessions.filter((c) => !(c.date === session.date && c.sessionIndex === session.sessionIndex)),
             { ...session, completedAt: now() },
           ],
         })),
-      reschedule: (from, to) => set((s) => ({ rescheduled: { ...s.rescheduled, [from]: to } })),
+      reschedule: (from, to) =>
+        set((s) => {
+          // A prescribed session keeps its row (rescheduled) and the new day gets the same prescription.
+          const moved = rescheduleSession(s, s, from, to);
+          return { ...(moved ?? {}), rescheduled: { ...s.rescheduled, [from]: to } };
+        }),
+      applyTraining: (records) =>
+        set({
+          programs: records.programs,
+          prescriptions: records.prescriptions,
+          superseded: records.superseded,
+          sessionIds: records.sessionIds,
+        }),
+      chooseVariant: (session, variant, adapted) =>
+        set((s) => {
+          const { [session]: _old, ...rest } = s.sessionVariants;
+          return {
+            sessionVariants: variant === 'full' ? rest : { ...rest, [session]: variant },
+            prescriptions: adapted ? { ...s.prescriptions, [adapted.id]: adapted } : s.prescriptions,
+          };
+        }),
+      rateSession: (session, difficulty) =>
+        set((s) =>
+          Number.isInteger(difficulty) && difficulty >= 1 && difficulty <= 5
+            ? { ...withSession(s, session), sessionDifficulty: { ...s.sessionDifficulty, [session]: difficulty } }
+            : {},
+        ),
+      openSession: (session) =>
+        set((s) =>
+          s.sessionOpened[session] || !s.sessionIds[session]
+            ? {}
+            : { sessionOpened: { ...s.sessionOpened, [session]: now() } },
+        ),
       applySync: (patch) => {
         const { snapshot: _snapshot, ...data } = patch;
         set(data);
@@ -347,11 +422,13 @@ export const useDataStore = create<DataState>()(
     {
       name: 'py.data.v1',
       storage: persistStorage,
-      version: 3,
-      // v1 had an outbox; v2 syncs by diff and needs the new fields; v3 adds the journey history.
-      migrate: (persisted) => {
+      version: 4,
+      // v1 had an outbox; v2 syncs by diff and needs the new fields; v3 adds the journey history;
+      // v4 the Workout Coach (D-032): the next round re-reads the whole account once, so sessions
+      // attached to the reconstructed program elsewhere come back with their program.
+      migrate: (persisted, version) => {
         const { outbox: _outbox, ...rest } = (persisted ?? {}) as Record<string, unknown>;
-        return { ...initial, ...rest } as unknown as DataState;
+        return { ...initial, ...rest, ...(version < 4 ? { lastPulledAt: null } : {}) } as unknown as DataState;
       },
     },
   ),

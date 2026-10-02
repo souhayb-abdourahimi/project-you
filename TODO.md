@@ -16,6 +16,28 @@ Tâches importantes à ne pas perdre entre deux sessions. Référence des IDs : 
 - [ ] Manifeste Android : `READ/WRITE_EXTERNAL_STORAGE` (≤ API 32) et `SYSTEM_ALERT_WINDOW` viennent du template Expo ; vérifier s'ils sont utiles et les bloquer sinon (`android.blockedPermissions`).
 - [ ] Parcs et activités (SportsProvider) ; prix et promotions réels (aucune source choisie).
 
+## Workout Coach Engine (D-030, D-031, phase 5)
+
+Audit et architecture : `docs/WORKOUT_ENGINE.md`, `docs/TRAINING_ARCHITECTURE.md`. Architecture validée le 2026-10-02. **Chaque étape attend la validation de Souhayb.**
+
+- [x] Audit et architecture (2026-10-01), décisions validées (2026-10-02, D-031)
+- [x] W-1 Modèle de données : migration `20261002000001_workout_coach_foundation.sql`, RLS, `training/program.ts`, tests (2026-10-02)
+- [x] W-2 Stockage local v4, figer la semaine, sync des nouvelles tables, appel de `attach_reconstructed_training_history()`, conflit de deux versions publiées hors connexion (D-032, revue `revue-w2-workout-coach.md`)
+  - [ ] Appliquer la migration W-1 sur Supabase avant toute version de l'app contenant W-2 ; mettre à jour tous les appareils (une ancienne version ignore les séances `superseded`)
+  - [ ] W-6 : afficher les jours passés de la semaine depuis les prescriptions (aujourd'hui depuis le planning courant) ; `useJourney` recalcule encore les semaines passées avec `scheduleOfWeek`
+  - [ ] Purger les prescriptions anciennes du stockage local (aucun élagage aujourd'hui)
+  - [ ] W-4 : charge proposée calculée avec une fatigue « normale » ; brancher la fatigue du jour
+  - [x] D-033 vérité historique : une séance utilisée garde sa prescription malgré un conflit ; version perdante mais utilisée archivée ; collision `date#index` résolue (ligne prévue `superseded`, deux séances réelles gardées)
+  - [ ] Deux séances réelles pour un même créneau : la seconde s'affiche dans un créneau libre du jour (`date#6`) ; l'historique des séances (W-6) devra l'afficher comme « séance supplémentaire »
+- [ ] W-3 Séance (UI fonctionnelle) + **bugs confirmés** : fatigue codée en dur à « normal » dans `ExerciseCard` ; séance courte annoncée à 20 min qui exécute 15 min
+- [ ] W-4 Comparaison prévu / fait + progression v2
+- [ ] W-5 Règles d'adaptation d'entraînement, fin de cycle (accepter / refuser / reporter), question de confirmation des préférences (reprend « Mémoire du coach » ci-dessous)
+- [ ] W-6 Intégrations (Daily Coach, Programme, Progress Journey, explications)
+- [ ] W-7 E2E et revue critique
+- [ ] Décider la suppression de `workout_plans` (jamais écrite) et de `workout_sessions.plan_id`, après vérification qu'elle est vide en production
+- [ ] Appliquer la migration `20261002000001` sur le projet Supabase réel (SQL Editor) après fusion
+- [ ] Faire relire les seuils de D-030 avec ceux de D-024 / D-026 / D-028
+
 ## Daily Coach + Progress Journey (D-028)
 
 Plan de la phase (ordre demandé) ; détail dans `docs/DAILY_COACH.md`, `docs/PROGRESS_JOURNEY.md`, `docs/ADAPTATION_ENGINE.md`, `docs/RETENTION.md`.

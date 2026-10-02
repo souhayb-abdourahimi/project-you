@@ -124,6 +124,17 @@ describe('journey memory', () => {
         confirmed: { ...base.confirmed, refusedExerciseIds: ['lunge'] },
       }).suggestions,
     ).toEqual([]);
+
+    // D-031 D: a stated preference is observed and asked about, a movement that bothers is not a taste.
+    expect(
+      journeyMemory({ ...base, swapReasons: { a: { lunge: 'preference' }, b: { lunge: 'preference' } } }).suggestions,
+    ).toEqual([expect.objectContaining({ kind: 'drop_exercise', exerciseId: 'lunge', count: 2 })]);
+    expect(
+      journeyMemory({
+        ...base,
+        swapReasons: { a: { lunge: 'discomfort' }, b: { lunge: 'busy_equipment' }, c: { lunge: 'too_hard_today' } },
+      }).suggestions,
+    ).toEqual([]);
   });
 
   it('recipes: "envie d’autre chose" twice → dislike suggestion; eaten 3 times → like suggestion; no reason → nothing guessed', () => {

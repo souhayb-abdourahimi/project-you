@@ -7,7 +7,11 @@ import type { SyncableState, SyncTable } from '../sync/projection';
 export type PrivacyCategory =
   'profile' | 'motivation' | 'weights' | 'measurements' | 'inventory' | 'expenses' | 'workouts' | 'meals' | 'journey';
 
-/** Server tables holding each category. Profile deletion = account deletion. */
+/**
+ * Server tables holding each category, children first. Profile deletion = account deletion.
+ * Workouts include program versions and prescriptions (W-2, D-032), reconstructed history included:
+ * erasing is not a rewrite, the immutability triggers do not block a user's deletion.
+ */
 export const CATEGORY_TABLES: Record<PrivacyCategory, SyncTable[]> = {
   profile: ['profiles', 'goals', 'user_preferences'],
   motivation: ['motivations'],
@@ -15,7 +19,7 @@ export const CATEGORY_TABLES: Record<PrivacyCategory, SyncTable[]> = {
   measurements: ['body_measurements'],
   inventory: ['inventory_items'],
   expenses: ['food_expenses'],
-  workouts: ['exercise_substitutions', 'exercise_logs', 'workout_sessions'],
+  workouts: ['exercise_substitutions', 'exercise_logs', 'planned_exercises', 'workout_sessions', 'training_programs'],
   meals: ['meal_plan_items'],
   // Day check-ins, weekly check-ins, milestones and adaptation decisions (D-028).
   journey: ['daily_checkins', 'weekly_checkins', 'journey_milestones', 'adjustments'],
@@ -102,6 +106,15 @@ export function clearCategory(state: SyncableState, category: PrivacyCategory): 
         sessionOutcomes: {},
         exerciseSwaps: {},
         swapReasons: {},
+        programs: [],
+        prescriptions: {},
+        superseded: {},
+        sessionSources: {},
+        sessionVariants: {},
+        sessionDifficulty: {},
+        sessionOpened: {},
+        sessionSlots: {},
+        rescheduled: {},
       };
     case 'meals':
       return {

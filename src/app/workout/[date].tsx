@@ -2,9 +2,10 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import { Banner, Button, EmptyState, Screen, Text } from '@/components/ui';
-import { lightSession, shortSession, type SessionVariant } from '@/domain/training/adapt';
+import type { SessionVariant } from '@/domain/training/adapt';
 import type { SessionLog } from '@/domain/training/progression';
 import { ExerciseCard } from '@/features/training/ExerciseCard';
+import { useWorkoutSession } from '@/features/training/useWorkoutSession';
 import { usePlan } from '@/hooks/usePlan';
 import { useDataStore } from '@/state/data';
 
@@ -12,36 +13,17 @@ export default function WorkoutScreen() {
   const { t } = useTranslation();
   const { date, variant: variantParam } = useLocalSearchParams<{ date: string; variant?: SessionVariant }>();
   const plan = usePlan();
-  const { setLogs, exerciseSwaps, logSet, swapExercise, completeSession, completedSessions } = useDataStore();
+  const { setLogs, exerciseSwaps, logSet, swapExercise, completeSession } = useDataStore();
+  // The frozen prescription of the day (or the proposal, off plan): never rebuilt from the profile.
+  const workout = useWorkoutSession(plan, date, variantParam);
   if (!plan) return null;
-
-  const day = plan.schedule.days.find((d) => d.date === date);
-  const item = day?.items.find((i) => i.kind === 'workout');
-  // A day without a planned session still gets session 0 when the user asked for a short/light version.
-  const sessionIndex = item?.kind === 'workout' ? item.sessionIndex : 0;
-  const template = plan.workoutPlan.sessions[sessionIndex];
-  if (!template)
+  if (!workout)
     return (
       <Screen>
         <EmptyState message={t('today.noSession')} />
       </Screen>
     );
-
-  const variant: SessionVariant =
-    variantParam ?? (item?.kind === 'workout' && item.variant === 'short' ? 'short' : 'full');
-  const session =
-    variant === 'short'
-      ? shortSession(template, {
-          minutes: 15,
-          equipment: plan.snapshot.training.hasGym ? ['bodyweight'] : plan.snapshot.training.equipment,
-          level: plan.snapshot.training.level,
-          refusedExerciseIds: plan.snapshot.training.refusedExerciseIds,
-        })
-      : variant === 'light'
-        ? lightSession(template)
-        : { variant, exercises: template.exercises, estimatedMinutes: template.estimatedMinutes, atHome: false };
-  const key = `${date}#${sessionIndex}`;
-  const done = completedSessions.some((c) => c.date === date && c.sessionIndex === sessionIndex);
+  const { key, sessionIndex, variant, done } = workout;
 
   // History for the progression engine: previous sessions' sets, oldest first.
   const historyFor = (exerciseId: string): SessionLog[] =>
@@ -53,11 +35,11 @@ export default function WorkoutScreen() {
   return (
     <Screen>
       <Text variant="title">
-        {t(`enums.focus.${template.focus}`)} {variant !== 'full' ? `· ${t(`workout.${variant}`)}` : ''}
+        {t(`enums.focus.${workout.focus}`)} {variant !== 'full' ? `· ${t(`workout.${variant}`)}` : ''}
       </Text>
-      <Text color="textMuted">{t('program.estimated', { count: session.estimatedMinutes })}</Text>
+      <Text color="textMuted">{t('program.estimated', { count: workout.estimatedMinutes })}</Text>
       <Banner message={t('workout.pain')} tone="textMuted" />
-      {session.exercises.map((p) => {
+      {workout.exercises.map((p) => {
         const exerciseId = exerciseSwaps[key]?.[p.exerciseId] ?? p.exerciseId;
         return (
           <ExerciseCard

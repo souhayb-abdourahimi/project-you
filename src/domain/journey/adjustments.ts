@@ -23,7 +23,8 @@ export interface Adjustment {
   to: number | string | null;
   reasonKey: string;
   evidence: Record<string, string | number>;
-  status: 'proposed' | 'applied' | 'declined' | 'reverted';
+  /** `postponed`: "plus tard" (D-031), decided like a decline for this week, proposed again later. */
+  status: 'proposed' | 'applied' | 'declined' | 'reverted' | 'postponed';
   effectiveFrom: IsoDate;
   decidedAt: string;
 }
@@ -42,11 +43,18 @@ export function appliedCalorieOffset(adjustments: Adjustment[]): number {
 
 /** Sessions per week chosen through an applied adaptation, or null (the profile value stands). */
 export function appliedSessionsPerWeek(adjustments: Adjustment[]): number | null {
-  const latest = adjustments
-    .filter((a) => a.status === 'applied' && a.changeKey === 'sessions_per_week')
-    .sort((a, b) => a.decidedAt.localeCompare(b.decidedAt))
-    .at(-1);
+  const latest = sessionsPerWeekDecision(adjustments);
   return latest ? Number(latest.to) : null;
+}
+
+/** The accepted decision that sets the frequency now (linked to the program version it produces). */
+export function sessionsPerWeekDecision(adjustments: Adjustment[]): Adjustment | null {
+  return (
+    adjustments
+      .filter((a) => a.status === 'applied' && a.changeKey === 'sessions_per_week')
+      .sort((a, b) => a.decidedAt.localeCompare(b.decidedAt))
+      .at(-1) ?? null
+  );
 }
 
 /** Identifies a recommendation across openings: one per change and week. */

@@ -157,7 +157,7 @@ export function useJourney(plan: Plan | null): Journey | null {
 
     const day = plan.schedule.days.find((d) => d.date === today) ?? null;
     const workout = day?.items.find((i) => i.kind === 'workout');
-    const template = workout?.kind === 'workout' ? plan.workoutPlan.sessions[workout.sessionIndex] : undefined;
+    const template = workout?.kind === 'workout' ? plan.sessionTemplate(today, workout.sessionIndex) : null;
     const sessionIndex = workout?.kind === 'workout' ? workout.sessionIndex : 0;
     const done = data.completedSessions.find((c) => c.date === today);
     const busyToday = calendarBusy?.weekStart === plan.weekStart ? calendarBusy.slots : [];

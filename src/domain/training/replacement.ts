@@ -1,8 +1,31 @@
 import type { Equipment, TrainingLevel } from '../profile/schemas';
 import { EXERCISES, LEVEL_RANK, getExercise, isAvailable, type Exercise } from './exercises';
 
-/** "Je déteste cet exercice", "Je ne sais pas faire", "Je n'ai pas la machine", "Plus facile", "Plus difficile". */
-export type ReplacementReason = 'dislike' | 'cant_do' | 'no_equipment' | 'easier' | 'harder';
+/**
+ * Why an exercise was replaced, as the user said it (closed list, never guessed; same list as the
+ * `exercise_substitutions.reason` check, D-031). The first five come from D-028; `dislike` stays
+ * for history, new choices use `preference` (a replacement is never read as "hates it", D-031 D).
+ * `cant_do` is "je ne connais pas la technique"; `discomfort` never leads to "continue anyway".
+ */
+export const REPLACEMENT_REASONS = [
+  'dislike',
+  'cant_do',
+  'no_equipment',
+  'easier',
+  'harder',
+  'busy_equipment',
+  'discomfort',
+  'too_hard_today',
+  'no_time',
+  'preference',
+  'other',
+] as const;
+export type ReplacementReason = (typeof REPLACEMENT_REASONS)[number];
+
+/** Reasons that remove the current exercise's equipment from the alternatives. */
+const EQUIPMENT_MISSING: readonly ReplacementReason[] = ['no_equipment', 'busy_equipment'];
+/** Reasons that look for an easier movement (a movement that bothers is never made harder). */
+const EASIER: readonly ReplacementReason[] = ['easier', 'cant_do', 'discomfort', 'too_hard_today'];
 
 export interface ReplacementContext {
   equipment: readonly Equipment[];
@@ -19,7 +42,7 @@ export function findReplacements(exerciseId: string, reason: ReplacementReason, 
   if (!current) return [];
 
   let equipment = ctx.equipment;
-  if (reason === 'no_equipment') {
+  if (EQUIPMENT_MISSING.includes(reason)) {
     const missing: readonly Equipment[] = current.equipment.filter((e) => e !== 'bodyweight');
     equipment = ctx.equipment.filter((e) => !missing.includes(e));
   }
@@ -33,8 +56,7 @@ export function findReplacements(exerciseId: string, reason: ReplacementReason, 
     if (!isAvailable(e, equipment)) return false;
     const rank = LEVEL_RANK[e.level];
     if (rank > maxRank) return false;
-    if (reason === 'easier' || reason === 'cant_do')
-      return rank <= currentRank && (rank < currentRank || e.compound === current.compound);
+    if (EASIER.includes(reason)) return rank <= currentRank && (rank < currentRank || e.compound === current.compound);
     if (reason === 'harder') {
       // Harder = a higher level, or the loaded version of a bodyweight movement.
       return rank > currentRank || (rank === currentRank && current.loadIncrementKg === 0 && e.loadIncrementKg > 0);
@@ -46,7 +68,7 @@ export function findReplacements(exerciseId: string, reason: ReplacementReason, 
       const overlap = e.primary.filter((m) => current.primary.includes(m)).length * 3;
       if (samePattern === 0 && overlap === 0) return null;
       let levelScore = -Math.abs(LEVEL_RANK[e.level] - currentRank);
-      if (reason === 'easier' || reason === 'cant_do') levelScore = currentRank - LEVEL_RANK[e.level];
+      if (EASIER.includes(reason)) levelScore = currentRank - LEVEL_RANK[e.level];
       if (reason === 'harder') levelScore = LEVEL_RANK[e.level] - currentRank;
       return { e, score: samePattern + overlap + levelScore };
     })
