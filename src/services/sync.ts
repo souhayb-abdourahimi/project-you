@@ -17,6 +17,45 @@ export interface SyncClient {
   select: (table: SyncTable, since: string | null) => Promise<{ data: Row[] | null; error: unknown }>;
   upsert: (table: SyncTable, rows: Row[], onConflict: string) => Promise<{ error: unknown }>;
   softDelete: (table: SyncTable, keys: string[], deletedAt: string) => Promise<{ error: unknown }>;
+  /** `attach_reconstructed_training_history()` (W-1 migration): idempotent, RLS applies. */
+  attachHistory?: () => Promise<{ error: unknown }>;
+}
+
+/**
+ * Why part of a round failed (D-032), for the status and the tests. Never shown as is to the user
+ * (the app only says "offline" or "not synced yet") and never logged with row contents.
+ * - offline: no answer (network, timeout): retried as is;
+ * - conflict: the server already holds another version of an immutable row, or a unique key; the
+ *   next pull brings the server's copy and the merge reconciles;
+ * - rls: refused by a row-level security policy or the session (never bypassed, never retried
+ *   differently);
+ * - validation: refused by a check constraint or a type (a bug: the row stays local);
+ * - server: any other server error;
+ * - invalid_data: rows pulled from the server that did not validate (ignored, never patched).
+ */
+export type SyncErrorKind = 'offline' | 'conflict' | 'rls' | 'validation' | 'server' | 'invalid_data';
+
+export interface SyncError {
+  kind: SyncErrorKind;
+  phase: 'attach' | 'pull' | 'push';
+  /** Table concerned (absent for rows pulled that did not validate). */
+  table?: SyncTable;
+  count: number;
+}
+
+/** Maps a Supabase / PostgREST / Postgres error to its kind, from its code only. */
+export function classifySyncError(error: unknown): SyncErrorKind {
+  if (!error || typeof error !== 'object') return 'offline';
+  const { code, message } = error as { code?: unknown; message?: unknown };
+  const c = typeof code === 'string' ? code : '';
+  const m = typeof message === 'string' ? message : '';
+  if (c === '') return 'offline';
+  if (c === '42501' || c.startsWith('PGRST3')) return 'rls';
+  if (c === '23505' || c === '23503') return 'conflict';
+  // The immutability triggers raise check_violation with an explicit message (W-1 migration).
+  if (c === '23514') return /immutable|cannot|already set/i.test(m) ? 'conflict' : 'validation';
+  if (c.startsWith('22') || c === '23502' || c.startsWith('PGRST1') || c.startsWith('PGRST2')) return 'validation';
+  return 'server';
 }
 
 export interface SyncStore {
@@ -34,6 +73,15 @@ export interface SyncResult {
   /** Remote rows ignored because they did not validate. */
   rejected: number;
   offline: boolean;
+  /** Structured failures of the round (empty when everything went through). */
+  errors: SyncError[];
+}
+
+/** Sessions recorded before W-2 that the server has not attached to the reconstructed program yet. */
+export function needsHistoryAttach(state: SyncableState): boolean {
+  return Object.entries(state.sessionIds).some(
+    ([key, id]) => !state.prescriptions?.[id] && !state.sessionSources?.[key],
+  );
 }
 
 /** Re-read a small overlap so a row committed just before the cursor is not missed. */
@@ -55,7 +103,32 @@ export async function syncOnce(
   options: { claim?: boolean; now?: () => string } = {},
 ): Promise<SyncResult> {
   const now = options.now ?? (() => new Date().toISOString());
-  const result: SyncResult = { pulled: 0, pushed: 0, deleted: 0, failed: 0, rejected: 0, offline: false };
+  const result: SyncResult = { pulled: 0, pushed: 0, deleted: 0, failed: 0, rejected: 0, offline: false, errors: [] };
+  const fail = (kind: SyncErrorKind, phase: SyncError['phase'], table?: SyncTable, count = 1) => {
+    const same = result.errors.find((e) => e.kind === kind && e.phase === phase && e.table === table);
+    if (same) same.count += count;
+    else result.errors.push({ kind, phase, ...(table ? { table } : {}), count });
+  };
+
+  // History recorded before W-2 joins the reconstructed program before the pull, so the pull
+  // brings it back attached (D-031 3, idempotent: every device may call it).
+  if (client.attachHistory && needsHistoryAttach(store.read())) {
+    try {
+      const { error } = await client.attachHistory();
+      if (error) {
+        const kind = classifySyncError(error);
+        fail(kind, 'attach');
+        if (kind === 'offline') {
+          result.offline = true;
+          return result;
+        }
+      }
+    } catch {
+      fail('offline', 'attach');
+      result.offline = true;
+      return result;
+    }
+  }
 
   // Pull.
   const since = cursor(store.read().lastPulledAt);
@@ -65,7 +138,9 @@ export async function syncOnce(
     try {
       const { data, error } = await client.select(table, since);
       if (error || !data) {
-        result.offline = true;
+        const kind = error ? classifySyncError(error) : 'offline';
+        fail(kind, 'pull', table);
+        result.offline = kind === 'offline';
         return result;
       }
       remote[table] = data;
@@ -75,6 +150,7 @@ export async function syncOnce(
         if (at && (!maxUpdatedAt || at > maxUpdatedAt)) maxUpdatedAt = at;
       }
     } catch {
+      fail('offline', 'pull', table);
       result.offline = true;
       return result;
     }
@@ -83,6 +159,7 @@ export async function syncOnce(
     const fresh = store.read();
     const merged = applyRemote(fresh, remote, userId, fresh.synced, { serverWins: options.claim });
     result.rejected = merged.rejected;
+    if (merged.rejected > 0) fail('invalid_data', 'pull', undefined, merged.rejected);
     store.write({ ...merged.state, synced: merged.synced, lastPulledAt: maxUpdatedAt });
   }
 
@@ -107,6 +184,8 @@ export async function syncOnce(
       } catch {
         ok = false;
       }
+      // Rows refused here stay local and are retried next round (a conflict is resolved by the
+      // next pull: the server's copy comes back and the merge reconciles it).
       if (ok) {
         for (const u of upserts) acknowledged[rowRef(table, u.key)] = u.hash;
         result.pushed += upserts.length;
@@ -115,13 +194,16 @@ export async function syncOnce(
         for (const u of upserts) {
           try {
             const { error } = await client.upsert(table, [u.row], onConflict);
-            if (error) result.failed += 1;
-            else {
+            if (error) {
+              result.failed += 1;
+              fail(classifySyncError(error), 'push', table);
+            } else {
               acknowledged[rowRef(table, u.key)] = u.hash;
               result.pushed += 1;
             }
           } catch {
             result.failed += 1;
+            fail('offline', 'push', table);
           }
         }
       }
@@ -134,13 +216,16 @@ export async function syncOnce(
           deletes.map((d) => d.key),
           now(),
         );
-        if (error) result.failed += deletes.length;
-        else {
+        if (error) {
+          result.failed += deletes.length;
+          fail(classifySyncError(error), 'push', table, deletes.length);
+        } else {
           removed.push(...deletes.map((d) => rowRef(table, d.key)));
           result.deleted += deletes.length;
         }
       } catch {
         result.failed += deletes.length;
+        fail('offline', 'push', table, deletes.length);
       }
     }
   }

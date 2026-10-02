@@ -7,11 +7,12 @@ import type { SyncableState, SyncTable } from '../sync/projection';
 export type PrivacyCategory =
   'profile' | 'motivation' | 'weights' | 'measurements' | 'inventory' | 'expenses' | 'workouts' | 'meals' | 'journey';
 
-/** Workout Coach tables not synced yet (W-1, D-031): exported and deleted with the workouts. */
-export type TrainingServerTable = 'planned_exercises' | 'training_programs';
-
-/** Server tables holding each category, children first. Profile deletion = account deletion. */
-export const CATEGORY_TABLES: Record<PrivacyCategory, (SyncTable | TrainingServerTable)[]> = {
+/**
+ * Server tables holding each category, children first. Profile deletion = account deletion.
+ * Workouts include program versions and prescriptions (W-2, D-032), reconstructed history included:
+ * erasing is not a rewrite, the immutability triggers do not block a user's deletion.
+ */
+export const CATEGORY_TABLES: Record<PrivacyCategory, SyncTable[]> = {
   profile: ['profiles', 'goals', 'user_preferences'],
   motivation: ['motivations'],
   weights: ['weight_logs'],
@@ -51,9 +52,6 @@ export const EXPORT_ONLY_TABLES = [
   'recipes',
   'shopping_list_items',
   'workout_plans',
-  // Workout Coach (W-1): written by the app from W-2 on.
-  'training_programs',
-  'planned_exercises',
 ] as const;
 
 export function countByCategory(state: SyncableState): Record<PrivacyCategory, number> {
@@ -108,6 +106,13 @@ export function clearCategory(state: SyncableState, category: PrivacyCategory): 
         sessionOutcomes: {},
         exerciseSwaps: {},
         swapReasons: {},
+        programs: [],
+        prescriptions: {},
+        superseded: {},
+        sessionSources: {},
+        sessionVariants: {},
+        sessionDifficulty: {},
+        rescheduled: {},
       };
     case 'meals':
       return {

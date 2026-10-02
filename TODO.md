@@ -22,7 +22,12 @@ Audit et architecture : `docs/WORKOUT_ENGINE.md`, `docs/TRAINING_ARCHITECTURE.md
 
 - [x] Audit et architecture (2026-10-01), décisions validées (2026-10-02, D-031)
 - [x] W-1 Modèle de données : migration `20261002000001_workout_coach_foundation.sql`, RLS, `training/program.ts`, tests (2026-10-02)
-- [ ] W-2 Stockage local v4, figer la semaine, sync des nouvelles tables, appel de `attach_reconstructed_training_history()`, conflit de deux versions publiées hors connexion
+- [x] W-2 Stockage local v4, figer la semaine, sync des nouvelles tables, appel de `attach_reconstructed_training_history()`, conflit de deux versions publiées hors connexion (D-032, revue `revue-w2-workout-coach.md`)
+  - [ ] Appliquer la migration W-1 sur Supabase avant toute version de l'app contenant W-2 ; mettre à jour tous les appareils (une ancienne version ignore les séances `superseded`)
+  - [ ] W-6 : afficher les jours passés de la semaine depuis les prescriptions (aujourd'hui depuis le planning courant) ; `useJourney` recalcule encore les semaines passées avec `scheduleOfWeek`
+  - [ ] Purger les prescriptions anciennes du stockage local (aucun élagage aujourd'hui)
+  - [ ] W-4 : charge proposée calculée avec une fatigue « normale » ; brancher la fatigue du jour
+  - [ ] Collision de clé (séance locale avec faits vs ligne serveur `planned` de même date#index) : la ligne serveur reste `planned`
 - [ ] W-3 Séance (UI fonctionnelle) + **bugs confirmés** : fatigue codée en dur à « normal » dans `ExerciseCard` ; séance courte annoncée à 20 min qui exécute 15 min
 - [ ] W-4 Comparaison prévu / fait + progression v2
 - [ ] W-5 Règles d'adaptation d'entraînement, fin de cycle (accepter / refuser / reporter), question de confirmation des préférences (reprend « Mémoire du coach » ci-dessous)

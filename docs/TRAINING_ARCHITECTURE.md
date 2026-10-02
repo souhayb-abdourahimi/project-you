@@ -1,6 +1,6 @@
 # Architecture de l'entraînement
 
-Statut : **architecture validée le 2026-10-02 ; W-1 (modèle de données) livré**, étapes suivantes en attente de validation. Décisions : `docs/DECISIONS.md` D-030, D-031.
+Statut : **architecture validée le 2026-10-02 ; W-1 (modèle de données) et W-2 (publication, stockage local, sync) livrés**, étapes suivantes en attente de validation. Décisions : `docs/DECISIONS.md` D-030, D-031, D-032.
 Règles métier et audit : `docs/WORKOUT_ENGINE.md`. Schéma existant : `docs/DATABASE.md`. Sync : D-015. Moteur unique : D-024, D-028.
 
 ---
@@ -12,7 +12,7 @@ src/domain/training/         Workout Coach Engine : calcul pur, aucun état, auc
   exercises.ts               catalogue (inchangé, ids jamais renommés)
   engine.ts                  génération des modèles de séance (inchangé)
   program.ts        (W-1 ✓)  versions publiées, prescriptions figées, raisons structurées, historique reconstitué
-  week.ts           (W-2)    figer une semaine : séances prévues + prescriptions
+  week.ts           (W-2 ✓)  ids stables, publier une version, figer une semaine, variantes, report
   session.ts        (W-3)    logique de saisie (série suivante, correction, fin de séance)
   compare.ts        (W-4)    prévu vs fait, statut, raison déclarée
   progression.ts    (W-4)    double progression v2 (contexte, variante, stagnation, gêne)
@@ -29,8 +29,9 @@ src/domain/journey/          Transformation Journey Engine : le seul état utili
 
 src/hooks/usePlan.ts         lit le programme et la semaine figés (au lieu de les recalculer)
 src/hooks/useJourney.ts      point d'assemblage unique (inchangé dans son rôle)
-src/state/data.ts            stockage local (v4, W-2)
-src/domain/sync/projection.ts  projection et fusion des nouvelles tables (W-2)
+src/state/data.ts            stockage local (v4, W-2 ✓)
+src/domain/sync/projection.ts  projection et fusion des nouvelles tables (W-2 ✓)
+src/domain/scenarios/training.ts  MOCK : la semaine publiée d'un scénario, par les mêmes moteurs que usePlan
 ```
 
 **Règle** : `training/` ne connaît ni la voix, ni les notifications, ni la sécurité ; il reçoit en entrée ce que `journey` a décidé (fatigue, `training_load`, variante du jour) et rend des faits et des prescriptions. `journey` reste le seul à décider quoi dire et quoi proposer (CLAUDE.md règle 6). Aucun hook ni écran ne recalcule un écart ou une progression lui-même.
@@ -126,31 +127,49 @@ Reste dans l'app (D-014). Les ids sont permanents : un exercice retiré du catal
 
 | Donnée | Serveur (source de vérité multi-appareil) | Local (appareil) | Cache | Dérivé (jamais stocké) |
 |---|---|---|---|---|
-| Versions de programme | `training_programs` | copie (W-2) pour travailler hors connexion | — | programme actif = `status = 'active'` |
-| Séances prescrites et exercices prévus | `workout_sessions` + `planned_exercises` | copie de la semaine (W-2), créée hors connexion puis poussée | — | — |
+| Versions de programme | `training_programs` | `programs` (copie, publiée hors connexion puis poussée) | — | programme actif = `status = 'active'` |
+| Séances prescrites et exercices prévus | `workout_sessions` (colonnes de prescription) + `planned_exercises` | `prescriptions`, `superseded`, `sessionIds` (copie, figée hors connexion puis poussée) | — | — |
+| Variante choisie, source hors programme | `workout_sessions.variant`, `prescription_source` | `sessionVariants`, `sessionSources` | — | — |
 | Séries, remplacements, difficulté, notes | `exercise_logs`, `exercise_substitutions`, `workout_sessions` | saisis d'abord sur l'appareil (local d'abord) | — | — |
-| Reports | `workout_sessions.status/rescheduled_to` | `rescheduled` (aujourd'hui seul endroit, synchronisé à partir de W-2) | — | — |
+| Reports | `workout_sessions.status/rescheduled_to` (séance d'origine gardée) | `rescheduled` | — | — |
+| Difficulté de fin de séance | `workout_sessions.difficulty` | `sessionDifficulty` | — | — |
 | Fatigue du jour | `daily_checkins` (existant) | `dayLogs` | — | — |
 | Modèles de séance du moteur | — | — | recalculés à la demande (`generateWorkoutPlan`) pour **proposer**, jamais pour relire le passé | — |
 | Écart prévu/fait, statut partiel, tendances, records, progression, adhérence | — | — | mémorisés dans les hooks | ✓ |
 
-Une prescription passée n'existe jamais seulement sur l'appareil : elle est synchronisée comme les séances (W-2).
+Une prescription passée n'existe jamais seulement sur l'appareil : elle est synchronisée comme les séances.
+
+**Qui gagne (D-032)** : pour une version de programme ou une prescription, **le serveur** (immuables, une fois poussées elles font foi pour tous les appareils ; la copie locale n'est qu'un cache) ; pour le réalisé (séries, remplacements, issue, difficulté, report), **la modification locale non encore poussée** puis le serveur (règle D-015 inchangée). Le dérivé n'est jamais stocké.
 
 ---
 
-## 5. Offline et synchronisation (préparés en W-1, construits en W-2)
+## 5. Offline et synchronisation (W-2, livré)
 
-Le modèle ne demande aucun aller-retour serveur pour ouvrir une séance ou saisir une série :
+**Publication** (`usePlan`, à l'ouverture et à chaque changement de profil) : lire l'existant ; sinon `ensureProgram` publie la version (v1, ou v+1 si un déclencheur s'applique) ; puis `ensureWeek` fige chaque séance prévue de la semaine depuis la version en vigueur ce jour-là ; le tout est enregistré dans le stockage local (`applyTraining`) puis poussé par la sync. L'écran de séance, le Daily Coach et la page Programme **relisent la prescription enregistrée** (`plan.sessionTemplate`, `plan.prescription`) ; le moteur ne sert plus qu'à proposer une séance hors programme.
 
-- **ids générés par l'appareil** (uuid aléatoires) pour les versions, séances et exercices prescrits : une semaine peut être figée et une séance ouverte hors connexion ;
-- **upserts idempotents** : une prescription poussée deux fois à l'identique est acceptée, une version différente est refusée (trigger) ; la sync par différence (D-015) peut donc rejouer sans risque ;
-- **ordre parents → enfants** : `training_programs` → `workout_sessions` → `planned_exercises` → `exercise_logs` / `exercise_substitutions` ;
-- les séries restent des lignes modifiables (`exercise_logs`) ; leur suppression passe par `deleted_at` (W-2 : `deleteOnMissing`) ;
-- conflit possible à traiter en W-2 : deux appareils hors connexion qui publient chacun une version pour le même changement de profil → l'index « un seul actif » refuse la seconde ; l'appareil perdant doit reprendre la version du serveur et rattacher ses séances non commencées.
+**Ids stables** (`trainingIds`, `src/domain/shared/ids.ts`) : lignée = f(compte), version = f(lignée, numéro), séance = f(version, `date#index`), exercice prévu = f(séance, variante, position), copie reportée = f(séance, nouvelle date). Un redémarrage, une nouvelle tentative, un plantage ou un second appareil qui refait le même calcul produisent **les mêmes ids** : l'upsert est idempotent, aucun doublon.
 
-En W-1, l'app ne lit ni n'écrit encore ces nouvelles colonnes : `SessionKey` `${date}#${index}`, `setLogs` et la projection actuelle fonctionnent comme avant (vérifié par `sync.db.test.ts` sur le nouveau schéma).
+**Déclencheurs d'une nouvelle version** (`versionReason`) : fréquence (ou adaptation si elle vient d'une décision `adjustments`), matériel, objectif, niveau, durée de séance, exercices exclus, version du moteur, reprise après une version terminée. **Rien d'autre** : choisir une variante, reporter, noter une difficulté, saisir ou corriger une série ne crée jamais de version. La v1 n'est jamais modifiée, seulement remplacée (`superseded`) ou terminée.
 
----
+**Ordre parents → enfants** (`SYNC_TABLES`) : `training_programs` → `workout_sessions` → `planned_exercises` → `exercise_logs` / `exercise_substitutions`. Programmes et exercices prévus ne sont jamais supprimés par la sync (`deleteOnMissing: false`).
+
+**Conflit entre appareils** (`applyRemote`, D-032), déterministe :
+
+1. Programme : le serveur gagne. Seule exception : fermer localement une version que le serveur n'a pas changée depuis la dernière sync (vérification à trois points sur l'empreinte synchronisée).
+2. Même id, paramètres différents : la version locale est « perdue » ; ses séances non commencées et jamais poussées sont abandonnées puis re-prescrites par `ensureWeek` depuis la version du serveur. Les faits (séries, issue) ne sont jamais abandonnés.
+3. Plusieurs versions actives : la plus haute gagne ; à égalité, celle du serveur. La perdante, si elle n'existe que localement et n'a aucune séance commencée, est abandonnée ; sinon elle est fermée (`superseded`, `effective_to` = début de la gagnante − 1 jour).
+4. Colonnes de prescription d'une séance : toujours celles du serveur, même si la ligne locale est en attente. Colonnes du réalisé : la modification locale en attente gagne.
+5. Après la fusion, `ensureProgram` réévalue avec le profil fusionné et publie v+1 si besoin : le système converge.
+
+**Hors connexion** : publier, figer, choisir une variante, ouvrir la séance, saisir les séries, reporter et noter la difficulté se font sans réseau ; tout part à la sync suivante, sans perte (test `sync.training.test.ts`).
+
+**Report** : la séance d'origine garde son id, sa prescription, `status = 'rescheduled'` et `rescheduled_to` ; une copie est créée à la nouvelle date (la contrainte W-1 interdit `rescheduled_to` sur une séance qui ne serait pas `rescheduled`).
+
+**Séance hors programme** : une séance commencée un jour sans séance prévue reçoit `prescription_source = 'off_plan'`, aucune ligne `planned_exercises`.
+
+**Erreurs structurées** (`SyncError`, `src/services/sync.ts`) : `conflict`, `offline`, `rls`, `validation`, `server`, `invalid_data`, avec la phase (`attach`, `pull`, `push`), la table et le nombre de lignes. Aucun message technique n'est montré à l'utilisateur.
+
+**Stockage local v4** : la migration remet `lastPulledAt` à zéro, le compte est donc relu en entier une fois après la mise à jour.
 
 ## 6. Historique antérieur : programme « reconstitué »
 
@@ -159,7 +178,7 @@ Règle (D-031) : **aucune prescription inconnue n'est fabriquée** ; ce qui a é
 - Serveur : `public.attach_reconstructed_training_history()` crée au besoin **un** programme `source = 'reconstructed'`, `status = 'ended'`, sans aucun paramètre (contraintes), `effective_from` = première séance connue ; puis rattache les séances sans programme et sans `prescription_source` avec `prescription_source = 'unknown'`. Aucune ligne `planned_exercises` n'est créée. Séries, issues, variantes et remplacements restent tels quels. Idempotente : un second appel (second appareil) ne crée rien ; une séance ancienne synchronisée plus tard par une vieille version de l'app rejoint le même programme au prochain appel.
 - Domaine : `reconstructedProgram` et `attachLegacySessions` (`src/domain/training/program.ts`) appliquent la même règle pour le mode local ; `plannedFor` répond `unknown` pour ces séances.
 - Une séance `unknown` ne peut plus recevoir de prescription après coup (trigger).
-- Appel de la fonction par l'app : W-2 (au premier pull après mise à jour).
+- Appel de la fonction par l'app (W-2) : `runSync` l'appelle **avant le pull** tant qu'une séance n'a ni programme ni source (`needsHistoryAttach`). Idempotente : deux appareils qui l'appellent, ou un historique déjà en partie rattaché, ne créent qu'un seul programme reconstitué.
 
 ## 7. Flux
 
@@ -228,4 +247,12 @@ Livrés en W-1 :
 - `supabase/tests/training.sql` (57 vérifications) et `supabase/tests/rls.sql` (audit générique étendu aux deux nouvelles tables) : versions, immuabilité (programme, séance prescrite, exercice prescrit, adaptation d'une séance passée), upsert identique d'un second appareil accepté et upsert différent refusé, réalisation reliée au programme, historique reconstitué, RLS lecture / écriture / modification / suppression / rattachement croisé, effacement par l'utilisateur, cascade de suppression du compte.
 - `src/services/__tests__/sync.db.test.ts` (existant) : la sync actuelle passe sur le nouveau schéma.
 
-À venir : figer une semaine et la sync des nouvelles tables (W-2, dont deux appareils réels via `sync.db.test.ts`), comparaison et progression v2 (W-4), règles d'adaptation (W-5), E2E (W-7).
+Livrés en W-2 :
+
+- `src/domain/training/__tests__/week.test.ts` : publication v1, ids stables, aucune version pour une petite interaction, v2 sur changement de fréquence / matériel, prescription de lundi inchangée après un changement de profil, variantes stockées sans toucher la complète, charge proposée ou nulle, report, hors programme.
+- `src/services/__tests__/sync.training.test.ts` : serveur en mémoire avec les règles W-1 : deux appareils, hors connexion puis sync sans perte, conflit de versions (la plus haute gagne, le serveur n'est jamais écrasé), aucun doublon après une nouvelle tentative, historique reconstitué A / B / partiel, hors programme, report, classement des erreurs.
+- `src/services/__tests__/sync.db.test.ts` : sur Postgres réel avec RLS : deux appareils avec versions, profil changé sans toucher le passé, report et difficulté, rattachement A / B, intrus bloqué par RLS (`rls`), export et effacement.
+- `src/state/__tests__/training.test.ts`, `src/domain/privacy/__tests__/data.test.ts`, `src/domain/sync/__tests__/projection.test.ts` (étendus).
+- `e2e/workout-coach.spec.ts` : semaine publiée une fois puis relue, variante allégée stockée à part, séance hors programme.
+
+À venir : comparaison et progression v2 (W-4), règles d'adaptation (W-5), E2E (W-7).

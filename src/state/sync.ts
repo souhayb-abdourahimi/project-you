@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+import type { SyncError } from '@/services/sync';
+
 export type SyncPhase = 'idle' | 'syncing' | 'offline' | 'error';
 
 interface SyncStatusState {
@@ -9,6 +11,8 @@ interface SyncStatusState {
   lastSyncedAt: string | null;
   /** Rows the server refused in the last round (kept locally, retried). */
   failed: number;
+  /** Kinds of failure of the last round (conflict, offline, rls…): for support, never shown raw. */
+  errors: SyncError[];
   set: (patch: Partial<Omit<SyncStatusState, 'set'>>) => void;
 }
 
@@ -18,5 +22,6 @@ export const useSyncStatus = create<SyncStatusState>()((set) => ({
   initialPullDone: false,
   lastSyncedAt: null,
   failed: 0,
+  errors: [],
   set: (patch) => set(patch),
 }));

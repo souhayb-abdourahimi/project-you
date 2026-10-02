@@ -1,6 +1,14 @@
 import { SCENARIOS } from '../../scenarios';
-import { project, type SyncableState } from '../../sync/projection';
-import { buildExport, clearCategory, countByCategory, DELETABLE_CATEGORIES } from '../data';
+import { publishWeek } from '../../scenarios/training';
+import { project, SYNC_TABLE_ORDER, type SyncableState } from '../../sync/projection';
+import {
+  buildExport,
+  CATEGORY_TABLES,
+  clearCategory,
+  countByCategory,
+  DELETABLE_CATEGORIES,
+  EXPORT_ONLY_TABLES,
+} from '../data';
 
 const state: SyncableState = {
   snapshot: SCENARIOS.vegan,
@@ -78,5 +86,45 @@ describe('privacy data', () => {
     expect(out.device.weights).toHaveLength(1);
     expect(out.unavailable).toEqual(['coach_memory']);
     expect(JSON.parse(JSON.stringify(out))).toEqual(out);
+  });
+
+  it('workouts (W-2): programs and prescriptions are exported, deleted with the category, children first', () => {
+    const week = publishWeek(SCENARIOS.vegan, {
+      records: { programs: [], prescriptions: {}, superseded: {}, sessionIds: state.sessionIds },
+      facts: state,
+      today: '2026-09-30',
+      weekStart: '2026-09-28',
+      seed: 'u',
+      at: '2026-09-28T07:00:00.000Z',
+    });
+    const withTraining: SyncableState = { ...state, ...week, rescheduled: { '2026-10-02': '2026-10-03' } };
+    const exported = buildExport({
+      device: withTraining,
+      account: null,
+      unavailable: [],
+      generatedAt: 'x',
+      appVersion: '1',
+    });
+    expect(exported.device.programs).toHaveLength(1);
+    expect(Object.keys(exported.device.prescriptions ?? {}).length).toBeGreaterThan(0);
+    // The account export reads every synced table once (training tables are synced since W-2).
+    expect(SYNC_TABLE_ORDER).toEqual(expect.arrayContaining(['training_programs', 'planned_exercises']));
+    expect(EXPORT_ONLY_TABLES.filter((t) => (SYNC_TABLE_ORDER as string[]).includes(t))).toEqual([]);
+    expect(CATEGORY_TABLES.workouts).toEqual([
+      'exercise_substitutions',
+      'exercise_logs',
+      'planned_exercises',
+      'workout_sessions',
+      'training_programs',
+    ]);
+    const cleared = clearCategory(withTraining, 'workouts');
+    const rows = project(cleared, 'u');
+    for (const t of CATEGORY_TABLES.workouts) expect(rows[t].size).toBe(0);
+    expect([cleared.programs, cleared.prescriptions, cleared.rescheduled, cleared.sessionSources]).toEqual([
+      [],
+      {},
+      {},
+      {},
+    ]);
   });
 });

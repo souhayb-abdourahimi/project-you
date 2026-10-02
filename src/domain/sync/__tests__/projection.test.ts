@@ -1,4 +1,5 @@
 import { SCENARIOS } from '../../scenarios';
+import { publishWeek } from '../../scenarios/training';
 import {
   applyRemote,
   diff,
@@ -31,6 +32,28 @@ function emptyState(): SyncableState {
 }
 
 function fullState(): SyncableState {
+  const base = legacyState();
+  // The week published by the Workout Coach (W-2): a version, frozen sessions, one set done on a
+  // prescribed session.
+  const week = publishWeek(SCENARIOS.veganFatLoss, {
+    records: { programs: [], prescriptions: {}, superseded: {}, sessionIds: base.sessionIds },
+    facts: base,
+    today: '2026-09-30',
+    weekStart: '2026-09-28',
+    seed: USER,
+    at: '2026-09-28T07:00:00.000Z',
+  });
+  const prescribed = sessionKey('2026-09-28', 0);
+  const first = week.prescriptions[week.sessionIds[prescribed]].exercises[0];
+  return {
+    ...base,
+    ...week,
+    setLogs: { ...base.setLogs, [prescribed]: { [first.exerciseId]: [{ reps: 8, loadKg: 20 }] } },
+    sessionDifficulty: { [prescribed]: 3 },
+  };
+}
+
+function legacyState(): SyncableState {
   const key = sessionKey('2026-09-30', 0);
   return {
     ...emptyState(),
@@ -159,7 +182,22 @@ describe('project', () => {
         expect(r).not.toHaveProperty('updated_at');
         expect(r.user_id).toBe(USER);
       }
-    expect(p.exercise_logs.size).toBe(2);
+    expect(p.exercise_logs.size).toBe(3);
+    // Workout Coach (W-2): the version, its frozen sessions and their planned exercises.
+    expect(p.training_programs.size).toBe(1);
+    expect(p.workout_sessions.size).toBe(5);
+    expect(p.planned_exercises.size).toBe(15);
+    const logs = [...p.exercise_logs.values()];
+    const linked = logs.filter((r) => r.planned_exercise_id !== null);
+    expect(linked).toHaveLength(1);
+    expect(p.planned_exercises.get(String(linked[0].planned_exercise_id))?.exercise_id).toBe(linked[0].exercise_id);
+    const prescribed = [...p.workout_sessions.values()].filter((r) => r.prescription_source === 'engine');
+    expect(prescribed.map((r) => r.status).sort()).toEqual(['in_progress', 'planned', 'planned']);
+    // Recorded before W-2: no prescription, no source until the server attaches it (never invented).
+    const legacy = [...p.workout_sessions.values()].filter((r) => r.prescription_source === null);
+    expect(legacy).toHaveLength(2);
+    for (const r of legacy)
+      expect([r.program_id, r.focus, r.planned_minutes, r.prescribed_at]).toEqual([null, null, null, null]);
   });
 
   it('does not depend on the user for random ids but scopes derived ids to the user', () => {

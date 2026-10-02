@@ -47,6 +47,10 @@ Supabase / PostgreSQL. Migrations versionnées dans `supabase/migrations/` (horo
 
 Programmes versionnés et prescriptions immuables : `training_programs`, `planned_exercises` (RLS propriétaire, politiques restrictives de rattachement), colonnes de prescription et de ressenti sur `workout_sessions`, `planned_exercise_id` sur `exercise_logs` et `exercise_substitutions`, raisons de remplacement élargies, `adjustments.status = 'postponed'`, fonction `attach_reconstructed_training_history()`. Détail : `docs/TRAINING_ARCHITECTURE.md` §2–6. Tests : `supabase/tests/training.sql`.
 
+### Synchronisation (W-2, D-032)
+
+Aucune nouvelle migration en W-2. Les tables d'entraînement sont désormais écrites par l'app : ordre de push `training_programs` → `workout_sessions` → `planned_exercises` → `exercise_logs` / `exercise_substitutions` ; `training_programs` et `planned_exercises` ne sont jamais supprimées par la sync (`deleteOnMissing: false`), seulement par l'effacement Privacy Center ou la suppression du compte. Ids stables calculés sur l'appareil (upserts idempotents). L'app appelle `attach_reconstructed_training_history()` avant le pull tant qu'une séance n'a ni programme ni source. **La migration W-1 doit être appliquée sur Supabase avant de publier une version de l'app qui contient W-2.**
+
 ## Migration `20261001000001_sync_hardening.sql`
 
 - Plus de clé étrangère des tables utilisateur vers les catalogues (`foods`, `recipes`, `exercises`) : ces catalogues sont livrés avec l'app et non peuplés côté serveur (valeurs Ciqual 2025 depuis D-020 ; les identifiants d'aliments de l'app sont restés stables, le code Ciqual est porté à part). Les FK faisaient échouer toute synchronisation d'inventaire, de repas et de séries. Remplacées par un `check` de format d'identifiant (D-014).

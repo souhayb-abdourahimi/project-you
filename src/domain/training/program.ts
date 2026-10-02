@@ -127,6 +127,8 @@ export interface PlannedExercise {
   progressionReason: string | null;
   purpose: TrainingPurpose;
   purposeTarget: string | null;
+  /** When this row was prescribed (the full session, or later the adaptation of the day). */
+  prescribedAt: string;
 }
 
 /**
@@ -157,7 +159,7 @@ type TrainingInput = Pick<
   'level' | 'sessionsPerWeek' | 'sessionMinutes' | 'equipment' | 'refusedExerciseIds'
 >;
 
-function deepFreeze<T>(value: T): T {
+export function deepFreeze<T>(value: T): T {
   if (value && typeof value === 'object' && !Object.isFrozen(value)) {
     Object.freeze(value);
     for (const v of Object.values(value)) deepFreeze(v);
@@ -204,13 +206,15 @@ export function publishProgram(input: {
   adjustmentId?: string | null;
   publishedAt: string;
   cycleWeeks?: number;
+  /** Next free number of the lineage when known (W-2); defaults to the previous version + 1. */
+  version?: number;
 }): { published: ProgramVersion; closed: ProgramVersion | null } {
   const { previous } = input;
   const continues = previous?.source === 'engine';
   const published: ProgramVersion = {
     id: input.id,
     lineageId: continues ? previous.lineageId : input.lineageId,
-    version: continues ? previous.version + 1 : 1,
+    version: input.version ?? (continues ? previous.version + 1 : 1),
     source: 'engine',
     status: 'active',
     reasonKey: input.reasonKey,
@@ -278,12 +282,13 @@ function plannedRows(input: {
   purpose: TrainingPurpose;
   level: TrainingLevel;
   loads: Record<string, ProposedLoad>;
-  ids: () => string;
+  prescribedAt: string;
+  ids: (variant: SessionVariant, position: number) => string;
 }): PlannedExercise[] {
   return input.exercises.map((e, position) => {
     const load = input.loads[e.exerciseId];
     return {
-      id: input.ids(),
+      id: input.ids(input.variant, position),
       sessionId: input.sessionId,
       variant: input.variant,
       position,
@@ -298,6 +303,7 @@ function plannedRows(input: {
       progressionAction: load?.action ?? null,
       progressionReason: load ? load.reasonKey : null,
       ...exercisePurpose(e.exerciseId, input.purpose, input.level),
+      prescribedAt: input.prescribedAt,
     };
   });
 }
@@ -314,7 +320,8 @@ export function prescribeSession(input: {
   sessionIndex: number;
   prescribedAt: string;
   loads?: Record<string, ProposedLoad>;
-  ids: () => string;
+  /** Id of each planned row (deterministic in the app: same session, variant and position → same id). */
+  ids: (variant: SessionVariant, position: number) => string;
 }): PrescribedSession {
   const { program } = input;
   if (program.source !== 'engine' || !program.params) {
@@ -340,6 +347,7 @@ export function prescribeSession(input: {
       purpose,
       level: program.params.level,
       loads: input.loads ?? {},
+      prescribedAt: input.prescribedAt,
       ids: input.ids,
     }),
   });
@@ -351,16 +359,17 @@ export function prescribeSession(input: {
  */
 export function adaptPrescription(input: {
   session: PrescribedSession;
-  program: ProgramVersion;
+  program: Pick<ProgramVersion, 'params'> | null;
   adapted: AdaptedSession;
   /** Duration announced to the user (the Daily Coach's), not the circuit's estimate. */
   minutes: number;
   reasonKey: string;
-  ids: () => string;
+  prescribedAt: string;
+  ids: (variant: SessionVariant, position: number) => string;
 }): PrescribedSession {
   const { session, adapted } = input;
   if (adapted.variant === 'full' || session.exercises.some((e) => e.variant === adapted.variant)) return session;
-  const purpose = sessionPurpose(input.program.params?.goal ?? 'maintenance', adapted.variant);
+  const purpose = sessionPurpose(input.program?.params?.goal ?? 'maintenance', adapted.variant);
   return deepFreeze({
     ...session,
     adaptedMinutes: session.adaptedMinutes ?? input.minutes,
@@ -372,8 +381,9 @@ export function adaptPrescription(input: {
         variant: adapted.variant,
         exercises: adapted.exercises,
         purpose,
-        level: input.program.params?.level ?? 'beginner',
+        level: input.program?.params?.level ?? 'beginner',
         loads: {},
+        prescribedAt: input.prescribedAt,
         ids: input.ids,
       }),
     ],

@@ -202,6 +202,7 @@ describe('prescriptions', () => {
       adapted: short,
       minutes: 20,
       reasonKey: 'workout.difficult',
+      prescribedAt: '2026-10-06T07:00:00.000Z',
       ids: counter('ad'),
     });
     expect(adapted.exercises.filter((e) => e.variant === 'full')).toEqual(s.exercises);
@@ -218,6 +219,7 @@ describe('prescriptions', () => {
       adapted: short,
       minutes: 15,
       reasonKey: 'x',
+      prescribedAt: '2026-10-06T07:00:00.000Z',
       ids: counter('z'),
     });
     expect(again).toBe(adapted);
@@ -227,6 +229,7 @@ describe('prescriptions', () => {
       adapted: lightSession(template()),
       minutes: 40,
       reasonKey: 'workout.light',
+      prescribedAt: '2026-10-06T07:00:00.000Z',
       ids: counter('l'),
     });
     expect(light.adaptedMinutes).toBe(20);

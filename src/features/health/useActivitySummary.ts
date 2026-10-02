@@ -16,7 +16,10 @@ export function useActivitySummary(plan: Plan | null): ActivitySummary | null {
     key: sessionKey(c.date, c.sessionIndex),
     date: c.date,
     completedAt: c.completedAt,
-    durationMin: plan.workoutPlan.sessions[c.sessionIndex]?.estimatedMinutes ?? DEFAULT_SESSION_MINUTES,
+    durationMin:
+      plan.sessionTemplate(c.date, c.sessionIndex, c.variant)?.estimatedMinutes ??
+      plan.workoutPlan.sessions[c.sessionIndex]?.estimatedMinutes ??
+      DEFAULT_SESSION_MINUTES,
   }));
   return activitySummary(data, sessions, plan.today);
 }

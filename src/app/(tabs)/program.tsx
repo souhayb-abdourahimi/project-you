@@ -20,7 +20,7 @@ export default function ProgramScreen() {
       ))}
       {plan.schedule.days.map((day) => {
         const workout = day.items.find((i) => i.kind === 'workout');
-        const session = workout?.kind === 'workout' ? plan.workoutPlan.sessions[workout.sessionIndex] : undefined;
+        const session = workout?.kind === 'workout' ? plan.sessionTemplate(day.date, workout.sessionIndex) : null;
         const done = completed.some((c) => c.date === day.date);
         return (
           <Card key={day.date} muted={!workout}>

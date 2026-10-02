@@ -415,3 +415,21 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
   - `effective_from` d'un programme reconstitué = première séance connue au moment du rattachement ; une séance plus ancienne arrivée plus tard le rejoint sans changer cette date ;
   - l'adaptation du jour (`adapted_minutes`, `adaptation_reason`) est modifiable jusqu'à la fin de la séance (un utilisateur peut passer de « courte » à « allégée » avant de commencer ; les deux prescriptions restent).
 - **Date** : 2026-10-02
+
+## D-032 — Workout Coach W-2 : publication, stockage local, sync et conflits
+
+- **Contexte** : demande de W-2 seul par Souhayb le 2026-10-02 (W-1 validé) : publier et relire la prescription, versionner, idempotence, conflit multi-appareil, hors connexion, historique reconstitué, variantes, hors programme, reports, erreurs structurées. Détail : `docs/TRAINING_ARCHITECTURE.md` §4–6.
+- **Décision** :
+  - **Publication** : `usePlan` lit l'existant ; sinon `ensureProgram` publie, `ensureWeek` fige la semaine, puis l'app relit la prescription enregistrée (`plan.sessionTemplate`). Le moteur ne sert plus qu'à proposer (hors programme).
+  - **Ids stables** (`trainingIds`) dérivés du compte, de la version, de `date#index`, de la variante et de la position : un redémarrage, une nouvelle tentative, un plantage ou un second appareil produisent les mêmes ids.
+  - **Déclencheurs de version** (`versionReason`) : fréquence (adaptation si décision `adjustments`), matériel, objectif, niveau, durée, exercices exclus, version du moteur, reprise. Rien d'autre. Première version effective au début de la semaine, les suivantes à partir d'aujourd'hui.
+  - **Source de vérité** : programmes et prescriptions = serveur (immuables), la copie locale est un cache ; réalisé = local d'abord (modification en attente gagne), puis serveur ; dérivé jamais stocké.
+  - **Conflit** : programme, le serveur gagne (sauf fermeture locale d'une version inchangée sur le serveur, vérifiée à trois points) ; même id avec paramètres différents → version locale perdue, séances non commencées et non poussées re-prescrites ; plusieurs actives → la plus haute gagne, à égalité le serveur ; la perdante est abandonnée (locale, sans séance commencée) ou fermée ; colonnes de prescription d'une séance toujours celles du serveur ; puis réévaluation et éventuelle v+1. Les faits ne sont jamais abandonnés.
+  - **Report** : la séance d'origine garde sa prescription (`rescheduled`, `rescheduled_to`), une copie est créée à la nouvelle date (contrainte W-1).
+  - **Hors programme** : `prescription_source = 'off_plan'`, aucune prescription inventée. Les séances antérieures sont rattachées par `attach_reconstructed_training_history()`, appelée avant le pull tant que nécessaire.
+  - **Erreurs** : `conflict`, `offline`, `rls`, `validation`, `server`, `invalid_data` (phase, table, nombre), jamais montrées en détail technique.
+  - **Stockage local v4** : relecture complète du compte une fois après la mise à jour.
+  - **Charge proposée** : progression sur l'historique réel, sinon `null`.
+- **Alternatives** : ids aléatoires (refusé : doublons après une nouvelle tentative ou sur un second appareil) ; dernière écriture gagne pour les programmes (refusé : écraserait silencieusement le serveur) ; réécrire la séance reportée (refusé : la prescription d'origine doit rester) ; une migration W-2 (inutile, le schéma W-1 suffit).
+- **Trade-offs** : une séance avec faits enregistrée sous une version perdante adopte la prescription du serveur si la même séance existe, sinon sa prescription locale est poussée sous la version du serveur ; collision de clé laissant une ligne serveur `planned` ; jours passés encore affichés depuis le planning courant (W-6) ; anciennes versions de l'app ignorent `superseded` ; aucune purge locale ; charge proposée avec fatigue « normale » (W-4) ; `SHORT_SESSION_MINUTES` = 15 (bug W-3) ; avant le premier pull la lignée dépend de la graine (`local` ou compte), ce qui peut créer une version de plus, puis converge.
+- **Date** : 2026-10-02
