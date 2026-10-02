@@ -23,7 +23,8 @@ export interface Adjustment {
   to: number | string | null;
   reasonKey: string;
   evidence: Record<string, string | number>;
-  status: 'proposed' | 'applied' | 'declined' | 'reverted';
+  /** `postponed`: "plus tard" (D-031), decided like a decline for this week, proposed again later. */
+  status: 'proposed' | 'applied' | 'declined' | 'reverted' | 'postponed';
   effectiveFrom: IsoDate;
   decidedAt: string;
 }

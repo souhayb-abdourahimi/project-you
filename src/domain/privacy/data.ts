@@ -7,15 +7,18 @@ import type { SyncableState, SyncTable } from '../sync/projection';
 export type PrivacyCategory =
   'profile' | 'motivation' | 'weights' | 'measurements' | 'inventory' | 'expenses' | 'workouts' | 'meals' | 'journey';
 
-/** Server tables holding each category. Profile deletion = account deletion. */
-export const CATEGORY_TABLES: Record<PrivacyCategory, SyncTable[]> = {
+/** Workout Coach tables not synced yet (W-1, D-031): exported and deleted with the workouts. */
+export type TrainingServerTable = 'planned_exercises' | 'training_programs';
+
+/** Server tables holding each category, children first. Profile deletion = account deletion. */
+export const CATEGORY_TABLES: Record<PrivacyCategory, (SyncTable | TrainingServerTable)[]> = {
   profile: ['profiles', 'goals', 'user_preferences'],
   motivation: ['motivations'],
   weights: ['weight_logs'],
   measurements: ['body_measurements'],
   inventory: ['inventory_items'],
   expenses: ['food_expenses'],
-  workouts: ['exercise_substitutions', 'exercise_logs', 'workout_sessions'],
+  workouts: ['exercise_substitutions', 'exercise_logs', 'planned_exercises', 'workout_sessions', 'training_programs'],
   meals: ['meal_plan_items'],
   // Day check-ins, weekly check-ins, milestones and adaptation decisions (D-028).
   journey: ['daily_checkins', 'weekly_checkins', 'journey_milestones', 'adjustments'],
@@ -48,6 +51,9 @@ export const EXPORT_ONLY_TABLES = [
   'recipes',
   'shopping_list_items',
   'workout_plans',
+  // Workout Coach (W-1): written by the app from W-2 on.
+  'training_programs',
+  'planned_exercises',
 ] as const;
 
 export function countByCategory(state: SyncableState): Record<PrivacyCategory, number> {

@@ -1,7 +1,7 @@
 # Workout Coach Engine — moteur de coaching sportif
 
-Statut : **audit et architecture proposés (phase 5), en attente de validation**. Aucun code applicatif n'est écrit avant l'accord de Souhayb.
-Date : 2026-10-01. Décision : `docs/DECISIONS.md` D-030. Modèle de données, flux et intégrations : `docs/TRAINING_ARCHITECTURE.md`.
+Statut : **architecture validée par Souhayb le 2026-10-02 (D-031) ; W-1 (modèle de données) livré**. Chaque étape suivante attend sa validation.
+Date : 2026-10-01, mise à jour le 2026-10-02. Décisions : `docs/DECISIONS.md` D-030 (architecture), D-031 (décisions validées et W-1). Modèle de données, flux et intégrations : `docs/TRAINING_ARCHITECTURE.md`.
 Documents liés : `docs/TRANSFORMATION_JOURNEY.md` (moteur unique), `docs/DAILY_COACH.md`, `docs/ADAPTATION_ENGINE.md`, `docs/PROGRESS_JOURNEY.md`, `docs/PLANNING_ENGINE.md`.
 
 Objectif produit : faire de Project You un **coach sportif longitudinal**. L'application doit suivre le programme, les séances prévues et réalisées, les exercices, séries, répétitions, charges, la difficulté ressentie, la fatigue, les exercices remplacés et pourquoi, la progression et les adaptations. Elle doit comprendre :
@@ -85,7 +85,7 @@ Le Workout Coach Engine **n'est pas un second moteur de coaching** (CLAUDE.md r�
 
 ## 3. Modèle (résumé)
 
-Détail des tables, colonnes, RLS et sync : `docs/TRAINING_ARCHITECTURE.md` §2–4.
+Détail des tables, colonnes, RLS et sync : `docs/TRAINING_ARCHITECTURE.md` §2–6.
 
 ```
 Programme (training_programs)            version, cycle, split, paramètres, début/fin, raison du changement
@@ -105,23 +105,25 @@ Tous les seuils ci-dessous sont des **paramètres de conception** (constante `WO
 
 ### 4.1 Programme
 
-- Un seul programme **actif** par utilisateur. Il garde ses exercices pendant un **cycle de 6 semaines** (choix par défaut ; voir §7) : la rotation de variantes reste celle d'aujourd'hui, mais elle ne change plus quand on rouvre l'app.
-- Une nouvelle version du programme est créée seulement quand : le profil d'entraînement change (matériel, séances/sem, durée, niveau, exercices refusés), une adaptation est appliquée, ou le cycle se termine et l'utilisateur accepte le suivant. La version précédente est close (`ended_on`) avec la raison (`reason_key`), jamais modifiée.
-- Fin de cycle : le moteur propose (recommandation) soit de continuer, soit une **semaine allégée** puis un nouveau cycle avec des variantes. Jamais imposé.
+- Un seul programme **actif** par utilisateur. Il garde ses exercices pendant un **cycle de 6 semaines** (validé, D-031) : la rotation de variantes reste celle d'aujourd'hui, mais elle ne change plus quand on rouvre l'app.
+- Une nouvelle version du programme est créée seulement quand : le profil d'entraînement change (matériel, séances/sem, durée, niveau, exercices refusés), une adaptation est appliquée, ou le cycle se termine et l'utilisateur accepte le suivant. Une version publiée est **immuable** : la précédente passe en `superseded` (date de fin posée une fois), la nouvelle porte le numéro suivant dans la même lignée et sa raison (`reason_key`, décision d'adaptation éventuelle). L'historique garde v1 : on peut toujours répondre « qu'est-ce qui était prévu ? », « qu'est-ce qui a été fait ? », « qu'est-ce qui a changé ensuite ? ».
+- Fin de cycle : le moteur propose une **semaine allégée** puis un nouveau cycle. Jamais imposée : l'utilisateur **accepte, refuse ou reporte** (`adjustments.status` = `applied`, `declined`, `postponed`).
 
 ### 4.2 Semaine et séance prévue
 
 - La semaine est figée au premier affichage de la semaine (lundi ou plus tard) : une ligne `workout_sessions` en statut `planned` par séance prévue, avec ses `planned_exercises`.
 - Un report met la séance en `rescheduled` avec `rescheduled_to` et crée la séance du nouveau jour (même prescription) : les deux appareils voient le report (lève A9).
-- Une adaptation du jour (courte, allégée, semaine allégée) **remplace la prescription de la séance du jour avant qu'elle commence** ; la séance garde `variant` et la raison (`adaptation_reason` : clé du Daily Coach) ; la prescription d'origine reste lisible dans le programme.
+- Une adaptation du jour (courte, allégée, semaine allégée) **ajoute** la prescription de sa variante (lignes `planned_exercises` de variante `short` ou `light`) avec la durée annoncée (`adapted_minutes`) et sa raison (`adaptation_reason`) ; la prescription complète n'est jamais réécrite.
+- Chaque séance et chaque exercice prescrit porte une **raison structurée** (`purpose` : force, hypertrophie, endurance musculaire, technique, maintien, récupération, progression ; `purpose_target` : muscle, schéma moteur ou exercice). Le texte « pourquoi cet exercice ? » est généré à partir de cette raison, jamais stocké en texte libre.
 - Séance faite un jour sans séance prévue : séance **hors programme** (`session_index` nul, `focus` choisi par l'utilisateur ou séance courte), comptée comme une séance faite, jamais comme un rattrapage (A12).
 
 ### 4.3 Saisie pendant la séance
 
 - La séance démarre (`started_at`) à la première série ou au bouton « Commencer ».
 - Chaque série : répétitions **ou** secondes selon l'unité, charge si l'exercice est chargé, RPE facultatif. Une série peut être corrigée ou supprimée (A5).
-- Remplacement : l'utilisateur **choisit** parmi les alternatives (A7). Raisons : `dislike`, `cant_do`, `no_equipment`, `busy_equipment` (machine occupée, nouveau), `easier`, `harder`, `discomfort` (« ça me gêne », nouveau). `discomfort` affiche le message existant (arrêter l'exercice si la gêne est importante ou persiste, en parler à un professionnel) et propose une alternative plus facile ; jamais de diagnostic.
-- Fin de séance : difficulté ressentie sur 5 niveaux en mots (« très facile » → « très difficile ») ; fatigue du jour facultative, écrite dans `daily_checkins` (une seule source pour la fatigue, lue par la sécurité). Les deux sont facultatives.
+- Remplacement : l'utilisateur **choisit** parmi les alternatives (A7). Raisons (liste validée, D-031) : machine prise (`busy_equipment`), mouvement gênant / inconfort (`discomfort`), technique inconnue (`cant_do`), trop difficile aujourd'hui (`too_hard_today`), matériel indisponible (`no_equipment`), manque de temps (`no_time`), préférence personnelle (`preference`), autre (`other`) ; `easier`, `harder` et `dislike` restent pour l'historique. Machine prise ou matériel indisponible → alternatives sans ce matériel ; gêne, technique inconnue ou trop difficile → alternatives plus faciles, jamais plus difficiles.
+- **Gêne / douleur** : le message existant s'affiche (arrêter l'exercice si la gêne est importante ou persiste, en parler à un professionnel de santé). Jamais de diagnostic, jamais d'encouragement à continuer malgré la douleur, aucune progression proposée sur cet exercice ce jour-là.
+- Fin de séance : difficulté ressentie sur 5 niveaux **en mots** : Très facile, Facile, Correct, Difficile, Très difficile (stockée 1–5 ; une conversion interne vers un RPE est possible pour le moteur, l'utilisateur n'a jamais à connaître le RPE) ; fatigue du jour, écrite dans `daily_checkins` (une seule source pour la fatigue, lue par la sécurité) ; notes libres facultatives (`notes`, déjà présentes). Tout est facultatif.
 - Une séance terminée sans aucune série reste « faite » si l'utilisateur la termine (on le croit), mais la comparaison la marque « non détaillée » : elle compte pour la régularité, pas pour la progression.
 
 ### 4.4 Comparaison prévu / fait (`training/compare.ts`, dérivé)
@@ -160,11 +162,13 @@ Nouvelles règles, ajoutées à la liste existante (même `Recommendation`, mêm
 |---|---|---|
 | Séances terminées en moyenne < 75 % de la durée prévue sur les 3 dernières, ou 3 versions courtes sur les 4 dernières | `session_minutes` : durée prévue réduite au palier inférieur (ex. 60 → 45) | **appliquée en un geste** (nouvelle valeur de `APPLICABLE_CHANGES`) |
 | Même exercice remplacé 2× pour `no_equipment` / `busy_equipment` | `exercise_swap` : garder le remplaçant dans le programme | appliquée en un geste |
-| Même exercice remplacé 2× pour `dislike` / `cant_do` | suggestion mémoire existante, avec enfin son écran (A11) | confirmée par l'utilisateur → `refusedExerciseIds` |
+| Même exercice remplacé 2× pour `preference` / `dislike` / `cant_do` | la mémoire **observe** le motif, l'app **demande** à l'utilisateur ; seule sa confirmation enregistre une préférence durable (D-031 D). Une gêne, une machine prise ou un manque de temps ne deviennent jamais une préférence | confirmée par l'utilisateur → `refusedExerciseIds` |
 | Dernière série non faite sur ≥ 3 exercices, 2 séances de suite (hors fatigue) | `sets_per_exercise` −1 sur les accessoires | conseil |
 | Stagnation (§4.5) | `progression_review` sur l'exercice | conseil |
 | Difficulté ressentie « très difficile » 2 séances de suite + échecs | semaine allégée (`light_week`, existant) | appliquée en un geste |
-| Fin de cycle | continuer / semaine allégée puis nouveau cycle | appliquée en un geste |
+| Fin de cycle | semaine allégée puis nouveau cycle | proposée : accepter, refuser ou reporter |
+
+Le Workout Coach produit des **signaux et des recommandations structurés** ; la décision passe toujours par l'Adaptation Engine existant, jamais par un second moteur (D-031 F).
 
 Ce qui ne change pas : `training_load`, semaine allégée, −1 séance/sem, retour au nombre initial, plateau, blocage sous sécurité et sous faible adhérence (on simplifie le plan, D-028).
 
@@ -178,10 +182,10 @@ Ce qui ne change pas : `training_load`, semaine allégée, −1 séance/sem, ret
 
 ## 5. Flux utilisateur
 
-Détail écran par écran et séquence de données : `docs/TRAINING_ARCHITECTURE.md` §5. Résumé :
+Détail écran par écran et séquence de données : `docs/TRAINING_ARCHITECTURE.md` §7. Résumé :
 
 1. **Début de semaine** → le programme actif fige la semaine (séances prévues + prescriptions).
-2. **Aujourd'hui** → le Daily Coach propose la séance (complète, courte, allégée, repos) ; l'adaptation choisie réécrit la prescription du jour avant le début.
+2. **Aujourd'hui** → le Daily Coach propose la séance (complète, courte, allégée, repos) ; l'adaptation choisie ajoute la prescription de sa variante avant le début, sans réécrire la prescription complète.
 3. **Séance** → séries saisies, corrigées, exercices remplacés avec raison ; gêne → message de sécurité.
 4. **Fin** → difficulté ressentie, fatigue facultative ; résumé en faits.
 5. **Derrière** → comparaison prévu/fait, progression de la séance suivante, faits pour le parcours (records, régularité).
@@ -192,26 +196,26 @@ Détail écran par écran et séquence de données : `docs/TRAINING_ARCHITECTURE
 
 ## 6. Plan d'implémentation par étapes
 
-Chaque étape : code + tests unitaires + `npm run check` ; migrations avec tests RLS (`TMPDIR=/tmp npm run test:db`) ; E2E à la fin. Une PR par phase, fusionnée uniquement sur décision de Souhayb.
+Chaque étape : code + tests unitaires + `npm run check` ; migrations avec tests RLS (`TMPDIR=/tmp npm run test:db`) ; E2E à la fin. Toutes les étapes vont sur la PR #5 ; aucune fusion sans décision de Souhayb. **Chaque étape attend sa validation avant de commencer.**
 
 | Étape | Contenu | Corrige |
 |---|---|---|
-| **W-1** Domaine pur | types `TrainingProgram`, `PlannedSession`, `PlannedExercise` ; `training/program.ts` (création, version, cycle), `training/week.ts` (figer une semaine), `training/compare.ts`, `training/session.ts` (logique de saisie sortie de l'écran) ; tests | A1, A2, A12 |
-| **W-2** Migration + RLS | `training_programs`, `planned_exercises`, colonnes de `workout_sessions` et `exercise_logs`, raisons élargies, statut `partial` dérivé (non stocké) ; tests RLS (lecture/écriture croisée refusées, cascade) | A1, A2, A5, A6, A9 |
-| **W-3** Stockage local + sync | `py.data.v1` v4 avec migration ; projection/`applyRemote` des nouvelles tables ; séries modifiables (suppression logique) ; **historique existant reconstitué et marqué** `reconstructed` (voir §7) | A5, A9 |
-| **W-4** Séance (UI fonctionnelle, pas finale) | démarrer, saisir/corriger/supprimer une série, secondes, choisir l'alternative, nouvelles raisons, fin de séance (difficulté, fatigue) ; l'écran respecte la durée du Daily Coach et le matériel maison | A3, A4, A5, A6, A7 |
-| **W-5** Progression v2 | contexte fatigue/sécurité/variante, stagnation, gêne, charge figée dans la prescription | A3, A8 |
-| **W-6** Adaptation + mémoire | nouvelles règles §4.6 dans `journey/adaptation.ts`, `APPLICABLE_CHANGES` += `session_minutes`, `exercise_swap` ; écran de confirmation des suggestions mémoire ; fin de cycle | A10, A11 |
-| **W-7** Intégrations | Daily Coach lit la séance figée ; Programme affiche semaine allégée et reports ; Progress Journey : prévu/fait en faits ; `explain.ts` : « Pourquoi cette charge ? » ; notifications : aucun nouveau déclencheur prévu (si un est ajouté : migration des contraintes de `notification_history`) | A4 |
-| **W-8** E2E + revue | parcours complet (semaine figée → séance → remplacement → fin → adaptation proposée), changement de profil en cours de semaine, deux appareils simulés, revue critique | — |
+| **W-1** Modèle de données ✓ (2026-10-02) | migration `20261002000001_workout_coach_foundation.sql` : `training_programs` (versions publiées immuables), `workout_sessions` étendue (prescription, raison, adaptation du jour, report, difficulté), `planned_exercises` (prescription immuable par variante), `exercise_logs` et `exercise_substitutions` reliés à la prescription, raisons élargies, `adjustments.postponed`, rattachement « reconstitué » ; RLS ; `training/program.ts` (types et fonctions pures) ; tests | A1, A2 (modèle) |
+| **W-2** Stockage local + sync | `py.data.v1` v4 ; figer la semaine (`week.ts`) ; projection / fusion des nouvelles tables ; appel du rattachement reconstitué ; reports et suppression de séries synchronisés ; conflit de deux versions publiées hors connexion | A1, A2, A5, A9, A12 |
+| **W-3** Séance (UI fonctionnelle, pas finale) | démarrer, saisir / corriger / supprimer une série, secondes, choisir l'alternative et la raison, fin de séance (difficulté en mots, fatigue, notes). **Corrige les deux bugs confirmés** : la fatigue n'est plus codée en dur à « normal » dans `ExerciseCard` (elle vient de `JourneyState`) ; une séance courte annoncée à 20 min exécute la prescription de 20 min (`adapted_minutes`), plus 15 min systématiquement | A3, A4, A5, A6, A7 |
+| **W-4** Comparaison + progression v2 | `compare.ts` (prévu / fait, raison déclarée) ; progression avec fatigue, sécurité, variante, stagnation, gêne ; charge proposée figée dans la prescription | A8 |
+| **W-5** Adaptation + mémoire | règles §4.6 dans `journey/adaptation.ts` (`APPLICABLE_CHANGES` += `session_minutes`, `exercise_swap`) ; fin de cycle accepter / refuser / reporter ; question de confirmation des préférences | A10, A11 |
+| **W-6** Intégrations | Daily Coach sur la séance figée ; Programme (semaine allégée, reports, historique) ; Progress Journey (prévu / fait en faits) ; `explain.ts` (« Pourquoi cet exercice ? », « Pourquoi cette charge ? ») ; notifications : aucun nouveau déclencheur prévu (sinon migration des contraintes de `notification_history`) | A4 |
+| **W-7** E2E + revue | parcours complet, changement de profil en cours de semaine, deux appareils, revue critique | — |
 
 ---
 
-## 7. Points à valider par Souhayb
+## 7. Décisions validées (2026-10-02, D-031)
 
-1. **Cycle de 6 semaines** avec semaine allégée proposée à la fin (recommandé) — ou pas de cycle (programme continu, seulement les règles d'adaptation).
-2. **Difficulté ressentie** : 5 niveaux en mots en fin de séance (recommandé), le RPE par série restant facultatif — ou RPE 1–10 obligatoire.
-3. **Historique existant** : séances passées rattachées à un programme « reconstitué » marqué comme tel, sans prescription inventée (recommandé) — ou historique ancien laissé sans programme.
-4. **Nouvelles raisons de remplacement** `busy_equipment` (« la machine est prise ») et `discomfort` (« ça me gêne ») (recommandé).
+1. **Cycle de 6 semaines** : oui. La semaine allégée de fin de cycle est proposée, jamais imposée : accepter, refuser ou reporter.
+2. **Difficulté ressentie** : 5 niveaux en mots (Très facile, Facile, Correct, Difficile, Très difficile). Conversion interne vers un nombre ou un RPE possible ; l'utilisateur n'a jamais à connaître le RPE.
+3. **Séances historiques** : rattachées à un programme « reconstitué » ; aucune prescription passée inventée ; ce qui n'a pas été enregistré reste inconnu.
+4. **Raisons de remplacement** : machine prise, mouvement gênant / inconfort, technique inconnue, trop difficile aujourd'hui, matériel indisponible, manque de temps, préférence personnelle, autre. Douleur ou inconfort : jamais de diagnostic, jamais d'encouragement à continuer.
+5. **Décisions d'architecture A à G** : programmes publiés immuables et versionnés (A) ; FACT / USER_REPORTED / DERIVED / RECOMMENDATION séparés, le dérivé n'est jamais stocké (B) ; raison de prescription structurée (C) ; une préférence n'est enregistrée qu'après confirmation (D) ; comparaison prévu / réalisé sans recalculer le passé (E) ; pas de second Adaptation Engine (F) ; les deux bugs corrigés en W-3 (G).
 
-Les seuils des §4.5–4.6 sont des paramètres de conception à faire relire, comme ceux des phases précédentes.
+Les seuils des §4.5–4.6 restent des paramètres de conception à faire relire, comme ceux des phases précédentes.

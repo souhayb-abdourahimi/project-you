@@ -16,20 +16,20 @@ Tâches importantes à ne pas perdre entre deux sessions. Référence des IDs : 
 - [ ] Manifeste Android : `READ/WRITE_EXTERNAL_STORAGE` (≤ API 32) et `SYSTEM_ALERT_WINDOW` viennent du template Expo ; vérifier s'ils sont utiles et les bloquer sinon (`android.blockedPermissions`).
 - [ ] Parcs et activités (SportsProvider) ; prix et promotions réels (aucune source choisie).
 
-## Workout Coach Engine (D-030, phase 5)
+## Workout Coach Engine (D-030, D-031, phase 5)
 
-Audit et architecture : `docs/WORKOUT_ENGINE.md`, `docs/TRAINING_ARCHITECTURE.md`. **En attente de validation de Souhayb avant tout code.**
+Audit et architecture : `docs/WORKOUT_ENGINE.md`, `docs/TRAINING_ARCHITECTURE.md`. Architecture validée le 2026-10-02. **Chaque étape attend la validation de Souhayb.**
 
-- [x] Audit et architecture (2026-10-01)
-- [ ] Valider les points ouverts (`docs/WORKOUT_ENGINE.md` §7) : cycle de 6 semaines, difficulté 1–5, historique reconstitué, raisons `busy_equipment` / `discomfort`
-- [ ] W-1 Domaine pur : programme versionné, semaine figée, comparaison prévu/fait, logique de séance hors de l'écran
-- [ ] W-2 Migration `training_programs`, `planned_exercises`, colonnes de `workout_sessions` / `exercise_logs` / `exercise_substitutions`, suppression de `workout_plans` + tests RLS
-- [ ] W-3 Stockage local v4, sync des nouvelles tables, séries modifiables, historique reconstitué
-- [ ] W-4 Séance (UI fonctionnelle) : correction de séries, secondes, choix de l'alternative, fin de séance (difficulté, fatigue)
-- [ ] W-5 Progression v2 : fatigue et sécurité réelles (aujourd'hui `fatigue: 'normal'` codé en dur dans `ExerciseCard`), variante, stagnation, gêne
-- [ ] W-6 Règles d'adaptation d'entraînement + écran de confirmation de la mémoire (reprend la ligne « Mémoire du coach » ci-dessous)
-- [ ] W-7 Intégrations : Daily Coach sur la séance figée (la version courte fait toujours 15 min aujourd'hui), semaine allégée dans Programme, « Pourquoi cette charge ? »
-- [ ] W-8 E2E et revue critique
+- [x] Audit et architecture (2026-10-01), décisions validées (2026-10-02, D-031)
+- [x] W-1 Modèle de données : migration `20261002000001_workout_coach_foundation.sql`, RLS, `training/program.ts`, tests (2026-10-02)
+- [ ] W-2 Stockage local v4, figer la semaine, sync des nouvelles tables, appel de `attach_reconstructed_training_history()`, conflit de deux versions publiées hors connexion
+- [ ] W-3 Séance (UI fonctionnelle) + **bugs confirmés** : fatigue codée en dur à « normal » dans `ExerciseCard` ; séance courte annoncée à 20 min qui exécute 15 min
+- [ ] W-4 Comparaison prévu / fait + progression v2
+- [ ] W-5 Règles d'adaptation d'entraînement, fin de cycle (accepter / refuser / reporter), question de confirmation des préférences (reprend « Mémoire du coach » ci-dessous)
+- [ ] W-6 Intégrations (Daily Coach, Programme, Progress Journey, explications)
+- [ ] W-7 E2E et revue critique
+- [ ] Décider la suppression de `workout_plans` (jamais écrite) et de `workout_sessions.plan_id`, après vérification qu'elle est vide en production
+- [ ] Appliquer la migration `20261002000001` sur le projet Supabase réel (SQL Editor) après fusion
 - [ ] Faire relire les seuils de D-030 avec ceux de D-024 / D-026 / D-028
 
 ## Daily Coach + Progress Journey (D-028)

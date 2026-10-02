@@ -30,7 +30,7 @@ import type { WeightEntry } from '../progress/weight';
 import type { IsoDate } from '../shared/dates';
 import type { SessionVariant } from '../training/adapt';
 import type { LoggedSet } from '../training/progression';
-import type { ReplacementReason } from '../training/replacement';
+import { REPLACEMENT_REASONS, type ReplacementReason } from '../training/replacement';
 
 export interface CompletedSession {
   date: IsoDate;
@@ -114,7 +114,7 @@ const REMOTE_ROWS = {
     session_id: z.string(),
     from_exercise_id: z.string(),
     to_exercise_id: z.string(),
-    reason: z.enum(['dislike', 'cant_do', 'no_equipment', 'easier', 'harder']).nullish(),
+    reason: z.enum(REPLACEMENT_REASONS).nullish(),
   }),
   journey_milestones: z.object({ milestone_id: z.string(), reached_on: isoDate, celebrated_at: z.string().nullish() }),
   adjustments: z.object({
@@ -122,7 +122,7 @@ const REMOTE_ROWS = {
     kind: z.string(),
     change_key: z.string(),
     reason_key: z.string(),
-    status: z.enum(['proposed', 'applied', 'declined', 'reverted']),
+    status: z.enum(['proposed', 'applied', 'declined', 'reverted', 'postponed']),
     effective_from: isoDate,
     decided_at: z.string(),
   }),

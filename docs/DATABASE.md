@@ -28,9 +28,11 @@ Supabase / PostgreSQL. Migrations versionnées dans `supabase/migrations/` (horo
 | `shopping_list_items` | ShoppingList | coût estimé seulement si prix réel |
 | `food_expenses` | budget réel | dépenses saisies |
 | `exercises` | Exercise | catalogue |
-| `workout_plans` | WorkoutPlan | plan hebdo sérialisé (`jsonb`) + version du moteur |
-| `workout_sessions` | WorkoutSession | variante `full` / `short` / `light` |
-| `exercise_logs` | ExerciseLog / ExerciseHistory | une ligne par série |
+| `workout_plans` | WorkoutPlan | **jamais écrite, inutilisée** depuis D-031 (remplacée par `training_programs` + `planned_exercises`) ; suppression à décider |
+| `training_programs` | ProgramVersion | une ligne = une version publiée, immuable (`lineage_id` + `version`), un seul `active`, un seul `reconstructed` ; D-031 |
+| `workout_sessions` | WorkoutSession | séance prescrite (programme, focus, durée, raison, adaptation du jour) puis vécue (statut, variante, difficulté 1–5, report, notes) ; prescription figée (trigger) |
+| `planned_exercises` | PlannedExercise | prescription immuable par variante (séries, fourchette, repos, RPE cible, charge proposée, raison) ; D-031 |
+| `exercise_logs` | ExerciseLog / ExerciseHistory | une ligne par série (répétitions **ou** secondes), reliée à l'exercice prescrit (`planned_exercise_id`) |
 | `weight_logs` | WeightLog | |
 | `body_measurements` | BodyMeasurement | tour de taille, etc. |
 | `progress_photos` | ProgressPhoto | chemin dans le bucket **privé** `progress-photos/<user_id>/…` |
@@ -40,6 +42,10 @@ Supabase / PostgreSQL. Migrations versionnées dans `supabase/migrations/` (horo
 | `integration_connections` | CalendarConnection, HealthConnection | `kind` = calendar/health, scopes, statut ; aucun token en clair côté client |
 | `coach_memory` | mémoire structurée du coach | `kind` énuméré (aliment détesté, créneau préféré…) |
 | `ai_conversations` / `ai_messages` | AIConversation, AIMessage | phase 3 ; tables créées mais inutilisées au MVP |
+
+## Migration `20261002000001_workout_coach_foundation.sql` (W-1, D-031)
+
+Programmes versionnés et prescriptions immuables : `training_programs`, `planned_exercises` (RLS propriétaire, politiques restrictives de rattachement), colonnes de prescription et de ressenti sur `workout_sessions`, `planned_exercise_id` sur `exercise_logs` et `exercise_substitutions`, raisons de remplacement élargies, `adjustments.status = 'postponed'`, fonction `attach_reconstructed_training_history()`. Détail : `docs/TRAINING_ARCHITECTURE.md` §2–6. Tests : `supabase/tests/training.sql`.
 
 ## Migration `20261001000001_sync_hardening.sql`
 

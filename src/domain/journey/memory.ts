@@ -85,11 +85,13 @@ export function journeyMemory(input: MemoryInput): JourneyMemory {
   }
 
   const suggestions: MemorySuggestion[] = [];
-  // "Je n'aime pas" / "je ne peux pas" on two different sessions → suggest removing the exercise.
+  // A preference ("je n'aime pas", "préférence", "je ne connais pas la technique") on two different
+  // sessions → ask the user; only their confirmation makes it durable (D-031 D). A movement that
+  // bothers (`discomfort`) is a safety matter, not a taste: it never becomes a preference here.
   const refused = new Map<string, string[]>();
   for (const [session, swaps] of Object.entries(input.swapReasons)) {
     for (const [exerciseId, reason] of Object.entries(swaps)) {
-      if (reason === 'dislike' || reason === 'cant_do')
+      if (reason === 'dislike' || reason === 'cant_do' || reason === 'preference')
         refused.set(exerciseId, [...(refused.get(exerciseId) ?? []), session]);
     }
   }

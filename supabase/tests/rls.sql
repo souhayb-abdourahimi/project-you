@@ -107,6 +107,9 @@ insert into public.food_expenses (user_id, amount_cents, spent_on) values ('0000
 insert into public.workout_plans (id, user_id, week_start, engine_version, plan) values ('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-00000000000a', '2026-09-28', 1, '{}');
 insert into public.workout_sessions (id, user_id, plan_id) values ('00000000-0000-0000-0000-0000000000e2', '00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-0000000000e1');
 insert into public.exercise_logs (user_id, session_id, exercise_id, set_index, reps) values ('00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-0000000000e2', 'goblet_squat', 0, 10);
+-- Workout Coach (W-1, D-031); behaviour tests in supabase/tests/training.sql.
+insert into public.training_programs (id, user_id, lineage_id, version, source, status, reason_key, effective_from) values ('00000000-0000-0000-0000-0000000000e3', '00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-0000000000e4', 1, 'reconstructed', 'ended', 'program.reason.reconstructed', '2026-09-28');
+insert into public.planned_exercises (user_id, session_id, variant, position, exercise_id, sets, reps_min, reps_max, unit, rest_seconds, purpose) values ('00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-0000000000e2', 'full', 0, 'goblet_squat', 3, 8, 12, 'reps', 90, 'technique');
 insert into public.body_measurements (user_id, measured_on, kind, value_cm) values ('00000000-0000-0000-0000-00000000000a', '2026-09-30', 'waist', 85);
 insert into public.progress_photos (user_id, taken_on, pose, storage_path) values ('00000000-0000-0000-0000-00000000000a', '2026-09-30', 'front', '00000000-0000-0000-0000-00000000000a/1.jpg');
 insert into public.daily_checkins (user_id, date, energy) values ('00000000-0000-0000-0000-00000000000a', '2026-09-30', 3);

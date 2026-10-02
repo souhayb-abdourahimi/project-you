@@ -370,7 +370,7 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
 - **Trade-offs** : des motifs lexicaux ne comprennent pas le sens ; ils attrapent les formulations connues et laissent passer une phrase blessante inédite. La relecture humaine des textes reste utile.
 - **Date** : 2026-10-01
 
-## D-030 — Workout Coach Engine : prévu figé, fait enregistré, écart dérivé (proposition, en attente de validation)
+## D-030 — Workout Coach Engine : prévu figé, fait enregistré, écart dérivé (validée le 2026-10-02, voir D-031)
 
 - **Contexte** : demande du 2026-10-01 (phase 5, thread « Workout Coach Engine ») : faire de Project You un coach sportif longitudinal qui sait ce qui était prévu, ce qui a été fait, pourquoi il y a eu une différence et quelle adaptation proposer. Audit : `docs/WORKOUT_ENGINE.md` §1 ; architecture : `docs/TRAINING_ARCHITECTURE.md`. Aucun code applicatif avant validation.
 - **Constat principal** : le programme et la semaine sont recalculés à chaque rendu depuis le profil actuel (`usePlan`) ; `workout_plans` n'est jamais écrite ; la prescription par exercice et la charge proposée ne sont pas gardées. Le « prévu » de l'historique change donc avec le profil (compromis accepté par D-028), ce qui rend la comparaison prévu/fait impossible.
@@ -387,5 +387,31 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
   - stocker l'écart et la progression côté serveur : refusé (désynchronisation, D-028) ;
   - un « TrainingCoachEngine » avec ses propres messages et notifications : refusé (règle 6).
 - **Trade-offs** : plus de lignes synchronisées (une séance prévue et ses exercices chaque semaine, même non faite) ; migration locale v4 à tester avec soin ; les seuils (cycle de 6 semaines, stagnation sur 3 séances / 3 semaines, 75 % de la durée, 2 remplacements) sont des paramètres de conception à faire relire avec ceux de D-024, D-026 et D-028.
-- **Points ouverts** : `docs/WORKOUT_ENGINE.md` §7 (cycle, échelle de difficulté, historique reconstitué, nouvelles raisons).
+- **Points ouverts** : tranchés le 2026-10-02 (D-031).
 - **Date** : 2026-10-01
+
+## D-031 — Workout Coach : décisions validées et W-1 (modèle de données)
+
+- **Contexte** : validation de l'architecture D-030 par Souhayb le 2026-10-02, avec quatre réponses et sept décisions (A à G), puis demande de W-1 seul : le modèle de données persistant, sans UI ni sync. Détail : `docs/WORKOUT_ENGINE.md` §6–7, `docs/TRAINING_ARCHITECTURE.md` §2–6.
+- **Réponses** : cycle de 6 semaines, semaine allégée de fin de cycle proposée (accepter, refuser, reporter : `adjustments.status = 'postponed'` ajouté), jamais imposée ; difficulté en 5 mots (Très facile → Très difficile), stockée 1–5, sans obliger l'utilisateur à connaître le RPE ; historique rattaché à un programme « reconstitué » sans prescription inventée ; raisons de remplacement : machine prise, gêne / inconfort, technique inconnue, trop difficile aujourd'hui, matériel indisponible, manque de temps, préférence personnelle, autre (douleur : jamais de diagnostic ni d'encouragement à continuer).
+- **Décision (W-1)** :
+  - **A. Immuabilité** : `training_programs`, une ligne par **version publiée** (`lineage_id` + `version`), jamais réécrite ; seuls avancent le statut (`active` → `superseded` / `ended`) et la date de fin (posée une fois). Une adaptation publie v+1, l'historique garde v1. Triggers sur `training_programs`, `workout_sessions` (prescription figée, jamais de changement de programme) et `planned_exercises` (aucune modification ; un upsert identique d'un second appareil est accepté).
+  - **B. Types de données** : FACT, USER_REPORTED, RECOMMENDATION stockés, DERIVED jamais (table dans `docs/TRAINING_ARCHITECTURE.md` §2.6 et `TRAINING_DATA_KINDS`, testée).
+  - **C. Raison de prescription** structurée (`purpose` + `purpose_target`) sur la séance et chaque exercice ; pas de texte libre.
+  - **D. Préférences** : un remplacement répété (préférence, n'aime pas, technique inconnue) devient une question à l'utilisateur ; seule sa confirmation enregistre une préférence durable. Une gêne, une machine prise, un manque de temps ne deviennent jamais une préférence.
+  - **E. Prévu vs réalisé** : `planned_exercises` (exercice, ordre, séries, fourchette, unité, repos, RPE cible, charge proposée ou nulle, action et raison de progression, raison, variante) relié à la séance (focus, durée prévue, durée adaptée, raison) et à la version ; le réalisé (`exercise_logs`, `exercise_substitutions`, `workout_sessions` : séries, répétitions ou secondes, charge, difficulté, statut, remplacement, raison déclarée, notes) pointe vers la prescription (`planned_exercise_id`).
+  - **F.** Aucun second Adaptation Engine : le Workout Coach produit signaux et recommandations, `journey/adaptation.ts` décide.
+  - **G.** Les deux bugs confirmés (fatigue codée en dur dans `ExerciseCard`, séance courte toujours de 15 min) sont corrigés en **W-3**, avec l'écran de séance ; W-1 ne touche pas l'UI.
+  - **Étendre plutôt que doubler** : seules `training_programs` et `planned_exercises` sont nouvelles ; `workout_sessions`, `exercise_logs`, `exercise_substitutions`, `adjustments` sont étendues. Une seule table pour les programmes et leurs versions (une ligne = une version) plutôt que deux.
+  - **Historique** : fonction `attach_reconstructed_training_history()` (RLS appliquée, idempotente) : un programme reconstitué par utilisateur, sans paramètre (contraintes), séances `prescription_source = 'unknown'`, aucune ligne `planned_exercises`. Même règle côté domaine (`reconstructedProgram`, `attachLegacySessions`).
+- **Alternatives** :
+  - réutiliser `workout_plans` pour les versions : refusé (un `jsonb` hebdomadaire `unique (user_id, week_start)` ne porte ni lignée, ni version, ni contraintes par paramètre) ; laissée en place, inutilisée, sa suppression est une décision séparée ;
+  - une table `training_program_versions` séparée : refusé (une ligne par version suffit, la lignée regroupe les versions) ;
+  - réécrire la prescription du jour lors d'une adaptation : refusé (A) ; la variante adaptée a ses propres lignes ;
+  - autoriser la suppression logique d'une prescription : refusé ; seul l'effacement par l'utilisateur (Privacy Center, compte) supprime, ce qui n'est pas une réécriture.
+- **Trade-offs** :
+  - l'app n'écrit pas encore ces colonnes (W-2) ; jusque-là le comportement est inchangé ;
+  - deux appareils hors connexion qui publient chacun une version : l'index « un seul actif » refuse la seconde, à résoudre en W-2 ;
+  - `effective_from` d'un programme reconstitué = première séance connue au moment du rattachement ; une séance plus ancienne arrivée plus tard le rejoint sans changer cette date ;
+  - l'adaptation du jour (`adapted_minutes`, `adaptation_reason`) est modifiable jusqu'à la fin de la séance (un utilisateur peut passer de « courte » à « allégée » avant de commencer ; les deux prescriptions restent).
+- **Date** : 2026-10-02
