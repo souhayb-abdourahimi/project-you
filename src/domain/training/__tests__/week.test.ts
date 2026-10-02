@@ -5,9 +5,11 @@ import type { ProgramParams } from '../program';
 import {
   activeProgram,
   adaptSession,
+  archivedVersion,
   ensureProgram,
   ensureWeek,
   hasFacts,
+  keptSession,
   prescriptionFor,
   proposedLoads,
   rescheduleSession,
@@ -343,5 +345,53 @@ describe('reschedule', () => {
     const facts = { setLogs: { [WEDNESDAY]: { squat: [{ reps: 5, loadKg: 60 }] } }, completedSessions: [] };
     expect(hasFacts(facts, WEDNESDAY)).toBe(true);
     expect(rescheduleSession(r, facts, '2026-09-30', '2026-10-01')).toBeNull();
+  });
+});
+
+describe('historical truth (D-033)', () => {
+  it('opening a prescribed session makes its prescription the one the user saw', () => {
+    const r = first();
+    const opened = { ...EMPTY_FACTS, sessionOpened: { [WEDNESDAY]: '2026-09-30T10:00:00.000Z' } };
+    expect(hasFacts(EMPTY_FACTS, WEDNESDAY)).toBe(false);
+    expect(hasFacts(opened, WEDNESDAY)).toBe(true);
+    // A profile change the same day does not replace it; the not-opened Friday follows v2.
+    const v2 = publishWeek(scenario({ goal: { type: 'muscle_gain' }, training: { sessionMinutes: 45 } }), {
+      records: r,
+      facts: opened,
+      today: '2026-09-30',
+      weekStart: WEEK,
+      seed: SEED,
+      at: '2026-09-30T11:00:00.000Z',
+    });
+    expect(v2.sessionIds[WEDNESDAY]).toBe(r.sessionIds[WEDNESDAY]);
+    expect(v2.sessionIds[FRIDAY]).not.toBe(r.sessionIds[FRIDAY]);
+    // Opening does not prevent moving it: the copy keeps the same prescription.
+    expect(rescheduleSession(r, opened, '2026-09-30', '2026-10-01')).not.toBeNull();
+  });
+
+  it('a used session of a version that lost is kept with its content under new ids, its version archived', () => {
+    const r = first();
+    const local = activeProgram(r.programs)!;
+    const winner = { ...local, publishedAt: '2026-09-28T09:00:00.000Z', effectiveFrom: '2026-09-30' };
+    const archived = archivedVersion(local, winner);
+    expect(archived).toMatchObject({
+      version: 1,
+      status: 'superseded',
+      params: local.params,
+      effectiveTo: '2026-09-29',
+    });
+    expect(archived.lineageId).not.toBe(local.lineageId);
+    expect(archivedVersion(local, winner)).toEqual(archived); // same id on a retry or another device
+    const p = r.prescriptions[r.sessionIds[WEDNESDAY]];
+    const kept = keptSession(p, archived.id, WEDNESDAY);
+    expect(kept.id).toBe(trainingIds.session(archived.id, WEDNESDAY));
+    expect(kept.exercises.map(({ id: _i, sessionId: _s, ...e }) => e)).toEqual(
+      p.exercises.map(({ id: _i, sessionId: _s, ...e }) => e),
+    );
+    expect(kept.exercises.every((e) => e.sessionId === kept.id && !p.exercises.some((x) => x.id === e.id))).toBe(true);
+    expect(kept.prescribedAt).toBe(p.prescribedAt);
+    // Same version, other prescription on the server: new session id, same program.
+    const same = keptSession(p, p.programId, WEDNESDAY);
+    expect(same).toMatchObject({ programId: p.programId, id: trainingIds.kept(p.id, p.prescribedAt) });
   });
 });

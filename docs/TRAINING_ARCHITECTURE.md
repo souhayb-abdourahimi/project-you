@@ -153,13 +153,32 @@ Une prescription passée n'existe jamais seulement sur l'appareil : elle est syn
 
 **Ordre parents → enfants** (`SYNC_TABLES`) : `training_programs` → `workout_sessions` → `planned_exercises` → `exercise_logs` / `exercise_substitutions`. Programmes et exercices prévus ne sont jamais supprimés par la sync (`deleteOnMissing: false`).
 
-**Conflit entre appareils** (`applyRemote`, D-032), déterministe :
+**Conflit entre appareils** (`applyRemote`, D-032 et D-033), déterministe. Deux règles qui ne se contredisent pas :
+
+- **Convergence de la sync** : le serveur décide de la version active pour le futur.
+- **Préservation de l'histoire** : une prescription déjà utilisée reste liée aux faits produits sous elle.
+
+> Le serveur gagne pour le futur ; la prescription effectivement utilisée gagne pour l'histoire.
+
+Une séance est **utilisée** dès qu'elle a été ouverte (`started_at`, `sessionOpened`), qu'elle contient une série, un remplacement, une issue (faite, sautée, remplacée) ou une difficulté (`hasFacts`). Sa prescription devient alors une vérité historique : aucun conflit ne peut plus la remplacer.
 
 1. Programme : le serveur gagne. Seule exception : fermer localement une version que le serveur n'a pas changée depuis la dernière sync (vérification à trois points sur l'empreinte synchronisée).
-2. Même id, paramètres différents : la version locale est « perdue » ; ses séances non commencées et jamais poussées sont abandonnées puis re-prescrites par `ensureWeek` depuis la version du serveur. Les faits (séries, issue) ne sont jamais abandonnés.
-3. Plusieurs versions actives : la plus haute gagne ; à égalité, celle du serveur. La perdante, si elle n'existe que localement et n'a aucune séance commencée, est abandonnée ; sinon elle est fermée (`superseded`, `effective_to` = début de la gagnante − 1 jour).
-4. Colonnes de prescription d'une séance : toujours celles du serveur, même si la ligne locale est en attente. Colonnes du réalisé : la modification locale en attente gagne.
-5. Après la fusion, `ensureProgram` réévalue avec le profil fusionné et publie v+1 si besoin : le système converge.
+2. Même id, paramètres différents : la version locale perd pour le futur. Ses séances **non utilisées** prennent la prescription du serveur, ou sont abandonnées puis re-prescrites par `ensureWeek` si le serveur ne les a pas.
+3. **Version perdante mais utilisée** (D-033) : elle n'est pas supprimée. Elle est conservée comme version historique, fermée (`status = 'superseded'`, statut existant), sous sa propre lignée (`trainingIds.archivedLineage`, même numéro de version, `effective_to` = début de la gagnante − 1 jour, au plus tôt son propre début). Elle ne redevient jamais active. Chaque séance utilisée garde exactement sa prescription (exercices, ordre, séries, fourchettes, charges proposées, variantes, heure de prescription) sous de nouveaux ids stables (`keptSession`) rattachés à cette version ; ses séries et remplacements pointent vers ces exercices prévus. Elle reste `prescription_source = 'engine'` : elle était prescrite quand l'utilisateur l'a faite, elle ne devient jamais `off_plan`.
+4. Même règle quand la version n'a pas perdu mais que le serveur tient une autre prescription pour le même id de séance (deux appareils l'ont prescrite chacun) : la séance utilisée est gardée sous un nouvel id (`trainingIds.kept`), dans la même version.
+5. Plusieurs versions actives : la plus haute gagne ; à égalité, celle du serveur. La perdante, si elle n'existe que localement et n'a aucune séance utilisée, est abandonnée ; sinon elle est fermée (`superseded`). Ses séances utilisées gardent leur prescription.
+6. Colonnes de prescription d'une séance non utilisée : toujours celles du serveur, même si la ligne locale est en attente. Colonnes du réalisé : la modification locale en attente gagne.
+7. Après la fusion, `ensureProgram` réévalue avec le profil fusionné et publie v+1 si besoin : le système converge.
+
+**Collision `date#index`** (deux séances pour le même créneau) :
+
+| Cas | Séance du créneau (historique réalisée) | L'autre |
+|---|---|---|
+| une utilisée, une seulement prévue | l'utilisée | `superseded` : prescription abandonnée, gardée, jamais supprimée, jamais comptée |
+| aucune utilisée | celle du serveur | `superseded` si elle était déjà poussée, sinon abandonnée (rien de réel) |
+| deux utilisées (le même créneau fait sur deux appareils hors connexion) | celle dont l'id est le plus petit, sur tous les appareils | gardée aussi, affichée dans un créneau libre du même jour (`date#6`, `sessionSlots`) ; sa ligne serveur garde sa date et son index |
+
+Le stockage local tient une séance par créneau, donc les moteurs dérivés (Daily Coach, adhérence, Progress Journey) ne voient jamais deux séances pour un même créneau. Une séance `superseded` n'entre jamais dans `completedSessions` ni dans `setLogs`. Dans le dernier cas, deux séances réellement faites comptent chacune une fois. Aucune donnée réelle n'est supprimée pour résoudre l'affichage.
 
 **Hors connexion** : publier, figer, choisir une variante, ouvrir la séance, saisir les séries, reporter et noter la difficulté se font sans réseau ; tout part à la sync suivante, sans perte (test `sync.training.test.ts`).
 
@@ -254,5 +273,11 @@ Livrés en W-2 :
 - `src/services/__tests__/sync.db.test.ts` : sur Postgres réel avec RLS : deux appareils avec versions, profil changé sans toucher le passé, report et difficulté, rattachement A / B, intrus bloqué par RLS (`rls`), export et effacement.
 - `src/state/__tests__/training.test.ts`, `src/domain/privacy/__tests__/data.test.ts`, `src/domain/sync/__tests__/projection.test.ts` (étendus).
 - `e2e/workout-coach.spec.ts` : semaine publiée une fois puis relue, variante allégée stockée à part, séance hors programme.
+
+Ajoutés par D-033 (vérité historique) :
+
+- `sync.training.test.ts` : A et B sur v1, A publie v2-A hors connexion et utilise mercredi (seulement ouverte, avec séries, avec remplacement), B publie v2-B et synchronise d'abord. Une seule version active (v2-B) ; la séance de A garde exactement sa prescription sur les deux appareils, ne prend jamais celle de B ; v2-A archivée ; séries et remplacement liés aux exercices prévus de A ; mercredi de B `superseded` ; aucun créneau compté deux fois (adhérence comprise) ; vendredi (futur) inchangé ; un tour de plus ne pousse rien. Séance non utilisée : elle prend la prescription du serveur. Même créneau utilisé sur les deux appareils : deux séances gardées, chacune comptée une fois, même répartition partout.
+- `sync.db.test.ts` : le même scénario (ouverte, série, remplacement) sur Postgres réel avec RLS et les triggers d'immuabilité.
+- `week.test.ts` : une séance ouverte n'est pas remplacée par un changement de profil et peut encore être reportée ; `archivedVersion` et `keptSession` (ids stables, contenu identique).
 
 À venir : comparaison et progression v2 (W-4), règles d'adaptation (W-5), E2E (W-7).

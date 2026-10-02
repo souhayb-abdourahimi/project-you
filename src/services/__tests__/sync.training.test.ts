@@ -9,6 +9,8 @@ import { publishWeek } from '@/domain/scenarios/training';
 import type { UserContextSnapshot } from '@/domain/profile/schemas';
 import { sessionKey } from '@/domain/shared/ids';
 import type { Row, SyncableState, SyncedHashes, SyncTable } from '@/domain/sync/projection';
+import { adherence } from '@/domain/journey/adherence';
+import type { PrescribedSession } from '@/domain/training/program';
 import { activeProgram, prescriptionFor, rescheduleSession } from '@/domain/training/week';
 
 import { classifySyncError, syncOnce, type SyncClient } from '../sync';
@@ -240,6 +242,15 @@ function device(snapshot: UserContextSnapshot, initial: Partial<SyncableState> =
         },
       });
     },
+    /** The workout screen showed the prescription of a day (store.openSession). */
+    openSession: (key: string, at = '2026-09-30T10:00:00.000Z') =>
+      store.write({ sessionOpened: { ...state.sessionOpened, [key]: at } }),
+    /** Replacing an exercise (store.swapExercise). */
+    swap: (key: string, from: string, to: string) =>
+      store.write({
+        exerciseSwaps: { ...state.exerciseSwaps, [key]: { ...state.exerciseSwaps?.[key], [from]: to } },
+        swapReasons: { ...state.swapReasons, [key]: { ...state.swapReasons?.[key], [from]: 'busy_equipment' } },
+      }),
     sync: (claim = false) => syncOnce(fake.client, store, USER, { claim }),
   };
 }
@@ -365,8 +376,9 @@ describe('versions published offline on two devices (D-032)', () => {
     expect(result.errors).toEqual([]);
     expect(b.state().programs!.filter((p) => p.status === 'active')).toHaveLength(1);
     expect(activeProgram(b.state().programs!)!.params!.sessionsPerWeek).toBe(2);
-    // The session B started is kept with its facts.
+    // The session B started is kept with its facts and with the prescription B showed (D-033).
     expect(b.state().setLogs[WEDNESDAY][bExercise]).toHaveLength(1);
+    expect(firstExercise(b, WEDNESDAY)).toBe(bExercise);
     // Converge: B's profile (pushed, it was pending) differs from v2 → B publishes v3 for it.
     b.open('2026-09-30');
     await b.sync();
@@ -379,7 +391,14 @@ describe('versions published offline on two devices (D-032)', () => {
 
     const server = fake.rows('training_programs');
     expect(server.filter((p) => p.status === 'active')).toHaveLength(1);
-    expect(server.map((p) => p.version).sort()).toEqual([1, 2, 3]);
+    // B's v2 lost for the future but was used: archived (closed) under its own lineage.
+    expect(server.map((p) => p.version).sort()).toEqual([1, 2, 2, 3]);
+    const archived = server.find((p) => p.version === 2 && p.status === 'superseded' && p.sessions_per_week === 3)!;
+    expect([...(archived.equipment as string[])].sort()).toEqual(['bench', 'bodyweight', 'dumbbells']);
+    expect(fake.table('workout_sessions').get(b.state().sessionIds[WEDNESDAY])).toMatchObject({
+      program_id: archived.id,
+      status: 'in_progress',
+    });
     // v1 was never rewritten (only closed), and its sessions before the change are intact.
     const v1Server = fake.table('training_programs').get(v1.id)!;
     expect(v1Server).toMatchObject({ status: 'superseded', sessions_per_week: 3, effective_from: WEEK });
@@ -436,6 +455,209 @@ describe('versions published offline on two devices (D-032)', () => {
     expect(server.map((p) => p.version).sort()).toEqual([1, 2, 3]);
     await b.sync();
     expect(activeProgram(b.state().programs!)!.version).toBe(3);
+  });
+});
+
+describe('historical truth: the server decides the future, the prescription used decides the past (D-033)', () => {
+  /** What was prescribed, without the ids (they change when a used session is kept aside). */
+  const content = (p: PrescribedSession) => ({
+    date: p.date,
+    sessionIndex: p.sessionIndex,
+    focus: p.focus,
+    plannedMinutes: p.plannedMinutes,
+    prescribedAt: p.prescribedAt,
+    exercises: p.exercises.map(({ id: _id, sessionId: _s, ...e }) => e),
+  });
+  const live = (d: ReturnType<typeof device>, key: string) =>
+    prescriptionFor({ prescriptions: d.state().prescriptions!, sessionIds: d.state().sessionIds }, key)!;
+  /** One row per slot that is not superseded: nothing counted twice. */
+  const slots = () =>
+    fake
+      .rows('workout_sessions')
+      .filter((r) => r.status !== 'superseded')
+      .map((r) => `${r.scheduled_for}#${r.session_index}`);
+
+  /**
+   * A and B on v1. Offline, A publishes v2-A (no barbell) and uses Wednesday; B publishes v2-B
+   * (45 min) and reaches the server first. Then A comes back.
+   */
+  async function conflict(
+    actA: (a: ReturnType<typeof device>) => void,
+    actB: (b: ReturnType<typeof device>) => void = () => {},
+  ) {
+    const a = device(SCENARIOS.muscleGain);
+    a.open('2026-09-28');
+    await a.sync(true);
+    const b = device(SCENARIOS.muscleGain);
+    await b.sync();
+    fake.setOffline(true);
+    a.set({
+      snapshot: scenario({
+        goal: { type: 'muscle_gain' },
+        training: { equipment: ['bodyweight', 'dumbbells', 'bench'] },
+      }),
+    });
+    a.open('2026-09-30', '2026-09-30T08:00:00.000Z');
+    const seenByA = content(live(a, WEDNESDAY));
+    actA(a);
+    b.set({ snapshot: scenario({ goal: { type: 'muscle_gain' }, training: { sessionMinutes: 45 } }) });
+    b.open('2026-09-30', '2026-09-30T09:00:00.000Z');
+    actB(b);
+    const v2B = activeProgram(b.state().programs!)!;
+    expect(activeProgram(a.state().programs!)!.id).toBe(v2B.id); // same id, other content
+    expect(content(live(b, WEDNESDAY))).not.toEqual(seenByA);
+    fake.setOffline(false);
+    expect((await b.sync()).errors).toEqual([]);
+    const fridayB = structuredClone(fake.table('workout_sessions').get(b.state().sessionIds[FRIDAY])!);
+    expect((await a.sync()).errors).toEqual([]);
+    expect((await a.sync()).errors).toEqual([]);
+    expect((await b.sync()).errors).toEqual([]);
+    return { a, b, v2B, seenByA, fridayB };
+  }
+
+  /** The assertions shared by every way of using the session. */
+  function expectHistoryKept({ a, b, v2B, seenByA, fridayB }: Awaited<ReturnType<typeof conflict>>) {
+    // One active version, B's, for the future, on the server and on both devices.
+    const programs = fake.rows('training_programs');
+    expect(programs.filter((p) => p.status === 'active').map((p) => p.id)).toEqual([v2B.id]);
+    expect(fake.table('training_programs').get(v2B.id)).toMatchObject({ session_minutes: 45 });
+    expect(activeProgram(a.state().programs!)!.id).toBe(v2B.id);
+    expect(activeProgram(b.state().programs!)!.id).toBe(v2B.id);
+    // A's Wednesday keeps exactly the prescription A showed, never B's, on both devices.
+    const kept = live(a, WEDNESDAY);
+    expect(content(kept)).toEqual(seenByA);
+    expect(content(live(b, WEDNESDAY))).toEqual(seenByA);
+    expect(b.state().sessionIds[WEDNESDAY]).toBe(kept.id);
+    // Still prescribed (not off plan), by v2-A archived: closed, never active again.
+    const row = fake.table('workout_sessions').get(kept.id)!;
+    expect(row.prescription_source).toBe('engine');
+    expect(['in_progress', 'completed']).toContain(row.status);
+    expect(a.state().sessionSources?.[WEDNESDAY]).toBeUndefined();
+    const archived = fake.table('training_programs').get(String(row.program_id))!;
+    expect(archived).toMatchObject({ version: 2, status: 'superseded', session_minutes: 60 });
+    expect(archived.equipment).not.toContain('barbell');
+    // The server holds A's prescription for it, row by row.
+    const planned = fake.rows('planned_exercises').filter((e) => e.session_id === kept.id);
+    expect(planned.map((e) => e.exercise_id)).toEqual(kept.exercises.map((e) => e.exerciseId));
+    // B's prescription for that slot is abandoned, kept as superseded, unchanged.
+    const abandoned = fake
+      .rows('workout_sessions')
+      .filter((r) => r.program_id === v2B.id && r.scheduled_for === '2026-09-30');
+    expect(abandoned).toHaveLength(1);
+    expect(abandoned[0]).toMatchObject({ status: 'superseded', prescribed_at: '2026-09-30T09:00:00.000Z' });
+    // Nothing counted twice; the future (Friday) is B's prescription, untouched.
+    expect(new Set(slots()).size).toBe(slots().length);
+    expect(fake.table('workout_sessions').get(String(fridayB.id))).toEqual({
+      ...fridayB,
+      updated_at: expect.any(String),
+    });
+    expect(a.state().sessionIds[FRIDAY]).toBe(fridayB.id);
+    // Converged: another round on each device pushes and refuses nothing.
+    return { kept, planned };
+  }
+
+  it('a session only opened keeps the prescription it showed', async () => {
+    const r = await conflict((a) => a.openSession(WEDNESDAY));
+    const { kept } = expectHistoryKept(r);
+    expect(fake.table('workout_sessions').get(kept.id)).toMatchObject({ started_at: '2026-09-30T10:00:00.000Z' });
+    for (const d of [r.a, r.b]) expect(await d.sync()).toMatchObject({ pushed: 0, failed: 0 });
+  });
+
+  it('a session with sets keeps its prescription; the sets stay linked to it', async () => {
+    let exercise = '';
+    const r = await conflict((a) => {
+      exercise = firstExercise(a, WEDNESDAY);
+      a.logSet(WEDNESDAY, exercise, 8, 70);
+      a.logSet(WEDNESDAY, exercise, 8, 70);
+      a.set({
+        completedSessions: [
+          { date: '2026-09-30', sessionIndex: 1, variant: 'full', completedAt: '2026-09-30T19:00:00.000Z' },
+        ],
+      });
+    });
+    const { planned } = expectHistoryKept(r);
+    const logs = fake.rows('exercise_logs');
+    expect(logs).toHaveLength(2);
+    const plannedIds = new Set(planned.map((e) => e.id));
+    expect(logs.every((l) => plannedIds.has(String(l.planned_exercise_id)))).toBe(true);
+    // Counted once everywhere: one live session for the day, one done session for adherence.
+    for (const d of [r.a, r.b]) {
+      expect(Object.keys(d.state().sessionIds).filter((k) => k.startsWith('2026-09-30'))).toEqual([WEDNESDAY]);
+      const counted = adherence({
+        today: '2026-09-30',
+        plannedSessionDates: ['2026-09-28', '2026-09-30'],
+        completedSessions: d.state().completedSessions,
+        sessionOutcomes: {},
+        meals: [],
+      }).sessions;
+      expect([counted.planned, counted.done]).toEqual([2, 1]);
+    }
+    expect(fake.table('workout_sessions').get(live(r.a, WEDNESDAY).id)).toMatchObject({ status: 'completed' });
+    expect(r.b.state().setLogs[WEDNESDAY][exercise]).toEqual([
+      { reps: 8, loadKg: 70, rpe: undefined },
+      { reps: 8, loadKg: 70, rpe: undefined },
+    ]);
+    for (const d of [r.a, r.b]) expect(await d.sync()).toMatchObject({ pushed: 0, failed: 0 });
+  });
+
+  it('a replaced exercise keeps its prescription; the replacement stays linked to it', async () => {
+    let exercise = '';
+    const r = await conflict((a) => {
+      exercise = firstExercise(a, WEDNESDAY);
+      a.swap(WEDNESDAY, exercise, 'push_up');
+    });
+    const { planned } = expectHistoryKept(r);
+    const swap = fake.rows('exercise_substitutions')[0];
+    expect(swap).toMatchObject({ from_exercise_id: exercise, to_exercise_id: 'push_up' });
+    expect(planned.map((e) => e.id)).toContain(swap.planned_exercise_id);
+    expect(r.b.state().exerciseSwaps![WEDNESDAY]).toEqual({ [exercise]: 'push_up' });
+    for (const d of [r.a, r.b]) expect(await d.sync()).toMatchObject({ pushed: 0, failed: 0 });
+  });
+
+  it('a session not used adopts the server prescription (the future converges)', async () => {
+    const r = await conflict(() => {});
+    expect(r.a.state().sessionIds[WEDNESDAY]).toBe(r.b.state().sessionIds[WEDNESDAY]);
+    expect(content(live(r.a, WEDNESDAY))).toEqual(content(live(r.b, WEDNESDAY)));
+    expect(live(r.a, WEDNESDAY).programId).toBe(r.v2B.id);
+    expect(fake.rows('training_programs')).toHaveLength(2);
+  });
+
+  it('same slot used on both devices: both sessions are kept, each counted once, the same way everywhere', async () => {
+    let exercise = '';
+    const r = await conflict(
+      (a) => {
+        exercise = firstExercise(a, WEDNESDAY);
+        a.logSet(WEDNESDAY, exercise, 8, 70);
+      },
+      (b) => b.logSet(WEDNESDAY, firstExercise(b, WEDNESDAY), 6, 75),
+    );
+    // Two real sessions on the server for Wednesday's slot, both kept as they were done.
+    const wednesday = fake
+      .rows('workout_sessions')
+      .filter((x) => x.scheduled_for === '2026-09-30' && x.status !== 'superseded');
+    expect(wednesday.map((x) => x.status)).toEqual(['in_progress', 'in_progress']);
+    expect(wednesday.every((x) => x.session_index === 1)).toBe(true);
+    const [first, second] = wednesday.map((x) => String(x.id)).sort();
+    const aside = sessionKey('2026-09-30', 6);
+    for (const d of [r.a, r.b]) {
+      // Same answer on both devices: the smaller id keeps the slot, the other is shown beside it.
+      expect(d.state().sessionIds[WEDNESDAY]).toBe(first);
+      expect(d.state().sessionIds[aside]).toBe(second);
+      expect(d.state().sessionSlots).toEqual({ [aside]: WEDNESDAY });
+      // Each session once, with its own sets and its own prescription.
+      const loads = [WEDNESDAY, aside].map((k) => Object.values(d.state().setLogs[k]).flat()[0].loadKg).sort();
+      expect(loads).toEqual([70, 75]);
+      expect(Object.keys(d.state().setLogs).filter((k) => k.startsWith('2026-09-30'))).toHaveLength(2);
+    }
+    const kept = [WEDNESDAY, aside].map((k) => live(r.a, k)).find((p) => p.programId !== r.v2B.id)!;
+    expect(content(kept)).toEqual(r.seenByA);
+    expect(
+      fake
+        .rows('training_programs')
+        .filter((p) => p.status === 'active')
+        .map((p) => p.id),
+    ).toEqual([r.v2B.id]);
+    for (const d of [r.a, r.b]) expect(await d.sync()).toMatchObject({ pushed: 0, failed: 0 });
   });
 });
 

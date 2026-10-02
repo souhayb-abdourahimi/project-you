@@ -433,3 +433,20 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
 - **Alternatives** : ids aléatoires (refusé : doublons après une nouvelle tentative ou sur un second appareil) ; dernière écriture gagne pour les programmes (refusé : écraserait silencieusement le serveur) ; réécrire la séance reportée (refusé : la prescription d'origine doit rester) ; une migration W-2 (inutile, le schéma W-1 suffit).
 - **Trade-offs** : une séance avec faits enregistrée sous une version perdante adopte la prescription du serveur si la même séance existe, sinon sa prescription locale est poussée sous la version du serveur ; collision de clé laissant une ligne serveur `planned` ; jours passés encore affichés depuis le planning courant (W-6) ; anciennes versions de l'app ignorent `superseded` ; aucune purge locale ; charge proposée avec fatigue « normale » (W-4) ; `SHORT_SESSION_MINUTES` = 15 (bug W-3) ; avant le premier pull la lignée dépend de la graine (`local` ou compte), ce qui peut créer une version de plus, puis converge.
 - **Date** : 2026-10-02
+
+## D-033 — Workout Coach : le serveur gagne pour le futur, la prescription utilisée gagne pour l'histoire
+
+- **Contexte** : revue W-2, points 3 et 4. Souhayb (2026-10-02) : une séance commencée ou contenant des faits ne doit jamais être rattachée après coup à une prescription différente de celle réellement présentée. Avec D-032, une séance avec faits enregistrée sous une version perdante prenait la prescription du serveur si celui-ci avait la même séance ; une collision `date#index` laissait la ligne du serveur `planned`. Détail : `docs/TRAINING_ARCHITECTURE.md` §5.
+- **Décision** :
+  - **Deux règles** : convergence de la sync (le serveur décide de la version active future) ; préservation de l'histoire (une prescription déjà utilisée reste liée aux faits produits sous elle).
+  - **Séance utilisée** : ouverte (`workout_sessions.started_at`, enregistré quand l'écran de séance montre la prescription le jour même ou après), une série, un remplacement, une issue ou une difficulté. Sa prescription devient historique ; un conflit ne peut plus la remplacer. Ouvrir n'empêche pas de reporter (la copie garde la même prescription).
+  - **Version perdante mais utilisée** : conservée, fermée (`superseded`, statut existant, aucune migration), sous sa propre lignée dérivée de son contenu (`trainingIds.archivedLineage`) car `(lineage_id, version)` est unique. Les séances utilisées sont gardées sous de nouveaux ids stables avec un contenu identique (`keptSession`), toujours `prescription_source = 'engine'`, jamais `off_plan`. La version du serveur reste la seule active.
+  - **Même séance prescrite deux fois** (même version, autre prescription sur le serveur) : la séance utilisée est gardée sous `trainingIds.kept`, même version.
+  - **Collision `date#index`** : la séance utilisée est celle du créneau ; une séance seulement prévue en face devient `superseded` (gardée, jamais comptée). Deux séances utilisées : les deux sont gardées ; la plus petite id garde le créneau sur tous les appareils, l'autre est affichée dans un créneau libre du même jour (`sessionSlots`, local) et sa ligne serveur garde sa date et son index.
+- **Alternatives** :
+  - un statut `conflict_archived` : refusé (migration et nouveau statut inutiles, `superseded` suffit) ;
+  - supprimer la version perdante ou ses séances : refusé (perte de faits) ;
+  - marquer la séance `off_plan` : refusé (elle était prescrite) ;
+  - garder la version perdante dans la même lignée avec un autre numéro : refusé (l'ordre des numéros décide de la version active).
+- **Trade-offs** : une version archivée apparaît comme une seconde « v2 » dans une autre lignée ; deux séances réelles pour le même créneau comptent chacune une fois (ce sont deux séances), la seconde dans un créneau `#6` sans modèle de séance associé jusqu'à l'historique W-6 ; ouvrir une séance future (avant son jour) ne l'enregistre pas comme vue.
+- **Date** : 2026-10-02

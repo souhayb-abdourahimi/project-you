@@ -68,4 +68,15 @@ describe('data store, Workout Coach (W-2)', () => {
     useDataStore.getState().rateSession(WEDNESDAY, 2);
     expect(useDataStore.getState().sessionDifficulty).toEqual({ [WEDNESDAY]: 2 });
   });
+
+  it('marks a prescribed session opened once, never a day without prescription (D-033)', () => {
+    withWeek();
+    useDataStore.getState().openSession(WEDNESDAY);
+    const at = useDataStore.getState().sessionOpened[WEDNESDAY];
+    expect(at).toEqual(expect.any(String));
+    useDataStore.getState().openSession(WEDNESDAY);
+    expect(useDataStore.getState().sessionOpened[WEDNESDAY]).toBe(at);
+    useDataStore.getState().openSession(sessionKey('2026-10-04', 0));
+    expect(Object.keys(useDataStore.getState().sessionOpened)).toEqual([WEDNESDAY]);
+  });
 });

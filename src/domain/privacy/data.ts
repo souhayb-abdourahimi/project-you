@@ -112,6 +112,8 @@ export function clearCategory(state: SyncableState, category: PrivacyCategory): 
         sessionSources: {},
         sessionVariants: {},
         sessionDifficulty: {},
+        sessionOpened: {},
+        sessionSlots: {},
         rescheduled: {},
       };
     case 'meals':

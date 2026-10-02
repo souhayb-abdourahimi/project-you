@@ -10,6 +10,7 @@ interface StoredTraining {
   prescriptions?: Record<string, { id: string; exercises: { id: string; variant: string; exerciseId: string }[] }>;
   sessionIds?: Record<string, string>;
   sessionSources?: Record<string, { source: string }>;
+  sessionOpened?: Record<string, string>;
 }
 
 const stored = (page: Page) =>
@@ -28,9 +29,12 @@ test('the week is published once, then read back after a reload, never rebuilt',
   expect(first.programs![0]).toMatchObject({ version: 1, status: 'active' });
   const wednesday = first.prescriptions![first.sessionIds![WEDNESDAY]];
   expect(wednesday.exercises.length).toBeGreaterThan(0);
+  // Shown on its day: this prescription is now what the user saw (D-033), kept even by a conflict.
+  await expect.poll(async () => (await stored(page)).sessionOpened?.[WEDNESDAY]).toBeTruthy();
 
   await page.reload();
   await expect(text(page, 'Terminer la séance')).toBeVisible();
+  await expect.poll(async () => (await stored(page)).sessionOpened?.[WEDNESDAY]).toBeTruthy();
   const again = await stored(page);
   expect(again.programs).toEqual(first.programs);
   expect(again.prescriptions).toEqual(first.prescriptions);
@@ -68,5 +72,6 @@ test('a session on a day without one is recorded off plan, with no invented pres
   await expect.poll(async () => (await stored(page)).sessionSources?.['2026-10-04#0']?.source).toBe('off_plan');
   const s = await stored(page);
   expect(s.prescriptions![s.sessionIds!['2026-10-04#0']]).toBeUndefined();
+  expect(s.sessionOpened ?? {}).toEqual({});
   expect(errors).toEqual([]);
 });

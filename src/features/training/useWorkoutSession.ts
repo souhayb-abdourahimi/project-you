@@ -14,6 +14,7 @@ import { useDataStore } from '@/state/data';
  */
 export function useWorkoutSession(plan: Plan | null, date: string, variantParam?: SessionVariant) {
   const chooseVariant = useDataStore((s) => s.chooseVariant);
+  const openSession = useDataStore((s) => s.openSession);
   const chosen = useDataStore((s) => s.sessionVariants);
   const completedSessions = useDataStore((s) => s.completedSessions);
 
@@ -70,6 +71,12 @@ export function useWorkoutSession(plan: Plan | null, date: string, variantParam?
     if (!prescription || done) return;
     if (adapted || (chosen[key] ?? 'full') !== variant) chooseVariant(key, variant, adapted);
   }, [prescription, done, adapted, chosen, key, variant, chooseVariant]);
+
+  // Shown on its day (or later): from now on this prescription is what the user saw (D-033).
+  const shown = !!view && !!prescription && !done && !!plan && date <= plan.today;
+  useEffect(() => {
+    if (shown) openSession(key);
+  }, [shown, key, openSession]);
 
   return view
     ? {

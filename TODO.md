@@ -27,7 +27,8 @@ Audit et architecture : `docs/WORKOUT_ENGINE.md`, `docs/TRAINING_ARCHITECTURE.md
   - [ ] W-6 : afficher les jours passés de la semaine depuis les prescriptions (aujourd'hui depuis le planning courant) ; `useJourney` recalcule encore les semaines passées avec `scheduleOfWeek`
   - [ ] Purger les prescriptions anciennes du stockage local (aucun élagage aujourd'hui)
   - [ ] W-4 : charge proposée calculée avec une fatigue « normale » ; brancher la fatigue du jour
-  - [ ] Collision de clé (séance locale avec faits vs ligne serveur `planned` de même date#index) : la ligne serveur reste `planned`
+  - [x] D-033 vérité historique : une séance utilisée garde sa prescription malgré un conflit ; version perdante mais utilisée archivée ; collision `date#index` résolue (ligne prévue `superseded`, deux séances réelles gardées)
+  - [ ] Deux séances réelles pour un même créneau : la seconde s'affiche dans un créneau libre du jour (`date#6`) ; l'historique des séances (W-6) devra l'afficher comme « séance supplémentaire »
 - [ ] W-3 Séance (UI fonctionnelle) + **bugs confirmés** : fatigue codée en dur à « normal » dans `ExerciseCard` ; séance courte annoncée à 20 min qui exécute 15 min
 - [ ] W-4 Comparaison prévu / fait + progression v2
 - [ ] W-5 Règles d'adaptation d'entraînement, fin de cycle (accepter / refuser / reporter), question de confirmation des préférences (reprend « Mémoire du coach » ci-dessous)

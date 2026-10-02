@@ -74,6 +74,10 @@ interface DataState {
   sessionVariants: Record<SessionKey, SessionVariant>;
   /** Felt difficulty 1–5 (W-3 asks it; synced from W-2). */
   sessionDifficulty: Record<SessionKey, number>;
+  /** When a prescribed session was opened: its prescription is then what the user saw (D-033). */
+  sessionOpened: Record<SessionKey, string>;
+  /** Local slot → own slot of a session moved aside by a sync conflict (D-033). */
+  sessionSlots: Record<SessionKey, SessionKey>;
   /** Account the local data belongs to (null = local mode, not attached to an account yet). */
   ownerId: string | null;
   synced: SyncedHashes;
@@ -112,6 +116,8 @@ interface DataState {
   /** Variant of the day; its persisted rows come with it the first time it is chosen. */
   chooseVariant: (session: SessionKey, variant: SessionVariant, adapted: PrescribedSession | null) => void;
   rateSession: (session: SessionKey, difficulty: number) => void;
+  /** The prescription of a session was shown to the user (first time only). */
+  openSession: (session: SessionKey) => void;
   applySync: (patch: Partial<SyncableState> & { synced?: SyncedHashes; lastPulledAt?: string | null }) => void;
   setOwner: (ownerId: string | null) => void;
   /** Drops sync fingerprints of tables whose server rows were deleted outside the sync. */
@@ -147,6 +153,8 @@ const initial = {
   sessionSources: {},
   sessionVariants: {},
   sessionDifficulty: {},
+  sessionOpened: {},
+  sessionSlots: {},
   ownerId: null,
   synced: {},
   lastPulledAt: null,
@@ -393,6 +401,12 @@ export const useDataStore = create<DataState>()(
           Number.isInteger(difficulty) && difficulty >= 1 && difficulty <= 5
             ? { ...withSession(s, session), sessionDifficulty: { ...s.sessionDifficulty, [session]: difficulty } }
             : {},
+        ),
+      openSession: (session) =>
+        set((s) =>
+          s.sessionOpened[session] || !s.sessionIds[session]
+            ? {}
+            : { sessionOpened: { ...s.sessionOpened, [session]: now() } },
         ),
       applySync: (patch) => {
         const { snapshot: _snapshot, ...data } = patch;

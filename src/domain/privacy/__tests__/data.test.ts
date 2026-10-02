@@ -97,7 +97,13 @@ describe('privacy data', () => {
       seed: 'u',
       at: '2026-09-28T07:00:00.000Z',
     });
-    const withTraining: SyncableState = { ...state, ...week, rescheduled: { '2026-10-02': '2026-10-03' } };
+    const withTraining: SyncableState = {
+      ...state,
+      ...week,
+      rescheduled: { '2026-10-02': '2026-10-03' },
+      sessionOpened: { '2026-09-30#1': '2026-09-30T10:00:00.000Z' },
+      sessionSlots: { '2026-09-30#6': '2026-09-30#1' },
+    };
     const exported = buildExport({
       device: withTraining,
       account: null,
@@ -120,11 +126,13 @@ describe('privacy data', () => {
     const cleared = clearCategory(withTraining, 'workouts');
     const rows = project(cleared, 'u');
     for (const t of CATEGORY_TABLES.workouts) expect(rows[t].size).toBe(0);
-    expect([cleared.programs, cleared.prescriptions, cleared.rescheduled, cleared.sessionSources]).toEqual([
-      [],
-      {},
-      {},
-      {},
-    ]);
+    expect([
+      cleared.programs,
+      cleared.prescriptions,
+      cleared.rescheduled,
+      cleared.sessionSources,
+      cleared.sessionOpened,
+      cleared.sessionSlots,
+    ]).toEqual([[], {}, {}, {}, {}, {}]);
   });
 });

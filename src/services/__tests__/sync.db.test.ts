@@ -34,6 +34,7 @@ const B = '00000000-0000-4000-8000-0000000000b1';
 const C = '00000000-0000-4000-8000-0000000000c1';
 const D = '00000000-0000-4000-8000-0000000000d1';
 const E = '00000000-0000-4000-8000-0000000000e1';
+const F = '00000000-0000-4000-8000-0000000000f1';
 
 /** PostgREST-like client acting as `authenticated` with the user's JWT claims, so RLS applies. */
 function restAs(db: Client, userId: string): SyncClient {
@@ -146,13 +147,14 @@ describeDb('sync against the real schema (Postgres + RLS)', () => {
     await db.connect();
     await db.query(
       `insert into auth.users (id, email) values ($1, 'sync-a@example.test'), ($2, 'sync-b@example.test'),
-              ($3, 'sync-c@example.test'), ($4, 'sync-d@example.test'), ($5, 'sync-e@example.test')
+              ($3, 'sync-c@example.test'), ($4, 'sync-d@example.test'), ($5, 'sync-e@example.test'),
+              ($6, 'sync-f@example.test')
                     on conflict (id) do nothing`,
-      [A, B, C, D, E],
+      [A, B, C, D, E, F],
     );
   });
   afterAll(async () => {
-    await db.query('delete from auth.users where id = any($1::uuid[])', [[A, B, C, D, E]]);
+    await db.query('delete from auth.users where id = any($1::uuid[])', [[A, B, C, D, E, F]]);
     await db.end();
   });
 
@@ -434,7 +436,9 @@ describeDb('sync against the real schema (Postgres + RLS)', () => {
 
     const programs = await rowsOf('training_programs', C);
     expect(programs.filter((p) => p.status === 'active')).toHaveLength(1);
-    expect(programs.map((p) => p.version).sort()).toEqual([1, 2, 3]);
+    // B's v2 lost for the future but B used it on Wednesday: archived, closed (D-033).
+    expect(programs.map((p) => p.version).sort()).toEqual([1, 2, 2, 3]);
+    expect(programs.filter((p) => p.version === 2).map((p) => p.status)).toEqual(['superseded', 'superseded']);
     // v1 was never rewritten: only closed. Monday (done) is exactly as prescribed by v1.
     expect(programs.find((p) => p.id === v1.id)).toMatchObject({ status: 'superseded', sessions_per_week: 3 });
     const monday = (await rowsOf('workout_sessions', C)).find((r) => r.id === mondayRow.id)!;
@@ -450,6 +454,72 @@ describeDb('sync against the real schema (Postgres + RLS)', () => {
     expect(activeProgram(a.state().programs!)!.id).toBe(activeProgram(b.state().programs!)!.id);
     expect(a.state().setLogs).toEqual(b.state().setLogs);
     expect(a.state().sessionIds).toEqual(b.state().sessionIds);
+  });
+
+  it('D-033: the server decides the future, the prescription used decides the past (opened, sets, replacement)', async () => {
+    const a = deviceOf(F, SCENARIOS.muscleGain);
+    a.open('2026-09-28');
+    expect((await a.sync(true)).errors).toEqual([]);
+    const b = deviceOf(F, SCENARIOS.muscleGain);
+    await b.sync();
+    // Offline: A publishes v2-A (no barbell), opens Wednesday, logs a set and replaces an exercise.
+    a.write({
+      snapshot: scenario({
+        goal: { type: 'muscle_gain' },
+        training: { equipment: ['bodyweight', 'dumbbells', 'bench'] },
+      }),
+    });
+    a.open('2026-09-30', '2026-09-30T08:00:00.000Z');
+    const seen = a.state().prescriptions![a.state().sessionIds[WEDNESDAY]];
+    const [first, second] = seen.exercises.filter((e) => e.variant === 'full');
+    a.write({ sessionOpened: { [WEDNESDAY]: '2026-09-30T10:00:00.000Z' } });
+    a.logSet(WEDNESDAY, first.exerciseId, 8, 70);
+    a.write({ exerciseSwaps: { [WEDNESDAY]: { [second.exerciseId]: 'push_up' } } });
+    // Offline: B publishes v2-B (45 min) and reaches the server first.
+    b.write({ snapshot: scenario({ goal: { type: 'muscle_gain' }, training: { sessionMinutes: 45 } }) });
+    b.open('2026-09-30', '2026-09-30T09:00:00.000Z');
+    const v2B = activeProgram(b.state().programs!)!;
+    expect((await b.sync()).errors).toEqual([]);
+    const fridayB = (await rowsOf('workout_sessions', F)).find((r) => r.scheduled_for === '2026-10-02')!;
+    // A comes back.
+    expect((await a.sync()).errors).toEqual([]);
+    expect((await a.sync()).errors).toEqual([]);
+    expect((await b.sync()).errors).toEqual([]);
+
+    const programs = await rowsOf('training_programs', F);
+    expect(programs.filter((p) => p.status === 'active').map((p) => p.id)).toEqual([v2B.id]);
+    const sessions = await rowsOf('workout_sessions', F);
+    const kept = sessions.find((r) => r.id === a.state().sessionIds[WEDNESDAY])!;
+    // Prescribed (not off plan), by v2-A archived, with the time A prescribed it.
+    expect(kept).toMatchObject({ prescription_source: 'engine', status: 'in_progress', session_index: 1 });
+    expect(new Date(String(kept.prescribed_at)).toISOString()).toBe(seen.prescribedAt);
+    expect(new Date(String(kept.started_at)).toISOString()).toBe('2026-09-30T10:00:00.000Z');
+    const archived = programs.find((p) => p.id === kept.program_id)!;
+    expect(archived).toMatchObject({ version: 2, status: 'superseded', session_minutes: 60 });
+    expect(archived.equipment).not.toContain('barbell');
+    // A's exercises, its set and its replacement linked to them; B's Wednesday abandoned, unchanged.
+    const planned = (await rowsOf('planned_exercises', F)).filter((e) => e.session_id === kept.id);
+    expect(planned.filter((e) => e.variant === 'full').map((e) => e.exercise_id)).toEqual(
+      seen.exercises.filter((e) => e.variant === 'full').map((e) => e.exerciseId),
+    );
+    const [log] = await rowsOf('exercise_logs', F);
+    expect(planned.find((e) => e.id === log.planned_exercise_id)).toMatchObject({ exercise_id: first.exerciseId });
+    const [swap] = await rowsOf('exercise_substitutions', F);
+    expect(planned.find((e) => e.id === swap.planned_exercise_id)).toMatchObject({ exercise_id: second.exerciseId });
+    const abandoned = sessions.filter((r) => r.program_id === v2B.id && r.scheduled_for === '2026-09-30');
+    expect(abandoned.map((r) => r.status)).toEqual(['superseded']);
+    // One live session per slot; the future (Friday) is still B's prescription.
+    const live = sessions.filter((r) => r.status !== 'superseded').map((r) => `${r.scheduled_for}#${r.session_index}`);
+    expect(new Set(live).size).toBe(live.length);
+    const friday = sessions.find((r) => r.id === fridayB.id)!;
+    expect(friday).toMatchObject({ program_id: v2B.id, status: 'planned', prescribed_at: fridayB.prescribed_at });
+    // Both devices read the same history, and nothing is left to push.
+    expect(b.state().sessionIds[WEDNESDAY]).toBe(kept.id);
+    expect(b.state().prescriptions![String(kept.id)].exercises).toEqual(
+      a.state().prescriptions![String(kept.id)].exercises,
+    );
+    expect(b.state().setLogs[WEDNESDAY]).toEqual(a.state().setLogs[WEDNESDAY]);
+    for (const d of [a, b]) expect(await d.sync()).toMatchObject({ pushed: 0, failed: 0 });
   });
 
   it('W-2: syncs a reschedule and the felt difficulty, and keeps the original session', async () => {

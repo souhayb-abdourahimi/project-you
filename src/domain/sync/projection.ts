@@ -41,7 +41,7 @@ import {
 } from '../training/program';
 import type { LoggedSet } from '../training/progression';
 import { REPLACEMENT_REASONS, type ReplacementReason } from '../training/replacement';
-import { hasFacts, type SessionSource } from '../training/week';
+import { archivedVersion, hasFacts, keptSession, type SessionSource } from '../training/week';
 
 export { sessionKey, stableUuid, type SessionKey };
 
@@ -130,6 +130,7 @@ const REMOTE_ROWS = {
       adaptation_reason: z.string().nullish(),
       rescheduled_to: isoDate.nullish(),
       difficulty: z.coerce.number().int().min(1).max(5).nullish(),
+      started_at: z.string().nullish(),
     })
     .refine(
       (r) =>
@@ -249,6 +250,13 @@ export interface SyncableState {
   sessionDifficulty?: Record<SessionKey, number>;
   /** Planned date → new date (synced from W-2 through `workout_sessions.rescheduled_to`). */
   rescheduled?: Record<IsoDate, IsoDate>;
+  /** When a prescribed session was opened (`workout_sessions.started_at`, D-033). */
+  sessionOpened?: Record<SessionKey, string>;
+  /**
+   * Local slot → the session's own `date#index` on the server, for a session moved to a free slot of
+   * its day because another real session holds that slot (D-033). Absent = same slot.
+   */
+  sessionSlots?: Record<SessionKey, SessionKey>;
 }
 
 export type SyncTable =
@@ -647,7 +655,7 @@ export function project(state: SyncableState, userId: string): Record<SyncTable,
   const projected: PrescribedSession[] = [];
   const completed = new Map(state.completedSessions.map((c) => [sessionKey(c.date, c.sessionIndex), c]));
   for (const [key, id] of Object.entries(state.sessionIds)) {
-    const { date, sessionIndex } = parseSessionKey(key);
+    const { date, sessionIndex } = parseSessionKey(state.sessionSlots?.[key] ?? key);
     const p = prescriptions[id];
     const done = completed.get(key);
     const outcome = done ? undefined : state.sessionOutcomes?.[key];
@@ -674,6 +682,7 @@ export function project(state: SyncableState, userId: string): Record<SyncTable,
       ...prescriptionColumns(p, state.sessionSources?.[key]),
       rescheduled_to: movedTo ?? null,
       difficulty: state.sessionDifficulty?.[key] ?? null,
+      started_at: state.sessionOpened?.[key] ?? null,
       deleted_at: null,
     });
     if (p) projected.push(p);
@@ -725,6 +734,7 @@ export function project(state: SyncableState, userId: string): Record<SyncTable,
       ...prescriptionColumns(p),
       rescheduled_to: null,
       difficulty: null,
+      started_at: null,
       deleted_at: null,
     });
     projected.push(p);
@@ -816,8 +826,16 @@ export function applyRemote(
     sessionVariants: { ...state.sessionVariants },
     sessionDifficulty: { ...state.sessionDifficulty },
     rescheduled: { ...state.rescheduled },
+    sessionOpened: { ...state.sessionOpened },
+    sessionSlots: { ...state.sessionSlots },
   };
   let rejected = 0;
+  /** Session ids whose local content was kept under new ids (D-033): their server rows apply as they are. */
+  const forked = new Set<string>();
+  const forkedChild = (table: SyncTable, r: Row) =>
+    (table === 'exercise_logs' || table === 'exercise_substitutions') && forked.has(String(r.session_id));
+  /** Rows the merge changed on purpose (a server session superseded here): left to be pushed. */
+  const toPush = new Set<string>();
   /** Rows taken from the server even though the local copy differed (immutable rows). */
   const adopted = new Set<string>();
   const upsertBy = <T extends { id: string }>(list: T[], item: T | null, deleted: boolean, id: string) => {
@@ -835,7 +853,7 @@ export function applyRemote(
   const rows = (table: SyncTable) =>
     (remote[table] ?? []).filter((r) => {
       const key = String(r[SYNC_TABLES[table].key]);
-      if (pending(table, key)) return false;
+      if (pending(table, key) && !forkedChild(table, r)) return false;
       const schema = REMOTE_ROWS[table as keyof typeof REMOTE_ROWS];
       if (!schema || schema.safeParse(r).success) return true;
       // A deleted row only needs its key to be applied.
@@ -913,6 +931,7 @@ export function applyRemote(
   const owned = (row: Row) => ({ ...row, user_id: userId });
   /** Versions whose local content lost against the server's (same id, other parameters). */
   const lost = new Set<string>();
+  const lostLocal = new Map<string, ProgramVersion>();
   for (const r of valid('training_programs')) {
     const server = programFromRow(r);
     const ref = rowRef('training_programs', server.id);
@@ -922,7 +941,10 @@ export function applyRemote(
       const serverUnchanged = synced[ref] === hashRow(owned(programRow(server)));
       if (localChanged && serverUnchanged) continue;
     }
-    if (local && JSON.stringify(local.params) !== JSON.stringify(server.params)) lost.add(server.id);
+    if (local && JSON.stringify(local.params) !== JSON.stringify(server.params)) {
+      lost.add(server.id);
+      lostLocal.set(server.id, local);
+    }
     if (local) adopted.add(ref);
     next.programs = [...next.programs!.filter((p) => p.id !== server.id), server];
   }
@@ -932,6 +954,37 @@ export function applyRemote(
   const sessionRows = valid('workout_sessions').filter(
     (r) => r.deleted_at == null && r.scheduled_for != null && r.session_index != null,
   );
+  // Historical truth (D-033): the server decides the version in force for the future; the
+  // prescription a used session was shown (opened, a set, a replacement, an outcome, a difficulty)
+  // stays the one its facts belong to. When the server holds another prescription for that session
+  // id, or the session's version lost, the used one is kept under its own ids (and its version
+  // archived, closed) instead of adopting the server's. Nothing is ever deleted.
+  const remoteSessions = new Map(sessionRows.map((r) => [String(r.id), r]));
+  for (const [key, id] of Object.entries(state.sessionIds)) {
+    const p = state.prescriptions?.[id];
+    if (!p || !hasFacts(state, key)) continue;
+    const server = remoteSessions.get(id);
+    const lostVersion = lostLocal.get(p.programId);
+    const other =
+      server?.prescription_source === 'engine' &&
+      Date.parse(String(server.prescribed_at)) !== Date.parse(p.prescribedAt);
+    if (!lostVersion && !other) continue;
+    let programId = p.programId;
+    if (lostVersion) {
+      const archived = archivedVersion(
+        lostVersion,
+        next.programs!.find((x) => x.id === p.programId)!,
+      );
+      if (!next.programs!.some((x) => x.id === archived.id)) next.programs = [...next.programs!, archived];
+      programId = archived.id;
+    }
+    const kept = keptSession(p, programId, key);
+    delete next.prescriptions![id];
+    next.prescriptions![kept.id] = kept;
+    next.sessionIds[key] = kept.id;
+    forked.add(id);
+  }
+
   const replaced = new Set<string>();
   for (const r of sessionRows) {
     const id = String(r.id);
@@ -982,8 +1035,9 @@ export function applyRemote(
   const keyById = new Map(Object.entries(next.sessionIds).map(([k, id]) => [id, k]));
   for (const r of sessionRows) {
     const id = String(r.id);
-    if (pending('workout_sessions', id)) continue;
-    const key = sessionKey(String(r.scheduled_for), Number(r.session_index));
+    if (pending('workout_sessions', id) && !forked.has(id)) continue;
+    const natural = sessionKey(String(r.scheduled_for), Number(r.session_index));
+    let key = keyById.get(id) ?? natural;
     if (r.status === 'superseded') {
       next.superseded![id] = true;
       if (next.sessionIds[key] === id) {
@@ -994,11 +1048,33 @@ export function applyRemote(
     }
     const current = next.sessionIds[key];
     if (current && current !== id) {
-      // Two sessions for one day: the one that holds facts stays the day's session.
-      if (r.status === 'planned' && hasFacts(next, key)) continue;
-      if (next.prescriptions![current] && rowRef('workout_sessions', current) in synced)
-        next.superseded![current] = true;
-      keyById.delete(current);
+      // Two sessions for one slot (D-033). The used one is the slot's session (historical truth);
+      // a planned one facing it is abandoned, kept as `superseded`, never deleted.
+      const localUsed = hasFacts(next, key);
+      const remoteUsed = USED_STATUSES.has(String(r.status)) || r.started_at != null;
+      if (localUsed && !remoteUsed) {
+        if (next.prescriptions![id] && !next.superseded![id]) {
+          next.superseded![id] = true;
+          toPush.add(rowRef('workout_sessions', id));
+        }
+        continue;
+      }
+      if (localUsed && remoteUsed) {
+        // Two real sessions: both kept, each counted once. The smaller id keeps the slot on every
+        // device; the other is shown in a free slot of the same day (its row keeps its own index).
+        const slot = freeSlot(next, String(r.scheduled_for));
+        if (current < id) {
+          next.sessionSlots![slot] = natural;
+          key = slot;
+        } else {
+          moveSlot(next, key, slot);
+          keyById.set(current, slot);
+        }
+      } else {
+        if (next.prescriptions![current] && rowRef('workout_sessions', current) in synced)
+          next.superseded![current] = true;
+        keyById.delete(current);
+      }
     }
     delete next.superseded![id];
     next.sessionIds[key] = id;
@@ -1023,7 +1099,7 @@ export function applyRemote(
     if (r.status === 'completed') {
       next.completedSessions.push({
         date: String(r.scheduled_for),
-        sessionIndex: Number(r.session_index),
+        sessionIndex: parseSessionKey(key).sessionIndex,
         variant: (r.variant as SessionVariant) ?? 'full',
         completedAt: String(r.completed_at ?? r.updated_at),
       });
@@ -1035,6 +1111,8 @@ export function applyRemote(
     }
     if (r.difficulty != null) next.sessionDifficulty![key] = Number(r.difficulty);
     else delete next.sessionDifficulty![key];
+    if (r.started_at != null) next.sessionOpened![key] = String(r.started_at);
+    else delete next.sessionOpened![key];
     if (r.status === 'rescheduled' && r.rescheduled_to != null) {
       next.rescheduled![String(r.scheduled_for)] = String(r.rescheduled_to);
     }
@@ -1219,7 +1297,8 @@ export function applyRemote(
   for (const table of SYNC_TABLE_ORDER) {
     for (const r of remote[table] ?? []) {
       const key = String(r[SYNC_TABLES[table].key]);
-      if (pending(table, key) && !adopted.has(rowRef(table, key))) continue;
+      if (toPush.has(rowRef(table, key))) continue;
+      if (pending(table, key) && !adopted.has(rowRef(table, key)) && !forkedChild(table, r)) continue;
       const local = after[table].get(key);
       if (local) nextSynced[rowRef(table, key)] = hashRow(local);
       else delete nextSynced[rowRef(table, key)];
@@ -1228,6 +1307,40 @@ export function applyRemote(
   // Last, so what reconciling changes (closing a version the server holds) stays to be pushed.
   reconcileVersions(next, lost, onServer, options.serverWins ?? false);
   return { state: next, synced: nextSynced, rejected };
+}
+
+/** A session row whose user already did something with it (opened, done, skipped, moved…). */
+const USED_STATUSES = new Set(['in_progress', 'completed', 'skipped', 'replaced', 'rescheduled']);
+
+/** First free local slot of a day for a session moved out of its own (indexes past any template). */
+function freeSlot(state: SyncableState, date: IsoDate): SessionKey {
+  let index = 6;
+  while (state.sessionIds[sessionKey(date, index)]) index += 1;
+  return sessionKey(date, index);
+}
+
+/** Moves a session and all its facts to another local slot of the same day; its row is unchanged. */
+function moveSlot(state: SyncableState, from: SessionKey, to: SessionKey) {
+  const move = <T>(map: Record<SessionKey, T> | undefined) => {
+    if (!map || !(from in map)) return;
+    map[to] = map[from];
+    delete map[from];
+  };
+  move(state.sessionIds);
+  move(state.setLogs);
+  move(state.exerciseSwaps);
+  move(state.swapReasons);
+  move(state.sessionOutcomes);
+  move(state.sessionVariants);
+  move(state.sessionDifficulty);
+  move(state.sessionOpened);
+  move(state.sessionSources);
+  state.sessionSlots![to] = state.sessionSlots![from] ?? from;
+  delete state.sessionSlots![from];
+  const { date, sessionIndex } = parseSessionKey(to);
+  state.completedSessions = state.completedSessions.map((c) =>
+    sessionKey(c.date, c.sessionIndex) === from ? { ...c, date, sessionIndex } : c,
+  );
 }
 
 /**

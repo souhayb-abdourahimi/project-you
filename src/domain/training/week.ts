@@ -37,6 +37,16 @@ export const trainingIds = {
   planned: (sessionId: string, variant: SessionVariant, position: number) =>
     stableUuid(`${sessionId}:training:planned:${variant}:${position}`),
   moved: (sessionId: string, to: IsoDate) => stableUuid(`${sessionId}:training:moved:${to}`),
+  /**
+   * Lineage of a version kept for history after it lost a sync conflict (D-033): derived from the
+   * content that lost, so a retry or another device archives it under the same id.
+   */
+  archivedLineage: (lost: ProgramVersion) =>
+    stableUuid(
+      `${lost.lineageId}:training:archived:v${lost.version}:${lost.publishedAt}:${JSON.stringify(lost.params)}`,
+    ),
+  /** A used session kept with its own prescription when the server holds another one for its id. */
+  kept: (sessionId: string, prescribedAt: string) => stableUuid(`${sessionId}:training:kept:${prescribedAt}`),
 };
 
 /** Where a session without prescription comes from (`workout_sessions.prescription_source`). */
@@ -63,9 +73,21 @@ export interface TrainingFacts {
   sessionOutcomes?: Record<SessionKey, unknown>;
   exerciseSwaps?: Record<SessionKey, Record<string, string>>;
   sessionDifficulty?: Record<SessionKey, number>;
+  /** When a prescribed session was opened: from then on its prescription is what the user saw. */
+  sessionOpened?: Record<SessionKey, string>;
 }
 
+/**
+ * A session the user used: opened, a set, a replacement, an outcome or a difficulty. Its
+ * prescription is historical truth from then on (D-033): nothing replaces it, not even a sync
+ * conflict.
+ */
 export function hasFacts(facts: TrainingFacts, key: SessionKey): boolean {
+  return facts.sessionOpened?.[key] != null || hasRecords(facts, key);
+}
+
+/** What the user recorded (opening aside): a session holding it can no longer be moved. */
+function hasRecords(facts: TrainingFacts, key: SessionKey): boolean {
   const { date, sessionIndex } = parseSessionKey(key);
   return (
     Object.values(facts.setLogs[key] ?? {}).some((sets) => sets.length > 0) ||
@@ -386,7 +408,8 @@ export function rescheduleSession(
   );
   if (!entry || from === to) return null;
   const [key, id] = entry;
-  if (hasFacts(facts, key)) return null;
+  // Opening a session does not prevent moving it: the copy keeps the same prescription.
+  if (hasRecords(facts, key)) return null;
   const original = records.prescriptions[id];
   const toKey = sessionKey(to, original.sessionIndex);
   if (records.sessionIds[toKey]) return null;
@@ -406,4 +429,36 @@ export function rescheduleSession(
     prescriptions: { ...records.prescriptions, [copyId]: copy },
     sessionIds: { ...records.sessionIds, [toKey]: copyId },
   };
+}
+
+/**
+ * A version that lost a sync conflict (same id, other content on the server) but under which the
+ * user already used a session (D-033): kept for history under its own lineage, closed, never
+ * active again. The server's version stays the one in force for the future.
+ */
+export function archivedVersion(lost: ProgramVersion, winner: ProgramVersion): ProgramVersion {
+  const lineageId = trainingIds.archivedLineage(lost);
+  const to = addDays(winner.effectiveFrom, -1);
+  return deepFreeze({
+    ...lost,
+    id: trainingIds.version(lineageId, lost.version),
+    lineageId,
+    status: lost.status === 'active' ? 'superseded' : lost.status,
+    effectiveTo: lost.effectiveTo ?? (to < lost.effectiveFrom ? lost.effectiveFrom : to),
+  });
+}
+
+/**
+ * A used session whose id the server holds with another prescription (D-033): the same content
+ * (exercises, loads, variants, time of prescription) under new ids, so the sets stay linked to
+ * what the user actually saw. `programId` is the archived version when the session's version lost.
+ */
+export function keptSession(p: PrescribedSession, programId: string, key: SessionKey): PrescribedSession {
+  const id = programId === p.programId ? trainingIds.kept(p.id, p.prescribedAt) : trainingIds.session(programId, key);
+  return deepFreeze({
+    ...p,
+    id,
+    programId,
+    exercises: p.exercises.map((e) => ({ ...e, id: trainingIds.planned(id, e.variant, e.position), sessionId: id })),
+  });
 }
