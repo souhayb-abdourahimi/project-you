@@ -40,7 +40,12 @@ import {
   type ProgramVersion,
   type TrainingPurpose,
 } from '../training/program';
-import type { LoggedSet } from '../training/progression';
+import {
+  LEGACY_PROGRESSION_ACTIONS,
+  PROGRESSION_ACTIONS,
+  PROGRESSION_CONFIDENCES,
+  type LoggedSet,
+} from '../training/progression';
 import { REPLACEMENT_REASONS, type ReplacementReason } from '../training/replacement';
 import type { ExerciseReport } from '../training/session';
 import { archivedVersion, hasFacts, keptSession, type SessionSource } from '../training/week';
@@ -160,8 +165,11 @@ const REMOTE_ROWS = {
     rest_seconds: z.coerce.number().int().min(0),
     target_rpe: nullableFinite,
     target_load_kg: nullableFinite,
-    progression_action: z.enum(['increase_load', 'add_reps', 'keep', 'deload', 'first_time']).nullish(),
+    progression_action: z.enum([...PROGRESSION_ACTIONS, ...LEGACY_PROGRESSION_ACTIONS]).nullish(),
     progression_reason: z.string().nullish(),
+    target_reps: nullableFinite.optional(),
+    progression_confidence: z.enum(PROGRESSION_CONFIDENCES).nullish(),
+    progression_params: z.record(z.string(), z.union([z.number(), z.string()])).nullish(),
     purpose: z.enum(TRAINING_PURPOSES),
     purpose_target: z.string().nullish(),
     prescribed_at: z.string(),
@@ -469,6 +477,10 @@ function plannedRow(e: PlannedExercise): Row {
     target_load_kg: e.targetLoadKg,
     progression_action: e.progressionAction,
     progression_reason: e.progressionReason,
+    // W-4 columns only when set: rows prescribed before keep the same content (and hash).
+    ...(e.targetReps !== null ? { target_reps: e.targetReps } : {}),
+    ...(e.progressionConfidence !== null ? { progression_confidence: e.progressionConfidence } : {}),
+    ...(e.progressionParams !== null ? { progression_params: e.progressionParams } : {}),
     purpose: e.purpose,
     purpose_target: e.purposeTarget,
     prescribed_at: e.prescribedAt,
@@ -491,6 +503,12 @@ function plannedFromRow(r: Row): PlannedExercise {
     targetLoadKg: num(r.target_load_kg) ?? null,
     progressionAction: (r.progression_action as PlannedExercise['progressionAction']) ?? null,
     progressionReason: str(r.progression_reason) ?? null,
+    targetReps: num(r.target_reps) ?? null,
+    progressionConfidence: (r.progression_confidence as PlannedExercise['progressionConfidence']) ?? null,
+    progressionParams:
+      r.progression_params && typeof r.progression_params === 'object'
+        ? { ...(r.progression_params as Record<string, number | string>) }
+        : null,
     purpose: r.purpose as TrainingPurpose,
     purposeTarget: str(r.purpose_target) ?? null,
     prescribedAt: String(r.prescribed_at),

@@ -11,7 +11,7 @@ import { sessionKey } from '@/domain/shared/ids';
 import type { Row, SyncableState, SyncedHashes, SyncTable } from '@/domain/sync/projection';
 import { adherence } from '@/domain/journey/adherence';
 import type { PrescribedSession } from '@/domain/training/program';
-import { activeProgram, prescriptionFor, rescheduleSession } from '@/domain/training/week';
+import { activeProgram, prescriptionFor, refreshWeek, rescheduleSession } from '@/domain/training/week';
 
 import { classifySyncError, syncOnce, type SyncClient } from '../sync';
 
@@ -256,6 +256,25 @@ function device(snapshot: UserContextSnapshot, initial: Partial<SyncableState> =
         exerciseSwaps: { ...state.exerciseSwaps, [key]: { ...state.exerciseSwaps?.[key], [from]: to } },
         swapReasons: { ...state.swapReasons, [key]: { ...state.swapReasons?.[key], [from]: 'busy_equipment' } },
       }),
+    /** The journey refreshing the week not started yet with the progression (useJourney, W-4). */
+    refresh: (today: string, at = `${today}T08:00:00.000Z`) => {
+      const s = state;
+      const next = refreshWeek({
+        records: {
+          programs: s.programs ?? [],
+          prescriptions: s.prescriptions ?? {},
+          superseded: s.superseded ?? {},
+          sessionIds: s.sessionIds,
+        },
+        facts: s,
+        rescheduled: s.rescheduled ?? {},
+        today,
+        weekStart: WEEK,
+        prescribedAt: at,
+      });
+      if (next) store.write(next);
+      return next !== null;
+    },
     sync: (claim = false) => syncOnce(fake.client, store, USER, { claim }),
   };
 }
@@ -824,6 +843,81 @@ describe('workout session (W-3)', () => {
     const b = device(SCENARIOS.muscleGain);
     await b.sync();
     expect(b.state().completedSessions).toEqual([expect.objectContaining({ date: '2026-09-28', stopped: 'pain' })]);
+  });
+});
+
+describe('progression (W-4, D-035)', () => {
+  const bench = (d: ReturnType<typeof device>, key: string) =>
+    prescriptionFor({ prescriptions: d.state().prescriptions!, sessionIds: d.state().sessionIds }, key)!.exercises.find(
+      (e) => e.variant === 'full' && e.exerciseId === 'bench_press',
+    )!;
+  const top = (d: ReturnType<typeof device>, key: string) => {
+    for (let i = 0; i < 3; i++) d.logSet(key, 'bench_press', 10, 70);
+  };
+
+  it('Monday confirmed on A: Wednesday re-prescribed once; B reads it and recomputes the same, no conflict', async () => {
+    const a = device(SCENARIOS.muscleGain);
+    top(a, sessionKey('2026-09-23', 1));
+    a.open('2026-09-28');
+    expect((await a.sync(true)).errors).toEqual([]);
+    const b = device(SCENARIOS.muscleGain);
+    await b.sync();
+    const frozen = a.state().sessionIds[WEDNESDAY];
+
+    top(a, MONDAY);
+    a.set({
+      completedSessions: [
+        { date: '2026-09-28', sessionIndex: 0, variant: 'full', completedAt: '2026-09-28T19:00:00.000Z' },
+      ],
+    });
+    expect(a.refresh('2026-09-28')).toBe(true);
+    expect(bench(a, WEDNESDAY)).toMatchObject({
+      targetLoadKg: 72.5,
+      progressionAction: 'increase_load',
+      targetReps: 6,
+    });
+    expect((await a.sync()).errors).toEqual([]);
+    // The server keeps the frozen one (superseded) and the new one, with the W-4 columns.
+    expect(fake.table('workout_sessions').get(frozen)).toMatchObject({ status: 'superseded' });
+    expect(fake.table('planned_exercises').get(bench(a, WEDNESDAY).id)).toMatchObject({
+      target_load_kg: 72.5,
+      progression_action: 'increase_load',
+      target_reps: 6,
+      progression_confidence: 'medium',
+      progression_params: { sessions: 2, max: 10, increment: 2.5 },
+    });
+    // Monday, done, is exactly what was prescribed.
+    expect(bench(a, MONDAY)).toMatchObject({ targetLoadKg: 70 });
+
+    expect((await b.sync()).errors).toEqual([]);
+    expect(b.state().sessionIds[WEDNESDAY]).toBe(a.state().sessionIds[WEDNESDAY]);
+    expect(bench(b, WEDNESDAY)).toEqual(bench(a, WEDNESDAY));
+    // B derives the same recommendation from the same facts: nothing to write, nothing to push.
+    expect(b.refresh('2026-09-28', '2026-09-28T21:00:00.000Z')).toBe(false);
+    expect((await b.sync()).errors).toEqual([]);
+  });
+
+  it('both devices re-prescribe offline from the same facts: same id, the server copy wins, no error', async () => {
+    const a = device(SCENARIOS.muscleGain);
+    top(a, sessionKey('2026-09-23', 1));
+    a.open('2026-09-28');
+    await a.sync(true);
+    const b = device(SCENARIOS.muscleGain);
+    await b.sync();
+    top(a, MONDAY);
+    a.set({
+      completedSessions: [
+        { date: '2026-09-28', sessionIndex: 0, variant: 'full', completedAt: '2026-09-28T19:00:00.000Z' },
+      ],
+    });
+    await a.sync();
+    await b.sync();
+    a.refresh('2026-09-28', '2026-09-28T20:00:00.000Z');
+    b.refresh('2026-09-28', '2026-09-28T20:05:00.000Z');
+    expect(b.state().sessionIds[WEDNESDAY]).toBe(a.state().sessionIds[WEDNESDAY]);
+    expect((await a.sync()).errors).toEqual([]);
+    expect((await b.sync()).errors).toEqual([]);
+    expect(bench(b, WEDNESDAY)).toEqual(bench(a, WEDNESDAY));
   });
 });
 

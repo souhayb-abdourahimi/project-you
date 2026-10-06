@@ -10,6 +10,7 @@ import type { DailyMealPlan } from '../meals/planner';
 import type { PlannedDay } from '../planning/engine';
 import { weekdayOf } from '../shared/dates';
 import type { SessionVariant } from '../training/adapt';
+import type { SessionGoal } from '../training/session';
 import { DAY_MODE, isDifficultDay, minimalVersion, type DayContext } from './day-modes';
 import type { DayLog, DayMode, SessionOutcome } from './outcomes';
 import type { JourneyState } from './state';
@@ -63,6 +64,8 @@ export interface DailyPlanInput {
     focus: string;
     minutes: number;
     minutesOf?: (variant: SessionVariant, requested: number) => number;
+    /** What the stored prescription aims for (W-4 `sessionGoal`), said only on a full session. */
+    goal?: SessionGoal | null;
   } | null;
   /** Today's session as done (any variant). */
   completed: { variant: SessionVariant } | null;
@@ -250,7 +253,8 @@ function decideWorkout(input: DailyPlanInput, mode: DayMode, difficult: boolean,
     );
     return { ...none, item: workout('short', minutesOf('short', minutes), 'workout.short_slot') };
   }
-  return { ...none, item: workout('full', session.minutes, 'workout.planned') };
+  const item = workout('full', session.minutes, 'workout.planned');
+  return { ...none, item: session.goal ? { ...item, params: { ...item.params, goal: session.goal } } : item };
 }
 
 function mealItem(input: DailyPlanInput): DailyItem | null {

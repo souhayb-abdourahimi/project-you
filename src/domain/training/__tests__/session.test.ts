@@ -13,6 +13,7 @@ import {
   restRemaining,
   resumeRest,
   sessionExercises,
+  sessionGoal,
   sessionProgress,
   sessionResult,
   sessionSummary,
@@ -45,6 +46,9 @@ const ex = (patch: Partial<SessionExercise> = {}): SessionExercise => ({
   proposedLoadKg: 70,
   progressionAction: 'keep',
   progressionReason: 'progression.reason.in_range',
+  targetReps: null,
+  progressionParams: null,
+  progressionConfidence: null,
   purpose: 'strength',
   purposeTarget: null,
   ...patch,
@@ -185,6 +189,37 @@ describe('prefill: reliable data only', () => {
     });
     expect(prefill(plank, [{ reps: 0, seconds: 45, loadKg: 0 }], null, { holdIncrease: false }).value).toBe(45);
     expect(prefill(plank, [], null, { holdIncrease: false }).value).toBe(30);
+  });
+
+  it('opens on the goal of the prescription (W-4); a held increase of reps keeps last time', () => {
+    expect(
+      prefill(ex({ targetReps: 9, progressionAction: 'increase_reps' }), [], last, { holdIncrease: false }),
+    ).toEqual({
+      loadKg: 70,
+      value: 9,
+      source: 'proposed',
+      keepLoad: false,
+    });
+    const reps = ex({ targetReps: 10, progressionAction: 'increase_reps', proposedLoadKg: 67.5 });
+    expect(prefill(reps, [], last, { holdIncrease: true })).toMatchObject({ loadKg: 67.5, value: 10, keepLoad: true });
+  });
+});
+
+describe('sessionGoal: the line of the Daily Coach, from stored decisions only (W-4)', () => {
+  const row = (progressionAction: SessionExercise['progressionAction'], variant: 'full' | 'light' = 'full') => ({
+    variant,
+    progressionAction,
+  });
+  it('an increase first, then a rep, then keep only when every decision keeps', () => {
+    expect(sessionGoal([row('maintain'), row('increase_load')])).toBe('increase_load');
+    expect(sessionGoal([row('maintain'), row('increase_reps')])).toBe('increase_reps');
+    expect(sessionGoal([row('maintain'), row('retry'), row(null)])).toBe('maintain');
+  });
+  it('nothing to say before W-4, without history, or when a decrease is planned', () => {
+    expect(sessionGoal([row('keep'), row('add_reps')])).toBeNull();
+    expect(sessionGoal([row(null)])).toBeNull();
+    expect(sessionGoal([row('maintain'), row('reduce_load')])).toBeNull();
+    expect(sessionGoal([row('increase_load', 'light')])).toBeNull();
   });
 });
 

@@ -26,6 +26,7 @@ export function ExerciseFacts({
   const { t, i18n } = useTranslation();
   const lang = i18n.language === 'en' ? 'en' : 'fr';
   const unit = exercise.unit === 'seconds' ? t('workout.unitSeconds') : t('workout.unitReps');
+  const plan = planKey(exercise);
   return (
     <View style={styles.root}>
       <Text variant="heading" accessibilityRole="text">
@@ -37,16 +38,14 @@ export function ExerciseFacts({
           rest: exercise.restSeconds,
         })}
       </Text>
-      {exercise.proposedLoadKg !== null && exercise.proposedLoadKg > 0 ? (
-        <Text>
-          {t('workout.proposed', {
-            load: formatNumber(exercise.proposedLoadKg, lang),
-            min: exercise.repsMin,
-            max: exercise.repsMax,
-          })}
+      <Proposed exercise={exercise} unit={unit} />
+      {last ? <Text>{t('workout.lastTime', { value: setValue(t, lang, last) })}</Text> : null}
+      {/* The stored decision in one line (W-4); a hold of the day (fatigue, safety) says it instead. */}
+      {plan && hint.key !== 'keep_load' ? (
+        <Text variant="caption" color="textMuted">
+          {t(`workout.plan.${plan}`)}
         </Text>
       ) : null}
-      {last ? <Text>{t('workout.lastTime', { value: setValue(t, lang, last) })}</Text> : null}
       {/* The target is already the line above: the coach only adds a line when it says something new. */}
       {hint.key !== 'target' ? (
         <Text variant="caption" color="textMuted">
@@ -55,6 +54,49 @@ export function ExerciseFacts({
       ) : null}
       <Why exercise={exercise} />
     </View>
+  );
+}
+
+/** Numbers of a reason in the user's locale ("2,5 kg"). */
+const localized = (params: Record<string, number | string> | null, lang: 'fr' | 'en') =>
+  Object.fromEntries(
+    Object.entries(params ?? {}).map(([k, v]) => [k, typeof v === 'number' ? formatNumber(v, lang) : v]),
+  );
+
+/** The short line of a W-4 decision (older prescriptions have none). */
+function planKey(ex: SessionExercise): string | null {
+  switch (ex.progressionAction) {
+    case 'increase_load':
+    case 'maintain':
+    case 'retry':
+    case 'reduce_load':
+      return ex.progressionAction;
+    case 'increase_reps':
+      return ex.unit === 'seconds' ? 'increase_seconds' : 'increase_reps';
+    default:
+      return null;
+  }
+}
+
+/** What the prescription proposes: the load and the goal per set (W-4), or the range before W-4. */
+function Proposed({ exercise, unit }: { exercise: SessionExercise; unit: string }) {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language === 'en' ? 'en' : 'fr';
+  const load = exercise.proposedLoadKg !== null && exercise.proposedLoadKg > 0 ? exercise.proposedLoadKg : null;
+  if (exercise.targetReps !== null) {
+    return (
+      <Text>
+        {load !== null
+          ? t('workout.goalLoad', { load: formatNumber(load, lang), target: exercise.targetReps, unit })
+          : t('workout.goal', { target: exercise.targetReps, unit })}
+      </Text>
+    );
+  }
+  if (load === null) return null;
+  return (
+    <Text>
+      {t('workout.proposed', { load: formatNumber(load, lang), min: exercise.repsMin, max: exercise.repsMax })}
+    </Text>
   );
 }
 
@@ -81,7 +123,14 @@ function Why({ exercise }: { exercise: SessionExercise }) {
           {why ? <Text>{t(why.key, { target: why.target ? t(`workout.targets.${why.target}`) : '' })}</Text> : null}
           {exercise.progressionReason ? (
             <Text variant="caption" color="textMuted">
-              {t('workout.why.load', { reason: t(`reasons.${exercise.progressionReason}`) })}
+              {t('workout.why.load', {
+                reason: t(`reasons.${exercise.progressionReason}`, localized(exercise.progressionParams, lang)),
+              })}
+            </Text>
+          ) : null}
+          {exercise.progressionConfidence ? (
+            <Text variant="caption" color="textMuted">
+              {t(`workout.why.confidence.${exercise.progressionConfidence}`)}
             </Text>
           ) : null}
           {info ? (

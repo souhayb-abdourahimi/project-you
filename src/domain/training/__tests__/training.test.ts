@@ -2,7 +2,6 @@ import { SCENARIOS } from '../../scenarios';
 import { lightSession, shortSession } from '../adapt';
 import { generateWorkoutPlan } from '../engine';
 import { EXERCISES, getExercise, isAvailable } from '../exercises';
-import { suggestProgression } from '../progression';
 import { findReplacements } from '../replacement';
 
 describe('WorkoutEngine', () => {
@@ -82,51 +81,6 @@ describe('replacements', () => {
     for (const e of EXERCISES) {
       expect(e.cues.fr && e.cues.en && e.mistakes.fr && e.mistakes.en).toBeTruthy();
     }
-  });
-});
-
-describe('ProgressionEngine', () => {
-  const base = { exerciseId: 'goblet_squat', repsMin: 8, repsMax: 12, fatigue: 'normal' as const };
-
-  it('adds load at the top of the range with manageable effort', () => {
-    const s = suggestProgression({
-      ...base,
-      history: [
-        {
-          date: 'd1',
-          sets: [
-            { reps: 12, loadKg: 20, rpe: 8 },
-            { reps: 12, loadKg: 20, rpe: 8.5 },
-          ],
-        },
-      ],
-    });
-    expect(s).toMatchObject({ action: 'increase_load', loadKg: 22, targetReps: 8 });
-  });
-
-  it('adds reps inside the range', () => {
-    const s = suggestProgression({ ...base, history: [{ date: 'd1', sets: [{ reps: 9, loadKg: 20, rpe: 8 }] }] });
-    expect(s).toMatchObject({ action: 'add_reps', loadKg: 20, targetReps: 10 });
-  });
-
-  it('does not increase when fatigue is high', () => {
-    const s = suggestProgression({
-      ...base,
-      fatigue: 'high',
-      history: [{ date: 'd1', sets: [{ reps: 12, loadKg: 20, rpe: 7 }] }],
-    });
-    expect(s.action).toBe('keep');
-  });
-
-  it('does not increase at maximal effort', () => {
-    const s = suggestProgression({ ...base, history: [{ date: 'd1', sets: [{ reps: 12, loadKg: 20, rpe: 10 }] }] });
-    expect(s.action).toBe('keep');
-  });
-
-  it('deloads after two missed sessions', () => {
-    const miss = { date: 'd', sets: [{ reps: 6, loadKg: 30 }] };
-    const s = suggestProgression({ ...base, history: [miss, miss] });
-    expect(s).toMatchObject({ action: 'deload', loadKg: 27 });
   });
 });
 

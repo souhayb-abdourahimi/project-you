@@ -6,14 +6,14 @@
  * - Planned ≠ done: the prescription stays as given; what happened is a separate fact.
  * - A proposed load comes only from the stored prescription; a prefilled load only from a real set.
  * - Exercise status, session result and progress are derived, never stored.
- * - No progression decision here (W-4): the hints only repeat the target or a real number.
+ * - No progression decision here: it is read from the stored prescription (W-4, progression.ts).
  */
 import type { IsoDate } from '../shared/dates';
 import { parseSessionKey, type SessionKey } from '../shared/ids';
 import type { SetUnit, WorkoutTemplate } from './engine';
 import { getExercise } from './exercises';
 import type { PlannedExercise, TrainingPurpose } from './program';
-import type { LoggedSet, ProgressionAction } from './progression';
+import type { LoggedSet } from './progression';
 import type { ReplacementReason } from './replacement';
 
 export type SetLogs = Record<SessionKey, Record<string, LoggedSet[]>>;
@@ -45,8 +45,12 @@ export interface SessionExercise {
   targetRpe: number | null;
   /** Proposed load from the stored prescription; never carried over to a replacement. */
   proposedLoadKg: number | null;
-  progressionAction: ProgressionAction | 'first_time' | null;
+  progressionAction: PlannedExercise['progressionAction'];
   progressionReason: string | null;
+  /** Reps (or seconds) the prescription aims for; null = the bottom of the range. */
+  targetReps: number | null;
+  progressionParams: Record<string, number | string> | null;
+  progressionConfidence: PlannedExercise['progressionConfidence'];
   purpose: TrainingPurpose | null;
   purposeTarget: string | null;
 }
@@ -65,6 +69,9 @@ export function sessionExercises(
           targetLoadKg: null,
           progressionAction: null,
           progressionReason: null,
+          targetReps: null,
+          progressionParams: null,
+          progressionConfidence: null,
           purpose: null,
           purposeTarget: null,
         }));
@@ -86,10 +93,33 @@ export function sessionExercises(
       proposedLoadKg: replaced ? null : r.targetLoadKg,
       progressionAction: replaced ? null : r.progressionAction,
       progressionReason: replaced ? null : r.progressionReason,
+      targetReps: replaced ? null : r.targetReps,
+      progressionParams: replaced ? null : r.progressionParams,
+      progressionConfidence: replaced ? null : r.progressionConfidence,
       purpose: r.purpose,
       purposeTarget: r.purposeTarget,
     };
   });
+}
+
+/** What today's session aims for, in one line of the Daily Coach (W-4); null when it says nothing new. */
+export type SessionGoal = 'increase_load' | 'increase_reps' | 'maintain';
+
+/**
+ * The goal of a prescribed session, from its stored decisions only: a load increase if one is
+ * planned, else one more repetition, else "keep the load" when every decision keeps it. Null when
+ * nothing is known (first time, prescriptions before W-4) or decisions differ (a decrease is told
+ * on its exercise, not as the goal of the day).
+ */
+export function sessionGoal(
+  rows: readonly Pick<PlannedExercise, 'variant' | 'progressionAction'>[],
+): SessionGoal | null {
+  const actions = rows.filter((r) => r.variant === 'full').map((r) => r.progressionAction);
+  if (actions.includes('increase_load')) return 'increase_load';
+  if (actions.includes('increase_reps')) return 'increase_reps';
+  const decided = actions.filter((a) => a !== null && a !== 'no_recommendation');
+  if (decided.length > 0 && decided.every((a) => a === 'maintain' || a === 'retry')) return 'maintain';
+  return null;
 }
 
 /** A set held in time is stored with `seconds` (and `reps: 0`); older ones only had `reps`. */
@@ -155,9 +185,10 @@ export interface Prefill {
 /**
  * Values the set entry opens with, from reliable data only, in this order: the previous set of
  * this exercise today, the load proposed by the stored prescription, the real load of last time,
- * bodyweight for a movement without load. When the prescription planned an increase and the day's
- * declared fatigue is high or the safety rule asks to slow down, the load of last time is kept
- * (no new progression decision: W-4).
+ * bodyweight for a movement without load. The value is the goal of the prescription (W-4), else the
+ * bottom of the range. When the prescription planned an increase and the day's declared fatigue is
+ * high or the safety rule asks to slow down (a session opened before the check-in), last time's
+ * load and value are kept: the increase waits, nothing is pushed today.
  */
 export function prefill(
   ex: SessionExercise,
@@ -167,14 +198,22 @@ export function prefill(
 ): Prefill {
   const previous = today.at(-1);
   const bodyweight = (getExercise(ex.exerciseId)?.loadIncrementKg ?? 0) === 0;
-  const value = previous ? (isTimed(previous) ? (previous.seconds ?? ex.repsMin) : previous.reps) : ex.repsMin;
-  if (previous) return { loadKg: previous.loadKg, value, source: 'previous_set', keepLoad: false };
-  const keepLoad = opts.holdIncrease && ex.progressionAction === 'increase_load' && last !== null;
-  if (keepLoad) return { loadKg: last!.loadKg, value, source: 'last_time', keepLoad: true };
-  if (ex.proposedLoadKg !== null) return { loadKg: ex.proposedLoadKg, value, source: 'proposed', keepLoad: false };
-  if (last) return { loadKg: last.loadKg, value, source: 'last_time', keepLoad: false };
-  if (bodyweight) return { loadKg: 0, value, source: 'bodyweight', keepLoad: false };
-  return { loadKg: null, value, source: null, keepLoad: false };
+  const planned = ex.targetReps ?? ex.repsMin;
+  if (previous) {
+    const value = isTimed(previous) ? (previous.seconds ?? planned) : previous.reps;
+    return { loadKg: previous.loadKg, value, source: 'previous_set', keepLoad: false };
+  }
+  const increase = ex.progressionAction === 'increase_load' || ex.progressionAction === 'increase_reps';
+  if (opts.holdIncrease && increase && last !== null) {
+    const lastValue = last.seconds ?? last.reps ?? planned;
+    const value = Math.max(ex.repsMin, Math.min(ex.repsMax, lastValue));
+    return { loadKg: last.loadKg, value, source: 'last_time', keepLoad: true };
+  }
+  if (ex.proposedLoadKg !== null)
+    return { loadKg: ex.proposedLoadKg, value: planned, source: 'proposed', keepLoad: false };
+  if (last) return { loadKg: last.loadKg, value: planned, source: 'last_time', keepLoad: false };
+  if (bodyweight) return { loadKg: 0, value: planned, source: 'bodyweight', keepLoad: false };
+  return { loadKg: null, value: planned, source: null, keepLoad: false };
 }
 
 /** A set as entered: load plus reps, or load plus seconds for a hold. Invalid input is refused. */
@@ -388,7 +427,7 @@ export type CoachHint =
 
 /**
  * One discreet line under the current exercise: the target, what the user did last time, or after a
- * very hard set that keeping the load is fine. No new progression decision (W-4).
+ * very hard set that keeping the load is fine. No progression decision here (it is stored, W-4).
  */
 export function coachHint(
   ex: SessionExercise,

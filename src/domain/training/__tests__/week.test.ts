@@ -2,6 +2,7 @@ import { SCENARIOS, scenario } from '../../scenarios';
 import { EMPTY_FACTS, emptyRecords, publishWeek, scheduledWeek } from '../../scenarios/training';
 import { sessionKey } from '../../shared/ids';
 import { SESSION_DURATION, shortMinutes } from '../durations';
+import { getExercise } from '../exercises';
 import type { PrescribedSession, ProgramParams } from '../program';
 import {
   activeProgram,
@@ -374,19 +375,34 @@ describe('proposed loads', () => {
         },
       ],
     };
-    const setLogs = {
-      [sessionKey('2026-09-21', 0)]: {
-        bench_press: [
-          { reps: 10, loadKg: 50 },
-          { reps: 10, loadKg: 50 },
-        ],
-      },
-    };
-    const loads = proposedLoads(template, setLogs, '2026-09-28');
-    expect(loads.bench_press).toMatchObject({ action: 'increase_load', reasonKey: 'progression.reason.top_of_range' });
-    expect(loads.bench_press.loadKg).toBeGreaterThan(50);
+    const top = [
+      { reps: 10, loadKg: 50 },
+      { reps: 10, loadKg: 50 },
+      { reps: 10, loadKg: 50 },
+    ];
+    const at = (setLogs: Record<string, Record<string, typeof top>>, date: string) =>
+      proposedLoads({ template, records: emptyRecords(), facts: { ...EMPTY_FACTS, setLogs }, date, today: date });
+    // One session at the top of the range is a first reading: the same load, the top as the goal.
+    const once = { [sessionKey('2026-09-21', 0)]: { bench_press: top } };
+    expect(at(once, '2026-09-28').bench_press).toMatchObject({
+      action: 'maintain',
+      loadKg: 50,
+      targetReps: 10,
+      reasonKey: 'progression.reason.first_reading',
+      confidence: 'low',
+    });
+    // Confirmed on a second session: a small increase, back to the bottom of the range.
+    const twice = { ...once, [sessionKey('2026-09-24', 0)]: { bench_press: top } };
+    const loads = at(twice, '2026-09-28');
+    expect(loads.bench_press).toMatchObject({
+      action: 'increase_load',
+      reasonKey: 'progression.reason.top_confirmed',
+      targetReps: 6,
+      confidence: 'medium',
+    });
+    expect(loads.bench_press.loadKg).toBe(50 + getExercise('bench_press')!.loadIncrementKg);
     // Sets of the same day or later are not history.
-    expect(proposedLoads(template, setLogs, '2026-09-21')).toEqual({});
+    expect(at(once, '2026-09-21')).toEqual({});
   });
 
   it('a hold progresses on its seconds, not on its zero reps', () => {
@@ -405,9 +421,16 @@ describe('proposed loads', () => {
       ],
     };
     const setLogs = { [sessionKey('2026-09-21', 0)]: { plank: [{ reps: 0, seconds: 45, loadKg: 0 }] } };
+    const loads = proposedLoads({
+      template,
+      records: emptyRecords(),
+      facts: { ...EMPTY_FACTS, setLogs },
+      date: '2026-09-28',
+      today: '2026-09-28',
+    });
     // Bodyweight: no load proposed, but the hold counts as done (not as a set of 0 reps).
-    expect(proposedLoads(template, setLogs, '2026-09-28').plank).toMatchObject({ loadKg: null });
-    expect(proposedLoads(template, setLogs, '2026-09-28').plank.action).not.toBe('deload');
+    expect(loads.plank).toMatchObject({ loadKg: null, targetReps: 45 });
+    expect(loads.plank.action).not.toBe('reduce_load');
   });
 });
 

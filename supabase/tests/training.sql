@@ -132,6 +132,61 @@ insert into public.planned_exercises (user_id, session_id, variant, position, ex
 values ('00000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-0000000001b1', 'short', 0, 'bodyweight_squat', 2, 10, 15, 'reps', 30, 7, 'muscular_endurance', 'squat');
 select pg_temp.expect((select count(*) from public.planned_exercises where variant = 'full') = 2, 'adapting the day keeps the full prescription');
 
+-- W-4 (D-035): the progression is frozen into a prescription; applying it to a session not started
+-- yet is a NEW session row, the previous one superseded (no new program version, no edit).
+insert into public.workout_sessions (id, user_id, program_id, session_index, scheduled_for, focus, planned_minutes, purpose,
+  prescription_source, prescribed_at, status)
+values ('00000000-0000-0000-0000-0000000001b2', '00000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-0000000001a1',
+  1, '2026-10-09', 'full_b', 55, 'hypertrophy', 'engine', '2026-10-05T07:00:00Z', 'planned');
+insert into public.planned_exercises (id, user_id, session_id, variant, position, exercise_id, sets, reps_min, reps_max, unit,
+  rest_seconds, target_load_kg, progression_action, progression_reason, target_reps, progression_confidence, progression_params, purpose)
+values
+  ('00000000-0000-0000-0000-0000000001c3', '00000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-0000000001b2', 'full', 0,
+   'goblet_squat', 3, 6, 10, 'reps', 120, 20, 'increase_reps', 'progression.reason.add_rep', 9, 'medium', '{"target": 9}', 'hypertrophy'),
+  -- A prescription given before W-4 keeps its action.
+  ('00000000-0000-0000-0000-0000000001c4', '00000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-0000000001b2', 'full', 1,
+   'push_up', 3, 6, 10, 'reps', 120, null, 'keep', 'progression.reason.consolidate', null, null, null, 'hypertrophy');
+select pg_temp.expect(
+  (select count(*) from public.planned_exercises where session_id = '00000000-0000-0000-0000-0000000001b2') = 2,
+  'W-4 actions and pre-W-4 actions are both accepted');
+select pg_temp.expect_error($s$
+  insert into public.planned_exercises (user_id, session_id, variant, position, exercise_id, sets, reps_min, reps_max, unit, rest_seconds, progression_action, purpose)
+  values ('00000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-0000000001b2', 'full', 2, 'plank', 3, 30, 40, 'seconds', 60, 'push_harder', 'hypertrophy')$s$,
+  '23514', 'a progression action comes from the closed list');
+select pg_temp.expect_error($s$
+  insert into public.planned_exercises (user_id, session_id, variant, position, exercise_id, sets, reps_min, reps_max, unit, rest_seconds, progression_action, target_reps, purpose)
+  values ('00000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-0000000001b2', 'full', 2, 'goblet_squat', 3, 6, 10, 'reps', 60, 'increase_reps', 13, 'hypertrophy')$s$,
+  '23514', 'a goal stays inside the prescribed range');
+select pg_temp.expect_error($s$
+  insert into public.planned_exercises (user_id, session_id, variant, position, exercise_id, sets, reps_min, reps_max, unit, rest_seconds, target_reps, purpose)
+  values ('00000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-0000000001b2', 'full', 2, 'goblet_squat', 3, 6, 10, 'reps', 60, 8, 'hypertrophy')$s$,
+  '23514', 'a goal belongs to a progression decision');
+select pg_temp.expect_error($s$
+  insert into public.planned_exercises (user_id, session_id, variant, position, exercise_id, sets, reps_min, reps_max, unit, rest_seconds, progression_action, progression_params, purpose)
+  values ('00000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-0000000001b2', 'full', 2, 'goblet_squat', 3, 6, 10, 'reps', 60, 'maintain', '["free text"]', 'hypertrophy')$s$,
+  '23514', 'the facts of a reason are a small object');
+select pg_temp.expect_error($s$
+  insert into public.planned_exercises (user_id, session_id, variant, position, exercise_id, sets, reps_min, reps_max, unit, rest_seconds, progression_action, progression_confidence, purpose)
+  values ('00000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-0000000001b2', 'full', 2, 'goblet_squat', 3, 6, 10, 'reps', 60, 'maintain', 'certain', 'hypertrophy')$s$,
+  '23514', 'a confidence comes from the closed list');
+select pg_temp.expect_error($s$
+  update public.planned_exercises set target_reps = 10 where id = '00000000-0000-0000-0000-0000000001c3'$s$,
+  '23514', 'a progression decision is never rewritten afterwards');
+update public.workout_sessions set status = 'superseded' where id = '00000000-0000-0000-0000-0000000001b2';
+insert into public.workout_sessions (id, user_id, program_id, session_index, scheduled_for, focus, planned_minutes, purpose,
+  prescription_source, prescribed_at, status)
+values ('00000000-0000-0000-0000-0000000001b3', '00000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-0000000001a1',
+  1, '2026-10-09', 'full_b', 55, 'hypertrophy', 'engine', '2026-10-07T07:00:00Z', 'planned');
+insert into public.planned_exercises (id, user_id, session_id, variant, position, exercise_id, sets, reps_min, reps_max, unit,
+  rest_seconds, target_load_kg, progression_action, progression_reason, target_reps, progression_confidence, purpose)
+values ('00000000-0000-0000-0000-0000000001c5', '00000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-0000000001b3', 'full', 0,
+  'goblet_squat', 3, 6, 10, 'reps', 120, 20, 'maintain', 'progression.reason.held_fatigue', 8, 'medium', 'hypertrophy');
+select pg_temp.expect(
+  (select count(*) from public.planned_exercises where id = '00000000-0000-0000-0000-0000000001c3' and target_reps = 9) = 1
+  and (select status from public.workout_sessions where id = '00000000-0000-0000-0000-0000000001b2') = 'superseded'
+  and (select program_id from public.workout_sessions where id = '00000000-0000-0000-0000-0000000001b3') = '00000000-0000-0000-0000-0000000001a1',
+  'a new prescription of a future session keeps the previous one, superseded and unchanged');
+
 -- 3. What was done, linked to the prescription.
 update public.workout_sessions set status = 'completed', started_at = '2026-10-05T18:00:00Z', completed_at = '2026-10-05T18:25:00Z',
   difficulty = 4, notes = 'Bonne séance' where id = '00000000-0000-0000-0000-0000000001b1';
@@ -339,7 +394,7 @@ select pg_temp.expect_error($s$
 commit;
 
 reset role;
-select pg_temp.expect((select count(*) from public.planned_exercises where user_id = '00000000-0000-0000-0000-00000000000c') = 3, 'C prescriptions intact after D attempts');
+select pg_temp.expect((select count(*) from public.planned_exercises where user_id = '00000000-0000-0000-0000-00000000000c') = 6, 'C prescriptions intact after D attempts');
 
 -- Privacy Center order (CATEGORY_TABLES.workouts): children first, then sessions, then programs.
 begin;

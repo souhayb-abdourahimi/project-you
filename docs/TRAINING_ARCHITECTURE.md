@@ -233,12 +233,15 @@ useJourney → DailyPlan : séance du jour = plannedSessions[aujourd'hui]
 ### 7.3 Après la séance et en fin de semaine
 
 ```
-compare(prévu, fait, raisons déclarées)   → faits (séance, exercices)       [dérivé]
-progression v2(historique, contexte)       → prescription de la prochaine occurrence, figée à son tour
+compare(prévu, fait, raisons déclarées)   → faits (séance, exercices)       [dérivé, pas encore livré]
+progression v2 (W-4, D-035)                → exerciseHistory → recommendProgression → gateProgression (contexte du jour)
+                                             → refreshWeek : nouvelle prescription des séances non commencées, figée à son tour
 journey (state, progress-facts, milestones) → records, régularité, jalons, voix
 adaptation (bilan de semaine)              → recommandations (proposées / conseils) → adjustments
 fin de cycle                               → proposition de semaine allégée / nouveau cycle
 ```
+
+Progression (W-4) : la recommandation d'un exercice ne crée **jamais** de version de programme. Elle crée une nouvelle prescription de séance (`trainingIds.revision`, empreinte des propositions) pour les séances de la semaine non commencées ; la précédente est `superseded`. Détail : `docs/TRAINING_PROGRESSION.md` §8.
 
 ### 7.4 Changement de profil en cours de semaine
 

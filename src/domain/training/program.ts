@@ -14,7 +14,7 @@ import { addDays, type IsoDate } from '../shared/dates';
 import type { AdaptedSession, SessionVariant } from './adapt';
 import { generateWorkoutPlan, type SessionFocus, type SetUnit, type WorkoutTemplate } from './engine';
 import { getExercise } from './exercises';
-import type { ProgressionAction } from './progression';
+import type { LegacyProgressionAction, ProgressionAction, ProgressionConfidence } from './progression';
 import type { ReplacementReason } from './replacement';
 
 export type DataKind = 'fact' | 'user_reported' | 'derived' | 'recommendation';
@@ -123,8 +123,14 @@ export interface PlannedExercise {
   targetRpe: number | null;
   /** Null when the engine had nothing to base a load on (never guessed). */
   targetLoadKg: number | null;
-  progressionAction: ProgressionAction | 'first_time' | null;
+  /** W-4 actions; rows prescribed before W-4 keep their legacy action (read, never produced). */
+  progressionAction: ProgressionAction | LegacyProgressionAction | null;
   progressionReason: string | null;
+  /** Reps (or seconds) to aim for in each set (W-4); null when the engine had no basis. */
+  targetReps: number | null;
+  progressionConfidence: ProgressionConfidence | null;
+  /** Facts the reason is told with ("2 séances", "12 reps"): numbers from the evidence only. */
+  progressionParams: Record<string, number | string> | null;
   purpose: TrainingPurpose;
   purposeTarget: string | null;
   /** When this row was prescribed (the full session, or later the adaptation of the day). */
@@ -271,8 +277,11 @@ function exercisePurpose(
 /** Proposed load for an exercise, when the progression engine had history to base it on. */
 export interface ProposedLoad {
   loadKg: number | null;
-  action: ProgressionAction | 'first_time';
+  action: ProgressionAction | LegacyProgressionAction;
   reasonKey: string;
+  targetReps?: number;
+  confidence?: ProgressionConfidence;
+  params?: Record<string, number | string>;
 }
 
 function plannedRows(input: {
@@ -302,6 +311,10 @@ function plannedRows(input: {
       targetLoadKg: load?.loadKg ?? null,
       progressionAction: load?.action ?? null,
       progressionReason: load ? load.reasonKey : null,
+      // A goal outside the range of this row (a variant with its own range) is brought back into it.
+      targetReps: load?.targetReps !== undefined ? Math.max(e.repsMin, Math.min(e.repsMax, load.targetReps)) : null,
+      progressionConfidence: load?.confidence ?? null,
+      progressionParams: load?.params && Object.keys(load.params).length > 0 ? { ...load.params } : null,
       ...exercisePurpose(e.exerciseId, input.purpose, input.level),
       prescribedAt: input.prescribedAt,
     };

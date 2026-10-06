@@ -129,6 +129,11 @@ export function DailyItemRow({ item, today }: { item: DailyItem; today: string }
               {t('daily.item.workoutAt', { time: item.params.start })}
             </Text>
           ) : null}
+          {item.kind === 'workout' && !done && item.params.goal ? (
+            <Text variant="caption" color="textMuted">
+              {t(`daily.item.goal_${item.params.goal}`)}
+            </Text>
+          ) : null}
           {item.kind === 'meal' && item.params.nextSlot ? (
             <Text variant="caption" color="textMuted">
               {t('daily.item.meal_next', { slot: t(`enums.slot.${item.params.nextSlot}`) })}

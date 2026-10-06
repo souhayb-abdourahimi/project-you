@@ -13,7 +13,8 @@ import { parseSessionKey, sessionKey, stableUuid, type SessionKey } from '../sha
 import { lightSession, shortSession, type SessionVariant } from './adapt';
 import { SESSION_DURATION, shortMinutes } from './durations';
 import { estimateMinutes, generateWorkoutPlan, type PrescribedExercise, type WorkoutTemplate } from './engine';
-import { suggestProgression, type LoggedSet } from './progression';
+import { exerciseHistory, type HistoryFacts } from './history';
+import { PROGRESSION, recommendProgression, type ProgressionRecommendation } from './progression';
 import {
   adaptPrescription,
   deepFreeze,
@@ -46,6 +47,12 @@ export const trainingIds = {
     stableUuid(
       `${lost.lineageId}:training:archived:v${lost.version}:${lost.publishedAt}:${JSON.stringify(lost.params)}`,
     ),
+  /**
+   * A new prescription of a session not started yet, when the progression changed since it was
+   * frozen (D-035): derived from what it proposes, so every device computes the same id.
+   */
+  revision: (programId: string, key: SessionKey, fingerprint: string) =>
+    stableUuid(`${programId}:training:session:${key}:rev:${fingerprint}`),
   /** A used session kept with its own prescription when the server holds another one for its id. */
   kept: (sessionId: string, prescribedAt: string) => stableUuid(`${sessionId}:training:kept:${prescribedAt}`),
 };
@@ -68,16 +75,10 @@ export interface TrainingRecords {
 }
 
 /** What the user did (FACT / USER_REPORTED): a session holding any of it is never replaced. */
-export interface TrainingFacts {
-  setLogs: Record<SessionKey, Record<string, LoggedSet[]>>;
-  completedSessions: readonly { date: IsoDate; sessionIndex: number }[];
+export interface TrainingFacts extends HistoryFacts {
   sessionOutcomes?: Record<SessionKey, unknown>;
-  exerciseSwaps?: Record<SessionKey, Record<string, string>>;
-  sessionDifficulty?: Record<SessionKey, number>;
   /** When a prescribed session was opened: from then on its prescription is what the user saw. */
   sessionOpened?: Record<SessionKey, string>;
-  /** Per exercise: declared as not performed, felt difficulty (W-3). */
-  exerciseReports?: Record<SessionKey, Record<string, unknown>>;
 }
 
 /**
@@ -209,35 +210,48 @@ export function versionTemplates(program: ProgramVersion): WorkoutTemplate[] {
   }).sessions;
 }
 
+/** Today's context applied to a recommendation (journey/adaptation.ts `gateProgression`). */
+export type ProgressionGate = (rec: ProgressionRecommendation, date: IsoDate) => ProgressionRecommendation;
+
 /**
- * Load proposed for each exercise from the sets logged before the session (the existing
- * progression engine, fatigue unknown in advance = normal). No history → no entry: the load stays
- * null, it is never guessed.
+ * What the next prescription proposes for each exercise (Progression Engine v2, D-035): the
+ * exercise's own history before the session, read by `recommendProgression`, then today's context
+ * when the caller has it. No history → no entry: the load stays null, it is never guessed.
  */
-export function proposedLoads(
-  template: Pick<WorkoutTemplate, 'exercises'>,
-  setLogs: TrainingFacts['setLogs'],
-  date: IsoDate,
-): Record<string, ProposedLoad> {
+export function proposedLoads(input: {
+  template: Pick<WorkoutTemplate, 'exercises'>;
+  records: Pick<TrainingRecords, 'prescriptions' | 'sessionIds'>;
+  facts: HistoryFacts;
+  date: IsoDate;
+  today: IsoDate;
+  gate?: ProgressionGate;
+}): Record<string, ProposedLoad> {
   const out: Record<string, ProposedLoad> = {};
-  for (const e of template.exercises) {
-    const history = Object.entries(setLogs)
-      .filter(([k, logs]) => parseSessionKey(k).date < date && (logs[e.exerciseId]?.length ?? 0) > 0)
-      .sort(([a], [b]) => a.localeCompare(b))
-      // A hold progresses by its seconds, like the repetitions of a counted set.
-      .map(([k, logs]) => ({
-        date: parseSessionKey(k).date,
-        sets: logs[e.exerciseId].map((s) => (s.seconds !== undefined ? { ...s, reps: s.seconds } : s)),
-      }));
-    if (history.length === 0) continue;
-    const s = suggestProgression({
+  for (const e of input.template.exercises) {
+    const history = exerciseHistory({
       exerciseId: e.exerciseId,
-      repsMin: e.repsMin,
-      repsMax: e.repsMax,
-      history,
-      fatigue: 'normal',
+      records: input.records,
+      facts: input.facts,
+      before: input.date,
+      today: input.today,
     });
-    out[e.exerciseId] = { loadKg: s.loadKg > 0 ? s.loadKg : null, action: s.action, reasonKey: s.rationale.reason };
+    const raw = recommendProgression({
+      exerciseId: e.exerciseId,
+      range: { sets: e.sets, repsMin: e.repsMin, repsMax: e.repsMax, unit: e.unit },
+      exposures: history.exposures,
+      notDone: history.notDone,
+      adherence: history.adherence,
+    });
+    const rec = input.gate ? input.gate(raw, input.date) : raw;
+    if (rec.action === 'no_recommendation') continue;
+    out[e.exerciseId] = {
+      loadKg: rec.proposedPrescription.loadKg,
+      action: rec.action,
+      reasonKey: rec.reason.key,
+      targetReps: rec.proposedPrescription.target,
+      confidence: rec.confidence,
+      params: rec.reason.params,
+    };
   }
   return out;
 }
@@ -297,7 +311,7 @@ export function ensureWeek(input: {
         date,
         sessionIndex,
         prescribedAt: input.prescribedAt,
-        loads: proposedLoads(template, facts.setLogs, date),
+        loads: proposedLoads({ template, records, facts, date, today: input.today }),
         ids: (variant, position) => trainingIds.planned(id, variant, position),
       });
     }
@@ -317,6 +331,122 @@ export function ensureWeek(input: {
   }
 
   return changed ? { programs: records.programs, prescriptions, superseded, sessionIds } : null;
+}
+
+/** What a prescription proposes per exercise, in a stable order (its fingerprint). */
+function proposalsOf(p: PrescribedSession): string {
+  return JSON.stringify(
+    p.exercises
+      .filter((e) => e.variant === 'full' && e.progressionAction !== null)
+      .sort((a, b) => a.position - b.position)
+      .map((e) => [
+        e.exerciseId,
+        e.targetLoadKg,
+        e.progressionAction,
+        e.progressionReason,
+        e.targetReps,
+        e.progressionConfidence,
+        e.progressionParams,
+      ]),
+  );
+}
+
+/**
+ * Brings the progression to the sessions of the week not started yet (W-4, D-035): Monday's
+ * session done, Friday's prescription follows. A session is re-prescribed only when:
+ * - it is today or later, of the active version, and nothing was recorded in it (not even opened);
+ * - it has no adaptation of the day and is not a moved copy;
+ * - what the engine proposes now (with today's context) differs from what it holds.
+ * The new prescription is a new row (its id derives from what it proposes); the previous one is
+ * superseded, never edited, never deleted. No new program version: the parameters did not change.
+ */
+export function refreshWeek(input: {
+  records: TrainingRecords;
+  facts: TrainingFacts;
+  rescheduled: Record<IsoDate, IsoDate>;
+  today: IsoDate;
+  weekStart: IsoDate;
+  gate?: ProgressionGate;
+  prescribedAt: string;
+}): TrainingRecords | null {
+  const { records, facts } = input;
+  const program = activeProgram(records.programs);
+  if (!program) return null;
+  const weekEnd = addDays(input.weekStart, 6);
+  const moved = new Set(Object.values(input.rescheduled));
+  const prescriptions = { ...records.prescriptions };
+  const superseded = { ...records.superseded };
+  const sessionIds = { ...records.sessionIds };
+  let templates: WorkoutTemplate[] | null = null;
+  let changed = false;
+
+  for (const [key, liveId] of Object.entries(records.sessionIds)) {
+    const live = records.prescriptions[liveId];
+    if (!live || live.programId !== program.id || live.date < input.today || live.date > weekEnd) continue;
+    if (live.date < input.weekStart || live.adaptationReason !== null || moved.has(live.date)) continue;
+    if (hasFacts(facts, key)) continue;
+    templates ??= versionTemplates(program);
+    const template = templates[live.sessionIndex];
+    if (!template) continue;
+    const prescribe = (id: string) =>
+      prescribeSession({
+        sessionId: id,
+        program,
+        template,
+        date: live.date,
+        sessionIndex: live.sessionIndex,
+        prescribedAt: input.prescribedAt,
+        loads: proposedLoads({ template, records, facts, date: live.date, today: input.today, gate: input.gate }),
+        ids: (variant, position) => trainingIds.planned(id, variant, position),
+      });
+    const probe = prescribe(liveId);
+    const wanted = proposalsOf(probe);
+    if (wanted === proposalsOf(live)) continue;
+    const base = trainingIds.session(program.id, key);
+    const revision = trainingIds.revision(program.id, key, wanted);
+    const id = prescriptions[base] && proposalsOf(prescriptions[base]) === wanted ? base : revision;
+    // An earlier prescription with the same proposals is revived, never copied.
+    if (!prescriptions[id]) prescriptions[id] = prescribe(id);
+    delete superseded[id];
+    superseded[liveId] = true;
+    sessionIds[key] = id;
+    changed = true;
+  }
+  return changed ? { programs: records.programs, prescriptions, superseded, sessionIds } : null;
+}
+
+/**
+ * Exercises of the program whose own history shows a plateau or a downward trend, for the
+ * Adaptation Engine (D-035). Each read on its own history, today's sets included.
+ */
+export function progressionSignals(input: {
+  records: Pick<TrainingRecords, 'prescriptions' | 'sessionIds'>;
+  facts: HistoryFacts;
+  today: IsoDate;
+}): { stagnating: string[]; down: string[] } {
+  const { records, today } = input;
+  const from = addDays(today, -PROGRESSION.windowDays);
+  const rows = new Map<string, PrescribedSession['exercises'][number]>();
+  const live = Object.values(records.sessionIds)
+    .map((id) => records.prescriptions[id])
+    .filter((p): p is PrescribedSession => !!p && p.date >= from && p.date <= addDays(today, 6))
+    .sort((a, b) => a.date.localeCompare(b.date));
+  for (const p of live) for (const e of p.exercises) if (e.variant === 'full') rows.set(e.exerciseId, e);
+  const stagnating: string[] = [];
+  const down: string[] = [];
+  for (const [exerciseId, e] of [...rows.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    const history = exerciseHistory({ exerciseId, records, facts: input.facts, before: addDays(today, 1), today });
+    const rec = recommendProgression({
+      exerciseId,
+      range: { sets: e.sets, repsMin: e.repsMin, repsMax: e.repsMax, unit: e.unit },
+      exposures: history.exposures,
+      notDone: history.notDone,
+      adherence: history.adherence,
+    });
+    if (rec.signals.stagnation.active) stagnating.push(exerciseId);
+    if (rec.signals.trend === 'down') down.push(exerciseId);
+  }
+  return { stagnating, down };
 }
 
 /** The live prescription of a day, if the session was prescribed. */
@@ -417,19 +547,27 @@ export function adaptSession(input: {
 }
 
 /**
- * Loads a variant keeps from the full prescription, for the same exercise (D-034): short keeps
- * them (same stimulus, fewer sets); light keeps them unless the full one planned an increase (a
- * lighter day is never the day to add load). A replacement exercise gets none (never guessed).
+ * Loads a variant keeps from the full prescription, for the same exercise (D-034, D-035): short
+ * keeps them with their goal (same stimulus, fewer sets); light keeps the load but never an
+ * increase (a lighter day is never the day to add load or repetitions). A replacement exercise
+ * gets none (never guessed).
  */
 function variantLoads(session: PrescribedSession, variant: SessionVariant): Record<string, ProposedLoad> {
   const out: Record<string, ProposedLoad> = {};
   for (const e of session.exercises.filter((x) => x.variant === 'full')) {
     if (e.targetLoadKg === null || e.progressionAction === null) continue;
     if (variant === 'light' && e.progressionAction === 'increase_load') continue;
+    if (variant === 'light' && e.progressionAction === 'increase_reps') {
+      out[e.exerciseId] = { loadKg: e.targetLoadKg, action: 'maintain', reasonKey: 'progression.reason.light_day' };
+      continue;
+    }
     out[e.exerciseId] = {
       loadKg: e.targetLoadKg,
       action: e.progressionAction,
       reasonKey: e.progressionReason ?? 'progression.carried',
+      ...(variant === 'short' && e.targetReps !== null ? { targetReps: e.targetReps } : {}),
+      ...(e.progressionConfidence ? { confidence: e.progressionConfidence } : {}),
+      ...(e.progressionParams ? { params: e.progressionParams } : {}),
     };
   }
   return out;

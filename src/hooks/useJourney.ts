@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { adapt, LIGHT_WEEK_DAYS, plateau, type Recommendation } from '@/domain/journey/adaptation';
+import { adapt, gateProgression, LIGHT_WEEK_DAYS, plateau, type Recommendation } from '@/domain/journey/adaptation';
 import { adherence } from '@/domain/journey/adherence';
 import { appliedCalorieOffset } from '@/domain/journey/adjustments';
 import { buildDailyPlan, type DailyPlan } from '@/domain/journey/daily-plan';
@@ -20,7 +20,8 @@ import { getRecipe } from '@/domain/meals/recipes';
 import { addDays, daysBetween, weekdayOf, type IsoDate } from '@/domain/shared/dates';
 import { sessionKey } from '@/domain/sync/projection';
 import type { SessionVariant } from '@/domain/training/adapt';
-import { plannedVariantMinutes } from '@/domain/training/week';
+import { sessionGoal } from '@/domain/training/session';
+import { plannedVariantMinutes, progressionSignals, refreshWeek } from '@/domain/training/week';
 import { useCalendarStore } from '@/state/calendar';
 import { useDataStore } from '@/state/data';
 import { useNotificationStore } from '@/state/notifications';
@@ -184,6 +185,7 @@ export function useJourney(plan: Plan | null): Journey | null {
             sessionIndex,
             focus: template.focus,
             minutes: prescription?.plannedMinutes ?? snapshot.training.sessionMinutes,
+            goal: prescription ? sessionGoal(prescription.exercises) : null,
             ...(prescription
               ? {
                   minutesOf: (v: SessionVariant, requested: number) =>
@@ -263,6 +265,7 @@ export function useJourney(plan: Plan | null): Journey | null {
       noDeficit: state.profile.noPush,
       sessionsPerWeek: { profile: snapshot.training.sessionsPerWeek, current: plan.sessionsPerWeek },
       adjustments: data.adjustments,
+      progression: progressionSignals({ records: data, facts: data, today }),
     };
     const recommendations = adapt(adaptationInput);
 
@@ -315,6 +318,34 @@ export function useJourney(plan: Plan | null): Journey | null {
     const added = reached.filter((m) => !known[m.id]);
     if (added.length > 0) recordMilestones(Object.fromEntries(added.map((m) => [m.id, m.reachedOn])));
   }, [reached, recordMilestones]);
+
+  // Progression (W-4, D-035): the sessions of the week not started yet follow the last real
+  // sessions, through today's context (safety, fatigue of today, protected profile). Idempotent:
+  // nothing is written when the stored prescriptions already say the same.
+  const applyTraining = useDataStore((s) => s.applyTraining);
+  const safetyActive = journey?.state.safety.active;
+  const fatigueHigh = journey?.state.difficulties.fatigue === 'high';
+  const noPush = journey?.state.profile.noPush;
+  useEffect(() => {
+    if (!plan || safetyActive === undefined) return;
+    const store = useDataStore.getState();
+    const next = refreshWeek({
+      records: store,
+      facts: store,
+      rescheduled: store.rescheduled,
+      today: plan.today,
+      weekStart: plan.weekStart,
+      gate: (rec, date) =>
+        gateProgression(rec, {
+          safetyActive: !!safetyActive,
+          // Today's fatigue says nothing about Friday: only today's session waits.
+          fatigueHigh: fatigueHigh && date === plan.today,
+          noPush: !!noPush,
+        }),
+      prescribedAt: new Date().toISOString(),
+    });
+    if (next) applyTraining(next);
+  }, [plan, data, safetyActive, fatigueHigh, noPush, applyTraining]);
 
   return journey;
 }

@@ -2,7 +2,7 @@
  * What actually happened, as the user recorded it (docs/ADAPTATION_ENGINE.md §3). Reasons are
  * optional and chosen from closed lists: never guessed, never free text (data minimisation).
  */
-import type { IsoDate } from '../shared/dates';
+import { daysBetween, type IsoDate } from '../shared/dates';
 import type { ReplacementReason } from '../training/replacement';
 
 /** Why a meal was skipped or replaced, when the user said so. */
@@ -61,6 +61,22 @@ export function checkinSignals(
     out.push({ date: d.date, energy: d.energy, motivation: d.motivation, fatigue: d.fatigue });
   }
   return out;
+}
+
+/**
+ * Declared fatigue on a day (the single definition, used by the journey state and the progression
+ * engine, D-035): the most recent check-in of that day or the day before; high when fatigue ≥ 4 or
+ * energy ≤ 2; unknown without a check-in (never guessed).
+ */
+export function declaredFatigue(
+  checkins: readonly { date: IsoDate; energy: number; fatigue: number }[],
+  date: IsoDate,
+): 'high' | 'normal' | 'unknown' {
+  const recent = checkins
+    .filter((c) => c.date <= date && daysBetween(c.date, date) <= 1)
+    .sort((a, b) => b.date.localeCompare(a.date))[0];
+  if (!recent) return 'unknown';
+  return recent.fatigue >= 4 || recent.energy <= 2 ? 'high' : 'normal';
 }
 
 /** An exercise swapped during a session, with the reason picked by the user. */

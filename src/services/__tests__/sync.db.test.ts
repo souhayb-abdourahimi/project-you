@@ -18,7 +18,7 @@ import {
   type SyncTable,
 } from '@/domain/sync/projection';
 import { sessionKey } from '@/domain/sync/projection';
-import { activeProgram, prescriptionFor, rescheduleSession } from '@/domain/training/week';
+import { activeProgram, prescriptionFor, refreshWeek, rescheduleSession } from '@/domain/training/week';
 
 import { classifySyncError, syncOnce, type SyncClient, type SyncStore } from '../sync';
 
@@ -37,6 +37,8 @@ const E = '00000000-0000-4000-8000-0000000000e1';
 const F = '00000000-0000-4000-8000-0000000000f1';
 // Workout session (W-3): sets in seconds, corrections, exercise reports, a session stopped early.
 const G = '00000000-0000-4000-8000-000000000071';
+/** W-4 progression. */
+const H = '00000000-0000-4000-8000-000000000081';
 
 /** PostgREST-like client acting as `authenticated` with the user's JWT claims, so RLS applies. */
 function restAs(db: Client, userId: string): SyncClient {
@@ -150,13 +152,13 @@ describeDb('sync against the real schema (Postgres + RLS)', () => {
     await db.query(
       `insert into auth.users (id, email) values ($1, 'sync-a@example.test'), ($2, 'sync-b@example.test'),
               ($3, 'sync-c@example.test'), ($4, 'sync-d@example.test'), ($5, 'sync-e@example.test'),
-              ($6, 'sync-f@example.test'), ($7, 'sync-g@example.test')
+              ($6, 'sync-f@example.test'), ($7, 'sync-g@example.test'), ($8, 'sync-h@example.test')
                     on conflict (id) do nothing`,
-      [A, B, C, D, E, F, G],
+      [A, B, C, D, E, F, G, H],
     );
   });
   afterAll(async () => {
-    await db.query('delete from auth.users where id = any($1::uuid[])', [[A, B, C, D, E, F, G]]);
+    await db.query('delete from auth.users where id = any($1::uuid[])', [[A, B, C, D, E, F, G, H]]);
     await db.end();
   });
 
@@ -713,6 +715,69 @@ describeDb('sync against the real schema (Postgres + RLS)', () => {
     expect(b.state().setLogs[MONDAY].plank).toEqual([{ reps: 0, seconds: 45, loadKg: 0, rpe: undefined }]);
     expect(b.state().exerciseReports![MONDAY]).toEqual(a.state().exerciseReports![MONDAY]);
     expect(b.state().completedSessions).toEqual([expect.objectContaining({ stopped: 'pain' })]);
+    for (const d of [a, b]) expect(await d.sync()).toMatchObject({ pushed: 0, failed: 0 });
+  });
+
+  it('W-4: a progression re-prescribes the session not started yet; both prescriptions round-trip, the done one unchanged', async () => {
+    const a = deviceOf(H, SCENARIOS.muscleGain);
+    const top = [10, 10, 10].map((reps) => ({ reps, loadKg: 70 }));
+    const lastWednesday = sessionKey('2026-09-23', 1);
+    a.write({
+      setLogs: { [lastWednesday]: { bench_press: top } },
+      sessionIds: { [lastWednesday]: '00000000-0000-4000-8000-0000000008a1' },
+      sessionSources: { [lastWednesday]: { source: 'off_plan', programId: null } },
+    });
+    a.open('2026-09-28');
+    expect((await a.sync(true)).errors).toEqual([]);
+    const frozen = a.state().sessionIds[WEDNESDAY];
+    a.write({
+      setLogs: { ...a.state().setLogs, [MONDAY]: { bench_press: top } },
+      completedSessions: [
+        { date: '2026-09-28', sessionIndex: 0, variant: 'full', completedAt: '2026-09-28T19:00:00.000Z' },
+      ],
+    });
+    const s = a.state();
+    a.write(
+      refreshWeek({
+        records: {
+          programs: s.programs!,
+          prescriptions: s.prescriptions!,
+          superseded: s.superseded!,
+          sessionIds: s.sessionIds,
+        },
+        facts: s,
+        rescheduled: {},
+        today: '2026-09-28',
+        weekStart: WEEK,
+        prescribedAt: '2026-09-28T20:00:00.000Z',
+      })!,
+    );
+    expect((await a.sync()).errors).toEqual([]);
+    const sessions = await rowsOf('workout_sessions', H);
+    expect(sessions.find((r) => r.id === frozen)).toMatchObject({ status: 'superseded' });
+    const planned = await rowsOf('planned_exercises', H);
+    const raised = planned.find(
+      (r) => r.session_id === a.state().sessionIds[WEDNESDAY] && r.exercise_id === 'bench_press',
+    );
+    expect(raised).toMatchObject({
+      progression_action: 'increase_load',
+      target_reps: 6,
+      progression_confidence: 'medium',
+      progression_params: { sessions: 2, max: 10, increment: 2.5 },
+    });
+    expect(Number(raised!.target_load_kg)).toBe(72.5);
+    // The frozen Wednesday and Monday (done) are still there, unchanged.
+    const old = planned.find((r) => r.session_id === frozen && r.exercise_id === 'bench_press')!;
+    expect([Number(old.target_load_kg), old.progression_action]).toEqual([70, 'maintain']);
+
+    const b = deviceOf(H, SCENARIOS.muscleGain);
+    expect((await b.sync()).errors).toEqual([]);
+    const benchOf = (d: ReturnType<typeof deviceOf>) =>
+      prescriptionFor(
+        { prescriptions: d.state().prescriptions!, sessionIds: d.state().sessionIds },
+        WEDNESDAY,
+      )!.exercises.find((e) => e.variant === 'full' && e.exerciseId === 'bench_press');
+    expect(benchOf(b)).toEqual(benchOf(a));
     for (const d of [a, b]) expect(await d.sync()).toMatchObject({ pushed: 0, failed: 0 });
   });
 

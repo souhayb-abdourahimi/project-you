@@ -6,7 +6,7 @@
  */
 import type { GoalType } from '../profile/schemas';
 import { addDays, daysBetween, startOfWeek, weekdayOf, type IsoDate } from '../shared/dates';
-import type { LoggedSet } from '../training/progression';
+import type { LoggedSet, ProgressionRecommendation } from '../training/progression';
 import type { Adherence } from './adherence';
 import { recommendationKey, type Adjustment, type AdaptationKind } from './adjustments';
 import type { DayLog } from './outcomes';
@@ -90,6 +90,55 @@ export interface AdaptationInput {
   calorieOffset: number;
   sessionsPerWeek: { profile: number; current: number };
   adjustments: Adjustment[];
+  /** Exercises whose own history shows a plateau or a downward trend (training/progression.ts). */
+  progression?: { stagnating: string[]; down: string[] };
+}
+
+/** Today's context for the progression of one exercise: one safety engine, one journey state. */
+export interface ProgressionContext {
+  safetyActive: boolean;
+  /** Fatigue declared today: applies to today's session only. */
+  fatigueHigh: boolean;
+  /** Minor or underweight (journey state profile.noPush): never more intensity. */
+  noPush: boolean;
+}
+
+/** Exercises showing a downward trend before a lighter week is proposed. [relire] */
+export const PERFORMANCE_DOWN_EXERCISES = 2;
+
+/**
+ * The progression engine proposes, this layer decides with today's context (D-035): under the
+ * safety rule or a high declared fatigue, an increase becomes "keep" (the last real load and the
+ * same goal); for a protected profile, the load never goes up (one more repetition within the
+ * range stays possible). Keeping, retrying and decreasing always pass.
+ */
+export function gateProgression(rec: ProgressionRecommendation, ctx: ProgressionContext): ProgressionRecommendation {
+  const increase = rec.action === 'increase_load' || rec.action === 'increase_reps';
+  if (!increase) return rec;
+  const blockedBy = ctx.safetyActive
+    ? 'safety'
+    : ctx.fatigueHigh
+      ? 'fatigue'
+      : ctx.noPush && rec.action === 'increase_load'
+        ? 'protected'
+        : null;
+  if (!blockedBy) return rec;
+  const last = rec.evidence.last;
+  const target =
+    rec.action === 'increase_load'
+      ? rec.proposedPrescription.repsMax
+      : (last?.value ?? rec.proposedPrescription.repsMin);
+  return {
+    ...rec,
+    action: 'maintain',
+    reason: { key: `progression.reason.held_${blockedBy}`, params: {} },
+    proposedPrescription: {
+      ...rec.proposedPrescription,
+      loadKg: last && last.loadKg > 0 ? last.loadKg : null,
+      target: Math.max(rec.proposedPrescription.repsMin, Math.min(rec.proposedPrescription.repsMax, target)),
+    },
+    blockedBy,
+  };
 }
 
 const round1 = (v: number) => Math.round(v * 10) / 10;
@@ -266,6 +315,21 @@ export function adapt(input: AdaptationInput): Recommendation[] {
     );
   }
 
+  // 7 bis. Performance going down on several exercises (a trend, never one session): a lighter
+  // week is proposed, never imposed; nothing is said about the user, only about the sessions.
+  const down = input.progression?.down ?? [];
+  if (down.length >= PERFORMANCE_DOWN_EXERCISES && !out.some((r) => r.change.key === 'light_week')) {
+    out.push(
+      rec({
+        kind: 'reduce_load',
+        change: { key: 'light_week', to: 'light' },
+        reason: { key: 'adaptation.reason.performance_down', params: { count: down.length } },
+        evidence: { exercises: down.length },
+        mode: 'proposed',
+      }),
+    );
+  }
+
   // 8. Planning: sessions moved twice or more to the same weekday in two weeks.
   const moves = Object.entries(input.rescheduled).filter(([from]) => from > addDays(today, -14) && from <= today);
   const byDay = new Map<number, number>();
@@ -425,6 +489,20 @@ export function adapt(input: AdaptationInput): Recommendation[] {
         change: { key: 'progression_review' },
         reason: { key: 'adaptation.reason.recomp_plateau', params: {} },
         evidence: p.evidence,
+        mode: 'advice',
+      }),
+    );
+  }
+  // Stagnation of an exercise over three weeks or more, with regular sessions: a program question
+  // (variation, rest, technique), never a reproach. Advice only.
+  const stagnating = input.progression?.stagnating ?? [];
+  if (stagnating.length > 0 && !out.some((r) => r.change.key === 'progression_review')) {
+    out.push(
+      rec({
+        kind: 'training',
+        change: { key: 'progression_review' },
+        reason: { key: 'adaptation.reason.stagnation', params: { count: stagnating.length } },
+        evidence: { exercises: stagnating.length },
         mode: 'advice',
       }),
     );

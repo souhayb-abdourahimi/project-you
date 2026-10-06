@@ -145,6 +145,8 @@ Par **séance** : statut (`completed`, `partial` = au moins un exercice `less` /
 
 ### 4.5 Progression (`progression.ts` v2)
 
+> Réalisé en W-4 (D-035) avec des règles plus prudentes que ce plan initial : voir `docs/TRAINING_PROGRESSION.md`, qui fait foi (une séance ne décide jamais, −1 palier au lieu de −10 %, stagnation sur 4 séances / 21 jours).
+
 Garde la double progression actuelle et ajoute :
 
 - **Contexte réel** : fatigue du jour et sécurité lues depuis `JourneyState` (A3). `training_load` actif ou fatigue élevée → `keep` (jamais `increase_load`).
@@ -203,7 +205,7 @@ Chaque étape : code + tests unitaires + `npm run check` ; migrations avec tests
 | **W-1** Modèle de données ✓ (2026-10-02) | migration `20261002000001_workout_coach_foundation.sql` : `training_programs` (versions publiées immuables), `workout_sessions` étendue (prescription, raison, adaptation du jour, report, difficulté), `planned_exercises` (prescription immuable par variante), `exercise_logs` et `exercise_substitutions` reliés à la prescription, raisons élargies, `adjustments.postponed`, rattachement « reconstitué » ; RLS ; `training/program.ts` (types et fonctions pures) ; tests | A1, A2 (modèle) |
 | **W-2** Stockage local + sync ✓ (2026-10-02, D-032, D-033) | `py.data.v1` v4 ; figer la semaine (`week.ts`) ; projection / fusion des nouvelles tables ; appel du rattachement reconstitué ; reports et suppression de séries synchronisés ; conflit de deux versions publiées hors connexion | A1, A2, A5, A9, A12 |
 | **W-3** Séance ✓ (2026-10-06, D-034, en attente de validation) | démarrer, saisir / corriger / supprimer une série, secondes, choisir l'alternative et la raison, fin de séance (difficulté en mots ; la fatigue reste dans le Journey ; pas de notes libres). **Corrige les deux bugs confirmés** : `ExerciseCard` supprimé, plus de fatigue codée en dur ni de décision de progression pendant la séance (fatigue et sécurité lues dans `JourneyState`) ; la durée annoncée est celle qui est construite et stockée (`adapted_minutes`). Détail §8 | A3, A4, A5, A6, A7 |
-| **W-4** Comparaison + progression v2 | `compare.ts` (prévu / fait, raison déclarée) ; progression avec fatigue, sécurité, variante, stagnation, gêne ; charge proposée figée dans la prescription | A8 |
+| **W-4** Progression v2 ✓ (2026-10-06, D-035, en attente de validation) | progression avec fatigue, sécurité, variante, stagnation, gêne, remplacement, non fait ; charge et objectif figés dans la prochaine prescription (nouvelle prescription de séance, jamais une nouvelle version). `compare.ts` (statuts prévu / fait par exercice) n'est **pas** livré : la progression lit les séances directement ; il reste à faire avec l'historique (W-6). Détail `docs/TRAINING_PROGRESSION.md` | A8 |
 | **W-5** Adaptation + mémoire | règles §4.6 dans `journey/adaptation.ts` (`APPLICABLE_CHANGES` += `session_minutes`, `exercise_swap`) ; fin de cycle accepter / refuser / reporter ; question de confirmation des préférences | A10, A11 |
 | **W-6** Intégrations | Daily Coach sur la séance figée ; Programme (semaine allégée, reports, historique) ; Progress Journey (prévu / fait en faits) ; `explain.ts` (« Pourquoi cet exercice ? », « Pourquoi cette charge ? ») ; notifications : aucun nouveau déclencheur prévu (sinon migration des contraintes de `notification_history`) | A4 |
 | **W-7** E2E + revue | parcours complet, changement de profil en cours de semaine, deux appareils, revue critique | — |

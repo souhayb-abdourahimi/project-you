@@ -110,12 +110,16 @@ export interface PersonalRecord {
   date: IsoDate;
   loadKg: number;
   reps: number;
-  /** Heavier load than ever, or more reps than ever at this load or above. */
-  kind: 'load' | 'reps';
+  /** Seconds held, for a hold (W-4): its record is a longer time, never a load or reps estimate. */
+  seconds?: number;
+  /** Heavier load than ever, more reps than ever at this load or above, or a longer hold. */
+  kind: 'load' | 'reps' | 'time';
 }
 
 /** Sessions with their sets, in date order. */
-function loggedSessions(d: Pick<ProgressData, 'setLogs'>): { date: IsoDate; exercises: Record<string, LoggedSet[]> }[] {
+function loggedSessions(
+  d: Pick<ProgressData, 'setLogs'>,
+): { key: string; date: IsoDate; exercises: Record<string, LoggedSet[]> }[] {
   return Object.entries(d.setLogs)
     .map(([key, exercises]) => ({ key, date: key.split('#')[0], exercises }))
     .sort((a, b) => a.key.localeCompare(b.key));
@@ -134,8 +138,15 @@ export function personalRecords(d: Pick<ProgressData, 'setLogs'>): PersonalRecor
   // Per exercise: heaviest load so far and the most reps seen at each load (parallel arrays).
   const history = new Map<string, { maxLoad: number; loads: number[]; reps: number[] }>();
   const out: PersonalRecord[] = [];
+  // Holds: the longest time so far at this load or above (W-4, measured seconds only).
+  const holds = new Map<string, { loads: number[]; seconds: number[] }>();
   for (const session of loggedSessions(d)) {
     for (const [exerciseId, sets] of Object.entries(session.exercises)) {
+      const held = sets.filter((s) => (s.seconds ?? 0) >= 1);
+      if (held.length > 0) {
+        const record = holdRecord(holds, exerciseId, session.date, held);
+        if (record) out.push(record);
+      }
       const done = sets.filter((s) => s.reps >= 1);
       if (done.length === 0) continue;
       const before = history.get(exerciseId);
@@ -170,6 +181,39 @@ export function personalRecords(d: Pick<ProgressData, 'setLogs'>): PersonalRecor
   return out;
 }
 
+/** A longer hold than ever at this load or above; the first session of a hold sets the reference. */
+function holdRecord(
+  holds: Map<string, { loads: number[]; seconds: number[] }>,
+  exerciseId: string,
+  date: IsoDate,
+  held: LoggedSet[],
+): PersonalRecord | null {
+  const before = holds.get(exerciseId);
+  let best: PersonalRecord | null = null;
+  if (before) {
+    for (const s of held) {
+      const seconds = s.seconds!;
+      let atOrAbove = -1;
+      for (let i = 0; i < before.loads.length; i++) {
+        if (before.loads[i] >= s.loadKg && before.seconds[i] > atOrAbove) atOrAbove = before.seconds[i];
+      }
+      if (atOrAbove < 0 || seconds <= atOrAbove) continue;
+      if (!best || seconds > best.seconds!)
+        best = { exerciseId, date, loadKg: s.loadKg, reps: 0, seconds, kind: 'time' };
+    }
+  }
+  const h = before ?? { loads: [], seconds: [] };
+  for (const s of held) {
+    const at = h.loads.indexOf(s.loadKg);
+    if (at === -1) {
+      h.loads.push(s.loadKg);
+      h.seconds.push(s.seconds!);
+    } else if (s.seconds! > h.seconds[at]) h.seconds[at] = s.seconds!;
+  }
+  holds.set(exerciseId, h);
+  return best;
+}
+
 export interface ExerciseTrend {
   exerciseId: string;
   from: { loadKg: number; reps: number };
@@ -194,15 +238,24 @@ function trendOf(a: LoggedSet, b: LoggedSet): ExerciseTrend['trend'] {
 
 /**
  * Best set (heaviest, then most reps) of the first 14 days of an exercise vs the last 14 days, for exercises
- * followed for at least 14 days.
+ * followed for at least 14 days. Light and short sessions are left out (W-4): a lighter day or less
+ * time is never read as a drop in level.
  */
-const trendsCache = new WeakMap<object, ExerciseTrend[]>();
+const trendsCache = new WeakMap<object, WeakMap<object, ExerciseTrend[]>>();
+const NO_SESSIONS: ProgressData['completedSessions'] = [];
 
-export function exerciseTrends(d: Pick<ProgressData, 'setLogs'>): ExerciseTrend[] {
-  const cached = trendsCache.get(d.setLogs);
+export function exerciseTrends(
+  d: Pick<ProgressData, 'setLogs'> & Partial<Pick<ProgressData, 'completedSessions'>>,
+): ExerciseTrend[] {
+  const completed = d.completedSessions ?? NO_SESSIONS;
+  const byLog = trendsCache.get(d.setLogs) ?? new WeakMap<object, ExerciseTrend[]>();
+  trendsCache.set(d.setLogs, byLog);
+  const cached = byLog.get(completed);
   if (cached) return cached;
+  const reduced = new Set(completed.filter((c) => c.variant !== 'full').map((c) => `${c.date}#${c.sessionIndex}`));
   const perExercise = new Map<string, { date: IsoDate; sets: LoggedSet[] }[]>();
   for (const session of loggedSessions(d)) {
+    if (reduced.has(session.key)) continue;
     for (const [id, sets] of Object.entries(session.exercises)) {
       const done = sets.filter((s) => s.reps >= 1);
       if (done.length === 0) continue;
@@ -229,6 +282,6 @@ export function exerciseTrends(d: Pick<ProgressData, 'setLogs'>): ExerciseTrend[
   }
   const rank = { up: 0, stable: 1, down: 2 };
   const sorted = out.sort((x, y) => rank[x.trend] - rank[y.trend] || x.exerciseId.localeCompare(y.exerciseId));
-  trendsCache.set(d.setLogs, sorted);
+  byLog.set(completed, sorted);
   return sorted;
 }

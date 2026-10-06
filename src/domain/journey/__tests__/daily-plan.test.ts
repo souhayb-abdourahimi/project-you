@@ -170,6 +170,18 @@ describe('DailyPlan', () => {
     }
   });
 
+  it('the goal of the session (W-4) is said on a full session only, from the stored decision', () => {
+    const goal = (patch: Partial<DailyPlanInput>, state: StatePatch = {}) =>
+      buildDailyPlan(
+        input({ ...patch, session: { sessionIndex: 1, focus: 'upper', minutes: 60, goal: 'increase_reps' } }, state),
+      ).items[0].params.goal;
+    expect(goal({})).toBe('increase_reps');
+    // A lighter or shorter day never carries a goal of progress.
+    expect(goal({ dayLog: { date: TODAY, mode: 'short' } })).toBeUndefined();
+    expect(goal({ lightWeek: true })).toBeUndefined();
+    expect(buildDailyPlan(input()).items[0].params.goal).toBeUndefined();
+  });
+
   it('a session done or replaced is shown as done; a skipped one leaves a rest day', () => {
     expect(buildDailyPlan(input({ completed: { variant: 'short' } })).items[0]).toMatchObject({ status: 'done' });
     const replaced = buildDailyPlan(input({ outcome: { status: 'replaced', replacedBy: 'walk', at: '' } }));

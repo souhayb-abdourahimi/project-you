@@ -227,8 +227,12 @@ function Performance({ progress }: { progress: ProgressJourney }) {
   const latestRecords = records
     .filter((r, i) => records.findIndex((x) => x.exerciseId === r.exerciseId) === i)
     .slice(0, 3);
-  const set = (s: { loadKg: number; reps: number }) =>
-    s.loadKg > 0 ? t('progress.perf.set', s) : t('progress.perf.reps', { reps: s.reps });
+  const set = (s: { loadKg: number; reps: number; seconds?: number }) =>
+    s.seconds !== undefined
+      ? t('progress.perf.seconds', { seconds: s.seconds })
+      : s.loadKg > 0
+        ? t('progress.perf.set', s)
+        : t('progress.perf.reps', { reps: s.reps });
   return (
     <Section title={t('progress.perf.title')}>
       <Card>
@@ -244,7 +248,7 @@ function Performance({ progress }: { progress: ProgressJourney }) {
         ))}
         {latestRecords.map((r) => (
           <Text key={`${r.exerciseId}${r.date}`} color="textMuted">
-            {t(r.kind === 'load' ? 'progress.perf.recordLoad' : 'progress.perf.recordReps', {
+            {t(`progress.perf.${{ load: 'recordLoad', reps: 'recordReps', time: 'recordTime' }[r.kind]}`, {
               name: exerciseName(r.exerciseId, i18n.language),
               set: set(r),
               date: formatDate(r.date, i18n.language),
