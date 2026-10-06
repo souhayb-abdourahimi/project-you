@@ -35,14 +35,14 @@ Audit et architecture : `docs/WORKOUT_ENGINE.md`, `docs/TRAINING_ARCHITECTURE.md
   - [ ] Séance hors programme : pas de `started_at`, durée « Donnée indisponible » dans le résumé
   - [ ] `keptExercises` (« le garder ») est local, non synchronisé
   - [ ] Tester l'écran de séance sur appareil réel (iOS, Android) : clavier numérique, minuteur en arrière-plan
-- [x] W-4 Progression Engine v2 (D-035, `docs/TRAINING_PROGRESSION.md`, revue `revue-w4-workout-coach.md`, en attente de validation)
+- [x] W-4 Progression Engine v2 (D-035, `docs/TRAINING_PROGRESSION.md`, revue `revue-w4-workout-coach.md`, validé le 2026-10-06)
   - [ ] Appliquer la migration `20261006000002_progression_v2.sql` sur Supabase avant toute version de l'app contenant W-4
   - [ ] Faire relire les seuils `PROGRESSION` et `PERFORMANCE_DOWN_EXERCISES` (fenêtre 42 j, 2 confirmations, 2 séances sous la plage sur 3, stagnation 4 séances / 21 j / 70 %, tendance 3 séances, +5 s pour un maintien)
-  - [ ] Décider : propositions appliquées automatiquement à la prochaine prescription (choix W-4) ou acceptées une à une
+  - [x] Décidé (D-036) : micro-progression automatique, changement de programme accepté explicitement
   - [ ] `compare.ts` (statuts prévu / fait par exercice) non livré : à faire avec l'historique (W-6)
   - [ ] `reduce_volume` / `regress` : demandent un modèle de variante plus facile dans les prescriptions (W-5)
   - [ ] Le bilan du jour rempli après l'ouverture d'une séance ne la re-prescrit plus (préremplissage « garder la charge » seulement)
-- [ ] W-5 Règles d'adaptation d'entraînement, fin de cycle (accepter / refuser / reporter), question de confirmation des préférences (reprend « Mémoire du coach » ci-dessous)
+- [ ] W-5 Règles d'adaptation d'entraînement, fin de cycle (accepter / refuser / reporter ; tout changement structurel est une proposition à accepter, D-036), question de confirmation des préférences (reprend « Mémoire du coach » ci-dessous)
 - [ ] W-6 Intégrations (Daily Coach, Programme, Progress Journey, explications)
 - [ ] W-7 E2E et revue critique
 - [ ] Décider la suppression de `workout_plans` (jamais écrite) et de `workout_sessions.plan_id`, après vérification qu'elle est vide en production

@@ -111,7 +111,7 @@ Une séance déjà ouverte n'est plus re-prescrite : si le contexte change ensui
 - `ensureWeek` fige les séances de la semaine avec les propositions du moment (sans contexte du jour).
 - `refreshWeek` (appelé par `useJourney` avec le contexte) re-prescrit une séance si : date ≥ aujourd'hui, version active, **aucun fait** (pas même ouverte), pas d'adaptation du jour, pas une copie déplacée, et les propositions diffèrent de celles stockées. Nouvel id = `revision(programme, séance, empreinte des propositions)` : tous les appareils calculent le même. Une prescription identique plus ancienne est **ressuscitée**, jamais copiée ; la précédente est `superseded`, jamais modifiée ni supprimée.
 - Exemple : lundi 70 kg × 10 × 3 (2ᵉ fois) → mercredi prescrit 72,5 kg × 6 ; lundi reste 70 kg pour toujours.
-- Les propositions sont appliquées à la prochaine prescription automatiquement, comme en W-2 ; l'utilisateur garde la main pendant la séance (« Proposé » se modifie, rien n'est imposé).
+- **Micro-progression automatique, changement de programme accepté (D-036).** Les micro-ajustements (`increase_reps`, `increase_load` d'un palier, `maintain`, `retry`, `reduce_load` d'un palier, +5 s) sont appliqués à la prochaine prescription automatiquement ; l'utilisateur garde la main pendant la séance (« Proposé » se modifie, rien n'est imposé). Toute adaptation structurelle (semaine allégée, changement durable d'exercice, de fréquence ou de split, réduction importante de volume, modification majeure du programme) demande une confirmation explicite.
 
 ## 9. Ce que l'utilisateur voit
 

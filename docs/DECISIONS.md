@@ -494,6 +494,39 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
   - modifier la prescription future en place : refusé (immuable) ;
   - hausse après une seule séance au sommet : refusé (demande explicite) ;
   - `reduce_volume` / `regress` : non produits, faute de modèle de variante plus facile dans les prescriptions (W-5) ;
-  - proposition à accepter exercice par exercice avant la séance : non retenu pour W-4 (W-2 appliquait déjà la charge proposée ; l'utilisateur garde la main pendant la séance) — **point à valider**.
+  - proposition à accepter exercice par exercice avant la séance : non retenu (W-2 appliquait déjà la charge proposée ; l'utilisateur garde la main pendant la séance). Tranché par Souhayb le 2026-10-06 : voir D-036.
 - **Trade-offs** : seuils à faire relire (`PROGRESSION`, `PERFORMANCE_DOWN_EXERCISES`) ; régularité inconnue (historique d'avant W-1) → jamais de plateau ; une séance ouverte avant le bilan du jour n'est plus re-prescrite (le préremplissage garde alors la charge) ; deux appareils aux données momentanément différentes peuvent produire deux révisions successives, qui convergent avec la sync ; la migration `20261006000002` doit être appliquée sur Supabase avant toute version de l'app contenant W-4.
+- **Date** : 2026-10-06
+
+## D-036 — Workout Coach : micro-progression automatique, changement de programme accepté (validée le 2026-10-06)
+
+- **Contexte** : point laissé ouvert par D-035 (appliquer les propositions de progression automatiquement ou les faire accepter une à une). Tranché par Souhayb le 2026-10-06, en validant W-4.
+- **Décision** : deux régimes, selon la nature du changement.
+  - **Micro-progression → automatique et réversible.** Appliquée sans confirmation à la prochaine prescription, à condition de respecter toutes les règles du Progression Engine (D-035, `docs/TRAINING_PROGRESSION.md`) et de passer par `gateProgression` :
+    - `increase_reps` (+1 répétition) ;
+    - `increase_load` d'**un seul** palier ;
+    - `maintain` ;
+    - `retry` ;
+    - `reduce_load` d'**un seul** palier ;
+    - progression en secondes pour un maintien (+5 s).
+    
+    L'utilisateur garde toujours le contrôle pendant la séance : il peut modifier la charge proposée, les répétitions ou les secondes, et ce qu'il fait réellement est enregistré tel quel. Une micro-progression est une nouvelle prescription de séance (jamais une nouvelle version de programme) ; elle reste réversible, puisque la séance suivante relit ce qui a été fait.
+  - **Changement de programme → explicite et accepté par l'utilisateur.** Toute adaptation structurelle demande une confirmation explicite avant de s'appliquer :
+    - semaine allégée ;
+    - changement durable d'exercice ;
+    - changement de fréquence ;
+    - changement de split ;
+    - réduction importante de volume ;
+    - modification majeure du programme.
+    
+    Ces changements passent par une proposition (`mode: 'proposed'` dans `adapt()`) ou par une action explicite de l'utilisateur (profil, préférences), jamais par `refreshWeek`.
+- **État du code à W-4** : conforme.
+  - `refreshWeek` n'applique que des actions de micro-progression. `reduce_load` est limité à un palier (`PROGRESSION.reduceSteps = 1`), `increase_load` à un palier du catalogue.
+  - La semaine allégée due à une baisse de performance (`performance_down`) est **proposée**. La stagnation est un **conseil** (`progression_review`), sans changement automatique.
+  - Le remplacement en séance reste ponctuel (une séance) ; un changement durable d'exercice passe par les exercices refusés du profil (nouvelle version, D-032).
+  - `reduce_volume` et `regress` ne sont pas produits.
+- **Règle pour la suite (W-5 et après)** : toute nouvelle action classée structurelle (`reduce_volume` important, `regress` durable, changement de split ou de fréquence, fin de cycle) sera une proposition à accepter, jamais une application automatique. Une nouvelle action ne devient automatique que si elle est une micro-progression au sens ci-dessus, avec une décision écrite ici.
+- **Alternatives** :
+  - tout faire accepter, exercice par exercice : refusé (friction à chaque séance pour des ajustements mineurs et réversibles) ;
+  - tout appliquer automatiquement, y compris les changements de programme : refusé (l'utilisateur doit choisir ce qui change la structure de son entraînement).
 - **Date** : 2026-10-06
