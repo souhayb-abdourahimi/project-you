@@ -132,6 +132,8 @@ export interface ProgressionContext {
   structure?: 'light_week' | 'reduce_volume' | 'restart' | null;
   /** Date of the session being prescribed: after a long break, nothing goes up yet (W-5). */
   date?: IsoDate;
+  /** Last session done (any version) before that date: a long gap holds the load (W-5). */
+  lastSessionDate?: IsoDate | null;
 }
 
 /** Exercises showing a downward trend before a lighter week is proposed. [relire] */
@@ -147,7 +149,9 @@ export function gateProgression(rec: ProgressionRecommendation, ctx: Progression
   if (ctx.structure === 'restart' && rec.action !== 'no_recommendation') return restartLoad(rec);
   const increase = rec.action === 'increase_load' || rec.action === 'increase_reps';
   if (!increase) return rec;
-  const lastDone = rec.evidence.used.at(-1)?.date;
+  // A break is a gap in training (any session), not in this exercise's full sessions: light or
+  // short sessions in between keep the user training.
+  const lastDone = ctx.lastSessionDate;
   const longBreak = !!ctx.date && !!lastDone && daysBetween(lastDone, ctx.date) >= STRUCTURE.breakDays;
   const blockedBy = ctx.safetyActive
     ? 'safety'

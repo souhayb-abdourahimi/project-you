@@ -178,7 +178,11 @@ export function revertDecision(
     id: input.id,
     status: 'reverted',
     effectiveFrom: input.today,
-    decidedAt: input.decidedAt,
+    // A revert always comes after what it reverts, even with a coarse or frozen clock.
+    decidedAt:
+      Date.parse(input.decidedAt) > Date.parse(applied.decidedAt)
+        ? input.decidedAt
+        : new Date(Date.parse(applied.decidedAt) + 1).toISOString(),
     proposalId: decidedRecommendation(applied),
     scope: null,
     effectiveTo: null,

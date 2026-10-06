@@ -187,6 +187,64 @@ select pg_temp.expect(
   and (select program_id from public.workout_sessions where id = '00000000-0000-0000-0000-0000000001b3') = '00000000-0000-0000-0000-0000000001a1',
   'a new prescription of a future session keeps the previous one, superseded and unchanged');
 
+-- W-5 (D-037): a structural decision is history (append-only), with the stable id of the proposal it
+-- answers, a scope and a known end; a prescription keeps the decision it follows; a version keeps
+-- its end-of-cycle rotation. Rows written before W-5 (no proposal id, no scope) stay valid.
+insert into public.adjustments (id, user_id, kind, change_key, to_value, reason_key, evidence, status, effective_from,
+  decided_at, proposal_id, scope, effective_to)
+values ('00000000-0000-0000-0000-0000000001e1', '00000000-0000-0000-0000-00000000000c', 'reduce_load', 'reduce_volume', '-1',
+  'adaptation.reason.reduce_volume', '{"incompleteSessions": 2, "sessions": 3}', 'applied', '2026-10-05',
+  '2026-10-05T08:00:00Z', 'reduce_load:reduce_volume:2026-10-05', 'weeks', '2026-10-18');
+insert into public.adjustments (id, user_id, kind, change_key, to_value, reason_key, status, effective_from, decided_at, proposal_id)
+values ('00000000-0000-0000-0000-0000000001e2', '00000000-0000-0000-0000-00000000000c', 'reduce_load', 'reduce_volume', '-1',
+  'adaptation.reason.reduce_volume', 'declined', '2026-10-05', '2026-10-05T08:05:00Z', 'reduce_load:reduce_volume:2026-10-05');
+insert into public.adjustments (user_id, kind, change_key, reason_key, status, effective_from)
+values ('00000000-0000-0000-0000-00000000000c', 'training', 'sessions_per_week', 'adapt.reason.missed_two_weeks', 'applied', '2026-09-01');
+select pg_temp.expect(
+  (select count(*) from public.adjustments where proposal_id = 'reduce_load:reduce_volume:2026-10-05') = 2,
+  'two answers to the same proposal (two devices) are both kept');
+select pg_temp.expect_error($s$
+  update public.adjustments set status = 'reverted' where id = '00000000-0000-0000-0000-0000000001e1'$s$,
+  '23514', 'a decision is never rewritten (a revert is a new row)');
+select pg_temp.expect_error($s$
+  update public.adjustments set effective_to = '2026-12-31' where id = '00000000-0000-0000-0000-0000000001e1'$s$,
+  '23514', 'the end of a decision is never moved afterwards');
+update public.adjustments set evidence = '{"incompleteSessions": 2, "sessions": 3}' where id = '00000000-0000-0000-0000-0000000001e1';
+select pg_temp.expect(true, 'an identical upsert from a second device passes');
+select pg_temp.expect_error($s$
+  insert into public.adjustments (user_id, kind, change_key, reason_key, status, effective_from, scope)
+  values ('00000000-0000-0000-0000-00000000000c', 'reduce_load', 'restart', 'adaptation.reason.restart', 'applied', '2026-10-05', 'sessions')$s$,
+  '23514', 'a sessions scope says how many sessions');
+select pg_temp.expect_error($s$
+  insert into public.adjustments (user_id, kind, change_key, reason_key, status, effective_from, scope, effective_to)
+  values ('00000000-0000-0000-0000-00000000000c', 'training', 'exercise_change', 'adaptation.reason.exercise_preference', 'applied', '2026-10-05', 'durable', '2026-10-12')$s$,
+  '23514', 'a durable change has no end date');
+select pg_temp.expect_error($s$
+  insert into public.adjustments (user_id, kind, change_key, reason_key, status, effective_from, scope, effective_to)
+  values ('00000000-0000-0000-0000-00000000000c', 'reduce_load', 'light_week', 'adaptation.reason.light_week', 'applied', '2026-10-05', 'week', '2026-10-01')$s$,
+  '23514', 'an end is never before the start');
+select pg_temp.expect_error($s$
+  insert into public.adjustments (user_id, kind, change_key, reason_key, status, effective_from, scope)
+  values ('00000000-0000-0000-0000-00000000000c', 'reduce_load', 'light_week', 'adaptation.reason.light_week', 'applied', '2026-10-05', 'forever')$s$,
+  '23514', 'a scope comes from the closed list');
+select pg_temp.expect_error($s$
+  insert into public.adjustments (user_id, kind, change_key, reason_key, status, effective_from, proposal_id)
+  values ('00000000-0000-0000-0000-00000000000c', 'reduce_load', 'light_week', 'adaptation.reason.light_week', 'applied', '2026-10-05', 'Free text, not an id')$s$,
+  '23514', 'a proposal id is an id, never free text');
+update public.adjustments set deleted_at = now() where id = '00000000-0000-0000-0000-0000000001e2';
+select pg_temp.expect(true, 'a decision can still be soft-deleted (sync deletion)');
+
+insert into public.workout_sessions (id, user_id, program_id, session_index, scheduled_for, focus, planned_minutes, purpose,
+  prescription_source, prescribed_at, status, adjustment_id)
+values ('00000000-0000-0000-0000-0000000001b4', '00000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-0000000001a1',
+  2, '2026-10-11', 'full_a', 45, 'hypertrophy', 'engine', '2026-10-05T08:00:00Z', 'planned', '00000000-0000-0000-0000-0000000001e1');
+select pg_temp.expect_error($s$
+  update public.workout_sessions set adjustment_id = null where id = '00000000-0000-0000-0000-0000000001b4'$s$,
+  '23514', 'a prescription keeps the decision it follows');
+select pg_temp.expect_error($s$
+  update public.training_programs set rotated_exercise_ids = '{bench_press}' where id = '00000000-0000-0000-0000-0000000001a1'$s$,
+  '23514', 'the rotation of a published version is frozen');
+
 -- 3. What was done, linked to the prescription.
 update public.workout_sessions set status = 'completed', started_at = '2026-10-05T18:00:00Z', completed_at = '2026-10-05T18:25:00Z',
   difficulty = 4, notes = 'Bonne séance' where id = '00000000-0000-0000-0000-0000000001b1';

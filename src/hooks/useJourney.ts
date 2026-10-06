@@ -413,6 +413,12 @@ export function useJourney(plan: Plan | null): Journey | null {
               ? 'light_week'
               : null,
           date,
+          lastSessionDate:
+            store.completedSessions
+              .map((c) => c.date)
+              .filter((d) => d < date)
+              .sort()
+              .at(-1) ?? null,
         });
       },
       structure,

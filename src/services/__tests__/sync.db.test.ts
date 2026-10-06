@@ -18,7 +18,9 @@ import {
   type SyncTable,
 } from '@/domain/sync/projection';
 import { sessionKey } from '@/domain/sync/projection';
-import { activeProgram, prescriptionFor, refreshWeek, rescheduleSession } from '@/domain/training/week';
+import { decisionFor, effectiveDecisions } from '@/domain/journey/adjustments';
+import { durableTraining, structureFor, versionDecisions } from '@/domain/training/structure';
+import { activeProgram, ensureProgram, prescriptionFor, refreshWeek, rescheduleSession } from '@/domain/training/week';
 
 import { classifySyncError, syncOnce, type SyncClient, type SyncStore } from '../sync';
 
@@ -39,6 +41,8 @@ const F = '00000000-0000-4000-8000-0000000000f1';
 const G = '00000000-0000-4000-8000-000000000071';
 /** W-4 progression. */
 const H = '00000000-0000-4000-8000-000000000081';
+/** W-5 structural decisions. */
+const I = '00000000-0000-4000-8000-000000000091';
 
 /** PostgREST-like client acting as `authenticated` with the user's JWT claims, so RLS applies. */
 function restAs(db: Client, userId: string): SyncClient {
@@ -152,13 +156,14 @@ describeDb('sync against the real schema (Postgres + RLS)', () => {
     await db.query(
       `insert into auth.users (id, email) values ($1, 'sync-a@example.test'), ($2, 'sync-b@example.test'),
               ($3, 'sync-c@example.test'), ($4, 'sync-d@example.test'), ($5, 'sync-e@example.test'),
-              ($6, 'sync-f@example.test'), ($7, 'sync-g@example.test'), ($8, 'sync-h@example.test')
+              ($6, 'sync-f@example.test'), ($7, 'sync-g@example.test'), ($8, 'sync-h@example.test'),
+              ($9, 'sync-i@example.test')
                     on conflict (id) do nothing`,
-      [A, B, C, D, E, F, G, H],
+      [A, B, C, D, E, F, G, H, I],
     );
   });
   afterAll(async () => {
-    await db.query('delete from auth.users where id = any($1::uuid[])', [[A, B, C, D, E, F, G, H]]);
+    await db.query('delete from auth.users where id = any($1::uuid[])', [[A, B, C, D, E, F, G, H, I]]);
     await db.end();
   });
 
@@ -779,6 +784,141 @@ describeDb('sync against the real schema (Postgres + RLS)', () => {
       )!.exercises.find((e) => e.variant === 'full' && e.exerciseId === 'bench_press');
     expect(benchOf(b)).toEqual(benchOf(a));
     for (const d of [a, b]) expect(await d.sync()).toMatchObject({ pushed: 0, failed: 0 });
+  });
+
+  it('W-5: decisions are append-only; two answers from two devices both stay, the latest is in force everywhere', async () => {
+    const proposal = {
+      id: 'reduce_load:reduce_volume:2026-09-28',
+      kind: 'reduce_load' as const,
+      change: { key: 'reduce_volume', to: -1 },
+      reason: { key: 'adaptation.reason.reduce_volume' },
+      evidence: { incompleteSessions: 2, sessions: 3, minSets: 2 },
+      scope: { kind: 'weeks' as const, days: 14 },
+    };
+    const refresh = (d: ReturnType<typeof deviceOf>, at: string) => {
+      const s = d.state();
+      const records = {
+        programs: s.programs!,
+        prescriptions: s.prescriptions!,
+        superseded: s.superseded!,
+        sessionIds: s.sessionIds,
+      };
+      const next = refreshWeek({
+        records,
+        facts: s,
+        rescheduled: {},
+        today: WEEK,
+        weekStart: WEEK,
+        prescribedAt: at,
+        structure: structureFor(s.adjustments ?? [], records, s.completedSessions),
+      });
+      if (next) d.write(next);
+    };
+    const a = deviceOf(I, SCENARIOS.muscleGain);
+    a.open(WEEK);
+    expect((await a.sync(true)).errors).toEqual([]);
+    const b = deviceOf(I, SCENARIOS.muscleGain);
+    expect((await b.sync()).errors).toEqual([]);
+
+    const applied = decisionFor({
+      id: '00000000-0000-4000-8000-0000000009a1',
+      proposal,
+      status: 'applied',
+      today: WEEK,
+      decidedAt: '2026-09-28T08:00:00.000Z',
+    });
+    a.write({ adjustments: [applied] });
+    refresh(a, '2026-09-28T08:00:00.000Z');
+    const declined = decisionFor({
+      id: '00000000-0000-4000-8000-0000000009b1',
+      proposal,
+      status: 'declined',
+      today: WEEK,
+      decidedAt: '2026-09-28T08:05:00.000Z',
+    });
+    b.write({ adjustments: [declined] });
+    expect((await a.sync()).errors).toEqual([]);
+    expect((await b.sync()).errors).toEqual([]);
+    expect((await a.sync()).errors).toEqual([]);
+
+    const journal = await rowsOf('adjustments', I);
+    expect(journal.map((r) => [r.status, r.proposal_id, r.scope, r.effective_to]).sort()).toEqual([
+      ['applied', proposal.id, 'weeks', '2026-10-11'],
+      ['declined', proposal.id, null, null],
+    ]);
+    const reduced = (await rowsOf('workout_sessions', I)).find((r) => r.adjustment_id === applied.id);
+    expect(reduced).toBeDefined();
+    for (const d of [a, b]) expect(effectiveDecisions(d.state().adjustments!).get(proposal.id)?.id).toBe(declined.id);
+
+    // The database refuses to rewrite a decision or the decision a prescription followed.
+    const asUser = async (sql: string, params: unknown[]) => {
+      await db.query('begin');
+      try {
+        await db.query(`select set_config('role', 'authenticated', true), set_config('request.jwt.claims', $1, true)`, [
+          JSON.stringify({ sub: I, role: 'authenticated' }),
+        ]);
+        await db.query(sql, params);
+        await db.query('commit');
+        return null;
+      } catch (error) {
+        await db.query('rollback');
+        return error as { code?: string };
+      }
+    };
+    expect(await asUser(`update public.adjustments set status = 'reverted' where id = $1`, [applied.id])).toMatchObject(
+      {
+        code: '23514',
+      },
+    );
+    expect(
+      await asUser(`update public.workout_sessions set adjustment_id = null where id = $1`, [reduced!.id]),
+    ).toMatchObject({ code: '23514' });
+    expect(await asUser(`update public.adjustments set scope = 'sessions' where id = $1`, [declined.id])).toMatchObject(
+      { code: '23514' },
+    );
+    // A soft deletion (Privacy Center flows) is still possible.
+    expect(await asUser(`update public.adjustments set deleted_at = now() where id = $1`, [declined.id])).toBeNull();
+    // Another user sees none of it.
+    const intruder = restAs(db, A);
+    expect((await intruder.select('adjustments', null)).data?.some((r) => r.user_id === I)).toBe(false);
+
+    // End-of-cycle evolution: the rotation is a frozen parameter of a new version, synced as is.
+    const evolve = decisionFor({
+      id: '00000000-0000-4000-8000-0000000009c1',
+      proposal: {
+        id: 'training:cycle_review:2026-11-09',
+        kind: 'training',
+        change: { key: 'cycle_review', from: 'bench_press', to: 'continue' },
+        reason: { key: 'adaptation.reason.cycle_review' },
+        evidence: { weeks: 6 },
+      },
+      status: 'applied',
+      option: 'evolve',
+      scope: { kind: 'durable' },
+      today: '2026-11-09',
+      decidedAt: '2026-11-09T08:00:00.000Z',
+    });
+    const s = a.state();
+    const programs = ensureProgram({
+      programs: s.programs!,
+      goal: s.snapshot!.goal.type,
+      training: durableTraining(s.snapshot!.training, [evolve]),
+      today: '2026-11-09',
+      weekStart: '2026-11-09',
+      seed: I,
+      publishedAt: '2026-11-09T08:00:00.000Z',
+      adjustmentId: versionDecisions([evolve]),
+    })!;
+    a.write({ programs, adjustments: [...a.state().adjustments!, evolve] });
+    expect((await a.sync()).errors).toEqual([]);
+    const active = (await rowsOf('training_programs', I)).find((r) => r.status === 'active');
+    expect(active).toMatchObject({
+      rotated_exercise_ids: ['bench_press'],
+      reason_key: 'program.reason.cycle',
+      adjustment_id: evolve.id,
+    });
+    expect((await b.sync()).errors).toEqual([]);
+    expect(activeProgram(b.state().programs!)?.params).toEqual(activeProgram(a.state().programs!)?.params);
   });
 
   it('W-2: Privacy Center — the export holds programs and prescriptions, deleting workouts erases them', async () => {

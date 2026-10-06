@@ -642,7 +642,7 @@ export const EASIER_VARIANTS: Readonly<Record<string, readonly string[]>> = {
   barbell_row: ['db_row', 'seated_cable_row'],
   db_row: ['seated_cable_row', 'band_row'],
   inverted_row: ['band_row'],
-  pull_up: ['lat_pulldown', 'band_pulldown', 'inverted_row'],
+  pull_up: ['lat_pulldown', 'band_pulldown'],
   lat_pulldown: ['band_pulldown'],
   hanging_knee_raise: ['dead_bug'],
   bench_dip: ['cable_triceps_pushdown'],

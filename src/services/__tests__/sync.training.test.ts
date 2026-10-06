@@ -11,6 +11,8 @@ import { sessionKey } from '@/domain/shared/ids';
 import type { Row, SyncableState, SyncedHashes, SyncTable } from '@/domain/sync/projection';
 import { adherence } from '@/domain/journey/adherence';
 import type { PrescribedSession } from '@/domain/training/program';
+import { appliedDecisions, decisionFor, effectiveDecisions, revertDecision } from '@/domain/journey/adjustments';
+import { STRUCTURE, structureFor } from '@/domain/training/structure';
 import { activeProgram, prescriptionFor, refreshWeek, rescheduleSession } from '@/domain/training/week';
 
 import { classifySyncError, syncOnce, type SyncClient } from '../sync';
@@ -37,11 +39,20 @@ const PROGRAM_FROZEN = [
   'level',
   'equipment',
   'excluded_exercise_ids',
+  'rotated_exercise_ids',
   'cycle_weeks',
   'effective_from',
   'published_at',
 ];
-const SESSION_FROZEN = ['session_index', 'scheduled_for', 'focus', 'planned_minutes', 'purpose', 'prescribed_at'];
+const SESSION_FROZEN = [
+  'session_index',
+  'scheduled_for',
+  'focus',
+  'planned_minutes',
+  'purpose',
+  'prescribed_at',
+  'adjustment_id',
+];
 const same = (a: unknown, b: unknown) =>
   JSON.stringify(a ?? null) === JSON.stringify(b ?? null) ||
   (typeof a === 'string' && typeof b === 'string' && Date.parse(a) === Date.parse(b));
@@ -86,6 +97,14 @@ function fakeServer() {
         return pgError('23503', 'planned_exercises_session_id_fkey');
       if (old && Object.keys(row).some((c) => !same(row[c], old[c])))
         return pgError('23514', 'planned_exercises: a prescription is immutable');
+    }
+    // W-5: a decision is history (append-only); an identical upsert from a second device passes.
+    if (t === 'adjustments' && old) {
+      const keys = new Set(
+        [...Object.keys(row), ...Object.keys(old)].filter((c) => !['updated_at', 'deleted_at'].includes(c)),
+      );
+      if ([...keys].some((c) => !same(row[c], old[c])))
+        return pgError('23514', 'adjustments: a decision is immutable (record a new decision instead)');
     }
     if (t === 'exercise_reports' && !table('workout_sessions', db).has(String(row.session_id)))
       return pgError('23503', 'exercise_reports_session_id_fkey');
@@ -271,6 +290,12 @@ function device(snapshot: UserContextSnapshot, initial: Partial<SyncableState> =
         today,
         weekStart: WEEK,
         prescribedAt: at,
+        // Structural changes accepted on this device or synced from another one (W-5).
+        structure: structureFor(
+          s.adjustments ?? [],
+          { prescriptions: s.prescriptions ?? {}, sessionIds: s.sessionIds },
+          s.completedSessions,
+        ),
       });
       if (next) store.write(next);
       return next !== null;
@@ -918,6 +943,91 @@ describe('progression (W-4, D-035)', () => {
     expect((await a.sync()).errors).toEqual([]);
     expect((await b.sync()).errors).toEqual([]);
     expect(bench(b, WEDNESDAY)).toEqual(bench(a, WEDNESDAY));
+  });
+});
+
+describe('structural decisions (W-5, D-037)', () => {
+  const proposal = {
+    id: 'reduce_load:reduce_volume:2026-09-28',
+    kind: 'reduce_load' as const,
+    change: { key: 'reduce_volume', to: -1 },
+    reason: { key: 'adaptation.reason.reduce_volume' },
+    evidence: { incompleteSessions: 2, sessions: 3, minSets: 2 },
+    scope: { kind: 'weeks' as const, days: 14 },
+  };
+  const answer = (id: string, status: 'applied' | 'declined', at: string) =>
+    decisionFor({ id, proposal, status, today: WEEK, decidedAt: at });
+  const sets = (d: ReturnType<typeof device>, key: string) =>
+    prescriptionFor({ prescriptions: d.state().prescriptions!, sessionIds: d.state().sessionIds }, key)!
+      .exercises.filter((e) => e.variant === 'full')
+      .map((e) => e.sets);
+
+  it('A applies offline, B refuses offline: both answers kept, the later one wins on both, the week converges', async () => {
+    const a = device(SCENARIOS.muscleGain);
+    a.open(WEEK);
+    expect((await a.sync(true)).errors).toEqual([]);
+    const b = device(SCENARIOS.muscleGain);
+    await b.sync();
+    const usual = sets(a, WEDNESDAY);
+
+    fake.setOffline(true);
+    a.set({ adjustments: [answer('aaaaaaaa-0000-4000-8000-0000000000a1', 'applied', '2026-09-28T08:00:00.000Z')] });
+    expect(a.refresh(WEEK)).toBe(true);
+    expect(sets(a, WEDNESDAY)).toEqual(usual.map((n) => (n > STRUCTURE.minSets ? n - 1 : n)));
+    b.set({ adjustments: [answer('bbbbbbbb-0000-4000-8000-0000000000b1', 'declined', '2026-09-28T08:05:00.000Z')] });
+    expect(b.refresh(WEEK)).toBe(false);
+    // Training goes on offline with the prescription of the device.
+    await a.sync();
+    fake.setOffline(false);
+
+    expect((await a.sync()).errors).toEqual([]);
+    expect((await b.sync()).errors).toEqual([]);
+    expect((await a.sync()).errors).toEqual([]);
+    expect(fake.rows('adjustments')).toHaveLength(2);
+    for (const d of [a, b]) {
+      expect(d.state().adjustments).toHaveLength(2);
+      expect(effectiveDecisions(d.state().adjustments!).get(proposal.id)?.status).toBe('declined');
+      expect(appliedDecisions(d.state().adjustments!)).toEqual([]);
+    }
+    // A follows the decision in force: Wednesday is prescribed with its usual volume again.
+    expect(a.refresh(WEEK, '2026-09-28T09:00:00.000Z')).toBe(true);
+    expect(sets(a, WEDNESDAY)).toEqual(usual);
+    expect((await a.sync()).errors).toEqual([]);
+    expect((await b.sync()).errors).toEqual([]);
+    expect(b.state().sessionIds[WEDNESDAY]).toBe(a.state().sessionIds[WEDNESDAY]);
+    expect(sets(b, WEDNESDAY)).toEqual(usual);
+  });
+
+  it('a decision is never rewritten: going back is a new row, the reduced session stays in the history', async () => {
+    const a = device(SCENARIOS.muscleGain);
+    a.open(WEEK);
+    await a.sync(true);
+    const applied = answer('aaaaaaaa-0000-4000-8000-0000000000a2', 'applied', '2026-09-28T08:00:00.000Z');
+    a.set({ adjustments: [applied] });
+    a.refresh(WEEK);
+    const reduced = a.state().sessionIds[WEDNESDAY];
+    expect((await a.sync()).errors).toEqual([]);
+    expect(fake.table('workout_sessions').get(reduced)).toMatchObject({ adjustment_id: applied.id });
+
+    // An in-place change is refused by the server (the journal is append-only).
+    a.set({ adjustments: [{ ...applied, status: 'reverted' }] });
+    expect((await a.sync()).errors).not.toEqual([]);
+    const back = revertDecision(applied, {
+      id: 'aaaaaaaa-0000-4000-8000-0000000000a3',
+      today: WEEK,
+      decidedAt: '2026-09-28T10:00:00.000Z',
+    });
+    a.set({ adjustments: [applied, back] });
+    a.refresh(WEEK, '2026-09-28T10:00:00.000Z');
+    expect((await a.sync()).errors).toEqual([]);
+    expect(fake.table('adjustments').get(applied.id)).toMatchObject({ status: 'applied' });
+    expect(fake.table('adjustments').get(back.id)).toMatchObject({ status: 'reverted', proposal_id: proposal.id });
+    // The reduced prescription is kept (superseded), the new one has no decision.
+    expect(fake.table('workout_sessions').get(reduced)).toMatchObject({
+      status: 'superseded',
+      adjustment_id: applied.id,
+    });
+    expect(fake.table('workout_sessions').get(a.state().sessionIds[WEDNESDAY])?.adjustment_id ?? null).toBeNull();
   });
 });
 

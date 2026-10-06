@@ -51,6 +51,8 @@ export interface StructuralSignals {
   evolution: { rotated: string[]; changes: { from: string; to: string }[] } | null;
   /** Facts shown in the end-of-cycle review. */
   cycleFacts: Record<string, number>;
+  /** Sessions done under each decision (a `sessions` scope ends when they are done). */
+  doneUnder?: Record<string, number>;
 }
 
 /** What a proposal targets (an exercise, a list), to match it with earlier decisions. */
@@ -244,11 +246,11 @@ export function structuralDrafts(input: {
     const tooHard = pattern(id, 'too_hard');
     const struggling = s.progression.struggling.find((x) => x.exerciseId === id);
     const variant = s.easierFor(id);
-    const easierEnded =
-      lastEasier?.status === 'applied' && lastDay(lastEasier) !== null && lastDay(lastEasier)! < today;
-    // Still too hard after an easier variant (or none exists): a durable question.
+    const easierEnded = lastEasier?.status === 'applied' && !covers(lastEasier, today, s.doneUnder);
+    // Still too hard after an easier variant (or none exists): a durable question. While the
+    // variant runs the exercise is not prescribed, so the reports that count are those after it.
     if ((easierEnded || !variant) && tooHard) {
-      const since2 = easierEnded ? lastDay(lastEasier!) : null;
+      const since2 = easierEnded ? lastEasier!.effectiveFrom : null;
       if (after(tooHard, since2) >= STRUCTURE.repeat && durable('too_hard', 'adaptation.reason.exercise_too_hard'))
         continue;
     }

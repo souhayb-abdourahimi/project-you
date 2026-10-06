@@ -18,6 +18,7 @@ import {
   incompleteSessions,
   recentSessions,
   replacementPreview,
+  sessionsDoneUnder,
   trainingBreak,
 } from '../training/structure';
 import { versionTemplates, type ProgressionSignals, type TrainingRecords } from '../training/week';
@@ -84,5 +85,6 @@ export function structuralSignals(input: {
     replacementFor: (id) => (params ? replacementPreview(params, id) : null),
     evolution,
     cycleFacts,
+    doneUnder: sessionsDoneUnder(input.records, input.facts.completedSessions),
   };
 }
