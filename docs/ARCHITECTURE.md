@@ -31,6 +31,7 @@ app → features → (components, state, services, providers) → domain
 - `src/domain` n'importe **rien** de React, React Native, Expo ou Supabase. Fonctions pures, déterministes, testées unitairement. C'est la source de vérité des calculs.
 - Aucune logique métier dans les composants : un écran appelle un moteur ou un store.
 - `src/providers` expose des interfaces ; le reste de l'app ne connaît jamais un fournisseur concret.
+- Écrans (D-038) : moteur du domaine → **view model** (un hook `features/<feature>/useX.ts` qui rend des clés et des valeurs, jamais de texte) → **petits composants** à base de tokens et de primitives, remplaçables. La refonte visuelle prévue plus tard ne doit toucher que la dernière couche.
 
 ## Arborescence
 

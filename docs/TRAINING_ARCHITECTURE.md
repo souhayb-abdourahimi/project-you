@@ -14,17 +14,19 @@ src/domain/training/         Workout Coach Engine : calcul pur, aucun état, auc
   program.ts        (W-1 ✓)  versions publiées, prescriptions figées, raisons structurées, historique reconstitué
   week.ts           (W-2 ✓)  ids stables, publier une version, figer une semaine, variantes, report
   session.ts        (W-3)    logique de saisie (série suivante, correction, fin de séance)
-  compare.ts        (W-4)    prévu vs fait, statut, raison déclarée
+  compare.ts        (W-6 ✓)  prévu vs fait, statut, raison déclarée (dérivé, jamais stocké)
+  week-view.ts      (W-6 ✓)  semaine vécue : jours passés depuis leurs prescriptions, la suite depuis le planning
   progression.ts    (W-4)    double progression v2 (contexte, variante, stagnation, gêne)
   replacement.ts / adapt.ts  remplacements, séances courtes et allégées (étendus)
 
 src/domain/journey/          Transformation Journey Engine : le seul état utilisateur
   state.ts                   lit les faits d'entraînement (séances, écarts, difficulté)
   adaptation.ts              + règles d'entraînement (W-5), même Recommendation
-  daily-plan.ts              séance du jour depuis la séance figée (W-6)
+  daily-plan.ts              séance du jour depuis la séance figée (W-3 ✓) ; séance hors programme un jour de repos (W-6 ✓)
   progress-facts.ts          records, tendances (inchangés) + prévu/fait en faits
   memory.ts                  suggestions → question à l'utilisateur → confirmation (W-5)
-  explain.ts                 « Pourquoi cette charge ? » / « Pourquoi cet exercice ? » (W-6)
+  explain.ts                 « Pourquoi cette charge ? » / « Pourquoi cet exercice ? », version, décision (W-6 ✓)
+  training-history.ts        historique par semaine : prévu / fait, versions, réponses et effet (W-6 ✓)
   safety.ts                  inchangé ; la fatigue de fin de séance arrive par daily_checkins
 
 src/hooks/usePlan.ts         lit le programme et la semaine figés (au lieu de les recalculer)
@@ -233,7 +235,7 @@ useJourney → DailyPlan : séance du jour = plannedSessions[aujourd'hui]
 ### 7.3 Après la séance et en fin de semaine
 
 ```
-compare(prévu, fait, raisons déclarées)   → faits (séance, exercices)       [dérivé, pas encore livré]
+compare(prévu, fait, raisons déclarées)   → faits (séance, exercices, semaine) [dérivé, W-6]
 progression v2 (W-4, D-035)                → exerciseHistory → recommendProgression → gateProgression (contexte du jour)
                                              → refreshWeek : nouvelle prescription des séances non commencées, figée à son tour
 journey (state, progress-facts, milestones) → records, régularité, jalons, voix
@@ -263,6 +265,21 @@ Les séances déjà faites, sautées ou commencées gardent leur prescription. L
 | **Mémoire** (`memory.ts`) | suggestion « retirer l'exercice » calculée, non affichée | écran de confirmation ; + suggestion de garder un remplaçant pour matériel absent/occupé |
 | **Explications** (`explain.ts`) | « Pourquoi cette séance ? » | + « Pourquoi cette charge ? » (action, raison, séances utilisées) |
 | **Planification** (`planning/engine.ts`) | inchangée | reçoit le programme actif ; les reports sont synchronisés |
+
+---
+
+## 8 bis. W-6 : où chaque intégration est branchée (D-038)
+
+| Écran | View model | Domaine |
+|---|---|---|
+| Aujourd'hui | `useJourney` → `DailyPlan` (séance figée, `offPlan`) | `daily-plan.ts` |
+| Programme | `features/program/useProgramWeek.ts` | `week-view.ts`, `compare.ts`, `structure.ts`, `explainVersion` |
+| Historique (`/history`) | `features/program/useTrainingHistory.ts` | `training-history.ts`, `compare.ts`, `explainVersion`, `explainDecision` |
+| Progression | `useJourney().trainingWeek` | `compareWeek` |
+| Séance (« Pourquoi ? ») | `ExerciseFacts` | `explainExercise`, `explainLoad` |
+| Adhérence (adaptation, rétention, effets) | `useJourney` | `plannedSessionDates` (jours passés depuis les prescriptions) |
+
+Les view models rendent des clés et des valeurs, jamais de texte ; les composants sont petits, à base de tokens et remplaçables (refonte visuelle prévue plus tard).
 
 ---
 
@@ -301,4 +318,12 @@ Livrés en W-3 (D-034) :
 - `sync.training.test.ts` : séance hors connexion complète (ouverte, 3 séries, correction, exercice non fait, remplacement, fin) puis sync et relecture sur B ; série supprimée sur un appareil et sur l'autre ; séance terminée plus tôt ; D-033 avec un exercice déclaré non fait (la séance est « utilisée »).
 - `sync.db.test.ts` : la même séance sur Postgres réel avec RLS ; `supabase/tests/rls.sql` et `training.sql` : `exercise_reports` (RLS, rattachement croisé refusé, effacement).
 - `e2e/workout-session.spec.ts` (mobile et desktop) : séance complète, gêne, « J'ai 15 minutes », allégée, hors connexion.
+
+Livrés en W-6 (D-038) :
+
+- `src/domain/training/__tests__/compare.test.ts` : séance faite en entier, en partie (jamais « ratée »), remplacement et sa raison, exercice non réalisé et sa raison, terminée plus tôt, passée sans rien de noté, à venir, commencée, repos choisi, remplacée par une marche, déplacée (l'originale dit où, la copie est prévue), variante allégée comparée à ses propres lignes, hors programme et avant W-1 (rien à comparer), séance supplémentaire D-033, lecture seule ; semaine : prévues, faites, adaptées, hors programme, à venir, séries des séances faites, déplacée comptée une fois.
+- `src/domain/training/__tests__/week-view.test.ts` : profil changé mercredi (nouvelle version, autres jours) : lundi et mardi lus depuis leurs prescriptions, la suite depuis le nouveau planning ; séance hors programme un jour de repos ; adhérence depuis les prescriptions, semaine sans prescription inchangée, séance déplacée comptée sur son nouveau jour.
+- `src/domain/journey/__tests__/training-history.test.ts` : journal (réponses d'entraînement seulement, la plus récente d'abord, en vigueur, effet), semaine allégée de fin de cycle, semaines vides omises, versions ; explications (exercice, charge, version, décision), raisons de version FR / EN sans culpabilisation.
+- `daily-plan.test.ts` : séance hors programme proposée un jour de repos ordinaire seulement (jamais avec sécurité, fatigue élevée, reprise, journée difficile, séance prévue ou faite).
+- `e2e/history.spec.ts` (mobile et desktop) : Programme (version, jour passé fait, séance déplacée), historique (faits de la semaine, version, détail d'une séance, aucun mot d'échec), séance hors programme un jour de repos et jamais un jour d'entraînement, carte « Cette semaine » de Progression.
 

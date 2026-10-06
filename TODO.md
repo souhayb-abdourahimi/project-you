@@ -24,11 +24,12 @@ Audit et architecture : `docs/WORKOUT_ENGINE.md`, `docs/TRAINING_ARCHITECTURE.md
 - [x] W-1 Modèle de données : migration `20261002000001_workout_coach_foundation.sql`, RLS, `training/program.ts`, tests (2026-10-02)
 - [x] W-2 Stockage local v4, figer la semaine, sync des nouvelles tables, appel de `attach_reconstructed_training_history()`, conflit de deux versions publiées hors connexion (D-032, revue `revue-w2-workout-coach.md`)
   - [ ] Appliquer la migration W-1 sur Supabase avant toute version de l'app contenant W-2 ; mettre à jour tous les appareils (une ancienne version ignore les séances `superseded`)
-  - [ ] W-6 : afficher les jours passés de la semaine depuis les prescriptions (aujourd'hui depuis le planning courant) ; `useJourney` recalcule encore les semaines passées avec `scheduleOfWeek`
+  - [x] W-6 : jours passés de la semaine lus depuis les prescriptions (Programme et adhérence) ; une semaine sans prescription garde le planning reconstruit (D-038)
+  - [ ] « Ton bilan » (`review.tsx`) relit encore la semaine passée avec `scheduleOfWeek` : le brancher sur `programWeek`
   - [ ] Purger les prescriptions anciennes du stockage local (aucun élagage aujourd'hui)
   - [x] W-4 : fatigue du jour branchée (séance du jour re-prescrite, `gateProgression`)
   - [x] D-033 vérité historique : une séance utilisée garde sa prescription malgré un conflit ; version perdante mais utilisée archivée ; collision `date#index` résolue (ligne prévue `superseded`, deux séances réelles gardées)
-  - [ ] Deux séances réelles pour un même créneau : la seconde s'affiche dans un créneau libre du jour (`date#6`) ; l'historique des séances (W-6) devra l'afficher comme « séance supplémentaire »
+  - [x] Deux séances réelles pour un même créneau : la seconde s'affiche comme « séance supplémentaire » (Programme et historique, W-6)
 - [x] W-3 Séance réelle (D-034, revue `revue-w3-workout-coach.md`, en attente de validation) : écran de séance, saisie répétitions / secondes, correction, minuteur, remplacement avec raison, exercice non fait, fin et résumé ; bugs corrigés (fatigue codée en dur, durée courte 20 → 15)
   - [ ] Appliquer la migration `20261006000001_workout_session.sql` sur Supabase avant toute version de l'app contenant W-3
   - [ ] Faire relire la correspondance ressenti → RPE (Facile 6, Correct 8, Très difficile 10)
@@ -39,7 +40,7 @@ Audit et architecture : `docs/WORKOUT_ENGINE.md`, `docs/TRAINING_ARCHITECTURE.md
   - [ ] Appliquer la migration `20261006000002_progression_v2.sql` sur Supabase avant toute version de l'app contenant W-4
   - [ ] Faire relire les seuils `PROGRESSION` et `PERFORMANCE_DOWN_EXERCISES` (fenêtre 42 j, 2 confirmations, 2 séances sous la plage sur 3, stagnation 4 séances / 21 j / 70 %, tendance 3 séances, +5 s pour un maintien)
   - [x] Décidé (D-036) : micro-progression automatique, changement de programme accepté explicitement
-  - [ ] `compare.ts` (statuts prévu / fait par exercice) non livré : à faire avec l'historique (W-6)
+  - [x] `compare.ts` (statuts prévu / fait par exercice) livré en W-6 (D-038)
   - [x] `reduce_volume` / `regress` : livrés en W-5 comme propositions (volume réduit, variante plus facile du catalogue)
   - [ ] Le bilan du jour rempli après l'ouverture d'une séance ne la re-prescrit plus (préremplissage « garder la charge » seulement)
 - [x] W-5 Adaptations structurelles (D-037, `docs/TRAINING_STRUCTURE.md`, revue `revue-w5-workout-coach.md`, en attente de validation)
@@ -47,8 +48,12 @@ Audit et architecture : `docs/WORKOUT_ENGINE.md`, `docs/TRAINING_ARCHITECTURE.md
   - [ ] Faire relire les seuils `STRUCTURE` (`docs/TRAINING_STRUCTURE.md` §13) : reprise après 14 j, volume −1 série / min 2 / 14 j, variante 2 séances, semaine allégée 7 j, plateau 35 j, refus 28 j, pas maintenant 7 j, fatigue 3 j / 2 séances complètes
   - [ ] Faire relire les relations `EASIER_VARIANTS` du catalogue (22 entrées)
   - [ ] Une portée « séances » terminée tôt bloque la reproposition jusqu'à son maximum + 14 j (prudent ; à revoir avec l'effet observé)
-  - [ ] W-6 : apprentissage à partir de l'effet observé (`adaptationEffects`), historique des adaptations dans Progression, libellés des versions (`program.reason.*` non affichés)
-- [ ] W-6 Intégrations (Daily Coach, Programme, Progress Journey, explications)
+  - [x] W-6 : historique des adaptations (écran Historique), libellés des versions affichés (`program.reason.*`)
+  - [ ] Apprentissage des règles à partir de l'effet observé : volontairement non fait (D-038) ; à rediscuter avec assez de données
+- [x] W-6 Intégrations (D-038, revue `revue-w6-workout-coach.md`, en attente de validation) : prévu / fait, Programme, historique, Progress Journey, explications, séance hors programme un jour de repos ; aucune migration
+  - [ ] Décider si « Très difficile » en fin de séance compte comme un jour de fatigue (proposition `TRAINING_ARCHITECTURE.md` §8, non appliquée)
+  - [ ] Ouvrir la bonne séance un jour à deux séances (la route ouvre la première)
+  - [ ] Historique au-delà de 12 semaines (pagination)
 - [ ] W-7 E2E et revue critique
 - [ ] Décider la suppression de `workout_plans` (jamais écrite) et de `workout_sessions.plan_id`, après vérification qu'elle est vide en production
 - [ ] Appliquer la migration `20261002000001` sur le projet Supabase réel (SQL Editor) après fusion
