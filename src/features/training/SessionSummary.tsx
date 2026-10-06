@@ -98,7 +98,11 @@ export function SessionSummary({
       {preference ? (
         <Card muted>
           {preference.answer === 'removed' ? (
-            <Text accessibilityLiveRegion="polite">{t('workout.summary.preferenceDone')}</Text>
+            <Text accessibilityLiveRegion="polite">
+              {preference.replacement
+                ? t('workout.summary.preferenceDoneWith', { name: name(preference.replacement) })
+                : t('workout.summary.preferenceDone')}
+            </Text>
           ) : preference.answer === 'kept' ? (
             <Text accessibilityLiveRegion="polite">{t('workout.summary.thanks')}</Text>
           ) : (

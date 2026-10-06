@@ -51,12 +51,18 @@ export default function ProgressScreen() {
           {progress.notes.map((n) => (
             <Banner key={n.key} tone="primary" message={t(n.key, n.params)} />
           ))}
+          {/* What changed in the program, after the user's yes (D-037 §38): two facts, no redesign. */}
+          {journey.active
+            .filter((a) => a.key === 'light_week' || a.key === 'exercise_change')
+            .map((a) => (
+              <Banner key={a.decision.id} tone="primary" message={t(`progress.adapted.${a.key}`)} />
+            ))}
           {progress.order.map((s) => sections[s])}
           <Section title={t('progress.path.title')}>
             <Path progress={progress} date={date} />
           </Section>
           <Section title={t('adaptation.title')}>
-            <Recommendations recommendations={journey.recommendations} today={plan.today} />
+            <Recommendations recommendations={journey.recommendations} today={plan.today} effects={journey.effects} />
           </Section>
         </>
       )}

@@ -10,6 +10,7 @@ import { renderMessage } from '@/domain/journey/voice/composer';
 import { daysBetween } from '@/domain/shared/dates';
 import { HealthCard } from '@/features/health/HealthCard';
 import { DailyItemRow, itemLabel, useItemAction, WhyToggle } from '@/features/journey/DailyItemRow';
+import { ProposalCard } from '@/features/journey/ProposalCard';
 import { SafetyNotice } from '@/features/journey/SafetyNotice';
 import { DayEnergyWarning } from '@/features/nutrition/DayEnergyWarning';
 import { MealCard } from '@/features/nutrition/MealCard';
@@ -65,6 +66,8 @@ export default function TodayScreen() {
       {!isSupabaseConfigured ? <Banner message={t('common.localMode')} /> : null}
       <SafetyNotice state={state} />
       <Celebration journey={journey} />
+      {/* One structural proposal at most per day, never under the safety rule (D-037 §37). */}
+      {journey.proposal ? <ProposalCard recommendation={journey.proposal} today={plan.today} /> : null}
 
       <MainAction journey={journey} today={plan.today} />
 

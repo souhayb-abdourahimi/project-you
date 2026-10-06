@@ -82,8 +82,8 @@ interface DataState {
   /** Per prescribed exercise: "not performed" and its reason, felt difficulty (W-3, D-034). */
   exerciseReports: Record<SessionKey, Record<string, ExerciseReport>>;
   /**
-   * "Keep it" answered to "remove this exercise from your program?" (exercise → replacements seen
-   * then): asked again only after as many new ones. On this device only.
+   * Legacy (W-3, this device only): "keep it" answers stored before W-5. Read, never written: since
+   * W-5 the answer is a declined `exercise_change` decision in `adjustments` (synced, D-037 §25).
    */
   keptExercises: Record<string, number>;
   /** Account the local data belongs to (null = local mode, not attached to an account yet). */
@@ -123,7 +123,6 @@ interface DataState {
   swapExercise: (session: SessionKey, fromId: string, toId: string, reason?: ReplacementReason) => void;
   /** Merges a report on a prescribed exercise; `null` removes it. */
   reportExercise: (session: SessionKey, exerciseId: string, report: ExerciseReport | null) => void;
-  keepExercise: (exerciseId: string, seen: number) => void;
   completeSession: (session: Omit<CompletedSession, 'completedAt'>) => void;
   reschedule: (from: IsoDate, to: IsoDate) => void;
   /** Stores what `ensureProgram` / `ensureWeek` published or froze (never called with an unchanged week). */
@@ -432,7 +431,6 @@ export const useDataStore = create<DataState>()(
             exerciseReports: { ...s.exerciseReports, [session]: keep ? { ...others, [exerciseId]: keep } : others },
           };
         }),
-      keepExercise: (exerciseId, seen) => set((s) => ({ keptExercises: { ...s.keptExercises, [exerciseId]: seen } })),
       completeSession: (session) =>
         set((s) => ({
           ...withSession(s, sessionKey(session.date, session.sessionIndex)),

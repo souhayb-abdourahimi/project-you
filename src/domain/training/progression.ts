@@ -99,6 +99,8 @@ export interface Exposure {
   fatigueHigh: boolean;
   /** Session ended early, with its reason (no_time, tired, pain, other). */
   stopped: string | null;
+  /** Structural change the session was prescribed under (W-5): reduced volume is read apart. */
+  structure?: string | null;
 }
 
 /** A session where the exercise was planned but not done: declared not performed, or replaced. */
@@ -125,8 +127,11 @@ export interface ExposureReading {
   hard: boolean;
   /** A set under the bottom of the range (only counts against in a full, unexplained session). */
   miss: boolean;
-  /** Read neither for nor against: short not completed, stopped early, fatigue declared, light. */
-  neutral: 'short' | 'light' | 'stopped' | 'fatigue' | null;
+  /**
+   * Read neither for nor against: short not completed, stopped early, fatigue declared, light, or a
+   * session under reduced volume (fewer sets on purpose: a top there does not confirm the full volume).
+   */
+  neutral: 'short' | 'light' | 'stopped' | 'fatigue' | 'adapted' | null;
 }
 
 export interface PrescriptionShape {
@@ -156,7 +161,7 @@ export interface ProgressionRecommendation {
     last: { loadKg: number; value: number } | null;
   };
   /** Set by the Adaptation Engine when today's context held an increase back. */
-  blockedBy?: 'safety' | 'fatigue' | 'protected';
+  blockedBy?: 'safety' | 'fatigue' | 'protected' | 'deload' | 'volume' | 'break' | 'restart';
   signals: { stagnation: Stagnation; trend: 'down' | null };
 }
 
@@ -186,6 +191,7 @@ export function readExposure(e: Exposure, range: { sets: number; repsMin: number
   const miss = values.some((v) => v < min);
   let neutral: ExposureReading['neutral'] = null;
   if (e.variant === 'light') neutral = 'light';
+  else if (e.structure === 'reduce_volume') neutral = 'adapted';
   // Stopped for a movement that hurt: never read as a success; stopped for time: only what was done.
   else if (e.stopped === 'pain' || (e.stopped && !top)) neutral = 'stopped';
   else if (e.variant === 'short' && !top) neutral = 'short';

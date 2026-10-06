@@ -1,7 +1,9 @@
 import { router } from 'expo-router';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Banner, Button, Card, Rationale, Row, Screen, Text } from '@/components/ui';
+import { adaptationOfDay, structureFor } from '@/domain/training/structure';
 import { usePlan } from '@/hooks/usePlan';
 import { formatDate } from '@/lib/format';
 import { useDataStore } from '@/state/data';
@@ -10,6 +12,12 @@ export default function ProgramScreen() {
   const { t, i18n } = useTranslation();
   const plan = usePlan();
   const completed = useDataStore((s) => s.completedSessions);
+  const adjustments = useDataStore((s) => s.adjustments);
+  // Structural changes the user accepted, in force on each day (W-5): said, never hidden.
+  const structureOf = useMemo(
+    () => structureFor(adjustments, useDataStore.getState(), completed),
+    [adjustments, completed],
+  );
   if (!plan) return null;
 
   return (
@@ -22,6 +30,14 @@ export default function ProgramScreen() {
         const workout = day.items.find((i) => i.kind === 'workout');
         const session = workout?.kind === 'workout' ? plan.sessionTemplate(day.date, workout.sessionIndex) : null;
         const done = completed.some((c) => c.date === day.date);
+        const adapted =
+          workout?.kind === 'workout'
+            ? adaptationOfDay(
+                adjustments,
+                plan.prescription(day.date, workout.sessionIndex)?.adjustmentId,
+                structureOf(day.date),
+              )
+            : null;
         return (
           <Card key={day.date} muted={!workout}>
             <Text variant="caption" color="textMuted">
@@ -38,6 +54,7 @@ export default function ProgramScreen() {
                   {t('program.exercises', { count: session.exercises.length })} ·{' '}
                   {t('program.estimated', { count: session.estimatedMinutes })}
                 </Text>
+                {adapted ? <Text color="primary">{t(`program.adapted.${adapted}`)}</Text> : null}
                 {done ? (
                   <Text color="success">{t('common.done')}</Text>
                 ) : (

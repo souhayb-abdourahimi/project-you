@@ -7,7 +7,7 @@
  */
 import { z } from 'zod';
 
-import type { Adjustment } from '../journey/adjustments';
+import { ADJUSTMENT_SCOPES, DECISION_STATUSES, type Adjustment } from '../journey/adjustments';
 import {
   DAY_MODES,
   LIGHT_ACTIVITIES,
@@ -105,6 +105,7 @@ const REMOTE_ROWS = {
       level: TrainingLevel.nullish(),
       equipment: z.array(Equipment).nullish(),
       excluded_exercise_ids: z.array(z.string()).nullish(),
+      rotated_exercise_ids: z.array(z.string()).nullish(),
       cycle_weeks: z.coerce.number().int().nullish(),
       effective_from: isoDate,
       effective_to: isoDate.nullish(),
@@ -137,6 +138,7 @@ const REMOTE_ROWS = {
       prescribed_at: z.string().nullish(),
       adapted_minutes: z.coerce.number().int().positive().nullish(),
       adaptation_reason: z.string().nullish(),
+      adjustment_id: z.string().nullish(),
       rescheduled_to: isoDate.nullish(),
       difficulty: z.coerce.number().int().min(1).max(5).nullish(),
       started_at: z.string().nullish(),
@@ -231,9 +233,13 @@ const REMOTE_ROWS = {
     kind: z.string(),
     change_key: z.string(),
     reason_key: z.string(),
-    status: z.enum(['proposed', 'applied', 'declined', 'reverted', 'postponed']),
+    status: z.enum(DECISION_STATUSES),
     effective_from: isoDate,
     decided_at: z.string(),
+    proposal_id: z.string().nullish(),
+    scope: z.enum(ADJUSTMENT_SCOPES).nullish(),
+    effective_to: isoDate.nullish(),
+    session_count: z.coerce.number().int().min(1).nullish(),
   }),
 } satisfies Partial<Record<string, z.ZodType>>;
 
@@ -397,6 +403,8 @@ function programRow(p: ProgramVersion): Row {
     level: k?.level ?? null,
     equipment: k ? [...k.equipment] : null,
     excluded_exercise_ids: k ? [...k.excludedExerciseIds] : null,
+    // W-5: only when the version rotated exercises (older versions keep the same content).
+    ...(k?.rotatedExerciseIds?.length ? { rotated_exercise_ids: [...k.rotatedExerciseIds] } : {}),
     cycle_weeks: p.cycleWeeks,
     effective_from: p.effectiveFrom,
     effective_to: p.effectiveTo,
@@ -426,6 +434,7 @@ function programFromRow(r: Row): ProgramVersion {
           level: r.level as TrainingLevel,
           equipment: list(r.equipment) as Equipment[],
           excludedExerciseIds: list(r.excluded_exercise_ids),
+          ...(list(r.rotated_exercise_ids).length > 0 ? { rotatedExerciseIds: list(r.rotated_exercise_ids) } : {}),
         }
       : null,
     cycleWeeks: num(r.cycle_weeks) ?? null,
@@ -447,6 +456,8 @@ function prescriptionColumns(p?: PrescribedSession, source?: SessionSource): Row
         prescribed_at: p.prescribedAt,
         adapted_minutes: p.adaptedMinutes,
         adaptation_reason: p.adaptationReason,
+        // W-5: only on a prescription shaped by a structural decision (others keep their content).
+        ...(p.adjustmentId ? { adjustment_id: p.adjustmentId } : {}),
       }
     : {
         program_id: source?.programId ?? null,
@@ -684,6 +695,11 @@ export function project(state: SyncableState, userId: string): Record<SyncTable,
       status: a.status,
       effective_from: a.effectiveFrom,
       decided_at: a.decidedAt,
+      // W-5 columns only when set: decisions recorded before keep the same content (and hash).
+      ...(a.proposalId ? { proposal_id: a.proposalId } : {}),
+      ...(a.scope ? { scope: a.scope } : {}),
+      ...(a.effectiveTo ? { effective_to: a.effectiveTo } : {}),
+      ...(a.sessionCount ? { session_count: a.sessionCount } : {}),
       deleted_at: null,
     });
   }
@@ -1089,6 +1105,7 @@ export function applyRemote(
         prescribedAt: String(r.prescribed_at),
         adaptedMinutes: num(r.adapted_minutes) ?? null,
         adaptationReason: str(r.adaptation_reason) ?? null,
+        ...(str(r.adjustment_id) ? { adjustmentId: str(r.adjustment_id)! } : {}),
         exercises: local?.exercises ?? [],
       };
       if (local && Date.parse(local.prescribedAt) !== Date.parse(server.prescribedAt)) replaced.add(id);
@@ -1367,6 +1384,10 @@ export function applyRemote(
         status: r.status as Adjustment['status'],
         effectiveFrom: String(r.effective_from),
         decidedAt: String(r.decided_at),
+        ...(str(r.proposal_id) ? { proposalId: str(r.proposal_id)! } : {}),
+        ...(str(r.scope) ? { scope: r.scope as Adjustment['scope'] } : {}),
+        ...(str(r.effective_to) ? { effectiveTo: str(r.effective_to)! } : {}),
+        ...(num(r.session_count) ? { sessionCount: num(r.session_count)! } : {}),
       },
     ];
   }

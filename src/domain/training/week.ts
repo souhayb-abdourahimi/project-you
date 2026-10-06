@@ -14,7 +14,8 @@ import { lightSession, shortSession, type SessionVariant } from './adapt';
 import { SESSION_DURATION, shortMinutes } from './durations';
 import { estimateMinutes, generateWorkoutPlan, type PrescribedExercise, type WorkoutTemplate } from './engine';
 import { exerciseHistory, type HistoryFacts } from './history';
-import { PROGRESSION, recommendProgression, type ProgressionRecommendation } from './progression';
+import { PROGRESSION, readExposure, recommendProgression, type ProgressionRecommendation } from './progression';
+import { shapeTemplate, STRUCTURE, type StructureOfDay } from './structure';
 import {
   adaptPrescription,
   deepFreeze,
@@ -138,17 +139,40 @@ export function versionInForce(programs: readonly ProgramVersion[], date: IsoDat
 export function versionReason(
   previous: ProgramParams | null,
   next: ProgramParams,
-  adjustmentId: string | null,
+  decisions: VersionDecisions | string | null,
 ): string | null {
-  if (!previous) return 'program.reason.first';
+  return versionChange(previous, next, decisions)?.reason ?? null;
+}
+
+/**
+ * Accepted decisions that may produce a version (W-5, D-037): the frequency, a durable exercise
+ * change, an end-of-cycle evolution. A string is the frequency decision (W-2 callers).
+ */
+export interface VersionDecisions {
+  frequency?: string | null;
+  exercises?: string | null;
+  cycle?: string | null;
+}
+
+/** Why a new version is needed and the accepted decision that caused it, if any. */
+export function versionChange(
+  previous: ProgramParams | null,
+  next: ProgramParams,
+  decisions: VersionDecisions | string | null,
+): { reason: string; adjustmentId: string | null } | null {
+  if (!previous) return { reason: 'program.reason.first', adjustmentId: null };
+  const d: VersionDecisions = typeof decisions === 'string' ? { frequency: decisions } : (decisions ?? {});
   const same = <K extends keyof ProgramParams>(k: K) => JSON.stringify(previous[k]) === JSON.stringify(next[k]);
-  if (!same('sessionsPerWeek')) return adjustmentId ? 'program.reason.adaptation' : 'program.reason.frequency';
-  if (!same('equipment')) return 'program.reason.equipment';
-  if (!same('goal')) return 'program.reason.goal';
-  if (!same('level')) return 'program.reason.level';
-  if (!same('sessionMinutes')) return 'program.reason.duration';
-  if (!same('excludedExerciseIds')) return 'program.reason.exercises';
-  if (!same('engineVersion') || !same('split')) return 'program.reason.engine';
+  const by = (id: string | null | undefined, adapted: string, other: string) =>
+    id ? { reason: adapted, adjustmentId: id } : { reason: other, adjustmentId: null };
+  if (!same('sessionsPerWeek')) return by(d.frequency, 'program.reason.adaptation', 'program.reason.frequency');
+  if (!same('equipment')) return { reason: 'program.reason.equipment', adjustmentId: null };
+  if (!same('goal')) return { reason: 'program.reason.goal', adjustmentId: null };
+  if (!same('level')) return { reason: 'program.reason.level', adjustmentId: null };
+  if (!same('sessionMinutes')) return { reason: 'program.reason.duration', adjustmentId: null };
+  if (!same('excludedExerciseIds')) return by(d.exercises, 'program.reason.adaptation', 'program.reason.exercises');
+  if (!same('rotatedExerciseIds')) return by(d.cycle, 'program.reason.cycle', 'program.reason.cycle');
+  if (!same('engineVersion') || !same('split')) return { reason: 'program.reason.engine', adjustmentId: null };
   return null;
 }
 
@@ -167,14 +191,18 @@ export function ensureProgram(input: {
   /** Account id, or "local" before the data is attached to an account. */
   seed: string;
   publishedAt: string;
-  /** Applied adaptation that set the frequency, if any (linked to the version it produced). */
-  adjustmentId: string | null;
+  /**
+   * Applied adaptations that may change a frozen parameter (linked to the version they produce): a
+   * string is the frequency decision.
+   */
+  adjustmentId: VersionDecisions | string | null;
 }): ProgramVersion[] | null {
   const next = programParams(input.goal, input.training);
   const active = activeProgram(input.programs);
   const engine = input.programs.filter((p) => p.source === 'engine');
   const previous = active ?? [...engine].sort(byVersion)[0] ?? null;
-  const reason = versionReason(previous?.params ?? null, next, input.adjustmentId);
+  const change = versionChange(previous?.params ?? null, next, input.adjustmentId);
+  const reason = change?.reason ?? null;
   if (active && reason === null) return null;
   const lineageId = previous?.lineageId ?? trainingIds.lineage(input.seed);
   const version = Math.max(0, ...engine.filter((p) => p.lineageId === lineageId).map((p) => p.version)) + 1;
@@ -187,7 +215,7 @@ export function ensureProgram(input: {
     // The first version covers the current week; a later one applies from today (the past stays).
     effectiveFrom: previous ? input.today : input.weekStart,
     reasonKey: reason ?? 'program.reason.resumed',
-    adjustmentId: reason === 'program.reason.adaptation' ? input.adjustmentId : null,
+    adjustmentId: change?.adjustmentId ?? null,
     publishedAt: input.publishedAt,
     version,
   });
@@ -206,6 +234,7 @@ export function versionTemplates(program: ProgramVersion): WorkoutTemplate[] {
       sessionMinutes: p.sessionMinutes,
       equipment: [...p.equipment],
       refusedExerciseIds: [...p.excludedExerciseIds],
+      ...(p.rotatedExerciseIds ? { rotatedExerciseIds: [...p.rotatedExerciseIds] } : {}),
     },
   }).sessions;
 }
@@ -275,6 +304,8 @@ export function ensureWeek(input: {
   /** Workout slots of the week after reschedules. */
   scheduled: readonly { date: IsoDate; sessionIndex: number }[];
   prescribedAt: string;
+  /** Structural changes the user accepted, in force on a date (W-5, `structure.ts`). */
+  structure?: (date: IsoDate) => StructureOfDay;
 }): TrainingRecords | null {
   const { records, facts } = input;
   const weekEnd = addDays(input.weekStart, 6);
@@ -302,8 +333,9 @@ export function ensureWeek(input: {
     } else {
       if (program.status !== 'active') continue;
       if (!templates.has(program.id)) templates.set(program.id, versionTemplates(program));
-      const template = templates.get(program.id)![sessionIndex];
-      if (!template) continue;
+      const base = templates.get(program.id)![sessionIndex];
+      if (!base) continue;
+      const { template, adjustmentId } = shaped(base, program, input.structure?.(date));
       prescriptions[id] = prescribeSession({
         sessionId: id,
         program,
@@ -313,6 +345,7 @@ export function ensureWeek(input: {
         prescribedAt: input.prescribedAt,
         loads: proposedLoads({ template, records, facts, date, today: input.today }),
         ids: (variant, position) => trainingIds.planned(id, variant, position),
+        adjustmentId,
       });
     }
     if (live) superseded[live.id] = true;
@@ -333,12 +366,16 @@ export function ensureWeek(input: {
   return changed ? { programs: records.programs, prescriptions, superseded, sessionIds } : null;
 }
 
-/** What a prescription proposes per exercise, in a stable order (its fingerprint). */
+/**
+ * What a prescription proposes per exercise, in a stable order (its fingerprint). A prescription
+ * shaped by a structural decision (W-5) adds the decision and its exercises and sets, so the end
+ * of the change (or its revert) brings the normal prescription back.
+ */
 function proposalsOf(p: PrescribedSession): string {
-  return JSON.stringify(
-    p.exercises
-      .filter((e) => e.variant === 'full' && e.progressionAction !== null)
-      .sort((a, b) => a.position - b.position)
+  const full = p.exercises.filter((e) => e.variant === 'full').sort((a, b) => a.position - b.position);
+  const progression = JSON.stringify(
+    full
+      .filter((e) => e.progressionAction !== null)
       .map((e) => [
         e.exerciseId,
         e.targetLoadKg,
@@ -349,6 +386,17 @@ function proposalsOf(p: PrescribedSession): string {
         e.progressionParams,
       ]),
   );
+  if (!p.adjustmentId) return progression;
+  return `${progression}|${p.adjustmentId}|${full.map((e) => `${e.exerciseId}:${e.sets}`).join(',')}`;
+}
+
+/** A template under the structures of its day, with the version's equipment and exclusions. */
+function shaped(template: WorkoutTemplate, program: ProgramVersion, day: StructureOfDay | undefined) {
+  if (!day || !program.params) return { template, adjustmentId: null };
+  return shapeTemplate(template, day, {
+    equipment: program.params.equipment,
+    excluded: program.params.excludedExerciseIds,
+  });
 }
 
 /**
@@ -368,6 +416,8 @@ export function refreshWeek(input: {
   weekStart: IsoDate;
   gate?: ProgressionGate;
   prescribedAt: string;
+  /** Structural changes the user accepted, in force on a date (W-5, `structure.ts`). */
+  structure?: (date: IsoDate) => StructureOfDay;
 }): TrainingRecords | null {
   const { records, facts } = input;
   const program = activeProgram(records.programs);
@@ -386,8 +436,9 @@ export function refreshWeek(input: {
     if (live.date < input.weekStart || live.adaptationReason !== null || moved.has(live.date)) continue;
     if (hasFacts(facts, key)) continue;
     templates ??= versionTemplates(program);
-    const template = templates[live.sessionIndex];
-    if (!template) continue;
+    const generated = templates[live.sessionIndex];
+    if (!generated) continue;
+    const { template, adjustmentId } = shaped(generated, program, input.structure?.(live.date));
     const prescribe = (id: string) =>
       prescribeSession({
         sessionId: id,
@@ -398,6 +449,7 @@ export function refreshWeek(input: {
         prescribedAt: input.prescribedAt,
         loads: proposedLoads({ template, records, facts, date: live.date, today: input.today, gate: input.gate }),
         ids: (variant, position) => trainingIds.planned(id, variant, position),
+        adjustmentId,
       });
     const probe = prescribe(liveId);
     const wanted = proposalsOf(probe);
@@ -423,7 +475,7 @@ export function progressionSignals(input: {
   records: Pick<TrainingRecords, 'prescriptions' | 'sessionIds'>;
   facts: HistoryFacts;
   today: IsoDate;
-}): { stagnating: string[]; down: string[] } {
+}): ProgressionSignals {
   const { records, today } = input;
   const from = addDays(today, -PROGRESSION.windowDays);
   const rows = new Map<string, PrescribedSession['exercises'][number]>();
@@ -432,21 +484,51 @@ export function progressionSignals(input: {
     .filter((p): p is PrescribedSession => !!p && p.date >= from && p.date <= addDays(today, 6))
     .sort((a, b) => a.date.localeCompare(b.date));
   for (const p of live) for (const e of p.exercises) if (e.variant === 'full') rows.set(e.exerciseId, e);
-  const stagnating: string[] = [];
-  const down: string[] = [];
+  const out: ProgressionSignals = { stagnating: [], down: [], persistent: [], hard: [], struggling: [] };
   for (const [exerciseId, e] of [...rows.entries()].sort(([a], [b]) => a.localeCompare(b))) {
     const history = exerciseHistory({ exerciseId, records, facts: input.facts, before: addDays(today, 1), today });
+    const range = { sets: e.sets, repsMin: e.repsMin, repsMax: e.repsMax, unit: e.unit };
     const rec = recommendProgression({
       exerciseId,
-      range: { sets: e.sets, repsMin: e.repsMin, repsMax: e.repsMax, unit: e.unit },
+      range,
       exposures: history.exposures,
       notDone: history.notDone,
       adherence: history.adherence,
     });
-    if (rec.signals.stagnation.active) stagnating.push(exerciseId);
-    if (rec.signals.trend === 'down') down.push(exerciseId);
+    const decisive = history.exposures
+      .map((x) => readExposure(x, range))
+      .filter((r) => r.neutral === null && r.values.length > 0);
+    const stuck = rec.signals.stagnation;
+    if (stuck.active) {
+      out.stagnating.push(exerciseId);
+      if ((stuck.days ?? 0) >= STRUCTURE.persistentStagnationDays) out.persistent.push(exerciseId);
+      // Most of the plateau's sessions felt very hard: a lighter week may help more than waiting.
+      const recent = decisive.slice(-PROGRESSION.plateauSessions);
+      if (recent.filter((r) => r.hard).length * 2 >= recent.length) out.hard.push(exerciseId);
+    }
+    if (rec.signals.trend === 'down') out.down.push(exerciseId);
+    const last = decisive.slice(-STRUCTURE.strugglingWindow);
+    const misses = last.filter((r) => r.miss).length;
+    if (last.length >= STRUCTURE.strugglingWindow && misses >= STRUCTURE.strugglingMisses) {
+      out.struggling.push({ exerciseId, misses, sessions: last.length });
+    }
   }
-  return { stagnating, down };
+  return out;
+}
+
+/**
+ * What the exercises' own histories say, for the Adaptation Engine (D-035, D-037): a plateau (and
+ * whether it lasts or felt very hard), a downward trend, and repeated sessions under the range.
+ */
+export interface ProgressionSignals {
+  stagnating: string[];
+  down: string[];
+  /** Plateau with no better session for `STRUCTURE.persistentStagnationDays` or more. */
+  persistent: string[];
+  /** Plateau whose recent sessions mostly felt very hard. */
+  hard: string[];
+  /** Under the range in most of the last full sessions of the exercise. */
+  struggling: { exerciseId: string; misses: number; sessions: number }[];
 }
 
 /** The live prescription of a day, if the session was prescribed. */
@@ -517,6 +599,8 @@ export function adaptSession(input: {
   training: Pick<TrainingProfile, 'equipment' | 'hasGym' | 'level' | 'refusedExerciseIds'>;
   done: boolean;
   prescribedAt: string;
+  /** Why the variant is chosen when it is not the user's choice of the day (an accepted light week). */
+  reasonKey?: string;
 }): PrescribedSession | null {
   const { session, variant } = input;
   if (variant === 'full' || input.done || session.exercises.some((e) => e.variant === variant)) return null;
@@ -539,7 +623,7 @@ export function adaptSession(input: {
     program: input.program,
     adapted,
     minutes: variant === 'short' ? minutes : adapted.estimatedMinutes,
-    reasonKey: `workout.variant.${variant}`,
+    reasonKey: input.reasonKey ?? `workout.variant.${variant}`,
     prescribedAt: input.prescribedAt,
     ids: (v, position) => trainingIds.planned(session.id, v, position),
     loads: variantLoads(session, variant),

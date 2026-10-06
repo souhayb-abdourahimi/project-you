@@ -4,6 +4,7 @@ import { lightSession, shortSession, type SessionVariant } from '@/domain/traini
 import { shortMinutes } from '@/domain/training/durations';
 import type { WorkoutTemplate } from '@/domain/training/engine';
 import type { PrescribedSession, TrainingPurpose } from '@/domain/training/program';
+import { structureFor } from '@/domain/training/structure';
 import { sessionExercises, type SessionExercise } from '@/domain/training/session';
 import { adaptSession, variantMinutes, variantTemplate } from '@/domain/training/week';
 import type { Plan } from '@/hooks/usePlan';
@@ -45,6 +46,7 @@ export function useWorkoutSession(plan: Plan | null, date: string, request: Work
   const chosen = useDataStore((s) => s.sessionVariants);
   const completedSessions = useDataStore((s) => s.completedSessions);
   const exerciseSwaps = useDataStore((s) => s.exerciseSwaps);
+  const adjustments = useDataStore((s) => s.adjustments);
 
   const day = plan?.schedule.days.find((d) => d.date === date);
   const item = day?.items.find((i) => i.kind === 'workout');
@@ -56,14 +58,21 @@ export function useWorkoutSession(plan: Plan | null, date: string, request: Work
   const completed = completedSessions.find((c) => c.date === date && c.sessionIndex === sessionIndex);
   const done = !!completed;
   const coach = plan && date === plan.today ? (request.coach ?? null) : null;
+  // A light week the user accepted covers this day: the light version, unless the user picks another.
+  const lightWeek = useMemo(
+    () => !!structureFor(adjustments, useDataStore.getState(), completedSessions)(date).lightWeek,
+    [adjustments, completedSessions, date],
+  );
   const variant: SessionVariant =
     completed?.variant ??
     request.variant ??
     chosen[key] ??
     coach?.variant ??
+    (lightWeek && item?.kind === 'workout' ? 'light' : undefined) ??
     (item?.kind === 'workout' && item.variant === 'short' ? 'short' : 'full');
   const minutes = request.minutes ?? (coach?.variant === variant ? coach.minutes : undefined);
-  const training = plan?.snapshot.training;
+  // Exclusions include the exercises removed after confirmation (W-5): never proposed again.
+  const training = plan?.effectiveTraining;
 
   const view = useMemo(() => {
     if (!plan || !training) return null;
@@ -81,6 +90,7 @@ export function useWorkoutSession(plan: Plan | null, date: string, request: Work
         training,
         done,
         prescribedAt: new Date().toISOString(),
+        ...(lightWeek && variant === 'light' ? { reasonKey: 'workout.light_week' } : {}),
       });
       return { template: full, prescription: adapted ?? prescription, adapted };
     }
@@ -102,7 +112,7 @@ export function useWorkoutSession(plan: Plan | null, date: string, request: Work
       prescription: null as PrescribedSession | null,
       adapted: null,
     };
-  }, [plan, training, prescription, program, variant, minutes, done, sessionIndex]);
+  }, [plan, training, prescription, program, variant, minutes, done, sessionIndex, lightWeek]);
 
   // Store the variant of the day (and its rows the first time) so every device reads the same.
   const adapted = view?.adapted ?? null;

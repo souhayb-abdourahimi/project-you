@@ -1,9 +1,16 @@
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { adapt, gateProgression, LIGHT_WEEK_DAYS, plateau, type Recommendation } from '@/domain/journey/adaptation';
+import {
+  adapt,
+  ADAPTATION,
+  gateProgression,
+  plateau,
+  primaryProposal,
+  type Recommendation,
+} from '@/domain/journey/adaptation';
 import { adherence } from '@/domain/journey/adherence';
-import { appliedCalorieOffset } from '@/domain/journey/adjustments';
+import { appliedCalorieOffset, appliedDecisions } from '@/domain/journey/adjustments';
 import { buildDailyPlan, type DailyPlan } from '@/domain/journey/daily-plan';
 import { journeyMemory, type JourneyMemory } from '@/domain/journey/memory';
 import { milestoneFacts, milestoneToCelebrate, type MilestoneStatus } from '@/domain/journey/milestones';
@@ -12,16 +19,31 @@ import type { ProgressData } from '@/domain/journey/progress-facts';
 import { buildProgressJourney, type ProgressJourney } from '@/domain/journey/progress-journey';
 import { retentionRisk, type RetentionRisk } from '@/domain/journey/retention';
 import { deriveJourneyState, type JourneyState } from '@/domain/journey/state';
+import {
+  activeAdaptations,
+  adaptationEffects,
+  keptExercises,
+  type ActiveAdaptation,
+  type AdaptationEffect,
+} from '@/domain/journey/structural';
+import { structuralSignals } from '@/domain/journey/structural-signals';
 import type { VoiceUse } from '@/domain/journey/voice/types';
 import { weeklyCheckinDue } from '@/domain/journey/weekly-checkin';
 import { summarizeWeek } from '@/domain/meals/budget';
 import type { PlannedMeal } from '@/domain/meals/planner';
 import { getRecipe } from '@/domain/meals/recipes';
-import { addDays, daysBetween, weekdayOf, type IsoDate } from '@/domain/shared/dates';
+import { addDays, weekdayOf, type IsoDate } from '@/domain/shared/dates';
 import { sessionKey } from '@/domain/sync/projection';
 import type { SessionVariant } from '@/domain/training/adapt';
 import { sessionGoal } from '@/domain/training/session';
-import { plannedVariantMinutes, progressionSignals, refreshWeek } from '@/domain/training/week';
+import {
+  isStructural,
+  sessionsDoneUnder,
+  structureFor,
+  structureKey,
+  type StructureOfDay,
+} from '@/domain/training/structure';
+import { activeProgram, plannedVariantMinutes, progressionSignals, refreshWeek } from '@/domain/training/week';
 import { useCalendarStore } from '@/state/calendar';
 import { useDataStore } from '@/state/data';
 import { useNotificationStore } from '@/state/notifications';
@@ -36,12 +58,23 @@ export interface Journey {
   /** The milestone to celebrate today (once, never under safety). */
   celebration: MilestoneStatus | null;
   recommendations: Recommendation[];
+  /** The one structural proposal the Daily Coach shows today, if any (D-037 §37). */
+  proposal: Recommendation | null;
+  /** Structural changes in force today (light week, reduced volume, easier variant, restart). */
+  structure: StructureOfDay;
+  /** Applied structural changes, before / after, facts only (D-037 §22). */
+  effects: AdaptationEffect[];
+  /** Structural changes in force today, for the screens (D-037 §38). */
+  active: ActiveAdaptation[];
   /** Never stored, never shown: shapes how light the day is. */
   risk: RetentionRisk;
   memory: JourneyMemory;
   /** Days kept in a short, difficult or replaced version (the next morning says so). */
   keptGoingDates: IsoDate[];
 }
+
+/** A day counted as tired: the Adaptation Engine's threshold (declared fatigue 4 or 5 out of 5). */
+const HIGH_FATIGUE = ADAPTATION.highFatigue;
 
 /** Weeks of past plans read for adherence and the retention score. */
 const PAST_WEEKS = 4;
@@ -167,14 +200,10 @@ export function useJourney(plan: Plan | null): Journey | null {
     const busyToday = calendarBusy?.weekStart === plan.weekStart ? calendarBusy.slots : [];
     const history: VoiceUse[] = [...notificationHistory, ...screenVoice];
 
-    // A light week accepted in "Mon évolution" lasts 7 days from the day it was applied.
-    const lightWeek = data.adjustments.some(
-      (a) =>
-        a.changeKey === 'light_week' &&
-        a.status === 'applied' &&
-        daysBetween(a.effectiveFrom, today) >= 0 &&
-        daysBetween(a.effectiveFrom, today) < LIGHT_WEEK_DAYS,
-    );
+    // Structural changes the user accepted, in force today (a light week lasts its 7 days).
+    const structureOf = structureFor(data.adjustments, data, data.completedSessions);
+    const structure = structureOf(today);
+    const lightWeek = structure.lightWeek !== null;
     const daily = buildDailyPlan({
       state,
       day,
@@ -238,6 +267,8 @@ export function useJourney(plan: Plan | null): Journey | null {
       .flatMap(([, ex]) => Object.values(ex).flatMap((sets) => sets.map((s) => s.rpe)))
       .filter((r): r is number => r !== undefined);
     const adherence14 = adherence(adherenceInput, 14);
+    const progression = progressionSignals({ records: data, facts: data, today });
+    const fatigueDates = data.dayLogs.filter((d) => (d.fatigue ?? 0) >= HIGH_FATIGUE).map((d) => d.date);
     const adherence28 = adherence(adherenceInput, 28);
     const adaptationInput = {
       today,
@@ -265,9 +296,28 @@ export function useJourney(plan: Plan | null): Journey | null {
       noDeficit: state.profile.noPush,
       sessionsPerWeek: { profile: snapshot.training.sessionsPerWeek, current: plan.sessionsPerWeek },
       adjustments: data.adjustments,
-      progression: progressionSignals({ records: data, facts: data, today }),
+      progression,
+      structural: structuralSignals({
+        today,
+        adjustments: data.adjustments,
+        progression,
+        records: data,
+        program: activeProgram(data.programs),
+        facts: data,
+        fatigueDates,
+        plannedSessionDates,
+        trends: progress.performance.exercises,
+      }),
     };
     const recommendations = adapt(adaptationInput);
+    const proposal = primaryProposal(recommendations, data.adjustments);
+    const effects = adaptationEffects({
+      decisions: appliedDecisions(data.adjustments).filter((d) => isStructural(structureKey(d) ?? d.changeKey)),
+      today,
+      plannedDates: plannedSessionDates,
+      doneDates: data.completedSessions.map((c) => c.date),
+      fatigueDates,
+    });
 
     const trailingIgnored = (() => {
       const past = notificationHistory
@@ -299,14 +349,28 @@ export function useJourney(plan: Plan | null): Journey | null {
       milestones: data.milestones,
       adjustments: data.adjustments,
       confirmed: {
-        refusedExerciseIds: snapshot.training.refusedExerciseIds,
+        // The profile's exclusions and the exercises removed after confirmation (W-5).
+        refusedExerciseIds: plan.effectiveTraining.refusedExerciseIds,
         dislikedRecipeIds: [],
         likedRecipeIds: [],
       },
-      kept: data.keptExercises,
+      kept: keptExercises(data.adjustments, data.swapReasons, data.keptExercises),
     });
 
-    return { state, daily, progress, celebration, recommendations, risk, memory, keptGoingDates };
+    return {
+      state,
+      daily,
+      progress,
+      celebration,
+      recommendations,
+      proposal,
+      structure,
+      effects,
+      active: activeAdaptations(data.adjustments, today, sessionsDoneUnder(data, data.completedSessions)),
+      risk,
+      memory,
+      keptGoingDates,
+    };
   }, [plan, data, weights, notificationHistory, screenVoice, weighInDay, calendarBusy, locale]);
 
   // Milestones reached are recorded (synced) so that each is celebrated once, on any device.
@@ -329,19 +393,29 @@ export function useJourney(plan: Plan | null): Journey | null {
   useEffect(() => {
     if (!plan || safetyActive === undefined) return;
     const store = useDataStore.getState();
+    const structure = structureFor(store.adjustments, store, store.completedSessions);
     const next = refreshWeek({
       records: store,
       facts: store,
       rescheduled: store.rescheduled,
       today: plan.today,
       weekStart: plan.weekStart,
-      gate: (rec, date) =>
-        gateProgression(rec, {
+      gate: (rec, date) => {
+        const day = structure(date);
+        return gateProgression(rec, {
           safetyActive: !!safetyActive,
           // Today's fatigue says nothing about Friday: only today's session waits.
           fatigueHigh: fatigueHigh && date === plan.today,
           noPush: !!noPush,
-        }),
+          structure: day.volume
+            ? (structureKey(day.volume) as 'restart' | 'reduce_volume')
+            : day.lightWeek
+              ? 'light_week'
+              : null,
+          date,
+        });
+      },
+      structure,
       prescribedAt: new Date().toISOString(),
     });
     if (next) applyTraining(next);

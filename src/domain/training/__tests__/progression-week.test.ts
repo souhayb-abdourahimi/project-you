@@ -274,7 +274,7 @@ describe('the future follows, the past stays (§24, §25)', () => {
 describe('plan-level signals', () => {
   it('a plateau or a downward trend is read per exercise, on its own history', () => {
     const { week } = setup();
-    expect(progressionSignals({ records: week, facts: EMPTY_FACTS, today: '2026-09-30' })).toEqual({
+    expect(progressionSignals({ records: week, facts: EMPTY_FACTS, today: '2026-09-30' })).toMatchObject({
       stagnating: [],
       down: [],
     });

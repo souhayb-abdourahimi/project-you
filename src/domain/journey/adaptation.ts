@@ -6,9 +6,18 @@
  */
 import type { GoalType } from '../profile/schemas';
 import { addDays, daysBetween, startOfWeek, weekdayOf, type IsoDate } from '../shared/dates';
+import { getExercise } from '../training/exercises';
 import type { LoggedSet, ProgressionRecommendation } from '../training/progression';
+import { isStructural, STRUCTURE, type CycleOption } from '../training/structure';
 import type { Adherence } from './adherence';
-import { recommendationKey, type Adjustment, type AdaptationKind } from './adjustments';
+import {
+  decidedRecommendation,
+  effectiveDecisions,
+  proposalKey,
+  type Adjustment,
+  type AdaptationKind,
+} from './adjustments';
+import { lightWeek, restartDraft, structuralDrafts, type ProposalScope, type StructuralSignals } from './structural';
 import type { DayLog } from './outcomes';
 import type { ExerciseTrend } from './progress-facts';
 import { weightAverageAt } from './progress-facts';
@@ -19,10 +28,20 @@ import type { SafetyFlag } from './safety';
  * Change keys the app applies in one gesture (usePlan, useJourney). Every other recommendation is
  * advice: shown with its reason, nothing changes in the plan.
  */
-export const APPLICABLE_CHANGES = ['calories_per_day', 'sessions_per_week', 'light_week'] as const;
+export const APPLICABLE_CHANGES = [
+  'calories_per_day',
+  'sessions_per_week',
+  'light_week',
+  // W-5 (D-037): structural changes, each applied only on the user's explicit "yes".
+  'restart',
+  'reduce_volume',
+  'easier_variant',
+  'exercise_change',
+  'cycle_review',
+] as const;
 
 /** Days a light week lasts from the day it is applied. */
-export const LIGHT_WEEK_DAYS = 7;
+export const LIGHT_WEEK_DAYS = STRUCTURE.lightWeekDays;
 
 /** Design parameters, to be reviewed by a professional with those of D-024/D-026. */
 export const ADAPTATION = {
@@ -62,6 +81,12 @@ export interface Recommendation {
   /** proposed: one gesture applies it; advice: no change to the plan. */
   mode: 'proposed' | 'advice';
   blockedBy?: BlockReason;
+  /** The exercise(s) a structural proposal is about (W-5), comma-separated. */
+  target?: string | null;
+  /** How long it lasts once accepted (W-5): known before the user says yes. */
+  scope?: ProposalScope | null;
+  /** Answers to choose from (end-of-cycle review). */
+  options?: CycleOption[];
 }
 
 export interface AdaptationInput {
@@ -91,7 +116,9 @@ export interface AdaptationInput {
   sessionsPerWeek: { profile: number; current: number };
   adjustments: Adjustment[];
   /** Exercises whose own history shows a plateau or a downward trend (training/progression.ts). */
-  progression?: { stagnating: string[]; down: string[] };
+  progression?: { stagnating: string[]; down: string[]; persistent?: string[] };
+  /** Training facts for the structural rules (W-5, `journey/structural.ts`). */
+  structural?: StructuralSignals;
 }
 
 /** Today's context for the progression of one exercise: one safety engine, one journey state. */
@@ -101,6 +128,10 @@ export interface ProgressionContext {
   fatigueHigh: boolean;
   /** Minor or underweight (journey state profile.noPush): never more intensity. */
   noPush: boolean;
+  /** Structural change the user accepted, in force on the session's date (W-5). */
+  structure?: 'light_week' | 'reduce_volume' | 'restart' | null;
+  /** Date of the session being prescribed: after a long break, nothing goes up yet (W-5). */
+  date?: IsoDate;
 }
 
 /** Exercises showing a downward trend before a lighter week is proposed. [relire] */
@@ -113,15 +144,24 @@ export const PERFORMANCE_DOWN_EXERCISES = 2;
  * range stays possible). Keeping, retrying and decreasing always pass.
  */
 export function gateProgression(rec: ProgressionRecommendation, ctx: ProgressionContext): ProgressionRecommendation {
+  if (ctx.structure === 'restart' && rec.action !== 'no_recommendation') return restartLoad(rec);
   const increase = rec.action === 'increase_load' || rec.action === 'increase_reps';
   if (!increase) return rec;
+  const lastDone = rec.evidence.used.at(-1)?.date;
+  const longBreak = !!ctx.date && !!lastDone && daysBetween(lastDone, ctx.date) >= STRUCTURE.breakDays;
   const blockedBy = ctx.safetyActive
     ? 'safety'
     : ctx.fatigueHigh
       ? 'fatigue'
-      : ctx.noPush && rec.action === 'increase_load'
-        ? 'protected'
-        : null;
+      : ctx.structure === 'light_week'
+        ? 'deload'
+        : ctx.structure === 'reduce_volume'
+          ? 'volume'
+          : longBreak
+            ? 'break'
+            : ctx.noPush && rec.action === 'increase_load'
+              ? 'protected'
+              : null;
   if (!blockedBy) return rec;
   const last = rec.evidence.last;
   const target =
@@ -139,6 +179,52 @@ export function gateProgression(rec: ProgressionRecommendation, ctx: Progression
     },
     blockedBy,
   };
+}
+
+/**
+ * Restart after a break, accepted (W-5, D-037 §14): one step under the last real load when the
+ * catalogue knows the step, the bottom of the range, never an increase. Without a real load the
+ * load stays as it was (bodyweight) and nothing goes up.
+ */
+function restartLoad(rec: ProgressionRecommendation): ProgressionRecommendation {
+  const last = rec.evidence.last;
+  const increment = getExercise(rec.exerciseId)?.loadIncrementKg ?? 0;
+  const lower = last && last.loadKg > 0 && increment > 0 ? Math.max(0, last.loadKg - increment) : null;
+  return {
+    ...rec,
+    action: lower !== null ? 'reduce_load' : 'maintain',
+    reason: { key: 'progression.reason.restart', params: {} },
+    proposedPrescription: {
+      ...rec.proposedPrescription,
+      loadKg: lower ?? (last && last.loadKg > 0 ? last.loadKg : null),
+      target: rec.proposedPrescription.repsMin,
+    },
+    blockedBy: 'restart',
+  };
+}
+
+/**
+ * The structural proposal the Daily Coach shows today (D-037 §37): one at most, the first by the
+ * engine's order (safety, restart, light week, volume, variants, exercise, cycle, frequency).
+ */
+export function primaryProposal(
+  recommendations: readonly Recommendation[],
+  adjustments: readonly Adjustment[] = [],
+): Recommendation | null {
+  return (
+    undecided(recommendations, adjustments).find(
+      (r) => r.mode === 'proposed' && r.kind !== 'none' && isStructural(r.change.key),
+    ) ?? null
+  );
+}
+
+/** Recommendations the user has not answered yet (any answer, on any device, hides it). */
+export function undecided(
+  recommendations: readonly Recommendation[],
+  adjustments: readonly Adjustment[],
+): Recommendation[] {
+  const answered = new Set(adjustments.filter((a) => a.status !== 'proposed').map(decidedRecommendation));
+  return recommendations.filter((r) => !answered.has(r.id));
 }
 
 const round1 = (v: number) => Math.round(v * 10) / 10;
@@ -222,7 +308,7 @@ export function plateau(input: AdaptationInput): Plateau {
 }
 
 function lastCalorieDecision(adjustments: Adjustment[]): Adjustment | undefined {
-  return adjustments
+  return [...effectiveDecisions(adjustments).values()]
     .filter((a) => a.changeKey === 'calories_per_day' && a.status !== 'reverted')
     .sort((a, b) => a.decidedAt.localeCompare(b.decidedAt))
     .at(-1);
@@ -245,7 +331,7 @@ export function adapt(input: AdaptationInput): Recommendation[] {
   const out: Recommendation[] = [];
   const rec = (r: Omit<Recommendation, 'id'>): Recommendation => ({
     ...r,
-    id: recommendationKey(r.kind, r.change.key, week),
+    id: proposalKey(r.kind, r.change.key, r.target ?? null, week),
   });
   const nutrition = (step: number, reasonKey: string, evidence: Recommendation['evidence']) => {
     const change = calorieChange(input, step);
@@ -267,7 +353,8 @@ export function adapt(input: AdaptationInput): Recommendation[] {
     (d) => d.date > addDays(today, -7) && d.date <= today && (d.fatigue ?? 0) >= ADAPTATION.highFatigue,
   ).length;
 
-  // 1. Safety first: nothing that adds deficit or volume.
+  // 1. Safety first: nothing that adds deficit or volume, no other training change (W-5: the
+  // safety message is never hidden behind an ordinary adaptation).
   if (input.safety.active) {
     if (input.safety.flags.includes('training_load')) {
       out.push(
@@ -280,15 +367,13 @@ export function adapt(input: AdaptationInput): Recommendation[] {
           mode: 'advice',
         }),
       );
-      out.push(
-        rec({
-          kind: 'reduce_load',
-          change: { key: 'light_week', to: 'light' },
-          reason: { key: 'adaptation.reason.light_week', params: { pct: 40 } },
-          evidence: { fatigueDays },
-          mode: 'proposed',
-        }),
+      const light = lightWeek(
+        input.adjustments,
+        today,
+        { key: 'adaptation.reason.light_week', params: { pct: 40 } },
+        { fatigueDays },
       );
+      if (light) out.push(rec(light));
     }
     const underFueled = input.safety.flags.find((f) => f === 'fast_weight_loss' || f === 'low_intake');
     if (underFueled && !coolingDown) {
@@ -298,19 +383,39 @@ export function adapt(input: AdaptationInput): Recommendation[] {
     return out;
   }
 
-  // 7. Load: heavy effort two weeks running or fatigue declared 3 days out of 7.
+  // 6 bis. Restart after a break (W-5): before the other training rules, whose signals are old.
+  const restart = input.structural ? restartDraft(input.adjustments, input.structural, today) : null;
+  if (restart) out.push(rec(restart));
+
+  // 7. Load: heavy effort two weeks running or fatigue declared 3 days out of 7. Repeated fatigue
+  // lightens the training only when there was training to lighten (W-5 §13: two full sessions in
+  // 14 days, not mostly short or light ones); otherwise it is advice to rest.
   const [rpeBefore, rpeLast] = weeklyRpe(input);
-  if (
-    (rpeBefore !== null && rpeLast !== null && rpeBefore >= ADAPTATION.heavyRpe && rpeLast >= ADAPTATION.heavyRpe) ||
-    fatigueDays >= ADAPTATION.highFatigueDays
-  ) {
+  const heavy =
+    rpeBefore !== null && rpeLast !== null && rpeBefore >= ADAPTATION.heavyRpe && rpeLast >= ADAPTATION.heavyRpe;
+  const tired = fatigueDays >= ADAPTATION.highFatigueDays;
+  const recent = input.structural?.recent14;
+  const trained = !recent || (recent.full >= STRUCTURE.fatigueFullSessions && recent.full >= recent.other);
+  if (!restart && (heavy || (tired && trained))) {
+    const light = lightWeek(
+      input.adjustments,
+      today,
+      { key: 'adaptation.reason.light_week', params: { pct: 40 } },
+      {
+        fatigueDays,
+        ...(rpeLast !== null ? { rpe: round1(rpeLast) } : {}),
+        ...(recent ? { fullSessions: recent.full } : {}),
+      },
+    );
+    if (light) out.push(rec(light));
+  } else if (!restart && tired) {
     out.push(
       rec({
-        kind: 'reduce_load',
-        change: { key: 'light_week', to: 'light' },
-        reason: { key: 'adaptation.reason.light_week', params: { pct: 40 } },
-        evidence: { fatigueDays, ...(rpeLast !== null ? { rpe: round1(rpeLast) } : {}) },
-        mode: 'proposed',
+        kind: 'add_recovery',
+        change: { key: 'rest_days', to: 1 },
+        reason: { key: 'adaptation.reason.fatigue_rest', params: { days: fatigueDays } },
+        evidence: { fatigueDays, ...(recent ? { fullSessions: recent.full } : {}) },
+        mode: 'advice',
       }),
     );
   }
@@ -318,16 +423,25 @@ export function adapt(input: AdaptationInput): Recommendation[] {
   // 7 bis. Performance going down on several exercises (a trend, never one session): a lighter
   // week is proposed, never imposed; nothing is said about the user, only about the sessions.
   const down = input.progression?.down ?? [];
-  if (down.length >= PERFORMANCE_DOWN_EXERCISES && !out.some((r) => r.change.key === 'light_week')) {
-    out.push(
-      rec({
-        kind: 'reduce_load',
-        change: { key: 'light_week', to: 'light' },
-        reason: { key: 'adaptation.reason.performance_down', params: { count: down.length } },
-        evidence: { exercises: down.length },
-        mode: 'proposed',
-      }),
+  if (!restart && down.length >= PERFORMANCE_DOWN_EXERCISES && !out.some((r) => r.change.key === 'light_week')) {
+    const light = lightWeek(
+      input.adjustments,
+      today,
+      { key: 'adaptation.reason.performance_down', params: { count: down.length } },
+      { exercises: down.length },
     );
+    if (light) out.push(rec(light));
+  }
+
+  // 7 ter. Structural training changes (W-5, D-037): plateau, volume, variants, exercises, cycle.
+  if (!restart && input.structural) {
+    for (const draft of structuralDrafts({
+      today,
+      adjustments: input.adjustments,
+      signals: input.structural,
+      lightWeekProposed: out.some((r) => r.change.key === 'light_week'),
+    }))
+      out.push(rec(draft));
   }
 
   // 8. Planning: sessions moved twice or more to the same weekday in two weeks.
@@ -494,14 +608,19 @@ export function adapt(input: AdaptationInput): Recommendation[] {
     );
   }
   // Stagnation of an exercise over three weeks or more, with regular sessions: a program question
-  // (variation, rest, technique), never a reproach. Advice only.
+  // (variation, rest, technique), never a reproach and never a calorie change. Advice only; a
+  // plateau that lasts says that the end of the cycle can bring a small evolution (W-5).
   const stagnating = input.progression?.stagnating ?? [];
+  const persistent = input.progression?.persistent ?? [];
   if (stagnating.length > 0 && !out.some((r) => r.change.key === 'progression_review')) {
     out.push(
       rec({
         kind: 'training',
         change: { key: 'progression_review' },
-        reason: { key: 'adaptation.reason.stagnation', params: { count: stagnating.length } },
+        reason: {
+          key: persistent.length > 0 ? 'adaptation.reason.stagnation_persistent' : 'adaptation.reason.stagnation',
+          params: { count: stagnating.length },
+        },
         evidence: { exercises: stagnating.length },
         mode: 'advice',
       }),

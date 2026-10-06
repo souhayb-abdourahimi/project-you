@@ -138,14 +138,12 @@ describe('data store, workout session (W-3)', () => {
     expect(store().exerciseReports[WEDNESDAY]).toEqual({});
   });
 
-  it('a stopped session keeps its reason; "keep it" remembers how often it was seen', () => {
+  it('a stopped session keeps its reason', () => {
     withWeek();
     store().completeSession({ date: '2026-09-30', sessionIndex: 1, variant: 'full', stopped: 'pain' });
     expect(store().completedSessions).toEqual([
       { date: '2026-09-30', sessionIndex: 1, variant: 'full', stopped: 'pain', completedAt: expect.any(String) },
     ]);
-    store().keepExercise('squat', 3);
-    expect(store().keptExercises).toEqual({ squat: 3 });
   });
 
   it('a failed write to the device is reported, and cleared by the next success', async () => {

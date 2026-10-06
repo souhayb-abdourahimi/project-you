@@ -616,3 +616,49 @@ export function getExercise(id: string): Exercise | undefined {
 export function isAvailable(exercise: Exercise, equipment: readonly Equipment[]): boolean {
   return exercise.equipment.every((e) => e === 'bodyweight' || equipment.includes(e));
 }
+
+/**
+ * Easier variants (W-5, D-037): curated relations between catalogue ids, never inferred from a
+ * name. An easier variant keeps the movement (same pattern, or the same main muscles for an arm
+ * or core exercise) with less load, more guidance (machine, cable) or less technique; its level
+ * is never above the exercise's. An exercise without an entry has no known easier variant: none
+ * is invented. Harder variants are the inverse relation (`harderVariants`). [relire]
+ */
+export const EASIER_VARIANTS: Readonly<Record<string, readonly string[]>> = {
+  back_squat: ['goblet_squat', 'leg_press'],
+  goblet_squat: ['bodyweight_squat'],
+  deadlift: ['romanian_deadlift', 'romanian_deadlift_db'],
+  romanian_deadlift: ['romanian_deadlift_db'],
+  romanian_deadlift_db: ['glute_bridge'],
+  hip_thrust: ['glute_bridge'],
+  kettlebell_swing: ['romanian_deadlift_db', 'glute_bridge'],
+  bulgarian_split_squat: ['db_split_squat', 'reverse_lunge'],
+  db_split_squat: ['reverse_lunge'],
+  push_up: ['incline_push_up'],
+  bench_press: ['db_bench_press', 'chest_press_machine'],
+  db_bench_press: ['chest_press_machine'],
+  overhead_press: ['db_shoulder_press'],
+  pike_push_up: ['db_shoulder_press'],
+  barbell_row: ['db_row', 'seated_cable_row'],
+  db_row: ['seated_cable_row', 'band_row'],
+  inverted_row: ['band_row'],
+  pull_up: ['lat_pulldown', 'band_pulldown', 'inverted_row'],
+  lat_pulldown: ['band_pulldown'],
+  hanging_knee_raise: ['dead_bug'],
+  bench_dip: ['cable_triceps_pushdown'],
+  db_curl: ['band_curl'],
+};
+
+/** Easier variants of an exercise, in the catalogue's order of preference. */
+export function easierVariants(id: string): Exercise[] {
+  return (EASIER_VARIANTS[id] ?? []).map((v) => BY_ID.get(v)).filter((e): e is Exercise => !!e);
+}
+
+/** Harder variants: the exercises that list this one as an easier variant. */
+export function harderVariants(id: string): Exercise[] {
+  return Object.entries(EASIER_VARIANTS)
+    .filter(([, easier]) => easier.includes(id))
+    .map(([harder]) => BY_ID.get(harder))
+    .filter((e): e is Exercise => !!e)
+    .sort((a, b) => a.id.localeCompare(b.id));
+}

@@ -85,6 +85,11 @@ export interface ProgramParams {
   level: TrainingLevel;
   equipment: Equipment[];
   excludedExerciseIds: string[];
+  /**
+   * Exercises rotated at an end-of-cycle evolution the user accepted (W-5, D-037). Present only
+   * when not empty, so the versions published before keep the same parameters.
+   */
+  rotatedExerciseIds?: string[];
 }
 
 export type ProgramSource = 'engine' | 'reconstructed';
@@ -157,13 +162,18 @@ export interface PrescribedSession {
   /** Adaptation of the day (short, light…), with its own exercises below. */
   adaptedMinutes: number | null;
   adaptationReason: string | null;
+  /**
+   * The structural decision this prescription follows (W-5, D-037: reduced volume, easier
+   * variant, restart); absent for a normal prescription.
+   */
+  adjustmentId?: string | null;
   exercises: PlannedExercise[];
 }
 
 type TrainingInput = Pick<
   TrainingProfile,
   'level' | 'sessionsPerWeek' | 'sessionMinutes' | 'equipment' | 'refusedExerciseIds'
->;
+> & { rotatedExerciseIds?: readonly string[] };
 
 export function deepFreeze<T>(value: T): T {
   if (value && typeof value === 'object' && !Object.isFrozen(value)) {
@@ -187,6 +197,7 @@ export function programParams(goal: GoalType, training: TrainingInput): ProgramP
     level: training.level,
     equipment: sorted(training.equipment) as Equipment[],
     excludedExerciseIds: sorted(training.refusedExerciseIds),
+    ...(training.rotatedExerciseIds?.length ? { rotatedExerciseIds: sorted(training.rotatedExerciseIds) } : {}),
   };
 }
 
@@ -315,7 +326,10 @@ function plannedRows(input: {
       targetReps: load?.targetReps !== undefined ? Math.max(e.repsMin, Math.min(e.repsMax, load.targetReps)) : null,
       progressionConfidence: load?.confidence ?? null,
       progressionParams: load?.params && Object.keys(load.params).length > 0 ? { ...load.params } : null,
-      ...exercisePurpose(e.exerciseId, input.purpose, input.level),
+      // An easier variant prepares the exercise it stands in for (W-5, D-037).
+      ...(e.standsFor
+        ? { purpose: 'progression' as const, purposeTarget: e.standsFor }
+        : exercisePurpose(e.exerciseId, input.purpose, input.level)),
       prescribedAt: input.prescribedAt,
     };
   });
@@ -335,6 +349,8 @@ export function prescribeSession(input: {
   loads?: Record<string, ProposedLoad>;
   /** Id of each planned row (deterministic in the app: same session, variant and position → same id). */
   ids: (variant: SessionVariant, position: number) => string;
+  /** Structural decision the template was shaped by (W-5), if any. */
+  adjustmentId?: string | null;
 }): PrescribedSession {
   const { program } = input;
   if (program.source !== 'engine' || !program.params) {
@@ -353,6 +369,7 @@ export function prescribeSession(input: {
     prescribedAt: input.prescribedAt,
     adaptedMinutes: null,
     adaptationReason: null,
+    ...(input.adjustmentId ? { adjustmentId: input.adjustmentId } : {}),
     exercises: plannedRows({
       sessionId: input.sessionId,
       variant: 'full',

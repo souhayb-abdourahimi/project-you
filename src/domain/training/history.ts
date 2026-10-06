@@ -7,6 +7,7 @@
  *   it replaced gets a "replaced" entry with the reason, never the sets of another movement.
  * - The prescription of a session is the one stored for it (D-033), never recomputed.
  */
+import type { Adjustment } from '../journey/adjustments';
 import { checkinSignals, declaredFatigue, type DayLog } from '../journey/outcomes';
 import { addDays, type IsoDate } from '../shared/dates';
 import { parseSessionKey, type SessionKey } from '../shared/ids';
@@ -27,6 +28,8 @@ export interface HistoryFacts {
   exerciseReports?: Record<SessionKey, Record<string, ExerciseReport>>;
   /** Daily check-ins: the fatigue declared around a session (journey definition). */
   dayLogs?: readonly DayLog[];
+  /** Adaptation decisions: the structural change a prescription followed (W-5). */
+  adjustments?: readonly Adjustment[];
 }
 
 export interface ExerciseHistory {
@@ -92,6 +95,9 @@ export function exerciseHistory(input: {
         sessionDifficulty: facts.sessionDifficulty?.[key] ?? null,
         fatigueHigh: declaredFatigue(checkins, date) === 'high',
         stopped: completed?.stopped ?? null,
+        ...(prescription?.adjustmentId
+          ? { structure: facts.adjustments?.find((a) => a.id === prescription.adjustmentId)?.changeKey ?? null }
+          : {}),
       });
       continue;
     }

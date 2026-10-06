@@ -430,6 +430,15 @@ const fr = {
     },
     rest: 'Repos',
     open: 'Ouvrir la séance',
+    adapted: {
+      light_week: 'Semaine allégée',
+      restart: 'Reprise en douceur',
+      reduce_volume: 'Volume réduit',
+      easier_variant: 'Variante plus accessible',
+      exercise_change: 'Exercice remplacé après confirmation',
+      cycle_review: 'Programme revu en fin de cycle',
+      sessions_per_week: 'Fréquence changée',
+    },
   },
   workout: {
     title: 'Séance',
@@ -653,6 +662,7 @@ const fr = {
       preference: 'Tu as remplacé {{name}} plusieurs fois par préférence. Veux-tu le retirer de ton programme ?',
       preferenceYes: 'Oui, le retirer',
       preferenceNo: 'Non, le garder',
+      preferenceDoneWith: 'C’est noté : {{name}} prendra sa place dans tes prochaines séances.',
       preferenceDone: 'C’est noté : il ne sera plus proposé dans tes prochaines séances.',
     },
   },
@@ -905,6 +915,10 @@ const fr = {
     average: 'Moyenne 7 jours',
     weeklyChange: 'Évolution sur 7 jours',
     noData: 'Pas encore de pesée. Une par semaine suffit.',
+    adapted: {
+      light_week: 'Programme allégé cette semaine',
+      exercise_change: 'Exercice remplacé après confirmation',
+    },
     recompositionHint: 'En recomposition, la balance bouge peu : le tour de taille et tes performances en disent plus.',
     waist: 'Tour de taille (cm)',
     logWaist: 'Noter mon tour de taille',
@@ -924,8 +938,74 @@ const fr = {
     proposal: 'Proposition',
     advice: 'Conseil',
     apply: 'Appliquer',
-    decline: 'Pas maintenant',
-    revert: 'Revenir à avant',
+    decline: 'Refuser',
+    postpone: 'Pas maintenant',
+    keep: 'Le garder',
+    why: 'Pourquoi ?',
+    whyHide: 'Masquer le pourquoi',
+    whyTitle: 'Ce que le coach a regardé',
+    confirmYes: 'Confirmer',
+    confirmNo: 'Annuler',
+    applyLabel: {
+      light_week: 'Alléger cette semaine',
+      restart: 'Reprendre en douceur',
+      reduce_volume: 'Réduire le volume',
+      easier_variant: 'Essayer la variante',
+      exercise_change: 'Le remplacer',
+    },
+    option: {
+      continue: 'Continuer ainsi',
+      light_week: 'Une semaine allégée',
+      evolve: 'Faire évoluer',
+    },
+    duration: {
+      session: 'Durée : une séance.',
+      week: 'Durée : {{days}} jours, puis retour à ton programme habituel.',
+      weeks: 'Durée : {{weeks}} semaines, puis retour à ton volume habituel.',
+      sessions:
+        'Durée : tes {{sessions}} prochaines séances concernées, {{days}} jours au plus, puis retour à ton programme.',
+      durable: 'Durable : une nouvelle version de ton programme. Tu pourras revenir en arrière.',
+      choice: 'Tu choisis la suite : rien ne change sans ton choix.',
+    },
+    impact: {
+      light_week: 'Les exercices principaux restent, en version allégée, sans hausse de charge.',
+      restart: 'Une série de moins, une charge un cran sous la dernière et un effort modéré ({{rpe}}/10).',
+      reduce_volume: 'Par exemple 4 séries deviennent 3 et 3 deviennent 2 ; jamais moins de {{min}} séries.',
+      easier_variant: 'Mêmes séries et mêmes répétitions ; l’exercice prévu revient ensuite.',
+      exercise_change: 'Les séances déjà faites ne changent pas ; les prochaines suivent la nouvelle version.',
+      cycle_review: 'Continuer ainsi, prévoir une semaine allégée, ou faire évoluer quelques exercices.',
+      cycle_evolve: 'Continuer ainsi, prévoir une semaine allégée, ou faire évoluer : {{list}}.',
+    },
+    confirm: {
+      exercise_change:
+        'C’est un changement durable : une nouvelle version de ton programme. Les séances passées restent telles quelles. On confirme ?',
+    },
+    changed: {
+      restart: 'Reprise en douceur',
+      reduce_volume: 'Volume réduit',
+      easier_variant: 'Variante plus accessible',
+      exercise_change: 'Exercice remplacé dans ton programme',
+      cycle_review: 'Bilan de fin de cycle',
+    },
+    explain: {
+      restart:
+        'Tu as accepté une reprise en douceur après une pause : quelques séances plus légères, puis ton programme reprend.',
+      reduce_volume:
+        'Tu as accepté de réduire le volume pour un temps : une série de moins par exercice, puis retour à ton volume habituel.',
+      easier_variant:
+        'Tu as accepté une variante plus accessible pour quelques séances, puis l’exercice prévu revient.',
+      exercise_change: 'Tu as confirmé ce changement : l’exercice n’est plus proposé dans ton programme.',
+      cycle_review: 'Tu as choisi la suite de ton programme à la fin du cycle.',
+    },
+    effect: {
+      sessions_more_complete:
+        'Après cette adaptation, tes séances ont été mieux complétées ({{days}} jours comparés aux {{days}} jours d’avant).',
+      sessions_less_complete:
+        'Après cette adaptation, tes séances ont été moins souvent complétées ({{days}} jours comparés aux {{days}} jours d’avant). Tu peux revenir en arrière si tu préfères.',
+      fatigue_lower: 'Après cette adaptation, moins de jours de fatigue déclarée qu’avant.',
+      fatigue_higher: 'Après cette adaptation, plus de jours de fatigue déclarée qu’avant.',
+    },
+    revert: 'Revenir en arrière',
     lastChange: 'Pourquoi mon plan a changé ?',
     appliedOn: '{{change}}, depuis le {{date}}.',
     revertedOn: '{{change}} : annulé le {{date}}.',
@@ -940,6 +1020,12 @@ const fr = {
       shorter_sessions: 'Des séances plus courtes',
       tracking_routine: 'Un suivi plus simple',
       progression_review: 'Revoir la progression de tes charges',
+      restart: 'Reprise en douceur : tes {{sessions}} prochaines séances plus légères',
+      reduce_volume: 'Une série de moins par exercice pendant {{weeks}} semaines',
+      easier_variant: 'Variante plus accessible : {{list}}',
+      exercise_change: '{{from}} remplacé par {{to}} dans ton programme',
+      exercise_remove: '{{from}} retiré de ton programme',
+      cycle_review: 'Bilan de ton cycle de {{weeks}} semaines',
     },
     reason: {
       too_slow_loss: 'Ton poids moyen baisse très peu depuis 3 semaines, alors que tu suis bien ton plan.',
@@ -964,6 +1050,28 @@ const fr = {
       fewer_sessions: 'Deux séances non faites deux semaines de suite : un rythme un peu plus léger tient mieux.',
       shorter_sessions:
         'Ces deux dernières semaines, ton plan prévoyait plus de séances que ton rythme actuel : des versions courtes peuvent le rendre plus simple à suivre.',
+      restart:
+        'Ta dernière séance date de {{days}} jours. On peut reprendre en douceur : {{sessions}} séances un peu plus légères pour retrouver tes repères.',
+      reduce_volume:
+        'Sur tes {{of}} dernières séances complètes, {{count}} se sont terminées avec des séries en moins sur plusieurs exercices. On peut retirer une série par exercice pendant {{weeks}} semaines.',
+      easier_misses:
+        'Sur tes {{of}} dernières séances de cet exercice, {{misses}} sont restées sous la fourchette prévue. Une variante plus accessible pendant {{sessions}} séances peut t’aider à progresser.',
+      easier_declared:
+        'Tu as indiqué plusieurs fois que cet exercice était trop difficile. Une variante plus accessible pendant {{sessions}} séances, puis on revient à l’exercice prévu.',
+      easier_group:
+        '{{count}} exercices sont restés difficiles ces dernières séances. Des variantes plus accessibles pendant {{sessions}} séances, puis on revient aux exercices prévus.',
+      exercise_discomfort: 'Cet exercice t’a gêné plusieurs fois. Veux-tu le remplacer dans ton programme ?',
+      exercise_preference:
+        'Tu as remplacé cet exercice {{count}} fois par préférence. Veux-tu le remplacer dans ton programme ?',
+      exercise_too_hard:
+        'Tu as indiqué {{count}} fois que cet exercice restait trop difficile. Veux-tu le remplacer dans ton programme ?',
+      cycle_review: 'Ton cycle de {{weeks}} semaines est terminé. Voici ce qu’il montre : tu choisis la suite.',
+      stagnation_hard:
+        'Sur {{count}} exercice(s), tes résultats sont stables depuis plus de 5 semaines et les dernières séances ont été très dures. On peut alléger cette semaine pour repartir plus frais.',
+      stagnation_persistent:
+        'Sur {{count}} exercice(s), tes résultats sont stables depuis plus de 5 semaines : ça arrive. Dans l’ordre : continuer, revoir ton temps de repos, alléger un peu le volume, changer de variante, ou prévoir une semaine plus légère. Ton alimentation ne change pas pour ça.',
+      fatigue_rest:
+        'Tu as déclaré de la fatigue {{days}} jours cette semaine, avec peu de séances complètes : prends un jour de repos de plus, sans rattraper.',
       simplify_tracking:
         'Peu de repas notés : pèse-toi deux fois par semaine et marque un repas « type » en un geste, cela suffit.',
     },
@@ -989,6 +1097,19 @@ const fr = {
       flag: '{{value}}',
       missedLastWeeks: 'séances non faites {{value}} semaines de suite',
       waistChangeCm: 'tour de taille : {{value}} cm',
+      daysSinceLastSession: '{{value}} jour(s) depuis ta dernière séance',
+      sessionsBefore: '{{value}} séance(s) faite(s) avant la pause',
+      incompleteSessions: '{{value}} séance(s) avec des séries en moins',
+      sessions: 'sur {{value}} séance(s)',
+      minSets: 'jamais moins de {{value}} séries',
+      misses: '{{value}} séance(s) sous la fourchette prévue',
+      occurrences: '{{value}} fois',
+      fullSessions: '{{value}} séance(s) complète(s) en 14 jours',
+      sessionsDone: '{{value}} séance(s) faite(s) pendant le cycle',
+      sessionsPlanned: '{{value}} séance(s) prévue(s) pendant le cycle',
+      progressing: '{{value}} exercice(s) en progrès',
+      stagnating: '{{value}} exercice(s) stable(s)',
+      exercisesReplaced: '{{value}} exercice(s) remplacé(s) après confirmation',
     },
     flag: { fast_weight_loss: 'perte de poids rapide', low_intake: 'repas sous tes repères' },
   },
@@ -1829,6 +1950,20 @@ const fr = {
         flag: 'règle de sécurité',
         missedLastWeeks: 'séances non faites',
         waistChangeCm: 'tour de taille',
+        daysSinceLastSession: 'jours depuis ta dernière séance',
+        sessionsBefore: 'séances faites avant la pause',
+        incompleteSessions: 'séances avec des séries en moins',
+        sessions: 'séances regardées',
+        minSets: 'minimum de séries',
+        misses: 'séances sous la fourchette',
+        occurrences: 'fois où c’est arrivé',
+        fullSessions: 'séances complètes',
+        sessionsDone: 'séances faites',
+        sessionsPlanned: 'séances prévues',
+        progressing: 'exercices en progrès',
+        stagnating: 'exercices stables',
+        exercisesReplaced: 'exercices remplacés',
+        exercises: 'exercices concernés',
       },
     },
     nutrition: {
@@ -1895,6 +2030,11 @@ const fr = {
         not_done: 'Pas encore de série notée sur cet exercice : données insuffisantes pour proposer une charge.',
         held_safety: 'La priorité est de récupérer : on garde la même charge, rien n’est ajouté.',
         held_fatigue: 'Fatigue déclarée aujourd’hui : on garde la même charge.',
+        held_deload: 'Semaine allégée que tu as acceptée : on garde la même charge, sans chercher plus.',
+        held_volume: 'Volume réduit pour un temps : on garde la même charge.',
+        held_break: 'Première séance après une pause : on garde la même charge pour reprendre tes repères.',
+        restart: 'Reprise en douceur : une charge un cran plus bas et le bas de ta plage.',
+        context_adapted: 'Séance au volume réduit : elle ne compte pas comme une baisse de niveau.',
         held_protected: 'On garde la même charge : ta progression passe par la technique et les répétitions.',
         light_day: 'Journée allégée : on garde la charge, sans chercher plus.',
       },

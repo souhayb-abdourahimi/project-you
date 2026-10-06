@@ -64,8 +64,10 @@ export function explainPlanChange(adjustments: Adjustment[]): Explanation | null
     .sort((a, b) => a.decidedAt.localeCompare(b.decidedAt))
     .at(-1);
   if (!latest) return null;
+  // W-5 structural changes: their own sentence (the reason's numbers are not stored with them).
+  const structural = ['restart', 'reduce_volume', 'easier_variant', 'exercise_change', 'cycle_review'];
   return {
-    key: latest.reasonKey,
+    key: structural.includes(latest.changeKey) ? `adaptation.explain.${latest.changeKey}` : latest.reasonKey,
     params: {
       ...latest.evidence,
       ...(latest.from !== null ? { from: latest.from } : {}),
