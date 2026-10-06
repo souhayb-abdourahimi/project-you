@@ -530,3 +530,31 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
   - tout faire accepter, exercice par exercice : refusé (friction à chaque séance pour des ajustements mineurs et réversibles) ;
   - tout appliquer automatiquement, y compris les changements de programme : refusé (l'utilisateur doit choisir ce qui change la structure de son entraînement).
 - **Date** : 2026-10-06
+
+## D-037 — Workout Coach W-5 : adaptations structurelles (proposées, acceptées, suivies)
+
+- **Contexte** : W-5 demandé par Souhayb le 2026-10-06 (« Passe maintenant à W-5 uniquement »), sous la règle D-036 : un changement structurel est une proposition explicite, acceptée, appliquée, historisée. Détail : `docs/TRAINING_STRUCTURE.md`.
+- **Décision** :
+  - **Un seul moteur.** Les règles structurelles sont des règles de l'Adaptation Engine (`adapt()`, `journey/structural.ts`), nourries par des signaux structurés (`StructuralSignals`, assemblés depuis les faits stockés). Pas de second moteur, pas de second journal.
+  - **Tout changement structurel est `mode: 'proposed'`**, sans exception : semaine allégée, reprise, volume réduit, variante plus facile, changement durable d'exercice, bilan de fin de cycle, fréquence. Seule la règle micro `held_break` (aucune hausse de charge après 14 jours sans séance) s'applique seule : c'est un maintien, donc une micro-progression au sens de D-036.
+  - **Journal append-only.** Chaque réponse (appliquer, pas maintenant, refuser, revenir en arrière) est une nouvelle ligne de `adjustments` avec l'id stable de la proposition. La décision en vigueur est la plus récente (puis l'id) ; aucune ligne n'est réécrite (trigger SQL `adjustments_immutable`). Revenir en arrière = nouvelle ligne `reverted`, toujours postérieure.
+  - **Portée connue avant le oui** : séance, séances (N), semaine, semaines, durable. Pas d'adaptation sans fin connue, sauf les changements durables, qui créent une version et se défont par une nouvelle version.
+  - **Temporaire = nouvelle prescription, durable = nouvelle version.** Volume réduit, variante plus facile et reprise re-prescrivent les séances pas commencées, liées à la décision (`workout_sessions.adjustment_id`, figé). Changement durable d'exercice et évolution de fin de cycle publient une nouvelle version (`program.reason.adaptation`, `program.reason.cycle`, `training_programs.rotated_exercise_ids`). La semaine allégée reste la variante allégée du jour + blocage des hausses : le programme n'est jamais transformé entier.
+  - **Split = fréquence.** Le moteur dérive le split de la fréquence ; pas de type `split_change` distinct.
+  - **Raisons temporaires** (machine prise, matériel absent, pas le temps) : jamais un changement de programme, jamais une préférence.
+  - **Gêne** : une question (« Cet exercice t'a gêné plusieurs fois. Veux-tu le remplacer dans ton programme ? »), jamais un diagnostic ; la garde de ton refuse désormais « Tu as une blessure ».
+  - **Stagnation** : conseil d'abord (ordre de prudence) ; semaine allégée proposée seulement si le plateau dure et que les séances sont très dures ; rotation d'exercices seulement au bilan de fin de cycle ; jamais de changement d'alimentation pour une stagnation d'entraînement.
+  - **Fin de cycle** : un bilan avec options (continuer, semaine allégée, faire évoluer), jamais une semaine allégée imposée ; le cycle redémarre à chaque réponse.
+  - **Refus respecté** (28 jours, et de nouvelles occurrences pour un exercice), « pas maintenant » ≠ refus (7 jours), écart de 14 jours après une adaptation terminée.
+  - **Multi-appareil** : deux réponses contradictoires hors ligne gardent leurs deux lignes ; la plus récente gagne partout ; les prescriptions convergent ensuite.
+  - **`keptExercises`** : pas de table ; « le garder » est une décision `declined` synchronisée. La question de fin de séance écrit la même décision que le Daily Coach.
+  - **Effet** : avant/après sur la même durée (prévu, fait, fatigue), observations sans causalité.
+  - **Catalogue** : relations `EASIER_VARIANTS` par id, testées (même mouvement, jamais plus difficile).
+- **Alternatives** :
+  - nouvelle table `structural_adaptations` / `kept_exercises` : refusé (le journal existant suffit ; une table de plus = RLS, export, sync, suppression en double) ;
+  - mettre à jour la décision en place pour « revenir en arrière » : refusé (perd l'historique, conflit multi-appareil silencieux) ;
+  - semaine allégée comme réécriture de toute la semaine prescrite : refusé (le programme entier serait transformé ; la variante du jour existe déjà) ;
+  - reprise après pause comme nouvelle version : refusé (temporaire, deux séances) ;
+  - changement durable via le profil (`refusedExerciseIds`, W-3) : remplacé par la décision (traçable, réversible, synchronisée, liée à la version).
+- **Trade-offs** : seuils `STRUCTURE` à faire relire (liste dans `docs/TRAINING_STRUCTURE.md` §13) ; une portée « séances » terminée tôt bloque la reproposition jusqu'à son maximum + 14 jours ; l'appareil qui n'est pas à jour (avant W-5) ne peut plus réécrire une décision (refus serveur) : mettre à jour tous les appareils ; la migration `20261006000003_structural_adaptations.sql` doit être appliquée sur Supabase avant toute version de l'app contenant W-5 ; l'effet n'est qu'observé (pas d'apprentissage des règles avant W-6).
+- **Date** : 2026-10-06

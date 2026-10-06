@@ -51,6 +51,15 @@ Programmes versionnés et prescriptions immuables : `training_programs`, `planne
 
 Aucune nouvelle migration en W-2. Les tables d'entraînement sont désormais écrites par l'app : ordre de push `training_programs` → `workout_sessions` → `planned_exercises` → `exercise_logs` / `exercise_substitutions` ; `training_programs` et `planned_exercises` ne sont jamais supprimées par la sync (`deleteOnMissing: false`), seulement par l'effacement Privacy Center ou la suppression du compte. Ids stables calculés sur l'appareil (upserts idempotents). L'app appelle `attach_reconstructed_training_history()` avant le pull tant qu'une séance n'a ni programme ni source. **La migration W-1 doit être appliquée sur Supabase avant de publier une version de l'app qui contient W-2.**
 
+## Migration `20261006000003_structural_adaptations.sql` (W-5, D-037)
+
+Aucune nouvelle table (audit : le journal `adjustments`, les versions et les prescriptions suffisent).
+
+- `adjustments` : `proposal_id` (id stable de la proposition, format contrôlé), `scope` (`session`, `sessions`, `week`, `weeks`, `durable`), `effective_to` (dernier jour inclus), `session_count` (1–12) ; contraintes de cohérence (fin ≥ début, `sessions` ⇒ nombre, `durable` ⇒ pas de fin) ; index `(user_id, proposal_id)` ; trigger `adjustments_immutable` : une décision n'est jamais réécrite (seuls `updated_at` / `deleted_at` bougent ; un upsert identique d'un second appareil passe).
+- `workout_sessions.adjustment_id` : la décision structurelle suivie par la prescription (référence souple), figée avec elle (`workout_sessions_prescription_immutable` recréé).
+- `training_programs.rotated_exercise_ids` : rotation de fin de cycle, paramètre figé de la version (`training_programs_immutable` recréé), seulement pour `source = 'engine'`.
+- RLS inchangée (politiques propriétaire existantes) ; export et suppression (Centre de confidentialité) lisent les lignes entières. Lignes d'avant W-5 valides telles quelles (colonnes nulles). Tests : `supabase/tests/training.sql` (W-5), `sync.db.test.ts`.
+
 ## Migration `20261006000002_progression_v2.sql` (W-4, D-035)
 
 `planned_exercises` : contrainte `progression_action` élargie aux actions W-4 (`increase_load`, `increase_reps`, `maintain`, `retry`, `reduce_load`, `no_recommendation`), les valeurs W-2 restent valides pour l'historique ; nouvelles colonnes `target_reps` (répétitions ou secondes visées, dans la plage prescrite), `progression_confidence` (`insufficient` / `low` / `medium` / `high`) et `progression_params` (objet JSON ≤ 512 octets : les faits de la raison, jamais du texte libre), interdites sans action. Figées comme le reste de la ligne par le trigger d'immuabilité de W-1. Aucune nouvelle table, aucune nouvelle politique (RLS de `planned_exercises` inchangée). Appliquer une progression au futur = nouvelle ligne `workout_sessions` + ses `planned_exercises`, l'ancienne passe `superseded`. Tests : `supabase/tests/training.sql`, `sync.db.test.ts`. **À appliquer sur Supabase avant toute version de l'app contenant W-4** (sinon l'envoi des nouvelles prescriptions échoue).

@@ -97,6 +97,10 @@ Pas utilisés : 120 kcal (`kcalStep`) et 100 kcal (`smallKcalStep`, gain trop ra
 
 Bornes : jamais plus de ±150 kcal/jour par adaptation, jamais sous `floorKcal`, jamais au-dessus du maintien + 20 % en prise de masse. Le décalage calorique accepté est stocké (`adjustments`) et appliqué par le moteur nutrition, qui revérifie le plancher.
 
+## 5 bis. Adaptations structurelles du Workout Coach (W-5, D-037)
+
+Les règles d'entraînement structurelles (reprise, semaine allégée, volume réduit, variante plus facile, changement durable d'exercice, bilan de fin de cycle) sont des règles de ce moteur, appliquées après la branche sécurité : `journey/structural.ts`. Chaque réponse est une ligne du journal (§9), avec l'id stable de la proposition et sa portée. Détail, seuils et écrans : `docs/TRAINING_STRUCTURE.md`.
+
 ## 6. Plateau (stagnation)
 
 Signal `plateau`, **jamais avant 28 jours** de parcours, sur une fenêtre de **21 jours** :
