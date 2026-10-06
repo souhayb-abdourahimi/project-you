@@ -86,6 +86,18 @@ describe('DailyPlan', () => {
     );
   });
 
+  it('W-6: a session off plan is offered on an ordinary rest day only, never as an item', () => {
+    const rest = buildDailyPlan(input({ day: restDay }));
+    expect(rest.offPlan).toBe(true);
+    expect(kinds(rest)).not.toContain('workout');
+    expect(buildDailyPlan(input()).offPlan).toBe(false);
+    expect(buildDailyPlan(input({ day: restDay, completed: { variant: 'full' } })).offPlan).toBe(false);
+    expect(buildDailyPlan(input({ day: restDay }, { safety: { flags: ['low_intake'] } })).offPlan).toBe(false);
+    expect(buildDailyPlan(input({ day: restDay }, { fatigue: 'high' })).offPlan).toBe(false);
+    expect(buildDailyPlan(input({ day: restDay }, { comeback: true })).offPlan).toBe(false);
+    expect(buildDailyPlan(input({ day: restDay, dayLog: { date: TODAY, mode: 'difficult' } })).offPlan).toBe(false);
+  });
+
   it('first day: one simple objective and a first-day message', () => {
     const p = buildDailyPlan(input({ counts: { sessions: 0, activeDays: 0, weeks: 0 } }, { startedOn: TODAY }));
     expect(p.kind).toBe('first_day');
