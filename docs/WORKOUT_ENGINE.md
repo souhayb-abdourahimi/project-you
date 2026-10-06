@@ -119,11 +119,11 @@ Tous les seuils ci-dessous sont des **paramètres de conception** (constante `WO
 
 ### 4.3 Saisie pendant la séance
 
-- La séance démarre (`started_at`) à la première série ou au bouton « Commencer ».
+- La séance démarre (`started_at`) quand l'écran de séance montre la prescription le jour même ou après (D-033).
 - Chaque série : répétitions **ou** secondes selon l'unité, charge si l'exercice est chargé, RPE facultatif. Une série peut être corrigée ou supprimée (A5).
 - Remplacement : l'utilisateur **choisit** parmi les alternatives (A7). Raisons (liste validée, D-031) : machine prise (`busy_equipment`), mouvement gênant / inconfort (`discomfort`), technique inconnue (`cant_do`), trop difficile aujourd'hui (`too_hard_today`), matériel indisponible (`no_equipment`), manque de temps (`no_time`), préférence personnelle (`preference`), autre (`other`) ; `easier`, `harder` et `dislike` restent pour l'historique. Machine prise ou matériel indisponible → alternatives sans ce matériel ; gêne, technique inconnue ou trop difficile → alternatives plus faciles, jamais plus difficiles.
 - **Gêne / douleur** : le message existant s'affiche (arrêter l'exercice si la gêne est importante ou persiste, en parler à un professionnel de santé). Jamais de diagnostic, jamais d'encouragement à continuer malgré la douleur, aucune progression proposée sur cet exercice ce jour-là.
-- Fin de séance : difficulté ressentie sur 5 niveaux **en mots** : Très facile, Facile, Correct, Difficile, Très difficile (stockée 1–5 ; une conversion interne vers un RPE est possible pour le moteur, l'utilisateur n'a jamais à connaître le RPE) ; fatigue du jour, écrite dans `daily_checkins` (une seule source pour la fatigue, lue par la sécurité) ; notes libres facultatives (`notes`, déjà présentes). Tout est facultatif.
+- Fin de séance : difficulté ressentie sur 5 niveaux **en mots** : Très facile, Facile, Correct, Difficile, Très difficile (stockée 1–5 ; l'utilisateur n'a jamais à connaître le RPE). La fatigue du jour n'est **pas** redemandée : elle reste dans le Journey (`daily_checkins`, une seule source, lue par la sécurité). Tout est facultatif. Réalisé en W-3 : voir §8.
 - Une séance terminée sans aucune série reste « faite » si l'utilisateur la termine (on le croit), mais la comparaison la marque « non détaillée » : elle compte pour la régularité, pas pour la progression.
 
 ### 4.4 Comparaison prévu / fait (`training/compare.ts`, dérivé)
@@ -202,7 +202,7 @@ Chaque étape : code + tests unitaires + `npm run check` ; migrations avec tests
 |---|---|---|
 | **W-1** Modèle de données ✓ (2026-10-02) | migration `20261002000001_workout_coach_foundation.sql` : `training_programs` (versions publiées immuables), `workout_sessions` étendue (prescription, raison, adaptation du jour, report, difficulté), `planned_exercises` (prescription immuable par variante), `exercise_logs` et `exercise_substitutions` reliés à la prescription, raisons élargies, `adjustments.postponed`, rattachement « reconstitué » ; RLS ; `training/program.ts` (types et fonctions pures) ; tests | A1, A2 (modèle) |
 | **W-2** Stockage local + sync ✓ (2026-10-02, D-032, D-033) | `py.data.v1` v4 ; figer la semaine (`week.ts`) ; projection / fusion des nouvelles tables ; appel du rattachement reconstitué ; reports et suppression de séries synchronisés ; conflit de deux versions publiées hors connexion | A1, A2, A5, A9, A12 |
-| **W-3** Séance (UI fonctionnelle, pas finale) | démarrer, saisir / corriger / supprimer une série, secondes, choisir l'alternative et la raison, fin de séance (difficulté en mots, fatigue, notes). **Corrige les deux bugs confirmés** : la fatigue n'est plus codée en dur à « normal » dans `ExerciseCard` (elle vient de `JourneyState`) ; une séance courte annoncée à 20 min exécute la prescription de 20 min (`adapted_minutes`), plus 15 min systématiquement | A3, A4, A5, A6, A7 |
+| **W-3** Séance ✓ (2026-10-06, D-034, en attente de validation) | démarrer, saisir / corriger / supprimer une série, secondes, choisir l'alternative et la raison, fin de séance (difficulté en mots ; la fatigue reste dans le Journey ; pas de notes libres). **Corrige les deux bugs confirmés** : `ExerciseCard` supprimé, plus de fatigue codée en dur ni de décision de progression pendant la séance (fatigue et sécurité lues dans `JourneyState`) ; la durée annoncée est celle qui est construite et stockée (`adapted_minutes`). Détail §8 | A3, A4, A5, A6, A7 |
 | **W-4** Comparaison + progression v2 | `compare.ts` (prévu / fait, raison déclarée) ; progression avec fatigue, sécurité, variante, stagnation, gêne ; charge proposée figée dans la prescription | A8 |
 | **W-5** Adaptation + mémoire | règles §4.6 dans `journey/adaptation.ts` (`APPLICABLE_CHANGES` += `session_minutes`, `exercise_swap`) ; fin de cycle accepter / refuser / reporter ; question de confirmation des préférences | A10, A11 |
 | **W-6** Intégrations | Daily Coach sur la séance figée ; Programme (semaine allégée, reports, historique) ; Progress Journey (prévu / fait en faits) ; `explain.ts` (« Pourquoi cet exercice ? », « Pourquoi cette charge ? ») ; notifications : aucun nouveau déclencheur prévu (sinon migration des contraintes de `notification_history`) | A4 |
@@ -221,3 +221,62 @@ Chaque étape : code + tests unitaires + `npm run check` ; migrations avec tests
 6. **Vérité historique des conflits** (2026-10-02, D-033) : le serveur gagne pour le futur ; la prescription effectivement utilisée gagne pour l'histoire. Une séance ouverte, avec une série, un remplacement, une issue ou une difficulté garde sa prescription, même si sa version perd un conflit de sync (la version est alors archivée, fermée). Détail : `docs/TRAINING_ARCHITECTURE.md` §5.
 
 Les seuils des §4.5–4.6 restent des paramètres de conception à faire relire, comme ceux des phases précédentes.
+
+---
+
+## 8. W-3 : la séance réelle (2026-10-06, D-034)
+
+### 8.1 Parcours
+
+1. **Ouverture** (`/workout/[date]`) : la prescription enregistrée de la variante choisie est chargée telle quelle (aucun recalcul), `started_at` posé selon D-033. Fonctionne hors connexion (tout est sur l'appareil). Prescription absente → « Séance indisponible », jamais une séance inventée.
+2. **En-tête** : nom de la séance, objectif (raison structurée), durée estimée, progression (séries et exercices), variante (« Version courte, 15 min », « Version allégée ») et, un jour difficile, la variante du Daily Coach.
+3. **Exercice en cours** : nom, « Pourquoi cet exercice ? » (raison W-1 + consignes, jamais un texte généré), séries prévues, fourchette, charge proposée, repos, « Dernière fois : 67,5 kg × 10 » (réel), indice discret (cible, dernière fois, garder la charge, série très difficile).
+4. **Saisie** : charge et répétitions (ou secondes) avec −/+ et clavier numérique, ressenti facultatif, « Enregistrer la série » ; chaque série se corrige ou se supprime. Le minuteur de repos démarre.
+5. **Actions** : remplacer, « Je ne fais pas cet exercice », exercice suivant, liste des exercices, terminer.
+6. **Fin** : tout fait → un geste ; sinon une confirmation qui dit ce qui reste, raison facultative (manque de temps, fatigue, gêne, autre) → séance terminée plus tôt.
+7. **Résumé** : durée réelle (ouverture → fin), exercices faits, séries, remplacements et leur raison, exercices non faits, records réels ; « Comment était la séance ? » en 5 mots ; question de préférence si elle s'applique. Aucune calorie, aucune estimation.
+
+### 8.2 Statuts
+
+| Objet | Valeurs | Stocké ? |
+|---|---|---|
+| Exercice | à faire, en cours, fait, non fait | dérivé (séries + `exercise_reports.not_performed`) |
+| Séance | prévue, en cours, terminée, partielle, terminée plus tôt, sautée, remplacée | dérivé ; « terminée plus tôt » = `completed` + `outcome_reason` |
+
+### 8.3 Durées (source unique : `training/durations.ts`)
+
+| Constante | Valeur | Utilisée par |
+|---|---|---|
+| `short` | 15 min | « J'ai 15 minutes », reprise, créneau court |
+| `minimal` | 20 min | journée difficile, « pas envie » |
+| `shortest` | 10 min | plancher d'une séance (en dessous : marche ou mobilité) |
+| `choices` | 10, 15, 20, 30, 45, 60 | « J'ai peu de temps » |
+| `shortRestSeconds` | 60 s | repos maximal d'une séance courte |
+| `shortWarmUpMinutes` | 4 min | échauffement compté dans une séance courte |
+
+Annoncé = prescrit = exécuté : le Daily Coach (`plannedVariantMinutes`), l'écran d'adaptation et l'écran de séance passent les mêmes minutes à `adaptSession`, qui les stocke dans `adapted_minutes`.
+
+### 8.4 Courte et allégée
+
+| | Courte | Allégée |
+|---|---|---|
+| But | tenir dans le temps disponible | une journée plus douce |
+| Contenu | exercices essentiels dans l'ordre, remplacements maison si besoin | mêmes exercices, ~60 % des séries |
+| Intensité | inchangée (RPE de la prescription) | RPE ≤ 6 |
+| Repos | ≤ 60 s | inchangé |
+| Charges | gardées | gardées, sauf une hausse prévue (retirée) |
+| Durée | minutes demandées | estimation des lignes construites |
+
+### 8.5 Raisons et réponses
+
+| Raison | Réponse |
+|---|---|
+| Machine prise, matériel indisponible | alternatives sans ce matériel ; ponctuel, jamais une préférence |
+| Mouvement gênant / inconfort | message prudent, sans diagnostic ; remplacer, ne pas faire l'exercice ou terminer la séance ici ; jamais « continue » |
+| Technique inconnue | consignes de l'exercice et alternatives plus simples ; jamais une préférence |
+| Trop difficile aujourd'hui | alternatives plus faciles |
+| Manque de temps, autre | alternatives |
+| Préférence personnelle | alternatives ; répétée → question → confirmation → exclue du profil |
+
+Les anciennes raisons (`dislike`, `easier`, `harder`) restent lisibles dans l'historique.
+

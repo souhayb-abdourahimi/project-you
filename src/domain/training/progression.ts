@@ -2,10 +2,13 @@ import type { Rationale } from '../shared/rationale';
 import { getExercise } from './exercises';
 
 export interface LoggedSet {
+  /** Repetitions; 0 for a set held in time (then `seconds` is set). */
   reps: number;
   loadKg: number;
   /** Rate of perceived exertion 1–10, optional. */
   rpe?: number;
+  /** Duration of a set held in time (W-3); absent for a set counted in repetitions. */
+  seconds?: number;
 }
 
 export interface SessionLog {

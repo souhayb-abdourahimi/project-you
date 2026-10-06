@@ -91,11 +91,17 @@ test('first visit: onboarding → today → meals → inventory → workout → 
   await openTab(page, 'Aujourd’hui');
   await button(page, 'J’ai 15 minutes').click();
   await expect(page.getByText(/Peu de temps/)).toBeVisible();
-  await button(page, 'Séance courte (15–20 min)').click();
-  await expect(page.getByRole('heading', { name: 'Full body B · Version courte' })).toBeVisible();
+  // W-3 (D-034): the duration announced is the one the short session is built for.
+  await button(page, 'Séance courte (15 min)').click();
+  await expect(page.getByRole('heading', { name: 'Full body B' })).toBeVisible();
+  await expect(text(page, 'Version courte')).toBeVisible();
+  await expect(text(page, 'Environ 15 min')).toBeVisible();
   await page.getByLabel('Répétitions').first().fill('10');
   await button(page, 'Valider la série').click();
   await button(page, 'Terminer la séance').click();
+  await button(page, 'Terminer maintenant').click();
+  await expect(text(page, 'Séance terminée')).toBeVisible();
+  await button(page, 'Retour à aujourd’hui').click();
   await expect(page).not.toHaveURL(/workout/);
 
   // Progress: weigh-in, then weekly review.

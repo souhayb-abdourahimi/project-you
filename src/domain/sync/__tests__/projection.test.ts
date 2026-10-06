@@ -50,6 +50,7 @@ function fullState(): SyncableState {
     ...week,
     setLogs: { ...base.setLogs, [prescribed]: { [first.exerciseId]: [{ reps: 8, loadKg: 20 }] } },
     sessionDifficulty: { [prescribed]: 3 },
+    exerciseReports: { [prescribed]: { [first.exerciseId]: { difficulty: 4 } } },
   };
 }
 
@@ -336,5 +337,105 @@ describe('applyRemote', () => {
     const after = applyRemote(source, deleted, USER, syncedFor(source));
     expect(after.rejected).toBe(0);
     expect(after.state.inventory.map((i) => i.id)).not.toContain(source.inventory[0].id);
+  });
+});
+
+describe('workout session facts (W-3)', () => {
+  const PRESCRIBED = sessionKey('2026-09-28', 0);
+  const LEGACY = sessionKey('2026-09-30', 0);
+
+  /** fullState plus a hold, a not-performed report and a session stopped early. */
+  function sessionState(): SyncableState {
+    const base = fullState();
+    const first = Object.keys(base.setLogs[PRESCRIBED])[0];
+    return {
+      ...base,
+      setLogs: {
+        ...base.setLogs,
+        [PRESCRIBED]: { ...base.setLogs[PRESCRIBED], plank: [{ reps: 0, seconds: 40, loadKg: 0 }] },
+      },
+      exerciseReports: {
+        [PRESCRIBED]: {
+          [first]: { difficulty: 4 },
+          other_exercise: { notPerformed: true, notPerformedReason: 'no_time' },
+        },
+      },
+      completedSessions: [
+        ...base.completedSessions,
+        {
+          date: '2026-09-28',
+          sessionIndex: 0,
+          variant: 'full',
+          completedAt: '2026-09-28T19:00:00.000Z',
+          stopped: 'pain',
+        },
+      ],
+    };
+  }
+
+  it('projects a hold in seconds, the reports and the reason a session stopped', () => {
+    const p = project(sessionState(), USER);
+    const hold = [...p.exercise_logs.values()].find((r) => r.exercise_id === 'plank')!;
+    expect(hold).toMatchObject({ reps: null, seconds: 40, load_kg: 0 });
+    const reports = [...p.exercise_reports.values()];
+    expect(reports.map((r) => [r.not_performed, r.not_performed_reason, r.difficulty]).sort()).toEqual([
+      [false, null, 4],
+      [true, 'no_time', null],
+    ]);
+    const session = [...p.workout_sessions.values()].find(
+      (r) => r.scheduled_for === '2026-09-28' && r.session_index === 0,
+    )!;
+    expect(session).toMatchObject({ status: 'completed', outcome_reason: 'pain' });
+  });
+
+  it('round trip: seconds, reports and stopped come back identical, nothing to push back', () => {
+    const source = sessionState();
+    const { state, synced, rejected } = applyRemote(emptyState(), asServer(source), USER, {});
+    expect(rejected).toBe(0);
+    expect(state.setLogs[PRESCRIBED].plank).toEqual([{ reps: 0, seconds: 40, loadKg: 0, rpe: undefined }]);
+    expect(state.exerciseReports).toEqual(source.exerciseReports);
+    expect(state.completedSessions.find((c) => c.date === '2026-09-28')).toMatchObject({ stopped: 'pain' });
+    expect(diff(project(state, USER), synced)).toEqual({ upserts: [], deletes: [] });
+  });
+
+  it('a corrected set list deletes the extra rows of a live session, and only of a live session', () => {
+    const state = sessionState();
+    const synced = syncedFor(state);
+    const fewer = {
+      ...state,
+      setLogs: { ...state.setLogs, [LEGACY]: { goblet_squat: [state.setLogs[LEGACY].goblet_squat[0]] } },
+      exerciseReports: { [PRESCRIBED]: {} },
+    };
+    const plan = diff(project(fewer, USER), synced);
+    expect(plan.deletes.map((d) => d.table).sort()).toEqual(['exercise_logs', 'exercise_reports', 'exercise_reports']);
+    // A session gone from the device (not loaded, account switch) never deletes its history.
+    const gone = { ...state, sessionIds: {}, setLogs: {}, exerciseReports: {}, completedSessions: [] };
+    const none = diff(project(gone, USER), synced).deletes.filter((d) =>
+      ['exercise_logs', 'exercise_reports'].includes(d.table),
+    );
+    expect(none).toEqual([]);
+  });
+
+  it('pulls a deletion made on another device: the set is removed and the list compacted, the report removed', () => {
+    const source = sessionState();
+    const synced = syncedFor(source);
+    const server = asServer(source);
+    const first = server.exercise_logs!.find((r) => r.exercise_id === 'goblet_squat' && r.set_index === 0)!;
+    server.exercise_logs = server.exercise_logs!.map((r) =>
+      r === first ? { ...r, deleted_at: '2026-09-30T21:00:00.000Z' } : r,
+    );
+    server.exercise_reports = server.exercise_reports!.map((r) =>
+      r.not_performed ? { ...r, deleted_at: '2026-09-30T21:00:00.000Z' } : r,
+    );
+    const { state } = applyRemote(source, server, USER, synced);
+    expect(state.setLogs[LEGACY].goblet_squat).toEqual([{ reps: 9, loadKg: 16, rpe: undefined }]);
+    expect(Object.values(state.exerciseReports![PRESCRIBED])).toEqual([{ difficulty: 4 }]);
+  });
+
+  it('rejects an invalid report (difficulty out of range, unknown reason)', () => {
+    const server = asServer(sessionState());
+    server.exercise_reports = server.exercise_reports!.map((r) => ({ ...r, difficulty: 9 }));
+    const { rejected } = applyRemote(emptyState(), server, USER, {});
+    expect(rejected).toBeGreaterThan(0);
   });
 });

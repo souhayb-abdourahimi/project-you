@@ -167,6 +167,47 @@ select pg_temp.expect_error($s$
 update public.exercise_logs set reps = 9 where session_id = '00000000-0000-0000-0000-0000000001b1' and exercise_id = 'goblet_squat';
 select pg_temp.expect((select reps from public.exercise_logs where exercise_id = 'goblet_squat') = 9, 'a set done can be corrected');
 
+-- W-3 (D-034): the session experience.
+-- A set removed by a correction is soft-deleted (the sync's deletion), never rewritten in place.
+update public.exercise_logs set deleted_at = now() where session_id = '00000000-0000-0000-0000-0000000001b1' and exercise_id = 'plank';
+select pg_temp.expect((select count(*) from public.exercise_logs where exercise_id = 'plank' and deleted_at is not null) = 1, 'a corrected-away set is soft-deleted');
+-- "Je ne fais pas cet exercice": the prescription stays, the fact is recorded with its reason.
+insert into public.exercise_reports (user_id, session_id, planned_exercise_id, exercise_id, not_performed, not_performed_reason)
+values ('00000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-0000000001b1', '00000000-0000-0000-0000-0000000001c2', 'push_up', true, 'discomfort');
+select pg_temp.expect(
+  (select count(*) from public.exercise_reports r join public.planned_exercises p on p.id = r.planned_exercise_id
+   where r.not_performed and p.exercise_id = 'push_up') = 1
+  and (select count(*) from public.planned_exercises where id = '00000000-0000-0000-0000-0000000001c2') = 1,
+  'an exercise not performed is a fact; its prescription is kept');
+-- Felt difficulty of one exercise; a second device pushing the same report upserts it.
+insert into public.exercise_reports (user_id, session_id, planned_exercise_id, exercise_id, difficulty)
+values ('00000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-0000000001b1', '00000000-0000-0000-0000-0000000001c1', 'goblet_squat', 4)
+on conflict (session_id, exercise_id) do update set difficulty = excluded.difficulty;
+insert into public.exercise_reports (user_id, session_id, planned_exercise_id, exercise_id, difficulty)
+values ('00000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-0000000001b1', '00000000-0000-0000-0000-0000000001c1', 'goblet_squat', 5)
+on conflict (session_id, exercise_id) do update set difficulty = excluded.difficulty;
+select pg_temp.expect((select difficulty from public.exercise_reports where exercise_id = 'goblet_squat') = 5, 'one report per exercise of a session, correctable');
+select pg_temp.expect_error($s$
+  insert into public.exercise_reports (user_id, session_id, exercise_id) values ('00000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-0000000001b1', 'lunge')$s$,
+  '23514', 'a report always says something');
+select pg_temp.expect_error($s$
+  insert into public.exercise_reports (user_id, session_id, exercise_id, difficulty, not_performed_reason)
+  values ('00000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-0000000001b1', 'lunge', 3, 'no_time')$s$,
+  '23514', 'a reason only goes with "not performed"');
+select pg_temp.expect_error($s$
+  insert into public.exercise_reports (user_id, session_id, exercise_id, not_performed, not_performed_reason)
+  values ('00000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-0000000001b1', 'lunge', true, 'lazy')$s$,
+  '23514', 'reasons come from the closed list');
+select pg_temp.expect_error($s$
+  insert into public.exercise_reports (user_id, session_id, exercise_id, difficulty)
+  values ('00000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-0000000001b1', 'lunge', 6)$s$,
+  '23514', 'exercise difficulty stays on the 1–5 scale');
+-- A session stopped early: completed, with its reason (never a failure status).
+update public.workout_sessions set outcome_reason = 'pain' where id = '00000000-0000-0000-0000-0000000001b1';
+select pg_temp.expect(
+  (select status = 'completed' and outcome_reason = 'pain' from public.workout_sessions where id = '00000000-0000-0000-0000-0000000001b1'),
+  'a session stopped early is completed with its reason');
+
 -- 4. Profile change → v2; v1 and its prescription are untouched.
 update public.training_programs set status = 'superseded', effective_to = '2026-10-11' where id = '00000000-0000-0000-0000-0000000001a1';
 insert into public.training_programs (id, user_id, lineage_id, version, source, status, reason_key, engine_version, goal, split,
@@ -287,6 +328,14 @@ select pg_temp.expect_error($s$
   insert into public.exercise_substitutions (user_id, session_id, planned_exercise_id, from_exercise_id, to_exercise_id, reason)
   values ('00000000-0000-0000-0000-00000000000d', '00000000-0000-0000-0000-0000000001e1', '00000000-0000-0000-0000-0000000001c1', 'a', 'b', 'other')$s$,
   '42501', 'D cannot link a replacement to C prescription');
+select pg_temp.expect_error($s$
+  insert into public.exercise_reports (user_id, session_id, planned_exercise_id, exercise_id, difficulty)
+  values ('00000000-0000-0000-0000-00000000000d', '00000000-0000-0000-0000-0000000001e1', '00000000-0000-0000-0000-0000000001c1', 'goblet_squat', 3)$s$,
+  '42501', 'D cannot link a report to C prescription');
+select pg_temp.expect_error($s$
+  insert into public.exercise_reports (user_id, session_id, exercise_id, difficulty)
+  values ('00000000-0000-0000-0000-00000000000d', '00000000-0000-0000-0000-0000000001b1', 'goblet_squat', 3)$s$,
+  '42501', 'D cannot attach a report to C session');
 commit;
 
 reset role;
@@ -295,6 +344,7 @@ select pg_temp.expect((select count(*) from public.planned_exercises where user_
 -- Privacy Center order (CATEGORY_TABLES.workouts): children first, then sessions, then programs.
 begin;
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
+delete from public.exercise_reports where user_id = '00000000-0000-0000-0000-00000000000c';
 delete from public.exercise_substitutions where user_id = '00000000-0000-0000-0000-00000000000c';
 delete from public.exercise_logs where user_id = '00000000-0000-0000-0000-00000000000c';
 delete from public.planned_exercises where user_id = '00000000-0000-0000-0000-00000000000c';

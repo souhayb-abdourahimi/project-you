@@ -92,6 +92,10 @@ Une ligne par exercice prescrit et par **variante** (`full`, `short`, `light`) :
 - `exercise_logs` : contrainte « répétitions **ou** secondes » (la colonne `seconds` existait, inutilisée). Les séries restent corrigibles : ce sont des faits saisis, pas des prescriptions.
 - `exercise_substitutions.reason` : liste fermée élargie (`REPLACEMENT_REASONS`, `src/domain/training/replacement.ts`) : `dislike` (historique), `cant_do` (technique inconnue), `no_equipment` (matériel indisponible), `easier`, `harder`, `busy_equipment` (machine prise), `discomfort` (mouvement gênant / inconfort), `too_hard_today`, `no_time`, `preference`, `other`.
 
+### 2.4 bis `exercise_reports` (nouvelle, W-3, D-034)
+
+Une ligne par exercice **prescrit** d'une séance quand l'utilisateur a déclaré quelque chose : `not_performed` (« Je ne fais pas cet exercice ») et sa raison (liste fermée des raisons de remplacement), `difficulty` 1–5 (en mots dans l'app). Unique `(session_id, exercise_id)`, `planned_exercise_id` vers la prescription, RLS propriétaire + politiques restrictives (séance et prescription du même utilisateur). La prescription reste inchangée : le fait est à côté. Une séance terminée plus tôt est `completed` avec `outcome_reason`. Les séries corrigées sont supprimées par `deleted_at` (déjà présent).
+
 ### 2.5 `adjustments` (statut élargi)
 
 `status` accepte `postponed` (« plus tard ») : la semaine allégée de fin de cycle peut être acceptée, refusée ou reportée, jamais imposée. Les décisions d'entraînement passent par l'Adaptation Engine existant (`kind` `training` / `reduce_load`, nouvelles `change_key` en W-5).
@@ -216,12 +220,14 @@ usePlan (ouverture de l'app)
 useJourney → DailyPlan : séance du jour = plannedSessions[aujourd'hui]
   └─ adaptation du jour (courte / allégée / semaine allégée / repos) choisie par le coach ou l'utilisateur
        └─ avant le début : adaptPrescription ajoute les exercices de la variante (adapted_minutes, adaptation_reason) ; la prescription complète ne bouge pas
-écran séance (UI fonctionnelle)
-  ├─ « Commencer » ou 1re série → started_at
-  ├─ série : session.logSet / editSet / deleteSet
-  ├─ remplacer : findReplacements → l'utilisateur choisit → exerciseSwaps + raison
-  │    └─ discomfort → message de sécurité existant, alternative plus facile
-  └─ « Terminer » → completed_at, difficulté (facultative), fatigue → daily_checkins (facultative)
+écran séance (W-3, D-034) : /workout/[date]?variant=…&minutes=… → useWorkoutSession (prescription stockée) → useSessionController → session.ts
+  ├─ ouverture → started_at (D-033) ; variante : faite > paramètre > choix stocké > Daily Coach > créneau court > complète
+  ├─ variante courte / allégée absente → adaptSession({ minutes }) une fois (adapted_minutes), jamais recréée
+  ├─ série : logSet / editSet / deleteSet (répétitions ou secondes) → minuteur de repos (useWorkoutUi, en mémoire)
+  ├─ remplacer (avant la 1re série) : raison → alternatives → l'utilisateur choisit → exerciseSwaps + swapReasons
+  │    └─ discomfort → jamais « continue » : remplacer, ne pas faire l'exercice, terminer ici
+  ├─ « Je ne fais pas cet exercice » → exercise_reports.not_performed (+ raison) ; difficulté de l'exercice → exercise_reports.difficulty
+  └─ « Terminer » → completed_at (+ outcome_reason si terminée plus tôt) → résumé → difficulté de la séance (workout_sessions.difficulty)
 ```
 
 ### 7.3 Après la séance et en fin de semaine
@@ -281,3 +287,15 @@ Ajoutés par D-033 (vérité historique) :
 - `week.test.ts` : une séance ouverte n'est pas remplacée par un changement de profil et peut encore être reportée ; `archivedVersion` et `keptSession` (ids stables, contenu identique).
 
 À venir : comparaison et progression v2 (W-4), règles d'adaptation (W-5), E2E (W-7).
+
+Livrés en W-3 (D-034) :
+
+- `src/domain/training/__tests__/session.test.ts` : prescription lue (ordre, ids), remplacement sans charge proposée, hors programme ; dernière performance réelle (répétitions, secondes, jamais le jour même) ; préremplissage dans l'ordre et jamais de charge inventée, hausse retenue sous fatigue ou sécurité ; saisie répétitions / secondes, refus des valeurs invalides, ressenti ; statuts, progression, issues (terminée, partielle, terminée plus tôt, sautée) ; résumé (durée, remplacements, non faits, records réels) ; raisons et réponses (gêne, technique, ponctuel, préférence) ; indices sans décision de progression ; minuteur (ajout, pause, reprise).
+- `week.test.ts` : durée courte bornée ; « 15 minutes » annoncées, stockées et relues ; 20 minutes ; allégée annoncée = stockée ; charges gardées, hausse retirée en allégée, jamais inventées ; maintien en secondes.
+- `daily-plan.test.ts` : le Daily Coach annonce la durée que l'écran construit puis relit.
+- `src/state/__tests__/training.test.ts` : correction et suppression d'une série, secondes, remplacement annulable avant la 1re série, rapport d'exercice (1–5, nettoyage), séance terminée plus tôt, « le garder », échec d'écriture signalé.
+- `projection.test.ts` : secondes, rapports et arrêt projetés et relus à l'identique ; suppression de série limitée à une séance encore présente ; suppression reçue d'un autre appareil (liste compactée) ; rapport invalide refusé.
+- `sync.training.test.ts` : séance hors connexion complète (ouverte, 3 séries, correction, exercice non fait, remplacement, fin) puis sync et relecture sur B ; série supprimée sur un appareil et sur l'autre ; séance terminée plus tôt ; D-033 avec un exercice déclaré non fait (la séance est « utilisée »).
+- `sync.db.test.ts` : la même séance sur Postgres réel avec RLS ; `supabase/tests/rls.sql` et `training.sql` : `exercise_reports` (RLS, rattachement croisé refusé, effacement).
+- `e2e/workout-session.spec.ts` (mobile et desktop) : séance complète, gêne, « J'ai 15 minutes », allégée, hors connexion.
+

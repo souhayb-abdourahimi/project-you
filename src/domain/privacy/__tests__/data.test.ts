@@ -103,6 +103,7 @@ describe('privacy data', () => {
       rescheduled: { '2026-10-02': '2026-10-03' },
       sessionOpened: { '2026-09-30#1': '2026-09-30T10:00:00.000Z' },
       sessionSlots: { '2026-09-30#6': '2026-09-30#1' },
+      exerciseReports: { '2026-09-30#1': { squat: { notPerformed: true, notPerformedReason: 'no_time' } } },
     };
     const exported = buildExport({
       device: withTraining,
@@ -112,11 +113,13 @@ describe('privacy data', () => {
       appVersion: '1',
     });
     expect(exported.device.programs).toHaveLength(1);
+    expect(exported.device.exerciseReports).toEqual(withTraining.exerciseReports);
     expect(Object.keys(exported.device.prescriptions ?? {}).length).toBeGreaterThan(0);
     // The account export reads every synced table once (training tables are synced since W-2).
     expect(SYNC_TABLE_ORDER).toEqual(expect.arrayContaining(['training_programs', 'planned_exercises']));
     expect(EXPORT_ONLY_TABLES.filter((t) => (SYNC_TABLE_ORDER as string[]).includes(t))).toEqual([]);
     expect(CATEGORY_TABLES.workouts).toEqual([
+      'exercise_reports',
       'exercise_substitutions',
       'exercise_logs',
       'planned_exercises',
@@ -133,6 +136,7 @@ describe('privacy data', () => {
       cleared.sessionSources,
       cleared.sessionOpened,
       cleared.sessionSlots,
-    ]).toEqual([[], {}, {}, {}, {}, {}]);
+      cleared.exerciseReports,
+    ]).toEqual([[], {}, {}, {}, {}, {}, {}]);
   });
 });

@@ -52,7 +52,11 @@ export function useItemAction(item: DailyItem, today: string): { label: string; 
         run: () =>
           router.push({
             pathname: '/workout/[date]',
-            params: { date: today, ...(p.variant !== 'full' ? { variant: String(p.variant) } : {}) },
+            // The duration announced here is the one the session is built for (D-034).
+            params: {
+              date: today,
+              ...(p.variant !== 'full' ? { variant: String(p.variant), minutes: String(p.minutes) } : {}),
+            },
           }),
       };
     case 'activity':

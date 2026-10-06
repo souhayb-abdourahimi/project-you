@@ -366,6 +366,8 @@ export function adaptPrescription(input: {
   reasonKey: string;
   prescribedAt: string;
   ids: (variant: SessionVariant, position: number) => string;
+  /** Loads carried over from the full prescription for the same exercises (never guessed). */
+  loads?: Record<string, ProposedLoad>;
 }): PrescribedSession {
   const { session, adapted } = input;
   if (adapted.variant === 'full' || session.exercises.some((e) => e.variant === adapted.variant)) return session;
@@ -382,7 +384,7 @@ export function adaptPrescription(input: {
         exercises: adapted.exercises,
         purpose,
         level: input.program?.params?.level ?? 'beginner',
-        loads: {},
+        loads: input.loads ?? {},
         prescribedAt: input.prescribedAt,
         ids: input.ids,
       }),

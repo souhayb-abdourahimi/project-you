@@ -87,7 +87,12 @@ function fakeServer() {
       if (old && Object.keys(row).some((c) => !same(row[c], old[c])))
         return pgError('23514', 'planned_exercises: a prescription is immutable');
     }
-    if ((t === 'exercise_logs' || t === 'exercise_substitutions') && row.planned_exercise_id != null) {
+    if (t === 'exercise_reports' && !table('workout_sessions', db).has(String(row.session_id)))
+      return pgError('23503', 'exercise_reports_session_id_fkey');
+    if (
+      (t === 'exercise_logs' || t === 'exercise_substitutions' || t === 'exercise_reports') &&
+      row.planned_exercise_id != null
+    ) {
       if (!table('planned_exercises', db).has(String(row.planned_exercise_id)))
         return pgError('23503', `${t}_planned_exercise_id_fkey`);
     }
@@ -614,6 +619,24 @@ describe('historical truth: the server decides the future, the prescription used
     for (const d of [r.a, r.b]) expect(await d.sync()).toMatchObject({ pushed: 0, failed: 0 });
   });
 
+  it('an exercise declared not performed (W-3) uses the session: it keeps its prescription, the report linked to it', async () => {
+    let exercise = '';
+    const r = await conflict((a) => {
+      exercise = firstExercise(a, WEDNESDAY);
+      a.set({
+        exerciseReports: { [WEDNESDAY]: { [exercise]: { notPerformed: true, notPerformedReason: 'no_time' } } },
+      });
+    });
+    const { planned } = expectHistoryKept(r);
+    const report = fake.rows('exercise_reports')[0];
+    expect(report).toMatchObject({ exercise_id: exercise, not_performed: true, not_performed_reason: 'no_time' });
+    expect(planned.map((e) => e.id)).toContain(report.planned_exercise_id);
+    expect(r.b.state().exerciseReports![WEDNESDAY]).toEqual({
+      [exercise]: { notPerformed: true, notPerformedReason: 'no_time' },
+    });
+    for (const d of [r.a, r.b]) expect(await d.sync()).toMatchObject({ pushed: 0, failed: 0 });
+  });
+
   it('a session not used adopts the server prescription (the future converges)', async () => {
     const r = await conflict(() => {});
     expect(r.a.state().sessionIds[WEDNESDAY]).toBe(r.b.state().sessionIds[WEDNESDAY]);
@@ -658,6 +681,149 @@ describe('historical truth: the server decides the future, the prescription used
         .map((p) => p.id),
     ).toEqual([r.v2B.id]);
     for (const d of [r.a, r.b]) expect(await d.sync()).toMatchObject({ pushed: 0, failed: 0 });
+  });
+});
+
+describe('workout session (W-3)', () => {
+  const exercises = (d: ReturnType<typeof device>, key: string) =>
+    prescriptionFor({ prescriptions: d.state().prescriptions!, sessionIds: d.state().sessionIds }, key)!
+      .exercises.filter((e) => e.variant === 'full')
+      .map((e) => e.exerciseId);
+
+  it('offline session: opened, 3 sets, a correction, a skipped and a replaced exercise, finished; then synced as done', async () => {
+    const a = device(SCENARIOS.muscleGain);
+    a.open('2026-09-28');
+    await a.sync(true);
+    fake.setOffline(true);
+    a.open('2026-09-30');
+    const [first, second, third] = exercises(a, WEDNESDAY);
+    a.openSession(WEDNESDAY, '2026-09-30T18:00:00.000Z');
+    a.logSet(WEDNESDAY, first, 10, 60);
+    a.logSet(WEDNESDAY, first, 10, 60);
+    a.logSet(WEDNESDAY, first, 8, 60);
+    // Correction of set 2: 9 reps at 62.5 kg (store.editSet).
+    const sets = a.state().setLogs[WEDNESDAY][first];
+    a.set({
+      setLogs: { [WEDNESDAY]: { [first]: sets.map((x, i) => (i === 1 ? { reps: 9, loadKg: 62.5 } : x)) } },
+      exerciseReports: {
+        [WEDNESDAY]: {
+          [first]: { difficulty: 4 },
+          [second]: { notPerformed: true, notPerformedReason: 'no_time' },
+        },
+      },
+    });
+    a.swap(WEDNESDAY, third, 'push_up');
+    a.set({
+      completedSessions: [
+        { date: '2026-09-30', sessionIndex: 1, variant: 'full', completedAt: '2026-09-30T18:40:00.000Z' },
+      ],
+      sessionDifficulty: { [WEDNESDAY]: 3 },
+    });
+    const offline = await a.sync();
+    expect(offline.offline).toBe(true);
+    expect(fake.rows('exercise_logs')).toHaveLength(0);
+
+    fake.setOffline(false);
+    expect((await a.sync()).errors).toEqual([]);
+    const id = a.state().sessionIds[WEDNESDAY];
+    expect(fake.table('workout_sessions').get(id)).toMatchObject({
+      status: 'completed',
+      started_at: '2026-09-30T18:00:00.000Z',
+      difficulty: 3,
+      outcome_reason: null,
+      prescription_source: 'engine',
+    });
+    const logs = fake.rows('exercise_logs').sort((x, y) => Number(x.set_index) - Number(y.set_index));
+    expect(logs.map((l) => [l.reps, l.load_kg])).toEqual([
+      [10, 60],
+      [9, 62.5],
+      [8, 60],
+    ]);
+    const planned = new Map(fake.rows('planned_exercises').map((e) => [String(e.id), e]));
+    expect(logs.every((l) => planned.get(String(l.planned_exercise_id))?.exercise_id === first)).toBe(true);
+    expect(
+      fake
+        .rows('exercise_reports')
+        .map((x) => [x.exercise_id, x.not_performed, x.difficulty])
+        .sort(),
+    ).toEqual(
+      [
+        [first, false, 4],
+        [second, true, null],
+      ].sort(),
+    );
+    expect(fake.rows('exercise_substitutions')[0]).toMatchObject({
+      from_exercise_id: third,
+      to_exercise_id: 'push_up',
+    });
+    // The prescription was not touched: planned stays planned, the facts sit beside it.
+    expect(
+      fake
+        .rows('planned_exercises')
+        .filter((e) => e.session_id === id)
+        .map((e) => e.exercise_id),
+    ).toContain(third);
+
+    const b = device(SCENARIOS.muscleGain);
+    expect((await b.sync()).errors).toEqual([]);
+    expect(b.state().setLogs[WEDNESDAY][first].map((x) => [x.reps, x.loadKg])).toEqual([
+      [10, 60],
+      [9, 62.5],
+      [8, 60],
+    ]);
+    expect(b.state().exerciseReports![WEDNESDAY]).toEqual(a.state().exerciseReports![WEDNESDAY]);
+    expect(b.state().sessionOpened![WEDNESDAY]).toBe('2026-09-30T18:00:00.000Z');
+    for (const d of [a, b]) expect(await d.sync()).toMatchObject({ pushed: 0, failed: 0 });
+  });
+
+  it('a set deleted on one device is deleted on the other; the list stays in order', async () => {
+    const a = device(SCENARIOS.muscleGain);
+    a.open('2026-09-28');
+    await a.sync(true);
+    const [first] = exercises(a, MONDAY);
+    a.logSet(MONDAY, first, 10, 40);
+    a.logSet(MONDAY, first, 9, 40);
+    a.logSet(MONDAY, first, 8, 42.5);
+    await a.sync();
+    const b = device(SCENARIOS.muscleGain);
+    await b.sync();
+    expect(b.state().setLogs[MONDAY][first]).toHaveLength(3);
+    // B removes the second set (store.deleteSet): the third takes its place.
+    b.set({ setLogs: { [MONDAY]: { [first]: b.state().setLogs[MONDAY][first].filter((_, i) => i !== 1) } } });
+    expect((await b.sync()).errors).toEqual([]);
+    expect(fake.rows('exercise_logs').filter((l) => l.deleted_at == null)).toHaveLength(2);
+    await a.sync();
+    expect(a.state().setLogs[MONDAY][first].map((x) => [x.reps, x.loadKg])).toEqual([
+      [10, 40],
+      [8, 42.5],
+    ]);
+    for (const d of [a, b]) expect(await d.sync()).toMatchObject({ pushed: 0, failed: 0 });
+  });
+
+  it('a session stopped early syncs with its reason, never as a failure', async () => {
+    const a = device(SCENARIOS.muscleGain);
+    a.open('2026-09-28');
+    await a.sync(true);
+    a.logSet(MONDAY, exercises(a, MONDAY)[0], 10, 40);
+    a.set({
+      completedSessions: [
+        {
+          date: '2026-09-28',
+          sessionIndex: 0,
+          variant: 'full',
+          completedAt: '2026-09-28T19:00:00.000Z',
+          stopped: 'pain',
+        },
+      ],
+    });
+    await a.sync();
+    expect(fake.table('workout_sessions').get(a.state().sessionIds[MONDAY])).toMatchObject({
+      status: 'completed',
+      outcome_reason: 'pain',
+    });
+    const b = device(SCENARIOS.muscleGain);
+    await b.sync();
+    expect(b.state().completedSessions).toEqual([expect.objectContaining({ date: '2026-09-28', stopped: 'pain' })]);
   });
 });
 

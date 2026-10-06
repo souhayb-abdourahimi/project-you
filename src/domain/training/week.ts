@@ -11,6 +11,7 @@ import type { GoalType, TrainingProfile } from '../profile/schemas';
 import { addDays, type IsoDate } from '../shared/dates';
 import { parseSessionKey, sessionKey, stableUuid, type SessionKey } from '../shared/ids';
 import { lightSession, shortSession, type SessionVariant } from './adapt';
+import { SESSION_DURATION, shortMinutes } from './durations';
 import { estimateMinutes, generateWorkoutPlan, type PrescribedExercise, type WorkoutTemplate } from './engine';
 import { suggestProgression, type LoggedSet } from './progression';
 import {
@@ -75,6 +76,8 @@ export interface TrainingFacts {
   sessionDifficulty?: Record<SessionKey, number>;
   /** When a prescribed session was opened: from then on its prescription is what the user saw. */
   sessionOpened?: Record<SessionKey, string>;
+  /** Per exercise: declared as not performed, felt difficulty (W-3). */
+  exerciseReports?: Record<SessionKey, Record<string, unknown>>;
 }
 
 /**
@@ -94,7 +97,8 @@ function hasRecords(facts: TrainingFacts, key: SessionKey): boolean {
     facts.completedSessions.some((c) => c.date === date && c.sessionIndex === sessionIndex) ||
     facts.sessionOutcomes?.[key] != null ||
     Object.keys(facts.exerciseSwaps?.[key] ?? {}).length > 0 ||
-    facts.sessionDifficulty?.[key] != null
+    facts.sessionDifficulty?.[key] != null ||
+    Object.keys(facts.exerciseReports?.[key] ?? {}).length > 0
   );
 }
 
@@ -220,7 +224,11 @@ export function proposedLoads(
     const history = Object.entries(setLogs)
       .filter(([k, logs]) => parseSessionKey(k).date < date && (logs[e.exerciseId]?.length ?? 0) > 0)
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([k, logs]) => ({ date: parseSessionKey(k).date, sets: logs[e.exerciseId] }));
+      // A hold progresses by its seconds, like the repetitions of a counted set.
+      .map(([k, logs]) => ({
+        date: parseSessionKey(k).date,
+        sets: logs[e.exerciseId].map((s) => (s.seconds !== undefined ? { ...s, reps: s.seconds } : s)),
+      }));
     if (history.length === 0) continue;
     const s = suggestProgression({
       exerciseId: e.exerciseId,
@@ -320,9 +328,6 @@ export function prescriptionFor(
   return id ? (records.prescriptions[id] ?? null) : null;
 }
 
-/** "J'ai 15 minutes" stays 15 minutes until W-3 uses the Daily Coach's duration. */
-export const SHORT_SESSION_MINUTES = 15;
-
 function toPrescribed(e: PrescribedSession['exercises'][number]): PrescribedExercise {
   return {
     exerciseId: e.exerciseId,
@@ -341,13 +346,30 @@ export function variantTemplate(p: PrescribedSession, variant: SessionVariant = 
   const rows = p.exercises.filter((e) => e.variant === variant).sort((a, b) => a.position - b.position);
   if (rows.length === 0) return null;
   const exercises = rows.map(toPrescribed);
-  const minutes =
-    variant === 'full'
-      ? p.plannedMinutes
-      : variant === 'short'
-        ? Math.min(SHORT_SESSION_MINUTES, estimateMinutes(exercises))
-        : estimateMinutes(exercises);
-  return { index: p.sessionIndex, focus: p.focus, estimatedMinutes: minutes, exercises };
+  return { index: p.sessionIndex, focus: p.focus, estimatedMinutes: variantMinutes(p, variant), exercises };
+}
+
+/**
+ * Duration of a variant as prescribed (D-034), the one every screen shows: the full session's
+ * planned minutes; for the adaptation of the day, the minutes it was built for (the Daily Coach's);
+ * otherwise the estimate of its own rows.
+ */
+export function variantMinutes(p: PrescribedSession, variant: SessionVariant): number {
+  if (variant === 'full') return p.plannedMinutes;
+  if (p.adaptationReason === `workout.variant.${variant}` && p.adaptedMinutes) return p.adaptedMinutes;
+  const rows = p.exercises.filter((e) => e.variant === variant);
+  return variant === 'short' ? estimateMinutes(rows, SESSION_DURATION.shortWarmUpMinutes) : estimateMinutes(rows);
+}
+
+/**
+ * Duration a variant will have before it is stored (what the Daily Coach announces): short = the
+ * minutes asked; light = the estimate of the light rows it will build; full = planned.
+ */
+export function plannedVariantMinutes(p: PrescribedSession, variant: SessionVariant, requested: number): number {
+  if (variant === 'full' || p.exercises.some((e) => e.variant === variant)) return variantMinutes(p, variant);
+  if (variant === 'short') return shortMinutes(requested, p.plannedMinutes);
+  const full = variantTemplate(p, 'full');
+  return full ? lightSession(full).estimatedMinutes : requested;
 }
 
 /**
@@ -359,6 +381,8 @@ export function adaptSession(input: {
   session: PrescribedSession;
   program: Pick<ProgramVersion, 'params'> | null;
   variant: SessionVariant;
+  /** Minutes of a short version (the Daily Coach's, D-034). Ignored for light. */
+  minutes?: number;
   /** Equipment, level and refusals of the moment of the choice (the adaptation is of the day). */
   training: Pick<TrainingProfile, 'equipment' | 'hasGym' | 'level' | 'refusedExerciseIds'>;
   done: boolean;
@@ -368,10 +392,11 @@ export function adaptSession(input: {
   if (variant === 'full' || input.done || session.exercises.some((e) => e.variant === variant)) return null;
   const full = variantTemplate(session, 'full');
   if (!full) return null;
+  const minutes = shortMinutes(input.minutes, session.plannedMinutes);
   const adapted =
     variant === 'short'
       ? shortSession(full, {
-          minutes: SHORT_SESSION_MINUTES,
+          minutes,
           // Same rule as before W-2: at the gym the short version is a bodyweight circuit.
           equipment: input.training.hasGym ? ['bodyweight'] : input.training.equipment,
           level: input.training.level,
@@ -383,11 +408,31 @@ export function adaptSession(input: {
     session,
     program: input.program,
     adapted,
-    minutes: variant === 'short' ? SHORT_SESSION_MINUTES : adapted.estimatedMinutes,
+    minutes: variant === 'short' ? minutes : adapted.estimatedMinutes,
     reasonKey: `workout.variant.${variant}`,
     prescribedAt: input.prescribedAt,
     ids: (v, position) => trainingIds.planned(session.id, v, position),
+    loads: variantLoads(session, variant),
   });
+}
+
+/**
+ * Loads a variant keeps from the full prescription, for the same exercise (D-034): short keeps
+ * them (same stimulus, fewer sets); light keeps them unless the full one planned an increase (a
+ * lighter day is never the day to add load). A replacement exercise gets none (never guessed).
+ */
+function variantLoads(session: PrescribedSession, variant: SessionVariant): Record<string, ProposedLoad> {
+  const out: Record<string, ProposedLoad> = {};
+  for (const e of session.exercises.filter((x) => x.variant === 'full')) {
+    if (e.targetLoadKg === null || e.progressionAction === null) continue;
+    if (variant === 'light' && e.progressionAction === 'increase_load') continue;
+    out[e.exerciseId] = {
+      loadKg: e.targetLoadKg,
+      action: e.progressionAction,
+      reasonKey: e.progressionReason ?? 'progression.carried',
+    };
+  }
+  return out;
 }
 
 /**

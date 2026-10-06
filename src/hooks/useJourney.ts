@@ -19,6 +19,8 @@ import type { PlannedMeal } from '@/domain/meals/planner';
 import { getRecipe } from '@/domain/meals/recipes';
 import { addDays, daysBetween, weekdayOf, type IsoDate } from '@/domain/shared/dates';
 import { sessionKey } from '@/domain/sync/projection';
+import type { SessionVariant } from '@/domain/training/adapt';
+import { plannedVariantMinutes } from '@/domain/training/week';
 import { useCalendarStore } from '@/state/calendar';
 import { useDataStore } from '@/state/data';
 import { useNotificationStore } from '@/state/notifications';
@@ -159,6 +161,7 @@ export function useJourney(plan: Plan | null): Journey | null {
     const workout = day?.items.find((i) => i.kind === 'workout');
     const template = workout?.kind === 'workout' ? plan.sessionTemplate(today, workout.sessionIndex) : null;
     const sessionIndex = workout?.kind === 'workout' ? workout.sessionIndex : 0;
+    const prescription = template ? plan.prescription(today, sessionIndex) : null;
     const done = data.completedSessions.find((c) => c.date === today);
     const busyToday = calendarBusy?.weekStart === plan.weekStart ? calendarBusy.slots : [];
     const history: VoiceUse[] = [...notificationHistory, ...screenVoice];
@@ -175,7 +178,20 @@ export function useJourney(plan: Plan | null): Journey | null {
       state,
       day,
       meals: plan.mealPlan?.days.find((d) => d.date === today) ?? null,
-      session: template ? { sessionIndex, focus: template.focus, minutes: snapshot.training.sessionMinutes } : null,
+      // One duration (D-034): the stored prescription's, the one the workout screen runs.
+      session: template
+        ? {
+            sessionIndex,
+            focus: template.focus,
+            minutes: prescription?.plannedMinutes ?? snapshot.training.sessionMinutes,
+            ...(prescription
+              ? {
+                  minutesOf: (v: SessionVariant, requested: number) =>
+                    plannedVariantMinutes(prescription, v, requested),
+                }
+              : {}),
+          }
+        : null,
       completed: done ? { variant: done.variant } : null,
       outcome: data.sessionOutcomes[sessionKey(today, sessionIndex)] ?? null,
       dayLog: data.dayLogs.find((d) => d.date === today) ?? null,
@@ -284,6 +300,7 @@ export function useJourney(plan: Plan | null): Journey | null {
         dislikedRecipeIds: [],
         likedRecipeIds: [],
       },
+      kept: data.keptExercises,
     });
 
     return { state, daily, progress, celebration, recommendations, risk, memory, keptGoingDates };

@@ -92,11 +92,13 @@ function prescriptionFor(goal: GoalType, compound: boolean, level: TrainingLevel
 }
 
 /** Warm-up plus working sets and rests, in minutes. */
-export function estimateMinutes(exercises: Pick<PrescribedExercise, 'sets' | 'restSeconds'>[]): number {
-  const WARM_UP = 8;
+export function estimateMinutes(
+  exercises: Pick<PrescribedExercise, 'sets' | 'restSeconds'>[],
+  warmUpMinutes = 8,
+): number {
   const SET_SECONDS = 45;
   const seconds = exercises.reduce((s, e) => s + e.sets * (SET_SECONDS + e.restSeconds), 0);
-  return Math.round(WARM_UP + seconds / 60);
+  return Math.round(warmUpMinutes + seconds / 60);
 }
 
 export function exerciseCountFor(minutes: number, level: TrainingLevel): number {

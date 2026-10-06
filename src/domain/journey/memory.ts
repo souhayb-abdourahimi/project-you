@@ -50,6 +50,8 @@ export interface MemoryInput {
   adjustments: { changeKey: string; status: string; decidedAt: string }[];
   /** Already in the profile: never suggested again. */
   confirmed: { refusedExerciseIds: string[]; dislikedRecipeIds: string[]; likedRecipeIds: string[] };
+  /** "Keep it" answered for an exercise (→ occurrences seen then): asked again only after as many new ones. */
+  kept?: Record<string, number>;
 }
 
 function usualDay(dates: IsoDate[]): { weekday: Weekday; count: number } | null {
@@ -85,17 +87,20 @@ export function journeyMemory(input: MemoryInput): JourneyMemory {
   }
 
   const suggestions: MemorySuggestion[] = [];
-  // A preference ("je n'aime pas", "préférence", "je ne connais pas la technique") on two different
-  // sessions → ask the user; only their confirmation makes it durable (D-031 D). A movement that
-  // bothers (`discomfort`) is a safety matter, not a taste: it never becomes a preference here.
+  // A stated preference ("je n'aime pas", "préférence personnelle") on two different sessions → ask
+  // the user; only their confirmation makes it durable (D-031 D). A movement that bothers is a
+  // safety matter, an unknown technique is learnt, a busy machine is a one-off (D-034): none of them
+  // ever becomes a preference here.
   const refused = new Map<string, string[]>();
   for (const [session, swaps] of Object.entries(input.swapReasons)) {
     for (const [exerciseId, reason] of Object.entries(swaps)) {
-      if (reason === 'dislike' || reason === 'cant_do' || reason === 'preference')
+      if (reason === 'dislike' || reason === 'preference')
         refused.set(exerciseId, [...(refused.get(exerciseId) ?? []), session]);
     }
   }
   for (const [exerciseId, sessions] of refused) {
+    const kept = input.kept?.[exerciseId];
+    if (kept !== undefined && sessions.length < kept + MEMORY.repeat) continue;
     if (sessions.length >= MEMORY.repeat && !input.confirmed.refusedExerciseIds.includes(exerciseId)) {
       suggestions.push({
         kind: 'drop_exercise',

@@ -94,14 +94,14 @@ describe('journey memory', () => {
     confirmed: { refusedExerciseIds: [], dislikedRecipeIds: [], likedRecipeIds: [] },
   };
 
-  it('suggests dropping an exercise only after two "je n’aime pas / je ne peux pas" on different sessions', () => {
+  it('suggests dropping an exercise only after two "je n’aime pas / préférence" on different sessions', () => {
     const once = journeyMemory({ ...base, swapReasons: { '2026-09-21#0': { lunge: 'dislike' } } });
     expect(once.suggestions).toEqual([]);
     const twice = journeyMemory({
       ...base,
       swapReasons: {
         '2026-09-21#0': { lunge: 'dislike' },
-        '2026-09-28#0': { lunge: 'cant_do' },
+        '2026-09-28#0': { lunge: 'preference' },
         '2026-09-29#0': { row: 'no_equipment' },
       },
     });
@@ -135,6 +135,20 @@ describe('journey memory', () => {
         swapReasons: { a: { lunge: 'discomfort' }, b: { lunge: 'busy_equipment' }, c: { lunge: 'too_hard_today' } },
       }).suggestions,
     ).toEqual([]);
+    // W-3 (D-034): an unknown technique is learnt, never turned into a preference.
+    expect(
+      journeyMemory({ ...base, swapReasons: { a: { lunge: 'cant_do' }, b: { lunge: 'cant_do' } } }).suggestions,
+    ).toEqual([]);
+    // "Keep it": asked again only after as many new occurrences.
+    const twicePref = { a: { lunge: 'preference' as const }, b: { lunge: 'preference' as const } };
+    expect(journeyMemory({ ...base, swapReasons: twicePref, kept: { lunge: 2 } }).suggestions).toEqual([]);
+    expect(
+      journeyMemory({
+        ...base,
+        swapReasons: { ...twicePref, c: { lunge: 'preference' }, d: { lunge: 'dislike' } },
+        kept: { lunge: 2 },
+      }).suggestions,
+    ).toEqual([expect.objectContaining({ kind: 'drop_exercise', exerciseId: 'lunge', count: 4 })]);
   });
 
   it('recipes: "envie d’autre chose" twice → dislike suggestion; eaten 3 times → like suggestion; no reason → nothing guessed', () => {

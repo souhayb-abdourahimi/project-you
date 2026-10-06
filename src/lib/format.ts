@@ -37,3 +37,8 @@ export function splitList(text: string): string[] {
     .map((s) => s.trim())
     .filter(Boolean);
 }
+
+/** A load or any decimal as the user reads it ("67,5" in French). */
+export function formatNumber(value: number, locale: string): string {
+  return new Intl.NumberFormat(locale === 'en' ? 'en-GB' : 'fr-FR', { maximumFractionDigits: 2 }).format(value);
+}

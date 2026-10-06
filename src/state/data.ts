@@ -28,6 +28,7 @@ import type { SessionVariant } from '@/domain/training/adapt';
 import type { PrescribedSession, ProgramVersion } from '@/domain/training/program';
 import type { LoggedSet } from '@/domain/training/progression';
 import type { ReplacementReason } from '@/domain/training/replacement';
+import type { ExerciseReport } from '@/domain/training/session';
 import { rescheduleSession, type SessionSource, type TrainingRecords } from '@/domain/training/week';
 import { newId } from '@/lib/id';
 
@@ -78,6 +79,13 @@ interface DataState {
   sessionOpened: Record<SessionKey, string>;
   /** Local slot → own slot of a session moved aside by a sync conflict (D-033). */
   sessionSlots: Record<SessionKey, SessionKey>;
+  /** Per prescribed exercise: "not performed" and its reason, felt difficulty (W-3, D-034). */
+  exerciseReports: Record<SessionKey, Record<string, ExerciseReport>>;
+  /**
+   * "Keep it" answered to "remove this exercise from your program?" (exercise → replacements seen
+   * then): asked again only after as many new ones. On this device only.
+   */
+  keptExercises: Record<string, number>;
   /** Account the local data belongs to (null = local mode, not attached to an account yet). */
   ownerId: string | null;
   synced: SyncedHashes;
@@ -108,7 +116,14 @@ interface DataState {
   logWeight: (date: IsoDate, weightKg: number) => void;
   logWaist: (date: IsoDate, cm: number) => void;
   logSet: (session: SessionKey, exerciseId: string, set: LoggedSet) => void;
+  /** Corrects a set already entered (the done part stays editable, W-1). */
+  editSet: (session: SessionKey, exerciseId: string, index: number, set: LoggedSet) => void;
+  deleteSet: (session: SessionKey, exerciseId: string, index: number) => void;
+  /** `toId === fromId` cancels a replacement that has no set yet. */
   swapExercise: (session: SessionKey, fromId: string, toId: string, reason?: ReplacementReason) => void;
+  /** Merges a report on a prescribed exercise; `null` removes it. */
+  reportExercise: (session: SessionKey, exerciseId: string, report: ExerciseReport | null) => void;
+  keepExercise: (exerciseId: string, seen: number) => void;
   completeSession: (session: Omit<CompletedSession, 'completedAt'>) => void;
   reschedule: (from: IsoDate, to: IsoDate) => void;
   /** Stores what `ensureProgram` / `ensureWeek` published or froze (never called with an unchanged week). */
@@ -155,6 +170,8 @@ const initial = {
   sessionDifficulty: {},
   sessionOpened: {},
   sessionSlots: {},
+  exerciseReports: {},
+  keptExercises: {},
   ownerId: null,
   synced: {},
   lastPulledAt: null,
@@ -359,14 +376,63 @@ export const useDataStore = create<DataState>()(
             },
           },
         })),
+      editSet: (session, exerciseId, index, loggedSet) =>
+        set((s) => {
+          const sets = s.setLogs[session]?.[exerciseId];
+          if (!sets || index < 0 || index >= sets.length) return {};
+          const next = sets.map((x, i) => (i === index ? loggedSet : x));
+          return { setLogs: { ...s.setLogs, [session]: { ...s.setLogs[session], [exerciseId]: next } } };
+        }),
+      deleteSet: (session, exerciseId, index) =>
+        set((s) => {
+          const sets = s.setLogs[session]?.[exerciseId];
+          if (!sets || index < 0 || index >= sets.length) return {};
+          const { [exerciseId]: _old, ...others } = s.setLogs[session];
+          const next = sets.filter((_, i) => i !== index);
+          return {
+            setLogs: { ...s.setLogs, [session]: next.length > 0 ? { ...others, [exerciseId]: next } : others },
+          };
+        }),
       swapExercise: (session, fromId, toId, reason) =>
-        set((s) => ({
-          ...withSession(s, session),
-          exerciseSwaps: { ...s.exerciseSwaps, [session]: { ...s.exerciseSwaps[session], [fromId]: toId } },
-          swapReasons: reason
-            ? { ...s.swapReasons, [session]: { ...s.swapReasons[session], [fromId]: reason } }
-            : s.swapReasons,
-        })),
+        set((s) => {
+          if (toId === fromId) {
+            const current = s.exerciseSwaps[session]?.[fromId];
+            if (!current || (s.setLogs[session]?.[current]?.length ?? 0) > 0) return {};
+            const { [fromId]: _swap, ...swaps } = s.exerciseSwaps[session];
+            const { [fromId]: _reason, ...reasons } = s.swapReasons[session] ?? {};
+            return {
+              exerciseSwaps: { ...s.exerciseSwaps, [session]: swaps },
+              swapReasons: { ...s.swapReasons, [session]: reasons },
+            };
+          }
+          return {
+            ...withSession(s, session),
+            exerciseSwaps: { ...s.exerciseSwaps, [session]: { ...s.exerciseSwaps[session], [fromId]: toId } },
+            swapReasons: reason
+              ? { ...s.swapReasons, [session]: { ...s.swapReasons[session], [fromId]: reason } }
+              : s.swapReasons,
+          };
+        }),
+      reportExercise: (session, exerciseId, report) =>
+        set((s) => {
+          const { [exerciseId]: old, ...others } = s.exerciseReports[session] ?? {};
+          const merged = report ? { ...old, ...report } : null;
+          // A report with nothing declared any more is removed (the sync deletes its row).
+          const clean =
+            merged && Object.fromEntries(Object.entries(merged).filter(([, v]) => v !== undefined && v !== false));
+          const keep = clean && Object.keys(clean).length > 0 ? (clean as ExerciseReport) : null;
+          if (
+            keep?.difficulty !== undefined &&
+            !(Number.isInteger(keep.difficulty) && keep.difficulty >= 1 && keep.difficulty <= 5)
+          )
+            return {};
+          if (keep && !keep.notPerformed) delete keep.notPerformedReason;
+          return {
+            ...(keep ? withSession(s, session) : {}),
+            exerciseReports: { ...s.exerciseReports, [session]: keep ? { ...others, [exerciseId]: keep } : others },
+          };
+        }),
+      keepExercise: (exerciseId, seen) => set((s) => ({ keptExercises: { ...s.keptExercises, [exerciseId]: seen } })),
       completeSession: (session) =>
         set((s) => ({
           ...withSession(s, sessionKey(session.date, session.sessionIndex)),

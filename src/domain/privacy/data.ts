@@ -19,7 +19,14 @@ export const CATEGORY_TABLES: Record<PrivacyCategory, SyncTable[]> = {
   measurements: ['body_measurements'],
   inventory: ['inventory_items'],
   expenses: ['food_expenses'],
-  workouts: ['exercise_substitutions', 'exercise_logs', 'planned_exercises', 'workout_sessions', 'training_programs'],
+  workouts: [
+    'exercise_reports',
+    'exercise_substitutions',
+    'exercise_logs',
+    'planned_exercises',
+    'workout_sessions',
+    'training_programs',
+  ],
   meals: ['meal_plan_items'],
   // Day check-ins, weekly check-ins, milestones and adaptation decisions (D-028).
   journey: ['daily_checkins', 'weekly_checkins', 'journey_milestones', 'adjustments'],
@@ -114,6 +121,7 @@ export function clearCategory(state: SyncableState, category: PrivacyCategory): 
         sessionDifficulty: {},
         sessionOpened: {},
         sessionSlots: {},
+        exerciseReports: {},
         rescheduled: {},
       };
     case 'meals':

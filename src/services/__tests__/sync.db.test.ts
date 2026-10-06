@@ -35,6 +35,8 @@ const C = '00000000-0000-4000-8000-0000000000c1';
 const D = '00000000-0000-4000-8000-0000000000d1';
 const E = '00000000-0000-4000-8000-0000000000e1';
 const F = '00000000-0000-4000-8000-0000000000f1';
+// Workout session (W-3): sets in seconds, corrections, exercise reports, a session stopped early.
+const G = '00000000-0000-4000-8000-000000000071';
 
 /** PostgREST-like client acting as `authenticated` with the user's JWT claims, so RLS applies. */
 function restAs(db: Client, userId: string): SyncClient {
@@ -148,13 +150,13 @@ describeDb('sync against the real schema (Postgres + RLS)', () => {
     await db.query(
       `insert into auth.users (id, email) values ($1, 'sync-a@example.test'), ($2, 'sync-b@example.test'),
               ($3, 'sync-c@example.test'), ($4, 'sync-d@example.test'), ($5, 'sync-e@example.test'),
-              ($6, 'sync-f@example.test')
+              ($6, 'sync-f@example.test'), ($7, 'sync-g@example.test')
                     on conflict (id) do nothing`,
-      [A, B, C, D, E, F],
+      [A, B, C, D, E, F, G],
     );
   });
   afterAll(async () => {
-    await db.query('delete from auth.users where id = any($1::uuid[])', [[A, B, C, D, E, F]]);
+    await db.query('delete from auth.users where id = any($1::uuid[])', [[A, B, C, D, E, F, G]]);
     await db.end();
   });
 
@@ -636,6 +638,82 @@ describeDb('sync against the real schema (Postgres + RLS)', () => {
     expect(r.errors).toContainEqual({ kind: 'rls', phase: 'push', table: 'workout_sessions', count: 1 });
     expect((await rowsOf('workout_sessions', C)).find((s) => s.id === cSession.id)).toMatchObject({ user_id: C });
     expect(await rowsOf('workout_sessions', D)).toEqual([]);
+  });
+
+  it('W-3: a session (hold in seconds, correction, reports, stopped) goes through the real schema and back', async () => {
+    const a = deviceOf(G, SCENARIOS.muscleGain);
+    a.open('2026-09-28');
+    expect((await a.sync(true)).errors).toEqual([]);
+    const full = prescriptionFor(
+      { prescriptions: a.state().prescriptions!, sessionIds: a.state().sessionIds },
+      MONDAY,
+    )!.exercises.filter((e) => e.variant === 'full');
+    const [first, second] = full;
+    a.write({
+      sessionOpened: { [MONDAY]: '2026-09-28T18:00:00.000Z' },
+      setLogs: {
+        [MONDAY]: {
+          [first.exerciseId]: [
+            { reps: 10, loadKg: 40 },
+            { reps: 9, loadKg: 40 },
+            { reps: 8, loadKg: 42.5 },
+          ],
+          plank: [{ reps: 0, seconds: 45, loadKg: 0 }],
+        },
+      },
+      exerciseReports: {
+        [MONDAY]: {
+          [first.exerciseId]: { difficulty: 5 },
+          [second.exerciseId]: { notPerformed: true, notPerformedReason: 'discomfort' },
+        },
+      },
+    });
+    expect((await a.sync()).errors).toEqual([]);
+    // Correction: the second set removed; the session ended early because of discomfort.
+    a.write({
+      setLogs: {
+        [MONDAY]: {
+          ...a.state().setLogs[MONDAY],
+          [first.exerciseId]: a.state().setLogs[MONDAY][first.exerciseId].filter((_, i) => i !== 1),
+        },
+      },
+      completedSessions: [
+        {
+          date: '2026-09-28',
+          sessionIndex: 0,
+          variant: 'full',
+          completedAt: '2026-09-28T18:35:00.000Z',
+          stopped: 'pain',
+        },
+      ],
+    });
+    expect((await a.sync()).errors).toEqual([]);
+
+    const id = a.state().sessionIds[MONDAY];
+    const session = (await rowsOf('workout_sessions', G)).find((r) => r.id === id)!;
+    expect(session).toMatchObject({ status: 'completed', outcome_reason: 'pain' });
+    const logs = (await rowsOf('exercise_logs', G)).filter((r) => r.deleted_at == null);
+    expect(logs.find((r) => r.exercise_id === 'plank')).toMatchObject({ reps: null, seconds: 45 });
+    expect(logs.filter((r) => r.exercise_id === first.exerciseId).map((r) => [r.set_index, r.reps])).toEqual([
+      [0, 10],
+      [1, 8],
+    ]);
+    const reports = await rowsOf('exercise_reports', G);
+    expect(reports.map((r) => [r.exercise_id, r.not_performed, r.not_performed_reason, r.difficulty]).sort()).toEqual(
+      [
+        [first.exerciseId, false, null, 5],
+        [second.exerciseId, true, 'discomfort', null],
+      ].sort(),
+    );
+    expect(reports.find((r) => r.not_performed)!.planned_exercise_id).toBe(second.id);
+
+    const b = deviceOf(G, SCENARIOS.muscleGain);
+    expect((await b.sync()).errors).toEqual([]);
+    expect(b.state().setLogs[MONDAY][first.exerciseId].map((x) => x.reps)).toEqual([10, 8]);
+    expect(b.state().setLogs[MONDAY].plank).toEqual([{ reps: 0, seconds: 45, loadKg: 0, rpe: undefined }]);
+    expect(b.state().exerciseReports![MONDAY]).toEqual(a.state().exerciseReports![MONDAY]);
+    expect(b.state().completedSessions).toEqual([expect.objectContaining({ stopped: 'pain' })]);
+    for (const d of [a, b]) expect(await d.sync()).toMatchObject({ pushed: 0, failed: 0 });
   });
 
   it('W-2: Privacy Center — the export holds programs and prescriptions, deleting workouts erases them', async () => {

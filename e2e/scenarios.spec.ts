@@ -140,5 +140,6 @@ test('"J’ai 15 minutes": offers a short session that counts', async ({ page })
   await openTab(page, 'Aujourd’hui');
   await button(page, 'J’ai 15 minutes').click();
   await expect(text(page, 'Peu de temps ? Une séance courte compte vraiment.')).toBeVisible();
-  await expect(button(page, 'Séance courte (15–20 min)')).toBeVisible();
+  // One duration (D-034): the short session offered is the one the workout screen builds.
+  await expect(button(page, 'Séance courte (15 min)')).toBeVisible();
 });

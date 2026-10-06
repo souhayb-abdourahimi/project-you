@@ -19,6 +19,7 @@ import {
   type MeasurementEntry,
   type MilestoneRecord,
   type SessionOutcome,
+  type SessionReason,
 } from '../journey/outcomes';
 import { MAIN_PROBLEMS, type WeeklyCheckin } from '../journey/weekly-checkin';
 import type { FoodExpense } from '../meals/budget';
@@ -41,6 +42,7 @@ import {
 } from '../training/program';
 import type { LoggedSet } from '../training/progression';
 import { REPLACEMENT_REASONS, type ReplacementReason } from '../training/replacement';
+import type { ExerciseReport } from '../training/session';
 import { archivedVersion, hasFacts, keptSession, type SessionSource } from '../training/week';
 
 export { sessionKey, stableUuid, type SessionKey };
@@ -50,6 +52,8 @@ export interface CompletedSession {
   sessionIndex: number;
   variant: SessionVariant;
   completedAt: string;
+  /** Ended early on purpose (W-3, D-034): status `completed` with this `outcome_reason`. */
+  stopped?: SessionReason;
 }
 
 export interface WaistEntry {
@@ -167,9 +171,19 @@ const REMOTE_ROWS = {
     exercise_id: z.string(),
     set_index: z.coerce.number().int().nonnegative(),
     reps: nullableFinite,
+    seconds: nullableFinite.optional(),
     load_kg: nullableFinite,
     rpe: nullableFinite,
   }),
+  exercise_reports: z
+    .object({
+      session_id: z.string(),
+      exercise_id: z.string().min(1),
+      not_performed: z.boolean(),
+      not_performed_reason: z.enum(REPLACEMENT_REASONS).nullish(),
+      difficulty: z.coerce.number().int().min(1).max(5).nullish(),
+    })
+    .refine((r) => r.not_performed || r.difficulty != null),
   meal_plan_items: z.object({
     id: z.string(),
     date: isoDate,
@@ -257,6 +271,8 @@ export interface SyncableState {
    * its day because another real session holds that slot (D-033). Absent = same slot.
    */
   sessionSlots?: Record<SessionKey, SessionKey>;
+  /** Per prescribed exercise: not performed (and why), felt difficulty (W-3, `exercise_reports`). */
+  exerciseReports?: Record<SessionKey, Record<string, ExerciseReport>>;
 }
 
 export type SyncTable =
@@ -276,6 +292,7 @@ export type SyncTable =
   | 'daily_checkins'
   | 'weekly_checkins'
   | 'exercise_substitutions'
+  | 'exercise_reports'
   | 'journey_milestones'
   | 'adjustments';
 
@@ -284,8 +301,12 @@ export type Row = Record<string, unknown>;
 interface TableSpec {
   /** Primary key used to address a row. */
   key: 'id' | 'user_id';
-  /** A row that disappears locally is soft-deleted on the server (user deletions). History tables keep it. */
-  deleteOnMissing: boolean;
+  /**
+   * A row that disappears locally is soft-deleted on the server (user deletions). History tables keep
+   * it. `with_session`: only while its session is still here (a set or report the user removed, W-3);
+   * a session that leaves the device (moved by a conflict, reset) never takes its facts with it.
+   */
+  deleteOnMissing: boolean | 'with_session';
 }
 
 /**
@@ -304,12 +325,14 @@ export const SYNC_TABLES: Record<SyncTable, TableSpec> = {
   training_programs: { key: 'id', deleteOnMissing: false },
   workout_sessions: { key: 'id', deleteOnMissing: false },
   planned_exercises: { key: 'id', deleteOnMissing: false },
-  exercise_logs: { key: 'id', deleteOnMissing: false },
+  // A set removed by a correction is soft-deleted (W-3); erasure still goes through the Privacy Center.
+  exercise_logs: { key: 'id', deleteOnMissing: 'with_session' },
   weight_logs: { key: 'id', deleteOnMissing: true },
   body_measurements: { key: 'id', deleteOnMissing: true },
   daily_checkins: { key: 'id', deleteOnMissing: false },
   weekly_checkins: { key: 'id', deleteOnMissing: true },
   exercise_substitutions: { key: 'id', deleteOnMissing: false },
+  exercise_reports: { key: 'id', deleteOnMissing: 'with_session' },
   journey_milestones: { key: 'id', deleteOnMissing: false },
   adjustments: { key: 'id', deleteOnMissing: false },
 };
@@ -321,7 +344,7 @@ export type SyncedHashes = Record<string, string>;
 
 export const rowRef = (table: SyncTable, key: string) => `${table}:${key}`;
 
-/** Stable JSON (sorted keys) used to fingerprint rows. */
+/** Stable JSON (sorted keys) used to fingerprint rows; the JSON itself, so a pending deletion can read its session. */
 export function hashRow(row: Row): string {
   const sort = (v: unknown): unknown =>
     Array.isArray(v)
@@ -343,6 +366,7 @@ const setRowId = (sessionId: string, exerciseId: string, index: number) =>
 const dayRowId = (userId: string, date: IsoDate) => stableUuid(`${userId}:day:${date}`);
 const weekRowId = (userId: string, weekStart: IsoDate) => stableUuid(`${userId}:week:${weekStart}`);
 const swapRowId = (sessionId: string, fromId: string) => stableUuid(`${sessionId}:swap:${fromId}`);
+const reportRowId = (sessionId: string, exerciseId: string) => stableUuid(`${sessionId}:report:${exerciseId}`);
 const milestoneRowId = (userId: string, id: string) => stableUuid(`${userId}:milestone:${id}`);
 
 const orNull = <T>(v: T | undefined): T | null => (v === undefined ? null : v);
@@ -677,7 +701,7 @@ export function project(state: SyncableState, userId: string): Record<SyncTable,
             : p && !hasFacts(state, key)
               ? 'planned'
               : 'in_progress',
-      outcome_reason: orNull(outcome?.reason),
+      outcome_reason: orNull(done ? done.stopped : outcome?.reason),
       replaced_by: outcome?.status === 'replaced' ? orNull(outcome.replacedBy) : null,
       ...prescriptionColumns(p, state.sessionSources?.[key]),
       rescheduled_to: movedTo ?? null,
@@ -709,12 +733,35 @@ export function project(state: SyncableState, userId: string): Record<SyncTable,
           exercise_id: exerciseId,
           set_index: index,
           reps: set.reps,
+          // A hold is stored in seconds (reps null, `exercise_logs_reps_or_seconds`).
+          ...(set.seconds !== undefined ? { reps: null, seconds: set.seconds } : {}),
           load_kg: set.loadKg,
           rpe: orNull(set.rpe),
           planned_exercise_id: plannedId,
           deleted_at: null,
         }),
       );
+    }
+  }
+  for (const [key, reports] of Object.entries(state.exerciseReports ?? {})) {
+    const id = state.sessionIds[key];
+    if (!id) continue;
+    const variant = state.completedSessions.find((c) => sessionKey(c.date, c.sessionIndex) === key)?.variant;
+    const planned = prescriptions[id]
+      ? plannedOf(prescriptions[id], variant ?? state.sessionVariants?.[key] ?? 'full')
+      : [];
+    for (const [exerciseId, r] of Object.entries(reports)) {
+      if (!r.notPerformed && r.difficulty === undefined) continue;
+      put('exercise_reports', {
+        id: reportRowId(id, exerciseId),
+        session_id: id,
+        exercise_id: exerciseId,
+        planned_exercise_id: plannedExerciseFor(planned, exerciseId)?.id ?? null,
+        not_performed: !!r.notPerformed,
+        not_performed_reason: r.notPerformed ? orNull(r.notPerformedReason) : null,
+        difficulty: orNull(r.difficulty),
+        deleted_at: null,
+      });
     }
   }
   // Prescriptions replaced before they started: kept on the server as `superseded`.
@@ -759,9 +806,28 @@ export function diff(projected: Record<SyncTable, Map<string, Row>>, synced: Syn
   }
   for (const ref of Object.keys(synced)) {
     const [table, key] = ref.split(/:(.*)/s) as [SyncTable, string];
-    if (SYNC_TABLES[table]?.deleteOnMissing && !projected[table]?.has(key)) plan.deletes.push({ table, key });
+    if (deletable(table, ref, projected, synced) && !projected[table]?.has(key)) plan.deletes.push({ table, key });
   }
   return plan;
+}
+
+/** A synced row missing locally is a deletion to push (see `TableSpec.deleteOnMissing`). */
+function deletable(
+  table: SyncTable,
+  ref: string,
+  projected: Record<SyncTable, Map<string, Row>>,
+  synced: SyncedHashes,
+): boolean {
+  const rule = SYNC_TABLES[table]?.deleteOnMissing;
+  if (rule !== 'with_session') return !!rule && ref in synced;
+  if (!(ref in synced)) return false;
+  // The fingerprint is the row's stable JSON: it still names the session the row belonged to.
+  try {
+    const sessionId = (JSON.parse(synced[ref]) as Row).session_id;
+    return typeof sessionId === 'string' && projected.workout_sessions.has(sessionId);
+  } catch {
+    return false;
+  }
 }
 
 /** True when the local row has changes not yet pushed (they win over the server). */
@@ -774,7 +840,7 @@ function isPending(
   const local = projected[table].get(key);
   const ref = rowRef(table, key);
   // Deleted locally but still on the server: the deletion is pending.
-  if (!local) return ref in synced && SYNC_TABLES[table].deleteOnMissing;
+  if (!local) return deletable(table, ref, projected, synced);
   return synced[ref] !== hashRow(local);
 }
 
@@ -828,12 +894,14 @@ export function applyRemote(
     rescheduled: { ...state.rescheduled },
     sessionOpened: { ...state.sessionOpened },
     sessionSlots: { ...state.sessionSlots },
+    exerciseReports: { ...state.exerciseReports },
   };
   let rejected = 0;
   /** Session ids whose local content was kept under new ids (D-033): their server rows apply as they are. */
   const forked = new Set<string>();
   const forkedChild = (table: SyncTable, r: Row) =>
-    (table === 'exercise_logs' || table === 'exercise_substitutions') && forked.has(String(r.session_id));
+    (table === 'exercise_logs' || table === 'exercise_substitutions' || table === 'exercise_reports') &&
+    forked.has(String(r.session_id));
   /** Rows the merge changed on purpose (a server session superseded here): left to be pushed. */
   const toPush = new Set<string>();
   /** Rows taken from the server even though the local copy differed (immutable rows). */
@@ -1097,11 +1165,13 @@ export function applyRemote(
       };
     }
     if (r.status === 'completed') {
+      const stopped = SESSION_REASONS.find((x) => x === r.outcome_reason);
       next.completedSessions.push({
         date: String(r.scheduled_for),
         sessionIndex: parseSessionKey(key).sessionIndex,
         variant: (r.variant as SessionVariant) ?? 'full',
         completedAt: String(r.completed_at ?? r.updated_at),
+        ...(stopped ? { stopped } : {}),
       });
     }
     if (r.status !== 'completed' && (r.variant === 'short' || r.variant === 'light')) {
@@ -1117,13 +1187,48 @@ export function applyRemote(
       next.rescheduled![String(r.scheduled_for)] = String(r.rescheduled_to);
     }
   }
+  // Sets by index; a row deleted elsewhere (a correction, W-3) removes its set. Compacted once at the
+  // end, so the order the rows arrive in never shifts an index.
+  const touched = new Map<string, (LoggedSet | undefined)[]>();
   for (const r of rows('exercise_logs')) {
     const key = keyById.get(String(r.session_id));
-    if (!key || r.deleted_at != null) continue;
+    if (!key) continue;
     const exerciseId = String(r.exercise_id);
-    const sets = [...(next.setLogs[key]?.[exerciseId] ?? [])];
-    sets[Number(r.set_index)] = { reps: Number(r.reps ?? 0), loadKg: Number(r.load_kg ?? 0), rpe: num(r.rpe) };
-    next.setLogs[key] = { ...next.setLogs[key], [exerciseId]: sets.filter(Boolean) };
+    const ref = `${key}\u0000${exerciseId}`;
+    const sets = touched.get(ref) ?? [...(next.setLogs[key]?.[exerciseId] ?? [])];
+    touched.set(ref, sets);
+    const index = Number(r.set_index);
+    if (r.deleted_at != null) {
+      if (index < sets.length) sets[index] = undefined;
+      continue;
+    }
+    const seconds = num(r.seconds);
+    sets[index] =
+      seconds !== undefined && r.reps == null
+        ? { reps: 0, seconds, loadKg: Number(r.load_kg ?? 0), rpe: num(r.rpe) }
+        : { reps: Number(r.reps ?? 0), loadKg: Number(r.load_kg ?? 0), rpe: num(r.rpe) };
+  }
+  for (const [ref, sets] of touched) {
+    const [key, exerciseId] = ref.split('\u0000');
+    const kept = sets.filter((s): s is LoggedSet => s !== undefined);
+    const { [exerciseId]: _old, ...others } = next.setLogs[key] ?? {};
+    next.setLogs[key] = kept.length > 0 ? { ...others, [exerciseId]: kept } : others;
+  }
+  for (const r of rows('exercise_reports')) {
+    const key = keyById.get(String(r.session_id));
+    if (!key) continue;
+    const exerciseId = String(r.exercise_id);
+    const { [exerciseId]: _old, ...others } = next.exerciseReports![key] ?? {};
+    if (r.deleted_at != null) {
+      next.exerciseReports![key] = others;
+      continue;
+    }
+    const reason = REPLACEMENT_REASONS.find((x) => x === r.not_performed_reason);
+    const report: ExerciseReport = {};
+    if (r.not_performed === true) report.notPerformed = true;
+    if (r.not_performed === true && reason) report.notPerformedReason = reason;
+    if (r.difficulty != null) report.difficulty = Number(r.difficulty);
+    next.exerciseReports![key] = { ...others, [exerciseId]: report };
   }
 
   for (const r of rows('exercise_substitutions')) {
@@ -1335,6 +1440,7 @@ function moveSlot(state: SyncableState, from: SessionKey, to: SessionKey) {
   move(state.sessionDifficulty);
   move(state.sessionOpened);
   move(state.sessionSources);
+  move(state.exerciseReports);
   state.sessionSlots![to] = state.sessionSlots![from] ?? from;
   delete state.sessionSlots![from];
   const { date, sessionIndex } = parseSessionKey(to);

@@ -53,8 +53,17 @@ export interface DailyPlanInput {
   state: JourneyState;
   day: PlannedDay | null;
   meals: DailyMealPlan | null;
-  /** Template of today's planned session. */
-  session: { sessionIndex: number; focus: string; minutes: number } | null;
+  /**
+   * Today's planned session. `minutes` is the full prescription's; `minutesOf` returns what the
+   * workout screen will run for a variant (D-034: stored variant, else what it will be built for), so
+   * the Daily Coach never announces another duration than the session's.
+   */
+  session: {
+    sessionIndex: number;
+    focus: string;
+    minutes: number;
+    minutesOf?: (variant: SessionVariant, requested: number) => number;
+  } | null;
   /** Today's session as done (any variant). */
   completed: { variant: SessionVariant } | null;
   /** Today's session skipped or replaced. */
@@ -144,6 +153,8 @@ function decideWorkout(input: DailyPlanInput, mode: DayMode, difficult: boolean,
   }
 
   const slowDown = state.safety.flags.includes('training_load');
+  const minutesOf = (variant: SessionVariant, requested: number) =>
+    session.minutesOf ? session.minutesOf(variant, requested) : requested;
   const workout = (variant: SessionVariant, minutes: number, reason: string): DailyItem => ({
     id: 'workout',
     kind: 'workout',
@@ -163,11 +174,12 @@ function decideWorkout(input: DailyPlanInput, mode: DayMode, difficult: boolean,
   if (difficult) {
     const min = minimalVersion(ctx, { slowDown });
     if (min.kind === 'session') {
+      const to = minutesOf('short', min.minutes);
       return {
-        item: workout('short', min.minutes, 'workout.difficult'),
+        item: workout('short', to, 'workout.difficult'),
         alternative: null,
-        adaptations: [{ key: 'daily.adapt.difficult_session', params: { from: session.minutes, to: min.minutes } }],
-        facts: { minutes: String(min.minutes) },
+        adaptations: [{ key: 'daily.adapt.difficult_session', params: { from: session.minutes, to } }],
+        facts: { minutes: String(to) },
       };
     }
     const alt =
@@ -191,40 +203,43 @@ function decideWorkout(input: DailyPlanInput, mode: DayMode, difficult: boolean,
   }
   // 3. Planned training, adapted to what the user declared.
   if (mode === 'short') {
+    const minutes = minutesOf('short', DAY_MODE.shortSessionMinutes);
     return {
       ...none,
-      item: workout('short', DAY_MODE.shortSessionMinutes, 'workout.short_day'),
-      adaptations: [{ key: 'daily.adapt.short_day', params: { minutes: DAY_MODE.shortSessionMinutes } }],
-      facts: { minutes: String(DAY_MODE.shortSessionMinutes) },
+      item: workout('short', minutes, 'workout.short_day'),
+      adaptations: [{ key: 'daily.adapt.short_day', params: { minutes } }],
+      facts: { minutes: String(minutes) },
     };
   }
   if (mode === 'low_motivation') {
+    const minutes = minutesOf('short', DAY_MODE.minimalSessionMinutes);
     return {
       ...none,
-      item: workout('short', DAY_MODE.minimalSessionMinutes, 'workout.low_motivation'),
-      adaptations: [{ key: 'daily.adapt.low_motivation', params: { minutes: DAY_MODE.minimalSessionMinutes } }],
-      facts: { minutes: String(DAY_MODE.minimalSessionMinutes) },
+      item: workout('short', minutes, 'workout.low_motivation'),
+      adaptations: [{ key: 'daily.adapt.low_motivation', params: { minutes } }],
+      facts: { minutes: String(minutes) },
     };
   }
   if (state.momentum.comeback) {
+    const minutes = minutesOf('short', DAY_MODE.shortSessionMinutes);
     return {
       ...none,
-      item: workout('short', DAY_MODE.shortSessionMinutes, 'workout.comeback'),
-      adaptations: [{ key: 'daily.adapt.comeback', params: { minutes: DAY_MODE.shortSessionMinutes } }],
+      item: workout('short', minutes, 'workout.comeback'),
+      adaptations: [{ key: 'daily.adapt.comeback', params: { minutes } }],
     };
   }
   const tired = (slowDown && state.safety.trainingLoadBasis !== 'frequency') || state.difficulties.fatigue === 'high';
   if (tired) {
     return {
       ...none,
-      item: workout('light', Math.round(session.minutes * 0.7), 'workout.light'),
+      item: workout('light', minutesOf('light', Math.round(session.minutes * 0.7)), 'workout.light'),
       adaptations: [{ key: 'daily.adapt.light', params: {} }],
     };
   }
   if (input.lightWeek) {
     return {
       ...none,
-      item: workout('light', Math.round(session.minutes * 0.7), 'workout.light_week'),
+      item: workout('light', minutesOf('light', Math.round(session.minutes * 0.7)), 'workout.light_week'),
       adaptations: [{ key: 'daily.adapt.light_week', params: {} }],
     };
   }
@@ -233,7 +248,7 @@ function decideWorkout(input: DailyPlanInput, mode: DayMode, difficult: boolean,
       session.minutes,
       Math.max(DAY_MODE.shortSessionMinutes, dayLog?.availableMinutes ?? DAY_MODE.shortSessionMinutes),
     );
-    return { ...none, item: workout('short', minutes, 'workout.short_slot') };
+    return { ...none, item: workout('short', minutesOf('short', minutes), 'workout.short_slot') };
   }
   return { ...none, item: workout('full', session.minutes, 'workout.planned') };
 }

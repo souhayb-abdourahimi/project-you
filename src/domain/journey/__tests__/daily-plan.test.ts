@@ -1,4 +1,10 @@
 import type { DailyMealPlan, PlannedMeal } from '../../meals/planner';
+import { SCENARIOS } from '../../scenarios';
+import { publishWeek } from '../../scenarios/training';
+import { sessionKey } from '../../shared/ids';
+import type { SessionVariant } from '../../training/adapt';
+import type { PrescribedSession } from '../../training/program';
+import { adaptSession, plannedVariantMinutes, variantMinutes } from '../../training/week';
 import type { PlannedDay } from '../../planning/engine';
 import { stateFor, translator, type StatePatch } from '../__fixtures__/journey';
 import { buildDailyPlan, MAX_DAILY_ITEMS, type DailyPlanInput } from '../daily-plan';
@@ -123,6 +129,45 @@ describe('DailyPlan', () => {
     const p = buildDailyPlan(input({ dayLog: { date: TODAY, mode: 'short' } }));
     expect(p.mode).toBe('short');
     expect(p.items[0].params).toMatchObject({ variant: 'short', minutes: 15 });
+  });
+
+  it('one duration (D-034): the coach announces what the workout screen will run', () => {
+    const week = publishWeek(SCENARIOS.muscleGain, {
+      today: TODAY,
+      weekStart: '2026-09-28',
+      seed: '11111111-1111-4111-8111-111111111111',
+      at: '2026-09-28T07:00:00.000Z',
+    });
+    const stored = week.prescriptions[week.sessionIds[sessionKey(TODAY, 1)]];
+    const session = (p: PrescribedSession) => ({
+      sessionIndex: 1,
+      focus: p.focus,
+      minutes: p.plannedMinutes,
+      minutesOf: (v: SessionVariant, requested: number) => plannedVariantMinutes(p, v, requested),
+    });
+    for (const dayLog of [
+      { date: TODAY, mode: 'short' as const },
+      { date: TODAY, availableMinutes: 25, energy: 2 },
+    ]) {
+      const announced = buildDailyPlan(input({ dayLog, session: session(stored) })).items[0].params as {
+        variant: SessionVariant;
+        minutes: number;
+      };
+      // The workout screen builds the variant with the coach's minutes, then reads it back.
+      const built = adaptSession({
+        session: stored,
+        program: week.programs[0],
+        variant: announced.variant,
+        minutes: announced.minutes,
+        training: SCENARIOS.muscleGain.training,
+        done: false,
+        prescribedAt: '2026-09-30T18:00:00.000Z',
+      })!;
+      expect(variantMinutes(built, announced.variant)).toBe(announced.minutes);
+      // Once stored, the coach reads the stored duration, whatever it would have asked.
+      const again = buildDailyPlan(input({ dayLog, session: session(built) })).items[0].params;
+      expect(again).toMatchObject({ minutes: announced.minutes });
+    }
   });
 
   it('a session done or replaced is shown as done; a skipped one leaves a rest day', () => {

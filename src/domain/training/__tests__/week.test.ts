@@ -1,7 +1,8 @@
 import { SCENARIOS, scenario } from '../../scenarios';
 import { EMPTY_FACTS, emptyRecords, publishWeek, scheduledWeek } from '../../scenarios/training';
 import { sessionKey } from '../../shared/ids';
-import type { ProgramParams } from '../program';
+import { SESSION_DURATION, shortMinutes } from '../durations';
+import type { PrescribedSession, ProgramParams } from '../program';
 import {
   activeProgram,
   adaptSession,
@@ -10,10 +11,12 @@ import {
   ensureWeek,
   hasFacts,
   keptSession,
+  plannedVariantMinutes,
   prescriptionFor,
   proposedLoads,
   rescheduleSession,
   trainingIds,
+  variantMinutes,
   variantTemplate,
   versionInForce,
   versionReason,
@@ -268,6 +271,89 @@ describe('variants of the day', () => {
   });
 });
 
+describe('durations (D-034): what the coach announces is what is prescribed', () => {
+  const adapt = (session: PrescribedSession, variant: 'short' | 'light', minutes?: number) =>
+    adaptSession({
+      session,
+      program: first().programs[0],
+      variant,
+      minutes,
+      training: SNAP.training,
+      done: false,
+      prescribedAt: '2026-09-28T18:00:00.000Z',
+    })!;
+
+  it('short length: what the user has, between the shortest session and the planned one', () => {
+    expect(shortMinutes(undefined, 60)).toBe(SESSION_DURATION.short);
+    expect(shortMinutes(20, 60)).toBe(20);
+    expect(shortMinutes(5, 60)).toBe(SESSION_DURATION.shortest);
+    expect(shortMinutes(90, 45)).toBe(45);
+  });
+
+  it('"J\'ai 15 minutes": announced 15, stored 15, read 15', () => {
+    const r = first();
+    const p = r.prescriptions[r.sessionIds[MONDAY]];
+    expect(plannedVariantMinutes(p, 'short', 15)).toBe(15);
+    expect(plannedVariantMinutes(p, 'full', 15)).toBe(p.plannedMinutes);
+    const short = adapt(p, 'short', 15);
+    expect(short.adaptedMinutes).toBe(15);
+    expect(variantMinutes(short, 'short')).toBe(15);
+    expect(plannedVariantMinutes(short, 'short', 30)).toBe(15); // stored: never re-created
+    expect(variantTemplate(short, 'short')!.estimatedMinutes).toBeLessThanOrEqual(15);
+    // Short rests less and warms up shorter: it fits by being shorter, not by being cut after N minutes.
+    for (const e of short.exercises.filter((x) => x.variant === 'short'))
+      expect(e.restSeconds).toBeLessThanOrEqual(SESSION_DURATION.shortRestSeconds);
+  });
+
+  it('20 minutes asked gives a 20 minute short session', () => {
+    const r = first();
+    const short = adapt(r.prescriptions[r.sessionIds[MONDAY]], 'short', 20);
+    expect(variantMinutes(short, 'short')).toBe(20);
+  });
+
+  it('light: announced and stored with the same estimate, fewer sets than full', () => {
+    const r = first();
+    const p = r.prescriptions[r.sessionIds[MONDAY]];
+    const announced = plannedVariantMinutes(p, 'light', 15);
+    const light = adapt(p, 'light');
+    expect(variantMinutes(light, 'light')).toBe(announced);
+    const sets = (v: string) => light.exercises.filter((e) => e.variant === v).reduce((n, e) => n + e.sets, 0);
+    expect(sets('light')).toBeLessThan(sets('full'));
+    expect(light.exercises.filter((e) => e.variant === 'light').every((e) => (e.targetRpe ?? 0) <= 6)).toBe(true);
+  });
+
+  it('loads: light keeps a kept load and drops a planned increase; a variant never invents one', () => {
+    const r = first();
+    const p = structuredClone(r.prescriptions[r.sessionIds[MONDAY]]) as PrescribedSession;
+    const [a, b] = p.exercises;
+    Object.assign(a, {
+      targetLoadKg: 50,
+      progressionAction: 'keep',
+      progressionReason: 'progression.reason.in_range',
+    });
+    Object.assign(b, {
+      targetLoadKg: 30,
+      progressionAction: 'increase_load',
+      progressionReason: 'progression.reason.top_of_range',
+    });
+    const light = adapt(p, 'light').exercises.filter((e) => e.variant === 'light');
+    expect(light.find((e) => e.exerciseId === a.exerciseId)).toMatchObject({
+      targetLoadKg: 50,
+      progressionAction: 'keep',
+    });
+    expect(light.find((e) => e.exerciseId === b.exerciseId)).toMatchObject({
+      targetLoadKg: null,
+      progressionAction: null,
+    });
+    for (const e of light.filter((x) => x.exerciseId !== a.exerciseId)) expect(e.targetLoadKg).toBeNull();
+    const short = adapt(p, 'short', 15).exercises.filter((e) => e.variant === 'short');
+    for (const e of short) {
+      const full = p.exercises.find((x) => x.variant === 'full' && x.exerciseId === e.exerciseId);
+      expect(e.targetLoadKg).toBe(full?.targetLoadKg ?? null);
+    }
+  });
+});
+
 describe('proposed loads', () => {
   it('persists a load proposed from real sets, and null when there is no history (never invented)', () => {
     const none = first();
@@ -301,6 +387,27 @@ describe('proposed loads', () => {
     expect(loads.bench_press.loadKg).toBeGreaterThan(50);
     // Sets of the same day or later are not history.
     expect(proposedLoads(template, setLogs, '2026-09-21')).toEqual({});
+  });
+
+  it('a hold progresses on its seconds, not on its zero reps', () => {
+    const template = {
+      exercises: [
+        {
+          exerciseId: 'plank',
+          sets: 3,
+          repsMin: 30,
+          repsMax: 45,
+          unit: 'seconds' as const,
+          restSeconds: 60,
+          targetRpe: 7,
+          alternatives: [],
+        },
+      ],
+    };
+    const setLogs = { [sessionKey('2026-09-21', 0)]: { plank: [{ reps: 0, seconds: 45, loadKg: 0 }] } };
+    // Bodyweight: no load proposed, but the hold counts as done (not as a set of 0 reps).
+    expect(proposedLoads(template, setLogs, '2026-09-28').plank).toMatchObject({ loadKg: null });
+    expect(proposedLoads(template, setLogs, '2026-09-28').plank.action).not.toBe('deload');
   });
 });
 

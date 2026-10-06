@@ -26,10 +26,15 @@ Audit et architecture : `docs/WORKOUT_ENGINE.md`, `docs/TRAINING_ARCHITECTURE.md
   - [ ] Appliquer la migration W-1 sur Supabase avant toute version de l'app contenant W-2 ; mettre à jour tous les appareils (une ancienne version ignore les séances `superseded`)
   - [ ] W-6 : afficher les jours passés de la semaine depuis les prescriptions (aujourd'hui depuis le planning courant) ; `useJourney` recalcule encore les semaines passées avec `scheduleOfWeek`
   - [ ] Purger les prescriptions anciennes du stockage local (aucun élagage aujourd'hui)
-  - [ ] W-4 : charge proposée calculée avec une fatigue « normale » ; brancher la fatigue du jour
+  - [ ] W-4 : charge proposée calculée avec une fatigue « normale » ; brancher la fatigue du jour (W-3 retient seulement une hausse prévue sous fatigue élevée ou sécurité, au préremplissage)
   - [x] D-033 vérité historique : une séance utilisée garde sa prescription malgré un conflit ; version perdante mais utilisée archivée ; collision `date#index` résolue (ligne prévue `superseded`, deux séances réelles gardées)
   - [ ] Deux séances réelles pour un même créneau : la seconde s'affiche dans un créneau libre du jour (`date#6`) ; l'historique des séances (W-6) devra l'afficher comme « séance supplémentaire »
-- [ ] W-3 Séance (UI fonctionnelle) + **bugs confirmés** : fatigue codée en dur à « normal » dans `ExerciseCard` ; séance courte annoncée à 20 min qui exécute 15 min
+- [x] W-3 Séance réelle (D-034, revue `revue-w3-workout-coach.md`, en attente de validation) : écran de séance, saisie répétitions / secondes, correction, minuteur, remplacement avec raison, exercice non fait, fin et résumé ; bugs corrigés (fatigue codée en dur, durée courte 20 → 15)
+  - [ ] Appliquer la migration `20261006000001_workout_session.sql` sur Supabase avant toute version de l'app contenant W-3
+  - [ ] Faire relire la correspondance ressenti → RPE (Facile 6, Correct 8, Très difficile 10)
+  - [ ] Séance hors programme : pas de `started_at`, durée « Donnée indisponible » dans le résumé
+  - [ ] `keptExercises` (« le garder ») est local, non synchronisé
+  - [ ] Tester l'écran de séance sur appareil réel (iOS, Android) : clavier numérique, minuteur en arrière-plan
 - [ ] W-4 Comparaison prévu / fait + progression v2
 - [ ] W-5 Règles d'adaptation d'entraînement, fin de cycle (accepter / refuser / reporter), question de confirmation des préférences (reprend « Mémoire du coach » ci-dessous)
 - [ ] W-6 Intégrations (Daily Coach, Programme, Progress Journey, explications)

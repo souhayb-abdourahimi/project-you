@@ -2,7 +2,10 @@ import { SCENARIOS } from '@/domain/scenarios';
 import { publishWeek } from '@/domain/scenarios/training';
 import { sessionKey } from '@/domain/shared/ids';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import { useDataStore } from '../data';
+import { persistStorage, useStorageHealth } from '../storage';
 
 jest.mock('@react-native-async-storage/async-storage', () =>
   jest.requireActual('@react-native-async-storage/async-storage/jest/async-storage-mock'),
@@ -78,5 +81,79 @@ describe('data store, Workout Coach (W-2)', () => {
     expect(useDataStore.getState().sessionOpened[WEDNESDAY]).toBe(at);
     useDataStore.getState().openSession(sessionKey('2026-10-04', 0));
     expect(Object.keys(useDataStore.getState().sessionOpened)).toEqual([WEDNESDAY]);
+  });
+});
+
+describe('data store, workout session (W-3)', () => {
+  beforeEach(() => useDataStore.getState().reset());
+  const store = () => useDataStore.getState();
+
+  it('corrects and deletes a set without touching the others', () => {
+    withWeek();
+    store().logSet(WEDNESDAY, 'squat', { reps: 5, loadKg: 60 });
+    store().logSet(WEDNESDAY, 'squat', { reps: 5, loadKg: 60 });
+    store().editSet(WEDNESDAY, 'squat', 1, { reps: 6, loadKg: 62.5 });
+    expect(store().setLogs[WEDNESDAY].squat).toEqual([
+      { reps: 5, loadKg: 60 },
+      { reps: 6, loadKg: 62.5 },
+    ]);
+    store().editSet(WEDNESDAY, 'squat', 5, { reps: 1, loadKg: 1 });
+    expect(store().setLogs[WEDNESDAY].squat).toHaveLength(2);
+    store().deleteSet(WEDNESDAY, 'squat', 0);
+    expect(store().setLogs[WEDNESDAY].squat).toEqual([{ reps: 6, loadKg: 62.5 }]);
+    store().deleteSet(WEDNESDAY, 'squat', 0);
+    expect(store().setLogs[WEDNESDAY]).toEqual({});
+  });
+
+  it('records a hold in seconds', () => {
+    withWeek();
+    store().logSet(WEDNESDAY, 'plank', { reps: 0, seconds: 40, loadKg: 0 });
+    expect(store().setLogs[WEDNESDAY].plank).toEqual([{ reps: 0, seconds: 40, loadKg: 0 }]);
+  });
+
+  it('a replacement keeps its reason and can be undone only before any set', () => {
+    withWeek();
+    store().swapExercise(WEDNESDAY, 'squat', 'goblet_squat', 'busy_equipment');
+    expect(store().exerciseSwaps[WEDNESDAY]).toEqual({ squat: 'goblet_squat' });
+    expect(store().swapReasons[WEDNESDAY]).toEqual({ squat: 'busy_equipment' });
+    store().swapExercise(WEDNESDAY, 'squat', 'squat');
+    expect([store().exerciseSwaps[WEDNESDAY], store().swapReasons[WEDNESDAY]]).toEqual([{}, {}]);
+    store().swapExercise(WEDNESDAY, 'squat', 'goblet_squat', 'busy_equipment');
+    store().logSet(WEDNESDAY, 'goblet_squat', { reps: 10, loadKg: 20 });
+    store().swapExercise(WEDNESDAY, 'squat', 'squat');
+    expect(store().exerciseSwaps[WEDNESDAY]).toEqual({ squat: 'goblet_squat' });
+  });
+
+  it('reports "not performed" with its reason and a 1–5 difficulty; a cleared report is removed', () => {
+    withWeek();
+    store().reportExercise(WEDNESDAY, 'squat', { notPerformed: true, notPerformedReason: 'no_time' });
+    expect(store().exerciseReports[WEDNESDAY]).toEqual({
+      squat: { notPerformed: true, notPerformedReason: 'no_time' },
+    });
+    store().reportExercise(WEDNESDAY, 'squat', { difficulty: 9 });
+    expect(store().exerciseReports[WEDNESDAY].squat.difficulty).toBeUndefined();
+    store().reportExercise(WEDNESDAY, 'squat', { notPerformed: false, difficulty: 4 });
+    expect(store().exerciseReports[WEDNESDAY]).toEqual({ squat: { difficulty: 4 } });
+    store().reportExercise(WEDNESDAY, 'squat', null);
+    expect(store().exerciseReports[WEDNESDAY]).toEqual({});
+  });
+
+  it('a stopped session keeps its reason; "keep it" remembers how often it was seen', () => {
+    withWeek();
+    store().completeSession({ date: '2026-09-30', sessionIndex: 1, variant: 'full', stopped: 'pain' });
+    expect(store().completedSessions).toEqual([
+      { date: '2026-09-30', sessionIndex: 1, variant: 'full', stopped: 'pain', completedAt: expect.any(String) },
+    ]);
+    store().keepExercise('squat', 3);
+    expect(store().keptExercises).toEqual({ squat: 3 });
+  });
+
+  it('a failed write to the device is reported, and cleared by the next success', async () => {
+    const setItem = jest.spyOn(AsyncStorage, 'setItem').mockRejectedValueOnce(new Error('full'));
+    await persistStorage!.setItem('py.test', { state: {}, version: 0 });
+    expect(useStorageHealth.getState().saveFailed).toBe(true);
+    await persistStorage!.setItem('py.test', { state: {}, version: 0 });
+    expect(useStorageHealth.getState().saveFailed).toBe(false);
+    setItem.mockRestore();
   });
 });
