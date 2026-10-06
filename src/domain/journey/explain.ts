@@ -3,6 +3,7 @@
  * data used. Deterministic. The screen shows them now; a future AI layer may only rephrase these
  * objects (docs/AI_ARCHITECTURE.md): it never reads the raw history and decides nothing.
  */
+import type { PlannedExercise, ProgramVersion, TrainingPurpose } from '../training/program';
 import type { Adjustment } from './adjustments';
 import type { DailyItem, DailyPlan } from './daily-plan';
 
@@ -63,19 +64,24 @@ export function explainPlanChange(adjustments: Adjustment[]): Explanation | null
     .filter((a) => a.status === 'applied' || a.status === 'reverted')
     .sort((a, b) => a.decidedAt.localeCompare(b.decidedAt))
     .at(-1);
-  if (!latest) return null;
-  // W-5 structural changes: their own sentence (the reason's numbers are not stored with them).
-  const structural = ['restart', 'reduce_volume', 'easier_variant', 'exercise_change', 'cycle_review'];
+  return latest ? explainDecision(latest) : null;
+}
+
+/** W-5 structural changes: their own sentence (the reason's numbers are not stored with them). */
+const STRUCTURAL_EXPLAINED = ['restart', 'reduce_volume', 'easier_variant', 'exercise_change', 'cycle_review'];
+
+/** Why a decision of the journal was proposed, whatever the answer (history, W-6). */
+export function explainDecision(d: Adjustment): Explanation {
   return {
-    key: structural.includes(latest.changeKey) ? `adaptation.explain.${latest.changeKey}` : latest.reasonKey,
+    key: STRUCTURAL_EXPLAINED.includes(d.changeKey) ? `adaptation.explain.${d.changeKey}` : d.reasonKey,
     params: {
-      ...latest.evidence,
-      ...(latest.from !== null ? { from: latest.from } : {}),
-      ...(latest.to !== null ? { to: latest.to } : {}),
-      status: latest.status,
-      effectiveFrom: latest.effectiveFrom,
+      ...d.evidence,
+      ...(d.from !== null ? { from: d.from } : {}),
+      ...(d.to !== null ? { to: d.to } : {}),
+      status: d.status,
+      effectiveFrom: d.effectiveFrom,
     },
-    dataUsed: Object.keys(latest.evidence).map((k) => `data.evidence.${k}`),
+    dataUsed: Object.keys(d.evidence).map((k) => `data.evidence.${k}`),
   };
 }
 
@@ -88,4 +94,56 @@ export function explainMissedSession(plan: DailyPlan): Explanation {
   return next
     ? { key: 'explain.missed.today', params: next.params, dataUsed: ['data.schedule'] }
     : { key: 'explain.missed.next', params: {}, dataUsed: ['data.schedule'] };
+}
+
+/**
+ * "Pourquoi cet exercice ?" (W-6): the purpose stored on the prescribed row (W-1), never a
+ * generated text. A replacement keeps the purpose of the slot it fills.
+ */
+export function explainExercise(
+  row: { purpose: TrainingPurpose | null; purposeTarget: string | null } | null,
+): Explanation | null {
+  if (!row?.purpose) return null;
+  return {
+    key: `workout.why.${row.purpose}`,
+    params: row.purposeTarget ? { target: row.purposeTarget } : {},
+    dataUsed: ['data.goal', 'data.training_profile'],
+  };
+}
+
+/** "Pourquoi cette charge ?": the decision stored with the prescription, and how sure it is. */
+export interface LoadExplanation extends Explanation {
+  action: NonNullable<PlannedExercise['progressionAction']>;
+  confidence: PlannedExercise['progressionConfidence'];
+}
+
+/**
+ * The progression decision frozen in the prescription (W-4, D-035): action, reason with the
+ * numbers of its evidence, confidence. Read, never recomputed: the past session that produced it
+ * is not replayed. Null for a replacement (a load proposed for one movement says nothing about
+ * another one) and for rows prescribed without a decision.
+ */
+export function explainLoad(
+  row: Pick<PlannedExercise, 'progressionAction' | 'progressionReason' | 'progressionParams' | 'progressionConfidence'>,
+  replaced = false,
+): LoadExplanation | null {
+  if (replaced || !row.progressionAction || !row.progressionReason) return null;
+  return {
+    key: `reasons.${row.progressionReason}`,
+    params: row.progressionParams ?? {},
+    dataUsed: ['data.sessions'],
+    action: row.progressionAction,
+    confidence: row.progressionConfidence,
+  };
+}
+
+/** Why a program version exists: its stored reason, and the accepted decision behind it if any. */
+export function explainVersion(
+  program: Pick<ProgramVersion, 'reasonKey' | 'version' | 'effectiveFrom' | 'adjustmentId'>,
+): Explanation {
+  return {
+    key: program.reasonKey,
+    params: { version: program.version, from: program.effectiveFrom },
+    dataUsed: program.adjustmentId ? ['data.adjustment'] : ['data.training_profile'],
+  };
 }

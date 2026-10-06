@@ -21,7 +21,6 @@ import {
   SET_FEELS,
   SHOWN_REPLACEMENT_REASONS,
   startRest,
-  whyKey,
   type SessionExercise,
 } from '../session';
 import { REPLACEMENT_REASONS } from '../replacement';
@@ -362,15 +361,7 @@ describe('replacement reasons', () => {
   });
 });
 
-describe('why and coach hints (no progression decision)', () => {
-  it('why reads the structured purpose of the row', () => {
-    expect(whyKey(ex({ purpose: 'strength', purposeTarget: 'chest' }))).toEqual({
-      key: 'workout.why.strength',
-      target: 'chest',
-    });
-    expect(whyKey(ex({ purpose: null }))).toBeNull();
-  });
-
+describe('coach hints (no progression decision)', () => {
   it('target, last time, keep load, very hard set', () => {
     const last = { date: '2026-09-21', loadKg: 67.5, reps: 10, seconds: null };
     const pre = prefill(ex(), [], last, { holdIncrease: false });

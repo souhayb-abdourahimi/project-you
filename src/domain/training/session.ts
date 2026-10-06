@@ -412,12 +412,6 @@ export const SHOWN_REPLACEMENT_REASONS = [
   'other',
 ] as const satisfies readonly ReplacementReason[];
 
-/** "Pourquoi cet exercice ?": the structured purpose of the stored row (never generated text). */
-export function whyKey(ex: SessionExercise): { key: string; target: string | null } | null {
-  if (!ex.purpose) return null;
-  return { key: `workout.why.${ex.purpose}`, target: ex.purposeTarget };
-}
-
 export type CoachHint =
   | { key: 'target'; params: { min: number; max: number } }
   | { key: 'last_time'; params: { reps: number } }

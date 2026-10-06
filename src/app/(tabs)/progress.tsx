@@ -8,6 +8,7 @@ import type { ProgressJourney, ProgressSection } from '@/domain/journey/progress
 import { getExercise } from '@/domain/training/exercises';
 import { NumberField } from '@/features/onboarding/fields';
 import { Recommendations } from '@/features/journey/Recommendations';
+import { TrainingWeekCard } from '@/features/program/TrainingWeekCard';
 import { useJourney } from '@/hooks/useJourney';
 import { usePlan } from '@/hooks/usePlan';
 import { formatDate } from '@/lib/format';
@@ -57,6 +58,7 @@ export default function ProgressScreen() {
             .map((a) => (
               <Banner key={a.decision.id} tone="primary" message={t(`progress.adapted.${a.key}`)} />
             ))}
+          <TrainingWeekCard week={journey.trainingWeek} />
           {progress.order.map((s) => sections[s])}
           <Section title={t('progress.path.title')}>
             <Path progress={progress} date={date} />

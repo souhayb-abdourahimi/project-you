@@ -14,6 +14,8 @@ export interface ButtonProps {
   loading?: boolean;
   accessibilityHint?: string;
   compact?: boolean;
+  /** For a button that shows or hides content below it (announced as expanded / collapsed). */
+  expanded?: boolean;
 }
 
 export function Button({
@@ -24,6 +26,7 @@ export function Button({
   loading,
   accessibilityHint,
   compact,
+  expanded,
 }: ButtonProps) {
   const colors = useColors();
   const background = {
@@ -39,7 +42,7 @@ export function Button({
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityHint={accessibilityHint}
-      accessibilityState={{ disabled: !!inactive, busy: !!loading }}
+      accessibilityState={{ disabled: !!inactive, busy: !!loading, expanded }}
       disabled={inactive}
       onPress={onPress}
       style={({ pressed }) => [

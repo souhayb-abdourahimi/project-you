@@ -3,8 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/ui';
+import { explainExercise, explainLoad } from '@/domain/journey/explain';
 import { getExercise } from '@/domain/training/exercises';
-import { whyKey, type CoachHint, type Performance, type SessionExercise } from '@/domain/training/session';
+import type { CoachHint, Performance, SessionExercise } from '@/domain/training/session';
 import { formatNumber } from '@/lib/format';
 import { MIN_TOUCH, spacing } from '@/theme';
 
@@ -100,12 +101,16 @@ function Proposed({ exercise, unit }: { exercise: SessionExercise; unit: string 
   );
 }
 
-/** "Pourquoi cet exercice ?": the stored purpose and load reason, and the exercise cues. */
+/**
+ * "Pourquoi cet exercice ?" and "Pourquoi cette charge ?" (W-6): the structured answers of
+ * `journey/explain.ts`, read from the stored prescription, and the exercise cues.
+ */
 function Why({ exercise }: { exercise: SessionExercise }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language === 'en' ? 'en' : 'fr';
   const [open, setOpen] = useState(false);
-  const why = whyKey(exercise);
+  const why = explainExercise(exercise);
+  const load = explainLoad(exercise, exercise.replaced);
   const info = getExercise(exercise.exerciseId);
   return (
     <View>
@@ -120,18 +125,23 @@ function Why({ exercise }: { exercise: SessionExercise }) {
       </Pressable>
       {open ? (
         <View style={styles.why}>
-          {why ? <Text>{t(why.key, { target: why.target ? t(`workout.targets.${why.target}`) : '' })}</Text> : null}
-          {exercise.progressionReason ? (
-            <Text variant="caption" color="textMuted">
-              {t('workout.why.load', {
-                reason: t(`reasons.${exercise.progressionReason}`, localized(exercise.progressionParams, lang)),
-              })}
-            </Text>
+          {why ? (
+            <Text>{t(why.key, { target: why.params.target ? t(`workout.targets.${why.params.target}`) : '' })}</Text>
           ) : null}
-          {exercise.progressionConfidence ? (
-            <Text variant="caption" color="textMuted">
-              {t(`workout.why.confidence.${exercise.progressionConfidence}`)}
-            </Text>
+          {load ? (
+            <>
+              <Text variant="caption" color="textMuted">
+                {t('workout.why.load', { reason: t(load.key, localized(load.params, lang)) })}
+              </Text>
+              {load.confidence ? (
+                <Text variant="caption" color="textMuted">
+                  {t(`workout.why.confidence.${load.confidence}`)}
+                </Text>
+              ) : null}
+              <Text variant="caption" color="textMuted">
+                {t('daily.basedOn', { data: load.dataUsed.map((d) => t(`reasons.${d}`)).join(', ') })}
+              </Text>
+            </>
           ) : null}
           {info ? (
             <>

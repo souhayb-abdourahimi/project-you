@@ -48,6 +48,11 @@ export interface DailyPlan {
   message: ComposedMessage;
   headline: { key: string; params: Record<string, string | number> };
   adaptations: { key: string; params: Record<string, string | number> }[];
+  /**
+   * A session off plan can be offered, discreetly (W-6): nothing planned today, nothing done yet,
+   * an ordinary day without safety signal, fatigue or comeback. Never an item, never a catch-up.
+   */
+  offPlan: boolean;
 }
 
 export interface DailyPlanInput {
@@ -467,5 +472,12 @@ export function buildDailyPlan(input: DailyPlanInput): DailyPlan {
     message,
     headline: headline(input),
     adaptations: decision.adaptations,
+    offPlan:
+      !input.day?.items.some((i) => i.kind === 'workout') &&
+      !input.completed &&
+      !state.safety.active &&
+      state.difficulties.fatigue !== 'high' &&
+      !state.momentum.comeback &&
+      mode === 'normal',
   };
 }

@@ -10,6 +10,7 @@ import { renderMessage } from '@/domain/journey/voice/composer';
 import { daysBetween } from '@/domain/shared/dates';
 import { HealthCard } from '@/features/health/HealthCard';
 import { DailyItemRow, itemLabel, useItemAction, WhyToggle } from '@/features/journey/DailyItemRow';
+import { OffPlanOffer } from '@/features/journey/OffPlanOffer';
 import { ProposalCard } from '@/features/journey/ProposalCard';
 import { SafetyNotice } from '@/features/journey/SafetyNotice';
 import { DayEnergyWarning } from '@/features/nutrition/DayEnergyWarning';
@@ -94,6 +95,7 @@ export default function TodayScreen() {
       </Section>
 
       <QuickActions journey={journey} today={plan.today} />
+      <OffPlanOffer daily={journey.daily} />
 
       <HealthCard plan={plan} />
 

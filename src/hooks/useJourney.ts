@@ -43,7 +43,9 @@ import {
   structureKey,
   type StructureOfDay,
 } from '@/domain/training/structure';
+import { compareWeek, type WeekComparison } from '@/domain/training/compare';
 import { activeProgram, plannedVariantMinutes, progressionSignals, refreshWeek } from '@/domain/training/week';
+import { plannedSessionDates as plannedDates } from '@/domain/training/week-view';
 import { useCalendarStore } from '@/state/calendar';
 import { useDataStore } from '@/state/data';
 import { useNotificationStore } from '@/state/notifications';
@@ -66,6 +68,8 @@ export interface Journey {
   effects: AdaptationEffect[];
   /** Structural changes in force today, for the screens (D-037 §38). */
   active: ActiveAdaptation[];
+  /** This week's training, planned vs done, in facts (W-6). */
+  trainingWeek: WeekComparison;
   /** Never stored, never shown: shapes how light the day is. */
   risk: RetentionRisk;
   memory: JourneyMemory;
@@ -133,12 +137,18 @@ export function useJourney(plan: Plan | null): Journey | null {
       profileWeightKg: snapshot.user.weightKg,
     });
 
-    // Planned sessions of the last weeks (after reschedules) and of this week.
+    // Planned sessions of the last weeks and of this week (W-6): past days from the prescriptions
+    // stored for them; a week without any, and today onwards, from the schedule (after reschedules).
     const weeks = Array.from({ length: PAST_WEEKS }, (_, i) => addDays(plan.weekStart, -7 * (PAST_WEEKS - i)));
-    const schedules = [...weeks.map((w) => scheduleOfWeek(snapshot, w, data.rescheduled)), plan.schedule];
-    const plannedSessionDates = schedules.flatMap((s) =>
-      s.days.filter((d) => d.items.some((i) => i.kind === 'workout')).map((d) => d.date),
-    );
+    const plannedSessionDates = plannedDates({
+      records: data,
+      facts: data,
+      today,
+      weeks: [
+        ...weeks.map((w) => ({ weekStart: w, schedule: scheduleOfWeek(snapshot, w, data.rescheduled).days })),
+        { weekStart: plan.weekStart, schedule: plan.schedule.days },
+      ],
+    });
 
     const progressData: ProgressData = {
       completedSessions: data.completedSessions,
@@ -367,6 +377,7 @@ export function useJourney(plan: Plan | null): Journey | null {
       structure,
       effects,
       active: activeAdaptations(data.adjustments, today, sessionsDoneUnder(data, data.completedSessions)),
+      trainingWeek: compareWeek({ records: data, facts: data, weekStart: plan.weekStart, today }),
       risk,
       memory,
       keptGoingDates,
