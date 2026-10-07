@@ -1,6 +1,7 @@
 import type { ScheduleProfile, TrainingProfile } from '../profile/schemas';
 import { addDays, formatTime, parseTime, type IsoDate, type Weekday } from '../shared/dates';
 import type { Rationale } from '../shared/rationale';
+import { SESSION_DURATION } from '../training/durations';
 
 export interface Interval {
   start: number;
@@ -44,7 +45,7 @@ export interface PlanningInput {
   training: Pick<TrainingProfile, 'sessionsPerWeek' | 'sessionMinutes' | 'hasGym' | 'gymTravelMinutes'>;
 }
 
-const SHORT_SESSION_MINUTES = 15;
+const SHORT_SESSION_MINUTES = SESSION_DURATION.short;
 const MEAL_PREP_MINUTES = 60;
 const SHOPPING_MINUTES = 30;
 

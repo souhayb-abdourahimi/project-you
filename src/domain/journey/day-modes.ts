@@ -4,6 +4,8 @@
  * coach never guesses how the user feels. The answer is always a smaller version of the day,
  * never giving up the programme.
  */
+import { SESSION_DURATION } from '../training/durations';
+
 import type { DayLog } from './outcomes';
 
 export const DAY_MODE = {
@@ -13,8 +15,9 @@ export const DAY_MODE = {
   busyConstraints: 2,
   /** Signals needed to call the day difficult without the user saying so. */
   difficultSignals: 2,
-  minimalSessionMinutes: 20,
-  shortSessionMinutes: 15,
+  // Same numbers as the workout screen builds (single source, D-034).
+  minimalSessionMinutes: SESSION_DURATION.minimal,
+  shortSessionMinutes: SESSION_DURATION.short,
   walkMinutes: 15,
   mobilityMinutes: 10,
   comebackWalkMinutes: 10,

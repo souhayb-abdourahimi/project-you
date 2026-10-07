@@ -43,7 +43,26 @@ export interface JourneyChannelInput {
   keptGoingDates?: IsoDate[];
   /** Today's session as the Daily Coach planned it; 'none' (rest, mobility, replaced) drops its reminder. */
   todaySession?: { variant: 'full' | 'short' | 'light'; minutes: number } | 'none';
+  /**
+   * What leads on Today (journey/coach.ts, W-7). A comeback or a structural proposal leads: today's
+   * notifications never say something less important instead (no celebration, no daily why).
+   */
+  todayPriority?: string;
 }
+
+/**
+ * Held back today when Today holds its celebration: a comeback, a structural proposal or the cause
+ * question leads (W-7 §43, same rule as `coachDay`).
+ */
+export const HELD_BY_COACH: Trigger[] = [
+  'milestone_reached',
+  'success_streak',
+  'success_session',
+  'weekly_progress',
+  'encouragement_kept_going',
+  'progress_note',
+  'daily_why',
+];
 
 /**
  * Only one message of the "motivation" kind per day, best first: celebrating beats reaching out,
@@ -239,5 +258,6 @@ export function collectCandidates(input: {
       out.push({ trigger, date, time: prefs.motivationTime, facts: { since, days: String(days) } });
     }
   }
-  return out;
+  const held = ['comeback', 'structural', 'difficulty'].includes(journey.todayPriority ?? '');
+  return held ? out.filter((c) => !(c.date === state.today && HELD_BY_COACH.includes(c.trigger))) : out;
 }

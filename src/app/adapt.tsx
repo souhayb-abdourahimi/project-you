@@ -5,13 +5,15 @@ import { useTranslation } from 'react-i18next';
 import { Banner, Button, Card, ChoiceGroup, Screen, Text } from '@/components/ui';
 import { suggestAlternatives, type Alternative, type Level } from '@/domain/motivation/anti-abandon';
 import { rescheduleOptions } from '@/domain/planning/engine';
+import { SESSION_DURATION, shortMinutes } from '@/domain/training/durations';
+import { plannedVariantMinutes } from '@/domain/training/week';
 import { usePlan } from '@/hooks/usePlan';
 import { sessionKey } from '@/domain/sync/projection';
 import { formatDate } from '@/lib/format';
 import { useDataStore } from '@/state/data';
 
 const LEVELS: Level[] = [1, 2, 3, 4, 5];
-const MINUTES = [10, 15, 20, 30, 45, 60];
+const MINUTES = SESSION_DURATION.choices;
 
 /** "J'ai 15 minutes" / "Je n'ai pas envie": options adapted to today's state, never guilt. */
 export default function AdaptScreen() {
@@ -32,6 +34,12 @@ export default function AdaptScreen() {
     { energy, motivation, fatigue, availableMinutes: minutes },
     plan.snapshot.training.sessionMinutes,
   );
+  // One duration (D-034): the short session announced here is the one the workout screen builds.
+  const workout = plan.schedule.days.find((d) => d.date === plan.today)?.items.find((i) => i.kind === 'workout');
+  const prescription = workout?.kind === 'workout' ? plan.prescription(plan.today, workout.sessionIndex) : null;
+  const shortFor = prescription
+    ? plannedVariantMinutes(prescription, 'short', minutes)
+    : shortMinutes(minutes, plan.snapshot.training.sessionMinutes);
 
   const choose = (option: Alternative) => {
     // Today's state feeds the coach (a tired day gets a lighter plan) and syncs with the account.
@@ -46,11 +54,17 @@ export default function AdaptScreen() {
           ? { mode: 'low_motivation' as const }
           : {}),
     });
-    if (option === 'full_session') return router.replace(`/workout/${plan.today}`);
+    // The session this screen is about (its slot), never the first one of the day by default.
+    const index = workout?.kind === 'workout' ? { index: String(workout.sessionIndex) } : {};
+    if (option === 'full_session')
+      return router.replace({ pathname: '/workout/[date]', params: { date: plan.today, ...index } });
     if (option === 'short_session')
-      return router.replace({ pathname: '/workout/[date]', params: { date: plan.today, variant: 'short' } });
+      return router.replace({
+        pathname: '/workout/[date]',
+        params: { date: plan.today, ...index, variant: 'short', minutes: String(shortFor) },
+      });
     if (option === 'light_session')
-      return router.replace({ pathname: '/workout/[date]', params: { date: plan.today, variant: 'light' } });
+      return router.replace({ pathname: '/workout/[date]', params: { date: plan.today, ...index, variant: 'light' } });
     if (option === 'reschedule') {
       const input = { weekStart: plan.weekStart, schedule: plan.snapshot.schedule, training: plan.snapshot.training };
       const [first] = rescheduleOptions(plan.schedule, plan.today, input);
@@ -60,7 +74,6 @@ export default function AdaptScreen() {
     }
     // A walk or mobility instead of today's session: adapted, not missed. Rest: the session is
     // skipped, without catch-up. The reason is the one the user gave by opening this screen.
-    const workout = plan.schedule.days.find((d) => d.date === plan.today)?.items.find((i) => i.kind === 'workout');
     if (option !== 'rest') logDay(plan.today, { activity: option, activityMinutes: option === 'walk' ? 20 : 10 });
     if (workout?.kind === 'workout') {
       const reason =
@@ -102,7 +115,7 @@ export default function AdaptScreen() {
         <Button
           key={o}
           variant={i === 0 ? 'primary' : 'secondary'}
-          label={t(`antiAbandon.options.${o}`)}
+          label={t(`antiAbandon.options.${o}`, { minutes: shortFor })}
           onPress={() => choose(o)}
         />
       ))}

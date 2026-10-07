@@ -5,6 +5,7 @@
  */
 import { addDays, daysBetween, startOfWeek, type IsoDate } from '../shared/dates';
 import type { LoggedSet } from '../training/progression';
+import { SESSION_CONTEXT, sessionContext, type SessionContext } from '../training/session-context';
 import type { DayLog } from './outcomes';
 
 export interface ProgressData {
@@ -17,6 +18,11 @@ export interface ProgressData {
   dayLogs: DayLog[];
   meals: { date: IsoDate; status: 'planned' | 'eaten' | 'skipped' | 'replaced' }[];
   weeklyCheckins: { weekStart: IsoDate; answeredAt: string }[];
+  /**
+   * Context of each session (W-7.1, `sessionContexts`), keyed `${date}#${sessionIndex}`: what a
+   * session may say about the level. Without it, the variant done decides.
+   */
+  sessionContexts?: Readonly<Record<string, SessionContext>>;
 }
 
 const byDate = <T extends { date: IsoDate }>(list: readonly T[]) =>
@@ -110,32 +116,73 @@ export interface PersonalRecord {
   date: IsoDate;
   loadKg: number;
   reps: number;
-  /** Heavier load than ever, or more reps than ever at this load or above. */
-  kind: 'load' | 'reps';
+  /** Seconds held, for a hold (W-4): its record is a longer time, never a load or reps estimate. */
+  seconds?: number;
+  /** Heavier load than ever, more reps than ever at this load or above, or a longer hold. */
+  kind: 'load' | 'reps' | 'time';
 }
 
-/** Sessions with their sets, in date order. */
-function loggedSessions(d: Pick<ProgressData, 'setLogs'>): { date: IsoDate; exercises: Record<string, LoggedSet[]> }[] {
+type SessionFacts = Pick<ProgressData, 'setLogs'> &
+  Partial<Pick<ProgressData, 'completedSessions' | 'sessionContexts'>>;
+
+/** Sessions with their sets and their context (the shared matrix, W-7.1), in date order. */
+function loggedSessions(
+  d: SessionFacts,
+): { key: string; date: IsoDate; context: SessionContext; exercises: Record<string, LoggedSet[]> }[] {
+  const variants = new Map((d.completedSessions ?? []).map((c) => [`${c.date}#${c.sessionIndex}`, c.variant]));
   return Object.entries(d.setLogs)
-    .map(([key, exercises]) => ({ key, date: key.split('#')[0], exercises }))
+    .map(([key, exercises]) => ({
+      key,
+      date: key.split('#')[0],
+      context: d.sessionContexts?.[key] ?? sessionContext({ variant: variants.get(key) ?? 'full' }),
+      exercises,
+    }))
     .sort((a, b) => a.key.localeCompare(b.key));
 }
 
+/** Results cached per (immutable) set log, completed sessions and contexts. */
+function memo<T>(cache: WeakMap<object, WeakMap<object, WeakMap<object, T>>>, d: SessionFacts, run: () => T): T {
+  const byLog = cache.get(d.setLogs) ?? new WeakMap<object, WeakMap<object, T>>();
+  cache.set(d.setLogs, byLog);
+  const completed = d.completedSessions ?? NO_SESSIONS;
+  const byCompleted = byLog.get(completed) ?? new WeakMap<object, T>();
+  byLog.set(completed, byCompleted);
+  const contexts = d.sessionContexts ?? NO_CONTEXTS;
+  const hit = byCompleted.get(contexts);
+  if (hit !== undefined) return hit;
+  const out = run();
+  byCompleted.set(contexts, out);
+  return out;
+}
+const NO_SESSIONS: ProgressData['completedSessions'] = [];
+const NO_CONTEXTS: Readonly<Record<string, SessionContext>> = {};
+
 /**
  * New best sets, at most one per exercise and session. The first session of an exercise sets the
- * reference: it is never a record (no false record on the first try).
+ * reference: it is never a record (no false record on the first try). A light or restart session
+ * is neither a record nor a reference (W-7.1): coming back to the usual level is not a record.
  */
-// Recomputed from the same (immutable) set log by several views: cached per log object.
-const recordsCache = new WeakMap<object, PersonalRecord[]>();
+// Recomputed from the same (immutable) facts by several views: cached.
+const recordsCache = new WeakMap<object, WeakMap<object, WeakMap<object, PersonalRecord[]>>>();
 
-export function personalRecords(d: Pick<ProgressData, 'setLogs'>): PersonalRecord[] {
-  const cached = recordsCache.get(d.setLogs);
-  if (cached) return cached;
+export function personalRecords(d: SessionFacts): PersonalRecord[] {
+  return memo(recordsCache, d, () => records(d));
+}
+
+function records(d: SessionFacts): PersonalRecord[] {
   // Per exercise: heaviest load so far and the most reps seen at each load (parallel arrays).
   const history = new Map<string, { maxLoad: number; loads: number[]; reps: number[] }>();
   const out: PersonalRecord[] = [];
+  // Holds: the longest time so far at this load or above (W-4, measured seconds only).
+  const holds = new Map<string, { loads: number[]; seconds: number[] }>();
   for (const session of loggedSessions(d)) {
+    if (!SESSION_CONTEXT[session.context].records) continue;
     for (const [exerciseId, sets] of Object.entries(session.exercises)) {
+      const held = sets.filter((s) => (s.seconds ?? 0) >= 1);
+      if (held.length > 0) {
+        const record = holdRecord(holds, exerciseId, session.date, held);
+        if (record) out.push(record);
+      }
       const done = sets.filter((s) => s.reps >= 1);
       if (done.length === 0) continue;
       const before = history.get(exerciseId);
@@ -166,8 +213,40 @@ export function personalRecords(d: Pick<ProgressData, 'setLogs'>): PersonalRecor
       history.set(exerciseId, h);
     }
   }
-  recordsCache.set(d.setLogs, out);
   return out;
+}
+
+/** A longer hold than ever at this load or above; the first session of a hold sets the reference. */
+function holdRecord(
+  holds: Map<string, { loads: number[]; seconds: number[] }>,
+  exerciseId: string,
+  date: IsoDate,
+  held: LoggedSet[],
+): PersonalRecord | null {
+  const before = holds.get(exerciseId);
+  let best: PersonalRecord | null = null;
+  if (before) {
+    for (const s of held) {
+      const seconds = s.seconds!;
+      let atOrAbove = -1;
+      for (let i = 0; i < before.loads.length; i++) {
+        if (before.loads[i] >= s.loadKg && before.seconds[i] > atOrAbove) atOrAbove = before.seconds[i];
+      }
+      if (atOrAbove < 0 || seconds <= atOrAbove) continue;
+      if (!best || seconds > best.seconds!)
+        best = { exerciseId, date, loadKg: s.loadKg, reps: 0, seconds, kind: 'time' };
+    }
+  }
+  const h = before ?? { loads: [], seconds: [] };
+  for (const s of held) {
+    const at = h.loads.indexOf(s.loadKg);
+    if (at === -1) {
+      h.loads.push(s.loadKg);
+      h.seconds.push(s.seconds!);
+    } else if (s.seconds! > h.seconds[at]) h.seconds[at] = s.seconds!;
+  }
+  holds.set(exerciseId, h);
+  return best;
 }
 
 export interface ExerciseTrend {
@@ -194,15 +273,20 @@ function trendOf(a: LoggedSet, b: LoggedSet): ExerciseTrend['trend'] {
 
 /**
  * Best set (heaviest, then most reps) of the first 14 days of an exercise vs the last 14 days, for exercises
- * followed for at least 14 days.
+ * followed for at least 14 days. Only sessions that read the level count (shared matrix, W-7.1): a
+ * short, light, restart or reduced session is never read as a drop in level.
  */
-const trendsCache = new WeakMap<object, ExerciseTrend[]>();
+const trendsCache = new WeakMap<object, WeakMap<object, WeakMap<object, ExerciseTrend[]>>>();
 
-export function exerciseTrends(d: Pick<ProgressData, 'setLogs'>): ExerciseTrend[] {
-  const cached = trendsCache.get(d.setLogs);
-  if (cached) return cached;
+export function exerciseTrends(d: SessionFacts): ExerciseTrend[] {
+  return memo(trendsCache, d, () => trends(d));
+}
+
+function trends(d: SessionFacts): ExerciseTrend[] {
   const perExercise = new Map<string, { date: IsoDate; sets: LoggedSet[] }[]>();
   for (const session of loggedSessions(d)) {
+    // Trends do not read the prescription: a short session counts only where the matrix says "yes".
+    if (SESSION_CONTEXT[session.context].level !== 'yes') continue;
     for (const [id, sets] of Object.entries(session.exercises)) {
       const done = sets.filter((s) => s.reps >= 1);
       if (done.length === 0) continue;
@@ -228,7 +312,5 @@ export function exerciseTrends(d: Pick<ProgressData, 'setLogs'>): ExerciseTrend[
     });
   }
   const rank = { up: 0, stable: 1, down: 2 };
-  const sorted = out.sort((x, y) => rank[x.trend] - rank[y.trend] || x.exerciseId.localeCompare(y.exerciseId));
-  trendsCache.set(d.setLogs, sorted);
-  return sorted;
+  return out.sort((x, y) => rank[x.trend] - rank[y.trend] || x.exerciseId.localeCompare(y.exerciseId));
 }

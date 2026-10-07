@@ -51,7 +51,8 @@ test('difficult day: a minimal version in one tap, and back to normal', async ({
   await page.goto('/');
   await button(page, 'Journée difficile').click();
   await expect(text(page, 'Journée difficile : on garde une version minimale.')).toBeVisible();
-  await expect(text(page, /Séance ramenée de 45 à|mobilité douce|marche courte|repos aujourd’hui/)).toBeVisible();
+  // D-034: the full session's length is the stored prescription's (35 min, the one the session runs).
+  await expect(text(page, /Séance ramenée de 35 à 20|mobilité douce|marche courte|repos aujourd’hui/)).toBeVisible();
   await button(page, 'Revenir à ma journée normale').click();
   await expect(text(page, 'Journée difficile : on garde une version minimale.')).toBeHidden();
 });

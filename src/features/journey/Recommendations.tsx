@@ -1,15 +1,18 @@
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
-import { Button, Card, Row, Text } from '@/components/ui';
-import { APPLICABLE_CHANGES, type Recommendation } from '@/domain/journey/adaptation';
-import { decidedRecommendation, type Adjustment } from '@/domain/journey/adjustments';
+import { Button, Card, Text } from '@/components/ui';
+import { APPLICABLE_CHANGES, undecided, type Recommendation } from '@/domain/journey/adaptation';
+import { byInstant, effectiveDecisions, type Adjustment } from '@/domain/journey/adjustments';
 import { explainPlanChange } from '@/domain/journey/explain';
+import type { AdaptationEffect } from '@/domain/journey/structural';
 import type { IsoDate } from '@/domain/shared/dates';
 import { formatDate } from '@/lib/format';
-import { newId } from '@/lib/id';
 import { useDataStore } from '@/state/data';
 import { spacing } from '@/theme';
+
+import { ProposalCard } from './ProposalCard';
+import { useDecision } from './useDecision';
 
 type T = (key: string, params?: Record<string, unknown>) => string;
 
@@ -20,6 +23,8 @@ export function changeLabel(change: { key: string; from?: number | string | null
     return t('adaptation.change.calories_per_day', { kcal: kcal > 0 ? `+${kcal}` : String(kcal) });
   }
   if (change.key === 'session_day') return t('adaptation.change.session_day', { day: t(`enums.weekday.${change.to}`) });
+  if (['restart', 'reduce_volume', 'easier_variant', 'exercise_change', 'cycle_review'].includes(change.key))
+    return t(`adaptation.changed.${change.key}`);
   return t(`adaptation.change.${change.key}`, { from: change.from, to: change.to });
 }
 
@@ -43,72 +48,68 @@ const isApplicable = (r: Recommendation) =>
 
 /**
  * What the Adaptation Engine says this week (docs/ADAPTATION_ENGINE.md §2): the change, the reason
- * and the data used. A proposal changes nothing until the user applies it; advice changes nothing.
+ * and the data used. A proposal changes nothing until the user applies it (D-036); advice changes
+ * nothing. Every answer is a new row of the journal (W-5): apply, not now, refuse, go back.
  */
-export function Recommendations({ recommendations, today }: { recommendations: Recommendation[]; today: IsoDate }) {
+export function Recommendations({
+  recommendations,
+  today,
+  effects = [],
+}: {
+  recommendations: Recommendation[];
+  today: IsoDate;
+  effects?: AdaptationEffect[];
+}) {
   const { t } = useTranslation();
   const adjustments = useDataStore((s) => s.adjustments);
-  const saveAdjustment = useDataStore((s) => s.saveAdjustment);
-  const decided = new Set(adjustments.filter((a) => a.status !== 'proposed').map(decidedRecommendation));
-  const visible = recommendations.filter((r) => !decided.has(r.id));
-
-  const decide = (r: Recommendation, status: 'applied' | 'declined') => {
-    if (r.kind === 'none') return;
-    saveAdjustment({
-      id: newId(),
-      kind: r.kind,
-      changeKey: r.change.key,
-      from: r.change.from ?? null,
-      to: r.change.to ?? null,
-      reasonKey: r.reason.key,
-      evidence: r.evidence,
-      status,
-      effectiveFrom: today,
-      decidedAt: new Date().toISOString(),
-    });
-  };
+  const visible = undecided(recommendations, adjustments);
 
   return (
     <View style={{ gap: spacing.md }}>
-      {visible.map((r) => (
-        <Card key={r.id} muted={r.kind === 'none'}>
-          {r.kind !== 'none' ? (
-            <Text variant="caption" color="textMuted">
-              {t(isApplicable(r) ? 'adaptation.proposal' : 'adaptation.advice')}
-            </Text>
-          ) : null}
-          {r.kind !== 'none' ? <Text variant="heading">{changeLabel(r.change, t)}</Text> : null}
-          <Text>{t(r.reason.key, r.reason.params)}</Text>
-          <Evidence evidence={r.evidence} />
-          {isApplicable(r) ? (
-            <Row>
-              <Button compact label={t('adaptation.apply')} onPress={() => decide(r, 'applied')} />
-              <Button
-                compact
-                variant="secondary"
-                label={t('adaptation.decline')}
-                onPress={() => decide(r, 'declined')}
-              />
-            </Row>
-          ) : null}
-        </Card>
-      ))}
-      <PlanChange adjustments={adjustments} />
+      {visible.map((r) =>
+        isApplicable(r) ? (
+          <ProposalCard key={r.id} recommendation={r} today={today} />
+        ) : (
+          <Card key={r.id} muted={r.kind === 'none'}>
+            {r.kind !== 'none' ? (
+              <Text variant="caption" color="textMuted">
+                {t('adaptation.advice')}
+              </Text>
+            ) : null}
+            {r.kind !== 'none' ? <Text variant="heading">{changeLabel(r.change, t)}</Text> : null}
+            <Text>{t(r.reason.key, r.reason.params)}</Text>
+            <Evidence evidence={r.evidence} />
+          </Card>
+        ),
+      )}
+      <PlanChange adjustments={adjustments} today={today} effects={effects} />
     </View>
   );
 }
 
-/** "Pourquoi mon plan a changé ?": the last applied decision, with a way back. */
-function PlanChange({ adjustments }: { adjustments: Adjustment[] }) {
+/**
+ * "Pourquoi mon plan a changé ?": the decision in force last taken, with a way back (a new
+ * decision, D-037 §21) and, for a structural change, what was observed since (facts, no cause).
+ */
+function PlanChange({
+  adjustments,
+  today,
+  effects,
+}: {
+  adjustments: Adjustment[];
+  today: IsoDate;
+  effects: AdaptationEffect[];
+}) {
   const { t, i18n } = useTranslation();
-  const saveAdjustment = useDataStore((s) => s.saveAdjustment);
-  const why = explainPlanChange(adjustments);
-  const latest = adjustments
+  const { revert } = useDecision(today);
+  const why = explainPlanChange([...effectiveDecisions(adjustments).values()]);
+  const latest = [...effectiveDecisions(adjustments).values()]
     .filter((a) => a.status === 'applied' || a.status === 'reverted')
-    .sort((a, b) => a.decidedAt.localeCompare(b.decidedAt))
+    .sort(byInstant)
     .at(-1);
   if (!why || !latest) return null;
   const applied = latest.status === 'applied';
+  const effect = effects.find((e) => e.decisionId === latest.id);
   return (
     <Card muted>
       <Text variant="label">{t('adaptation.lastChange')}</Text>
@@ -124,13 +125,15 @@ function PlanChange({ adjustments }: { adjustments: Adjustment[] }) {
           {t('daily.basedOn', { data: why.dataUsed.map((d) => t(`reasons.${d}`)).join(', ') })}
         </Text>
       ) : null}
+      {applied && effect
+        ? effect.observations.map((o) => (
+            <Text key={o} variant="caption">
+              {t(`adaptation.effect.${o}`, { days: effect.period.days })}
+            </Text>
+          ))
+        : null}
       {applied ? (
-        <Button
-          compact
-          variant="ghost"
-          label={t('adaptation.revert')}
-          onPress={() => saveAdjustment({ ...latest, status: 'reverted', decidedAt: new Date().toISOString() })}
-        />
+        <Button compact variant="ghost" label={t('adaptation.revert')} onPress={() => revert(latest)} />
       ) : null}
     </Card>
   );

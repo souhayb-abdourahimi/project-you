@@ -7,4 +7,5 @@ export { Rationale } from './Rationale';
 export { Screen } from './Screen';
 export { Text } from './Text';
 export { TextField } from './TextField';
+export { NumberStepper } from './NumberStepper';
 export { ConfirmButton } from './ConfirmButton';

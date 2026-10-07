@@ -10,7 +10,11 @@ import { evaluateSafety } from '@/domain/journey/safety';
 import { journeyStart, loggedDays } from '@/domain/journey/state';
 import { weightBasis, withCalorieOffset } from '@/domain/journey/weight-basis';
 import { startOfWeek, toIsoDate } from '@/domain/shared/dates';
-import { generateWorkoutPlan } from '@/domain/training/engine';
+import { sessionKey } from '@/domain/shared/ids';
+import type { SessionVariant } from '@/domain/training/adapt';
+import { generateWorkoutPlan, type WorkoutTemplate } from '@/domain/training/engine';
+import { durableTraining, structureFor, versionDecisions } from '@/domain/training/structure';
+import { activeProgram, ensureProgram, ensureWeek, prescriptionFor, variantTemplate } from '@/domain/training/week';
 import { useCalendarStore } from '@/state/calendar';
 import { useDataStore } from '@/state/data';
 import { useProfileStore } from '@/state/profile';
@@ -52,7 +56,19 @@ export function scheduleOfWeek(
   );
 }
 
-/** Everything the screens need, derived from the snapshot by the deterministic engines. */
+/** Workout slots of a week (after reschedules), the input of `ensureWeek`. */
+export function scheduledSessions(plan: WeeklyPlan): { date: string; sessionIndex: number }[] {
+  return plan.days.flatMap((d) =>
+    d.items.flatMap((i) => (i.kind === 'workout' ? [{ date: d.date, sessionIndex: i.sessionIndex }] : [])),
+  );
+}
+
+/**
+ * Everything the screens need. Training (D-032): BEFORE W-2 the sessions were recomputed from the
+ * profile on every render. Now the published prescription is read when it exists; otherwise the
+ * engine generates, the app publishes (version + week), then reads it. The engine still proposes
+ * the future (`workoutPlan`), it never rewrites a prescription.
+ */
 export function usePlan() {
   const snapshot = useProfileStore((s) => s.snapshot);
   const inventory = useDataStore((s) => s.inventory);
@@ -63,6 +79,14 @@ export function usePlan() {
   const adjustments = useDataStore((s) => s.adjustments);
   const previousMealPlan = useDataStore((s) => s.previousMealPlan);
   const completedSessions = useDataStore((s) => s.completedSessions);
+  const programs = useDataStore((s) => s.programs);
+  const prescriptions = useDataStore((s) => s.prescriptions);
+  const superseded = useDataStore((s) => s.superseded);
+  const sessionIds = useDataStore((s) => s.sessionIds);
+  const setLogs = useDataStore((s) => s.setLogs);
+  const sessionOutcomes = useDataStore((s) => s.sessionOutcomes);
+  const exerciseSwaps = useDataStore((s) => s.exerciseSwaps);
+  const applyTraining = useDataStore((s) => s.applyTraining);
   const weights = useWeights();
 
   const today = toIsoDate(new Date());
@@ -102,10 +126,12 @@ export function usePlan() {
     // The plan follows the measured weight (14-day checkpoints) and the adaptations the user accepted.
     const basis = weightBasis({ startedOn, today, profileWeightKg: snapshot.user.weightKg, weights, frozen });
     const sessionsPerWeek = appliedSessionsPerWeek(adjustments) ?? snapshot.training.sessionsPerWeek;
+    // Durable changes the user accepted (W-5, D-037): exercises removed, end-of-cycle rotation.
+    const training = durableTraining({ ...snapshot.training, sessionsPerWeek }, adjustments);
     const effective = {
       ...snapshot,
       user: { ...snapshot.user, weightKg: basis.weightKg },
-      training: { ...snapshot.training, sessionsPerWeek },
+      training,
     };
     // An accepted offset never creates a deficit for a minor or an underweight profile.
     const targets = withCalorieOffset(
@@ -122,7 +148,7 @@ export function usePlan() {
       schedule: { ...snapshot.schedule, fixedConstraints: [...snapshot.schedule.fixedConstraints, ...busy] },
       training: effective.training,
     });
-    return { targets, feasibility, workoutPlan, schedule, basis, sessionsPerWeek, startedOn };
+    return { targets, feasibility, workoutPlan, schedule, basis, sessionsPerWeek, startedOn, training };
   }, [snapshot, year, today, weekStart, calendarBusy, adjustments, weights, frozen, startedOn]);
 
   const planKey = useMemo(
@@ -156,6 +182,83 @@ export function usePlan() {
     [derived, rescheduled],
   );
 
+  // Publish the version (first one, or a new one when a frozen parameter changed) and freeze the
+  // week. Idempotent: nothing is written when the week is already prescribed. Reads the store at
+  // run time so several screens using this hook never publish twice.
+  useEffect(() => {
+    if (!snapshot || !derived || !schedule) return;
+    const data = useDataStore.getState();
+    const now = new Date().toISOString();
+    const nextPrograms = ensureProgram({
+      programs: data.programs,
+      goal: snapshot.goal.type,
+      training: durableTraining({ ...snapshot.training, sessionsPerWeek: derived.sessionsPerWeek }, data.adjustments),
+      today,
+      weekStart,
+      seed: data.ownerId ?? 'local',
+      publishedAt: now,
+      adjustmentId: versionDecisions(data.adjustments),
+    });
+    const records = {
+      programs: nextPrograms ?? data.programs,
+      prescriptions: data.prescriptions,
+      superseded: data.superseded,
+      sessionIds: data.sessionIds,
+    };
+    const week = ensureWeek({
+      records,
+      facts: data,
+      rescheduled: data.rescheduled,
+      today,
+      weekStart,
+      scheduled: scheduledSessions(schedule),
+      prescribedAt: now,
+      // Temporary structures the user accepted (reduced volume, easier variant, restart).
+      structure: structureFor(data.adjustments, records, data.completedSessions),
+    });
+    if (week) applyTraining(week);
+    else if (nextPrograms) applyTraining(records);
+  }, [
+    snapshot,
+    derived,
+    schedule,
+    today,
+    weekStart,
+    programs,
+    prescriptions,
+    superseded,
+    sessionIds,
+    setLogs,
+    completedSessions,
+    sessionOutcomes,
+    exerciseSwaps,
+    adjustments,
+    applyTraining,
+  ]);
+
+  const training = useMemo(
+    () => ({
+      program: activeProgram(programs),
+      /**
+       * The session of a day: its frozen prescription when it has one, otherwise the engine's
+       * proposal (a session off plan, or a day the program does not cover). Null when the variant
+       * has not been prescribed yet.
+       */
+      sessionTemplate: (
+        date: string,
+        sessionIndex: number,
+        variant: SessionVariant = 'full',
+      ): WorkoutTemplate | null => {
+        const p = prescriptionFor({ prescriptions, sessionIds }, sessionKey(date, sessionIndex));
+        if (p) return variantTemplate(p, variant);
+        return variant === 'full' ? (derived?.workoutPlan.sessions[sessionIndex] ?? null) : null;
+      },
+      prescription: (date: string, sessionIndex: number) =>
+        prescriptionFor({ prescriptions, sessionIds }, sessionKey(date, sessionIndex)),
+    }),
+    [programs, prescriptions, sessionIds, derived],
+  );
+
   if (!snapshot || !derived || !schedule) return null;
   return {
     snapshot,
@@ -166,10 +269,14 @@ export function usePlan() {
     weightBasis: derived.basis,
     /** Sessions per week after accepted adaptations. */
     sessionsPerWeek: derived.sessionsPerWeek,
+    /** The profile's training after the durable changes the user accepted (exclusions, rotation). */
+    effectiveTraining: derived.training,
     startedOn: derived.startedOn,
     feasibility: derived.feasibility,
+    /** The engine's proposal from the current profile (future sessions, rationale). Never the past. */
     workoutPlan: derived.workoutPlan,
     schedule,
+    ...training,
     mealPlan: mealPlan?.key === planKey ? mealPlan : null,
     plannerContext: {
       targets: derived.targets,

@@ -96,6 +96,13 @@ export const CLINICAL_PATTERNS: ToneRule[] = [
   },
   { pattern: word('diagnosti\\p{L}*|maladie|syndrome|dépression|addiction'), why: 'vocabulaire clinique' },
   {
+    // A movement that bothered is a question, never a diagnosis (D-037 §10): "Tu as une blessure."
+    pattern: word(
+      "tu (?:as|aurais) (?:une |des )?bless\\p{L}*|tu (?:es|t['’]es) bless\\p{L}*|you(?:['’]re| are| were) injured|you have (?:an |a )?injur\\p{L}*",
+    ),
+    why: 'diagnostic',
+  },
+  {
     pattern: word(
       'eating disorders?|anorexia|bulimia|deficienc\\p{L}*|malnutrition|overtraining|symptoms?|diagnos\\p{L}*|disease|patholog\\p{L}*',
     ),

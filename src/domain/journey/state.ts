@@ -11,6 +11,7 @@ import { weeklyStreak } from '../motivation/anti-abandon';
 import type { GoalType, MotivationProfile } from '../profile/schemas';
 import { weightTrend, type WeightEntry } from '../progress/weight';
 import { addDays, daysBetween, startOfWeek, type IsoDate } from '../shared/dates';
+import { declaredFatigue } from './outcomes';
 import { evaluateSafety, type LoggedDay, type SafetyAssessment } from './safety';
 import { goalFamily, type GoalFamily, type Tone } from './voice/types';
 
@@ -182,14 +183,7 @@ export function deriveJourneyState(input: JourneyInput): JourneyState {
     weightDirection = toward ? 'toward_goal' : 'steady';
   }
 
-  const recent = input.checkins
-    .filter((c) => past(c.date) && daysBetween(c.date, today) <= 1)
-    .sort((a, b) => b.date.localeCompare(a.date))[0];
-  const fatigue: JourneyState['difficulties']['fatigue'] = !recent
-    ? 'unknown'
-    : recent.fatigue >= 4 || recent.energy <= 2
-      ? 'high'
-      : 'normal';
+  const fatigue: JourneyState['difficulties']['fatigue'] = declaredFatigue(input.checkins, today);
 
   const mainMeal: Record<IsoDate, string> = {};
   for (const day of input.mealPlan?.days ?? []) {

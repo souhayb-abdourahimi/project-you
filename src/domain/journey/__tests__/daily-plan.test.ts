@@ -1,4 +1,10 @@
 import type { DailyMealPlan, PlannedMeal } from '../../meals/planner';
+import { SCENARIOS } from '../../scenarios';
+import { publishWeek } from '../../scenarios/training';
+import { sessionKey } from '../../shared/ids';
+import type { SessionVariant } from '../../training/adapt';
+import type { PrescribedSession } from '../../training/program';
+import { adaptSession, plannedVariantMinutes, variantMinutes } from '../../training/week';
 import type { PlannedDay } from '../../planning/engine';
 import { stateFor, translator, type StatePatch } from '../__fixtures__/journey';
 import { buildDailyPlan, MAX_DAILY_ITEMS, type DailyPlanInput } from '../daily-plan';
@@ -80,6 +86,18 @@ describe('DailyPlan', () => {
     );
   });
 
+  it('W-6: a session off plan is offered on an ordinary rest day only, never as an item', () => {
+    const rest = buildDailyPlan(input({ day: restDay }));
+    expect(rest.offPlan).toBe(true);
+    expect(kinds(rest)).not.toContain('workout');
+    expect(buildDailyPlan(input()).offPlan).toBe(false);
+    expect(buildDailyPlan(input({ day: restDay, completed: { variant: 'full' } })).offPlan).toBe(false);
+    expect(buildDailyPlan(input({ day: restDay }, { safety: { flags: ['low_intake'] } })).offPlan).toBe(false);
+    expect(buildDailyPlan(input({ day: restDay }, { fatigue: 'high' })).offPlan).toBe(false);
+    expect(buildDailyPlan(input({ day: restDay }, { comeback: true })).offPlan).toBe(false);
+    expect(buildDailyPlan(input({ day: restDay, dayLog: { date: TODAY, mode: 'difficult' } })).offPlan).toBe(false);
+  });
+
   it('first day: one simple objective and a first-day message', () => {
     const p = buildDailyPlan(input({ counts: { sessions: 0, activeDays: 0, weeks: 0 } }, { startedOn: TODAY }));
     expect(p.kind).toBe('first_day');
@@ -123,6 +141,57 @@ describe('DailyPlan', () => {
     const p = buildDailyPlan(input({ dayLog: { date: TODAY, mode: 'short' } }));
     expect(p.mode).toBe('short');
     expect(p.items[0].params).toMatchObject({ variant: 'short', minutes: 15 });
+  });
+
+  it('one duration (D-034): the coach announces what the workout screen will run', () => {
+    const week = publishWeek(SCENARIOS.muscleGain, {
+      today: TODAY,
+      weekStart: '2026-09-28',
+      seed: '11111111-1111-4111-8111-111111111111',
+      at: '2026-09-28T07:00:00.000Z',
+    });
+    const stored = week.prescriptions[week.sessionIds[sessionKey(TODAY, 1)]];
+    const session = (p: PrescribedSession) => ({
+      sessionIndex: 1,
+      focus: p.focus,
+      minutes: p.plannedMinutes,
+      minutesOf: (v: SessionVariant, requested: number) => plannedVariantMinutes(p, v, requested),
+    });
+    for (const dayLog of [
+      { date: TODAY, mode: 'short' as const },
+      { date: TODAY, availableMinutes: 25, energy: 2 },
+    ]) {
+      const announced = buildDailyPlan(input({ dayLog, session: session(stored) })).items[0].params as {
+        variant: SessionVariant;
+        minutes: number;
+      };
+      // The workout screen builds the variant with the coach's minutes, then reads it back.
+      const built = adaptSession({
+        session: stored,
+        program: week.programs[0],
+        variant: announced.variant,
+        minutes: announced.minutes,
+        training: SCENARIOS.muscleGain.training,
+        done: false,
+        prescribedAt: '2026-09-30T18:00:00.000Z',
+      })!;
+      expect(variantMinutes(built, announced.variant)).toBe(announced.minutes);
+      // Once stored, the coach reads the stored duration, whatever it would have asked.
+      const again = buildDailyPlan(input({ dayLog, session: session(built) })).items[0].params;
+      expect(again).toMatchObject({ minutes: announced.minutes });
+    }
+  });
+
+  it('the goal of the session (W-4) is said on a full session only, from the stored decision', () => {
+    const goal = (patch: Partial<DailyPlanInput>, state: StatePatch = {}) =>
+      buildDailyPlan(
+        input({ ...patch, session: { sessionIndex: 1, focus: 'upper', minutes: 60, goal: 'increase_reps' } }, state),
+      ).items[0].params.goal;
+    expect(goal({})).toBe('increase_reps');
+    // A lighter or shorter day never carries a goal of progress.
+    expect(goal({ dayLog: { date: TODAY, mode: 'short' } })).toBeUndefined();
+    expect(goal({ lightWeek: true })).toBeUndefined();
+    expect(buildDailyPlan(input()).items[0].params.goal).toBeUndefined();
   });
 
   it('a session done or replaced is shown as done; a skipped one leaves a rest day', () => {
@@ -189,9 +258,27 @@ describe('DailyPlan', () => {
     expect(kinds(busy)[0]).toBe('safety');
   });
 
+  it('quotes the why only on the days it helps (W-7 §15), never under safety', () => {
+    // An ordinary day: no quote, and the message keeps a neutral anchor.
+    const ordinary = buildDailyPlan(input());
+    expect(ordinary.anchor).toBeNull();
+    expect(ordinary.message.anchorSlot).toBe('none');
+    expect(buildDailyPlan(input({ day: restDay })).anchor).toBeNull();
+    // A comeback, a milestone, a low motivation, a lighter day, engagement dropping: quoted.
+    expect(buildDailyPlan(input({}, { comeback: true })).anchor?.slot).toBe('why');
+    expect(buildDailyPlan(input({ milestone: { sessions: '10' } })).anchor).not.toBeNull();
+    expect(buildDailyPlan(input({ dayLog: { date: TODAY, motivation: 2 } })).anchor?.slot).toBe('why');
+    expect(buildDailyPlan(input({ dayLog: { date: TODAY, mode: 'short' } })).anchor).not.toBeNull();
+    expect(buildDailyPlan(input({ engagementDrop: true })).anchor).not.toBeNull();
+    const safety = buildDailyPlan(
+      input({ engagementDrop: true }, { comeback: true, safety: { active: true, flags: ['low_intake'] } }),
+    );
+    expect(safety.anchor).toBeNull();
+  });
+
   it('chooses why, change or feel from the context, never concatenated, never the same two days running', () => {
-    expect(buildDailyPlan(input()).anchor?.slot).toBe('change');
-    expect(buildDailyPlan(input({ day: restDay })).anchor?.slot).toBe('feel');
+    expect(buildDailyPlan(input({ engagementDrop: true })).anchor?.slot).toBe('change');
+    expect(buildDailyPlan(input({ day: restDay, engagementDrop: true })).anchor?.slot).toBe('feel');
     expect(buildDailyPlan(input({}, { comeback: true })).anchor?.slot).toBe('why');
     const yesterday: VoiceUse[] = [
       {
@@ -202,7 +289,7 @@ describe('DailyPlan', () => {
         channel: 'screen',
       },
     ];
-    const p = buildDailyPlan(input({ history: yesterday }));
+    const p = buildDailyPlan(input({ history: yesterday, engagementDrop: true }));
     expect(p.anchor?.slot).toBe('why');
     expect(p.anchor?.text).toBe('être fier de moi');
   });

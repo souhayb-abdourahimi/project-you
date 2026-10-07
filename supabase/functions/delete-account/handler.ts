@@ -12,6 +12,35 @@ export interface DeleteAccountDeps {
   deleteUser: (userId: string) => Promise<void>;
 }
 
+/** One entry of a Storage listing: a file, or a folder to list too. */
+export interface StorageEntry {
+  name: string;
+  folder: boolean;
+}
+
+/**
+ * Every file under a prefix (W-7.1): page after page, folders included (a listing is capped and
+ * does not recurse). A listing error is thrown, never read as "no photo": the account is then kept,
+ * not deleted with photos left behind.
+ */
+export async function listAllPhotos(
+  prefix: string,
+  listPage: (prefix: string, offset: number, limit: number) => Promise<StorageEntry[]>,
+  limit = 1000,
+  depth = 0,
+): Promise<string[]> {
+  if (depth > 8) throw new Error('storage tree too deep');
+  const out: string[] = [];
+  for (let offset = 0; ; offset += limit) {
+    const page = await listPage(prefix, offset, limit);
+    for (const e of page) {
+      if (e.folder) out.push(...(await listAllPhotos(`${prefix}${e.name}/`, listPage, limit, depth + 1)));
+      else out.push(`${prefix}${e.name}`);
+    }
+    if (page.length < limit) return out;
+  }
+}
+
 export interface HandlerResponse {
   status: number;
   body: { ok: true } | { error: 'method_not_allowed' | 'unauthorized' | 'deletion_failed' };

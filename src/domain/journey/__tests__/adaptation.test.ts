@@ -12,7 +12,7 @@ const START = '2026-08-01';
 
 const full = (ratio: number | null, meals: number | null = 1): Adherence => ({
   windowDays: 14,
-  sessions: { planned: 6, done: 6, adapted: 0, skipped: 0, notLogged: 0, ratio },
+  sessions: { planned: 6, done: 6, adapted: 0, skipped: 0, notLogged: 0, ratio, unknownDays: 0 },
   mealLogging: meals === null ? null : { planned: 28, logged: 28, ratio: meals },
 });
 
@@ -195,6 +195,43 @@ describe('Adaptation Engine', () => {
         }
       }
     }
+  });
+});
+
+describe('progression signals (W-4, D-035)', () => {
+  it('stagnation on an exercise: advice to review the program, never a calorie change', () => {
+    const r = adapt(input({ progression: { stagnating: ['bench_press'], down: [] } }));
+    expect(r).toContainEqual(
+      expect.objectContaining({
+        kind: 'training',
+        mode: 'advice',
+        change: { key: 'progression_review' },
+        reason: { key: 'adaptation.reason.stagnation', params: { count: 1 } },
+      }),
+    );
+  });
+  it('a downward trend on several exercises: a lighter week is proposed; on one exercise, nothing', () => {
+    const two = adapt(input({ progression: { stagnating: [], down: ['bench_press', 'back_squat'] } }));
+    expect(two).toContainEqual(
+      expect.objectContaining({
+        change: { key: 'light_week', to: 'light' },
+        reason: { key: 'adaptation.reason.performance_down', params: { count: 2 } },
+        mode: 'proposed',
+      }),
+    );
+    expect(kinds(adapt(input({ progression: { stagnating: [], down: ['bench_press'] } })))).not.toContain(
+      'reduce_load:light_week',
+    );
+  });
+  it('under safety, the safety rule speaks alone', () => {
+    const r = adapt(
+      input({
+        safety: { active: true, flags: ['low_intake'] },
+        progression: { stagnating: ['bench_press'], down: ['bench_press', 'back_squat'] },
+      }),
+    );
+    expect(r.some((x) => x.reason.key.startsWith('adaptation.reason.stagnation'))).toBe(false);
+    expect(r.some((x) => x.reason.key === 'adaptation.reason.performance_down')).toBe(false);
   });
 });
 

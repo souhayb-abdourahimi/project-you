@@ -67,6 +67,7 @@ export function useSync() {
         }),
       upsert: async (table, rows, onConflict) => client.from(table).upsert(rows, { onConflict }),
       softDelete: async (table, keys, deletedAt) => client.from(table).update({ deleted_at: deletedAt }).in('id', keys),
+      attachHistory: async () => client.rpc('attach_reconstructed_training_history'),
     };
 
     let running = false;
@@ -84,10 +85,15 @@ export function useSync() {
         if (!result.offline) claim = false;
         if (!cancelled) {
           useSyncStatus.getState().set({
-            phase: result.offline ? 'offline' : result.failed > 0 ? 'error' : 'idle',
+            phase: result.offline
+              ? 'offline'
+              : result.failed > 0 || result.errors.some((e) => e.kind !== 'invalid_data')
+                ? 'error'
+                : 'idle',
             initialPullDone: true,
             lastSyncedAt: result.offline ? useSyncStatus.getState().lastSyncedAt : new Date().toISOString(),
             failed: result.failed,
+            errors: result.errors,
           });
         }
       } catch {

@@ -164,6 +164,35 @@ describe('Progress Journey: performance', () => {
   });
 });
 
+describe('Progress Journey: performance (W-4)', () => {
+  it('a hold has its own record: a longer time measured, never a reps or load record', () => {
+    const hold = (seconds: number) => [{ reps: 0, seconds, loadKg: 0 }];
+    const records = personalRecords({
+      setLogs: {
+        '2026-09-01#0': { plank: hold(30) },
+        '2026-09-04#0': { plank: hold(30) },
+        '2026-09-08#0': { plank: hold(40) },
+      },
+    });
+    expect(records).toEqual([
+      { exerciseId: 'plank', date: '2026-09-08', loadKg: 0, reps: 0, seconds: 40, kind: 'time' },
+    ]);
+  });
+
+  it('light and short sessions never make a downward trend', () => {
+    const setLogs = {
+      '2026-09-01#0': { row: [{ reps: 10, loadKg: 50 }] },
+      '2026-09-20#0': { row: [{ reps: 8, loadKg: 40 }] },
+    };
+    expect(exerciseTrends({ setLogs })[0].trend).toBe('down');
+    for (const variant of ['light', 'short'] as const) {
+      expect(
+        exerciseTrends({ setLogs, completedSessions: [{ date: '2026-09-20', sessionIndex: 0, variant }] }),
+      ).toEqual([]);
+    }
+  });
+});
+
 it('same load, more reps is up; load within 2.5 % and same reps is stable', () => {
   const at = (first: { reps: number; loadKg: number }, last: { reps: number; loadKg: number }) =>
     exerciseTrends({ ...empty(), setLogs: { '2026-09-01#0': { row: [first] }, '2026-09-20#0': { row: [last] } } })[0]
@@ -323,7 +352,7 @@ describe('adherence', () => {
       meals: [],
     });
     // Today's session is not due yet: never counted as missed.
-    expect(a.sessions).toEqual({ planned: 3, done: 2, adapted: 1, skipped: 0, notLogged: 0, ratio: 1 });
+    expect(a.sessions).toEqual({ planned: 3, done: 2, adapted: 1, skipped: 0, notLogged: 0, ratio: 1, unknownDays: 0 });
     expect(a.mealLogging).toBeNull();
   });
 

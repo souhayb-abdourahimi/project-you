@@ -3,6 +3,8 @@
 Statut : **architecture validée pour la phase « Daily Coach + Progress Journey »** (D-028). Code livré étape par étape sur la PR empilée sur la PR #3.
 Date : 2026-10-01. Documents liés : `docs/TRANSFORMATION_JOURNEY.md` (moteur unique, règles fondatrices), `docs/PROGRESS_JOURNEY.md`, `docs/ADAPTATION_ENGINE.md`, `docs/RETENTION.md`, `docs/NOTIFICATIONS.md`.
 
+**W-7 (2026-10-07, D-039)** : le Daily Coach devient un coach longitudinal. Une fonction déterministe unique, `coachDay()` (`src/domain/journey/coach.ts`), choisit **une seule priorité par jour** au-dessus du `DailyPlan` ; l'écran Aujourd'hui l'affiche sans rien décider. Voir §13.
+
 Le Daily Coach n'est **pas un nouveau moteur**. C'est la sortie quotidienne du Transformation Journey Engine (CLAUDE.md règle 6) : il lit `JourneyState`, le plan de la semaine, le plan repas et le check-in du jour, et produit un `DailyPlan`. L'écran Aujourd'hui l'affiche ; les notifications parlent avec la même voix.
 
 ---
@@ -133,6 +135,8 @@ Contenu **uniquement pertinent** :
 L'écran n'est pas identique d'un jour à l'autre : la ligne de progression change (série, nombre de séances, jours actifs, dernier record), la phrase de motivation change de source selon le contexte, le message du coach tourne entre catégories (§6), et le contenu suit le type de jour.
 
 ## 4. Hiérarchie des priorités
+
+> Depuis W-7, cet ordre construit toujours le `DailyPlan` (type de jour, éléments, ton). Ce qui **mène** l'écran (la priorité du jour, l'action principale, la question éventuelle) est arbitré ensuite par `coachDay()` : §13.
 
 Le Daily Coach applique cet ordre, première règle vraie d'abord, pour **le type de jour, l'action principale et le ton** :
 
@@ -279,4 +283,74 @@ AUJOURD'HUI
 
 ## 12. Tests
 
+W-7 : `coach.test.ts` (priorités, cas A–F, question, cause → action, suivi, stabilité, ton FR/EN), `coach-memory.test.ts`, `coach-scenarios.test.ts` (trois parcours de plusieurs semaines), E2E `e2e/coach.spec.ts`.
+
 Unitaires : `DailyPlan` (premier jour, jour normal, repos, retour, journée difficile, 15 min, pas envie, sécurité active, `low_logging` seul), sélection de motivation, catégories et anti-répétition multi-canal, explications. E2E : premier jour, jour normal, journée difficile, absence puis retour, sécurité active, `low_logging` seul. Détail : `docs/TESTING.md`.
+
+## 13. Coach du jour (W-7, D-039)
+
+Question à laquelle le coach répond chaque jour : « Quelle est la chose la plus utile à dire ou proposer à cette personne aujourd'hui, compte tenu de son objectif, de son histoire et de ce qui s'est réellement passé ? » Boucle : observer → détecter → comprendre (en demandant) → intervenir → suivre → apprendre prudemment (seulement ce que l'utilisateur confirme).
+
+### 13.1 Modèle
+
+`coachDay(input): CoachDay`, pure, sans horloge ni aléatoire : tout ce qu'elle lit est dans son entrée (`DailyPlan`, `JourneyState`, proposition W-5 de tête, célébration, adaptation en cours et effets observés, signal de blocage, mémoire de jours courts, signaux nutrition, progression stockée W-4, lignes déjà montrées sur l'appareil). `useJourney()` est le seul point d'assemblage ; l'écran, les notifications et Réglages consomment le résultat.
+
+```
+CoachDay {
+  date, priority,                // une seule priorité
+  primary: CoachAction | null,   // une seule action principale
+  supportingFacts: Copy[],       // ≤ 3 faits, jamais une estimation
+  secondary: CoachAction | null, // une action secondaire au plus
+  question: CoachQuestion | null,// une question au plus
+  celebration, safety, activeAdaptation, offPlan, why, calm,
+  deferred: ('proposal'|'question'|'celebration'|'nutrition')[],
+  explanation: { rule, facts },  // faits → règle → recommandation
+  shownIds                       // pour l'anti-répétition de l'appareil
+}
+```
+
+### 13.2 Ordre de priorité (première vraie gagne)
+
+| # | Priorité | Quand |
+|---|---|---|
+| 1 | `safety` | règle de sécurité active (`safety.ts`, inchangée) : rien d'autre ne mène, pas de question, pas de célébration, pas de proposition |
+| 2 | `comeback` | retour après une pause : on reprend simplement ; seule la proposition « reprise en douceur » peut mener |
+| 3 | `structural` | une proposition W-5 (D-037, réutilisée telle quelle : mêmes boutons, même journal) |
+| 4 | `session` | séance prévue à faire, ou sa version allégée un jour difficile |
+| 5 | `difficulty` | question « Qu'est-ce qui t'a le plus bloqué ? » en attente |
+| 6 | `nutrition` | ingrédients manquants, plan du jour incomplet, plan impossible avec les contraintes, courses prévues |
+| 7 | `recovery` | fatigue élevée déclarée ou mobilité proposée |
+| 8 | `progression` | une progression stockée (W-4, `increase_load`) dans la prochaine séance |
+| 9 | `motivation` | une célébration ou le « pourquoi » du jour |
+| 10 | `light` | sinon : « Rien de particulier à ajuster aujourd'hui. » |
+
+Cas croisés (testés) : séance + nutrition → séance (nutrition en secondaire) ; fatigue + progression → récupération ; adaptation + record → adaptation (célébration différée) ; sécurité + jalon → sécurité ; reprise + why → reprise ; repos sans rien → contenu léger.
+
+### 13.3 Causes : demander, jamais deviner
+
+- **Observation** (`coach-memory.ts`, `blockerSignal`) : jours prévus passés (fenêtre 14 j, depuis le début du parcours, aujourd'hui exclu) sans séance notée ni issue déclarée. Seuil : 2.
+- **Cause récente** : une réponse à la question (< 14 j), la raison d'une séance sautée, ou le problème principal du bilan hebdo. Elle existe → on ne redemande pas.
+- **Question** : « J'ai vu que plusieurs séances prévues n'ont pas eu lieu récemment. Qu'est-ce qui t'a le plus bloqué ? » — temps, fatigue, douleur / gêne, motivation, planning, matériel, autre, ou « Pas maintenant » (attente 7 j). Jamais de compte de ce qui n'a pas été fait dans le texte.
+- **Cause → action** (moteurs existants) : temps → version courte (séance aujourd'hui) ou déplacer une séance ; fatigue → « Dire comment je me sens » (`/adapt`) ; motivation → version plus petite ; douleur → alléger la séance du jour + prudence + professionnel de santé si ça persiste ; planning → déplacer une séance ; matériel → « Remplacer » pendant la séance ; autre → rien d'inventé, le plan reste le même.
+
+### 13.4 Mémoire du coach
+
+Seule mémoire apprise en W-7 : **« séance courte tel jour de la semaine »**. Observation (l'utilisateur a choisi lui-même « J'ai 15 minutes » ≥ 2 fois le même jour de la semaine en 6 semaines) → question → « Oui, garde-le en tête » → mémoire. Effet : ce jour-là, la version courte est proposée en action secondaire ; le plan prévu reste le plan. « Non merci » ou « Oublier » : la question ne revient qu'après de nouvelles occurrences. Visible et oubliable dans Réglages (« Ce que le coach retient »). Jamais une source de vérité : rien n'est calculé à partir d'elle hors de cette proposition.
+
+Stockage : lignes du journal `adjustments` (déjà synchronisé, append-only) avec `change_key` préfixé `coach.` (`coach.blocker`, `coach.memory.short_day`), `kind = 'planning'`, réponse fermée dans `to`, aucun texte libre. Elles sont exclues de tout ce qui lit des décisions d'adaptation (`effectiveDecisions`, `overriddenDecisions`, historique, mémoire du parcours). « Oublier » = `revertDecision` ; le dernier geste par `proposal_id` est en vigueur (convergence multi-appareil). La table `coach_memory` reste inutilisée : héritée, ni lue ni écrite, décision reportée (D-042). Ordre des réponses entre appareils : révision logique puis instant (D-040).
+
+### 13.5 Cadence et anti-répétition (`CADENCE`)
+
+Fenêtre d'observation 14 j · 2 occurrences minimum · cause valable 14 j · une question au plus par jour, 3 j de pause entre deux affichages, 2 affichages max sur 14 j · « Pas maintenant » 7 j · habitude : 2 fois sur 6 semaines · suivi d'une adaptation : une fois, dans les 7 j après sa fin, « pas assez de recul » sous 2 séances prévues (même seuil que `EFFECT_COVERAGE.minPlannedSessions`, D-041 ; fatigue : « Pas assez de données pour évaluer la fatigue. » sous la couverture minimale). Seuils inchangés en W-7.1. Les lignes déjà montrées (`coachShown`, appareil, 90 j) ne comptent que pour les jours **précédents** : l'écran est stable dans la journée.
+
+### 13.6 Le « pourquoi » avec parcimonie
+
+La phrase de l'utilisateur (« Pourquoi tu as commencé ») n'est citée que : premier jour, reprise, jalon, journée difficile / 15 min / pas envie, motivation déclarée basse, ou risque d'abandon détecté (`retention`). Jamais sous sécurité. Les autres jours : rien.
+
+### 13.7 Notifications
+
+`todayPriority` entre dans le canal : un jour de reprise, de proposition structurelle ou de question de cause (les jours où l'écran retient la célébration), les déclencheurs de félicitation / progrès / why (`HELD_BY_COACH`) sont retenus pour la journée. Heures calmes, maximum par jour et pause restent appliqués par le planificateur existant, inchangé.
+
+### 13.8 Écran
+
+Carte « coach du jour » (`CoachCard`) : titre du jour, phrase calme si rien n'est ajusté, action principale, faits, action secondaire, « Pourquoi ce choix ? » (règle + « Basé sur : … », ou « Je n'ai pas assez de données pour en dire plus. »). Proposition W-5 : la carte de proposition existante. Question : `CoachQuestion` (au-dessus de la carte quand la priorité est `difficulty`). Libellés d'accessibilité précis (« Ce qui m'a le plus bloqué : Manque de temps », « Oublier : Séance courte le mercredi », « Passer à 2 séances par semaine »).

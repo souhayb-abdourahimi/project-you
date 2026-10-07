@@ -7,6 +7,7 @@
 import type { IsoDate, Weekday } from '../shared/dates';
 import { weekdayOf } from '../shared/dates';
 import type { ReplacementReason } from '../training/replacement';
+import { isCoachEntry } from './coach-memory';
 import type { MealReason } from './outcomes';
 
 export const MEMORY = {
@@ -50,6 +51,8 @@ export interface MemoryInput {
   adjustments: { changeKey: string; status: string; decidedAt: string }[];
   /** Already in the profile: never suggested again. */
   confirmed: { refusedExerciseIds: string[]; dislikedRecipeIds: string[]; likedRecipeIds: string[] };
+  /** "Keep it" answered for an exercise (→ occurrences seen then): asked again only after as many new ones. */
+  kept?: Record<string, number>;
 }
 
 function usualDay(dates: IsoDate[]): { weekday: Weekday; count: number } | null {
@@ -85,15 +88,20 @@ export function journeyMemory(input: MemoryInput): JourneyMemory {
   }
 
   const suggestions: MemorySuggestion[] = [];
-  // "Je n'aime pas" / "je ne peux pas" on two different sessions → suggest removing the exercise.
+  // A stated preference ("je n'aime pas", "préférence personnelle") on two different sessions → ask
+  // the user; only their confirmation makes it durable (D-031 D). A movement that bothers is a
+  // safety matter, an unknown technique is learnt, a busy machine is a one-off (D-034): none of them
+  // ever becomes a preference here.
   const refused = new Map<string, string[]>();
   for (const [session, swaps] of Object.entries(input.swapReasons)) {
     for (const [exerciseId, reason] of Object.entries(swaps)) {
-      if (reason === 'dislike' || reason === 'cant_do')
+      if (reason === 'dislike' || reason === 'preference')
         refused.set(exerciseId, [...(refused.get(exerciseId) ?? []), session]);
     }
   }
   for (const [exerciseId, sessions] of refused) {
+    const kept = input.kept?.[exerciseId];
+    if (kept !== undefined && sessions.length < kept + MEMORY.repeat) continue;
     if (sessions.length >= MEMORY.repeat && !input.confirmed.refusedExerciseIds.includes(exerciseId)) {
       suggestions.push({
         kind: 'drop_exercise',
@@ -133,7 +141,7 @@ export function journeyMemory(input: MemoryInput): JourneyMemory {
   const events: MemoryEvent[] = [
     ...Object.entries(input.milestones).map(([id, m]) => ({ kind: 'milestone' as const, id, on: m.reachedOn })),
     ...input.adjustments
-      .filter((a) => a.status !== 'proposed')
+      .filter((a) => a.status !== 'proposed' && !isCoachEntry(a))
       .map((a) => ({
         kind: 'adjustment' as const,
         changeKey: a.changeKey,

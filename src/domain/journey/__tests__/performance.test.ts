@@ -112,10 +112,11 @@ it('one year of data: progress, adherence, adaptation, retention and memory in u
     return progress;
   };
   run(); // warm-up (JIT)
-  // Best of 5: the budget is about the code, not about the other test workers sharing the CPU.
+  // Best of 10: the budget is about the code, not about the other test workers sharing the CPU
+  // (a shared CI runner measured 52 ms on a commit whose code had passed at the same budget).
   let ms = Infinity;
   let progress = run();
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 10; i++) {
     const t0 = performance.now();
     progress = run();
     ms = Math.min(ms, performance.now() - t0);

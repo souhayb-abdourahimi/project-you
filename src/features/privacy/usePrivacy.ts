@@ -6,7 +6,9 @@ import {
   CATEGORY_TABLES,
   clearCategory,
   countByCategory,
+  deletionOutcome,
   type PrivacyCategory,
+  type RemoteDeletion,
 } from '@/domain/privacy/data';
 import { resetDeviceData } from '@/hooks/deviceData';
 import { signOut, useSession } from '@/services/auth';
@@ -24,7 +26,7 @@ export type PrivacyStatus =
   | { kind: 'idle' }
   | { kind: 'busy'; action: string }
   | { kind: 'done'; message: 'exported' | 'deleted' | 'account_deleted' }
-  | { kind: 'error'; message: 'export_failed' | 'delete_failed' | 'offline' };
+  | { kind: 'error'; message: 'export_failed' | 'delete_failed' | 'delete_partial' | 'offline' };
 
 function localState() {
   return { ...useDataStore.getState(), snapshot: useProfileStore.getState().snapshot };
@@ -75,6 +77,7 @@ export function usePrivacy() {
   const waist = useDataStore((s) => s.waist);
   const expenses = useDataStore((s) => s.expenses);
   const mealPlan = useDataStore((s) => s.mealPlan);
+  const previousMealPlan = useDataStore((s) => s.previousMealPlan);
   const completedSessions = useDataStore((s) => s.completedSessions);
   const setLogs = useDataStore((s) => s.setLogs);
   const sessionIds = useDataStore((s) => s.sessionIds);
@@ -93,6 +96,7 @@ export function usePrivacy() {
     waist,
     expenses,
     mealPlan,
+    previousMealPlan,
     completedSessions,
     setLogs,
     sessionIds,
@@ -127,9 +131,13 @@ export function usePrivacy() {
 
   const deleteCategory = async (category: PrivacyCategory) => {
     setStatus({ kind: 'busy', action: category });
-    if (supabase && userId && !(await deleteRemoteCategory(supabase, userId, category))) {
-      // Nothing is removed locally when the server refused: the user can retry, no half state.
-      setStatus({ kind: 'error', message: 'offline' });
+    const remote: RemoteDeletion =
+      supabase && userId ? await deleteRemoteCategory(supabase, userId, category) : { kind: 'complete' };
+    const outcome = deletionOutcome(remote);
+    if (!outcome.clearLocal) {
+      // Not finished on the server: never announced as deleted; the device keeps the data and the
+      // user can retry (W-7.1).
+      setStatus({ kind: 'error', message: outcome.message as 'delete_partial' | 'offline' });
       return;
     }
     const next = clearCategory(localState(), category);
@@ -140,17 +148,19 @@ export function usePrivacy() {
     setStatus({ kind: 'done', message: 'deleted' });
   };
 
-  const deleteEverything = async () => {
+  /** True only when the account (or, signed out, the device data) is really deleted. */
+  const deleteEverything = async (): Promise<boolean> => {
     setStatus({ kind: 'busy', action: 'account' });
     if (supabase && userId) {
       if (!(await deleteAccount(supabase))) {
         setStatus({ kind: 'error', message: 'delete_failed' });
-        return;
+        return false;
       }
       await signOut().catch(() => undefined);
     }
     await resetDeviceData();
     setStatus({ kind: 'done', message: 'account_deleted' });
+    return true;
   };
 
   return { counts, status, signedIn: !!userId, exportData, deleteCategory, deleteEverything };

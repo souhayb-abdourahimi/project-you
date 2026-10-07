@@ -8,6 +8,7 @@ import type { ProgressJourney, ProgressSection } from '@/domain/journey/progress
 import { getExercise } from '@/domain/training/exercises';
 import { NumberField } from '@/features/onboarding/fields';
 import { Recommendations } from '@/features/journey/Recommendations';
+import { TrainingWeekCard } from '@/features/program/TrainingWeekCard';
 import { useJourney } from '@/hooks/useJourney';
 import { usePlan } from '@/hooks/usePlan';
 import { formatDate } from '@/lib/format';
@@ -51,12 +52,19 @@ export default function ProgressScreen() {
           {progress.notes.map((n) => (
             <Banner key={n.key} tone="primary" message={t(n.key, n.params)} />
           ))}
+          {/* What changed in the program, after the user's yes (D-037 §38): two facts, no redesign. */}
+          {journey.active
+            .filter((a) => a.key === 'light_week' || a.key === 'exercise_change')
+            .map((a) => (
+              <Banner key={a.decision.id} tone="primary" message={t(`progress.adapted.${a.key}`)} />
+            ))}
+          <TrainingWeekCard week={journey.trainingWeek} />
           {progress.order.map((s) => sections[s])}
           <Section title={t('progress.path.title')}>
             <Path progress={progress} date={date} />
           </Section>
           <Section title={t('adaptation.title')}>
-            <Recommendations recommendations={journey.recommendations} today={plan.today} />
+            <Recommendations recommendations={journey.recommendations} today={plan.today} effects={journey.effects} />
           </Section>
         </>
       )}
@@ -101,6 +109,9 @@ function SinceStart({ progress }: { progress: ProgressJourney }) {
               },
             )}
           </Text>
+        ) : null}
+        {sessions && sessions.unknownDays > 0 ? (
+          <Text color="textMuted">{t('progress.since.prescriptionUnknown', { count: sessions.unknownDays })}</Text>
         ) : null}
       </Card>
     </Section>
@@ -227,8 +238,12 @@ function Performance({ progress }: { progress: ProgressJourney }) {
   const latestRecords = records
     .filter((r, i) => records.findIndex((x) => x.exerciseId === r.exerciseId) === i)
     .slice(0, 3);
-  const set = (s: { loadKg: number; reps: number }) =>
-    s.loadKg > 0 ? t('progress.perf.set', s) : t('progress.perf.reps', { reps: s.reps });
+  const set = (s: { loadKg: number; reps: number; seconds?: number }) =>
+    s.seconds !== undefined
+      ? t('progress.perf.seconds', { seconds: s.seconds })
+      : s.loadKg > 0
+        ? t('progress.perf.set', s)
+        : t('progress.perf.reps', { reps: s.reps });
   return (
     <Section title={t('progress.perf.title')}>
       <Card>
@@ -244,7 +259,7 @@ function Performance({ progress }: { progress: ProgressJourney }) {
         ))}
         {latestRecords.map((r) => (
           <Text key={`${r.exerciseId}${r.date}`} color="textMuted">
-            {t(r.kind === 'load' ? 'progress.perf.recordLoad' : 'progress.perf.recordReps', {
+            {t(`progress.perf.${{ load: 'recordLoad', reps: 'recordReps', time: 'recordTime' }[r.kind]}`, {
               name: exerciseName(r.exerciseId, i18n.language),
               set: set(r),
               date: formatDate(r.date, i18n.language),

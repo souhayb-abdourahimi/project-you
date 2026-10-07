@@ -5,6 +5,7 @@ import { Button, Card, ChoiceGroup, ConfirmButton, MockBadge, Row, Screen, Text 
 import { SCENARIOS } from '@/domain/scenarios';
 import { signOut } from '@/services/auth';
 import { isSupabaseConfigured } from '@/services/supabase';
+import { CoachMemoryCard } from '@/features/journey/CoachMemoryCard';
 import { resetDeviceData } from '@/hooks/deviceData';
 import { useDataStore } from '@/state/data';
 import { useProfileStore } from '@/state/profile';
@@ -42,6 +43,7 @@ export default function SettingsScreen() {
           }}
         />
       </Card>
+      <CoachMemoryCard />
       <Card>
         <Text variant="heading">{t('settings.notifications')}</Text>
         <Button variant="secondary" label={t('privacy.notifications')} onPress={() => router.push('/notifications')} />

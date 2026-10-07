@@ -10,6 +10,7 @@ import type { DailyMealPlan } from '../meals/planner';
 import type { PlannedDay } from '../planning/engine';
 import { weekdayOf } from '../shared/dates';
 import type { SessionVariant } from '../training/adapt';
+import type { SessionGoal } from '../training/session';
 import { DAY_MODE, isDifficultDay, minimalVersion, type DayContext } from './day-modes';
 import type { DayLog, DayMode, SessionOutcome } from './outcomes';
 import type { JourneyState } from './state';
@@ -42,19 +43,40 @@ export interface DailyPlan {
   items: DailyItem[];
   /** First item still to do (never the safety notice itself); null when the day is done. */
   main: DailyItem | null;
-  /** The answer quoted under "Pourquoi tu as commencé" (one of why / change / feel). */
+  /**
+   * The answer quoted under "Pourquoi tu as commencé" (one of why / change / feel), only on the days
+   * it helps (W-7 §15, `whyMoment`); null on an ordinary day.
+   */
   anchor: { slot: 'why' | 'change' | 'feel'; text: string } | null;
   message: ComposedMessage;
   headline: { key: string; params: Record<string, string | number> };
   adaptations: { key: string; params: Record<string, string | number> }[];
+  /**
+   * A session off plan can be offered, discreetly (W-6): nothing planned today, nothing done yet,
+   * an ordinary day without safety signal, fatigue or comeback. Never an item, never a catch-up.
+   */
+  offPlan: boolean;
+  /** A session was planned today (whatever became of it). */
+  sessionPlanned: boolean;
 }
 
 export interface DailyPlanInput {
   state: JourneyState;
   day: PlannedDay | null;
   meals: DailyMealPlan | null;
-  /** Template of today's planned session. */
-  session: { sessionIndex: number; focus: string; minutes: number } | null;
+  /**
+   * Today's planned session. `minutes` is the full prescription's; `minutesOf` returns what the
+   * workout screen will run for a variant (D-034: stored variant, else what it will be built for), so
+   * the Daily Coach never announces another duration than the session's.
+   */
+  session: {
+    sessionIndex: number;
+    focus: string;
+    minutes: number;
+    minutesOf?: (variant: SessionVariant, requested: number) => number;
+    /** What the stored prescription aims for (W-4 `sessionGoal`), said only on a full session. */
+    goal?: SessionGoal | null;
+  } | null;
   /** Today's session as done (any variant). */
   completed: { variant: SessionVariant } | null;
   /** Today's session skipped or replaced. */
@@ -79,6 +101,8 @@ export interface DailyPlanInput {
   lightWeek?: boolean;
   /** Everything the voice already said, on every channel. */
   history: VoiceUse[];
+  /** Engagement is dropping (retention risk `watch` or `act`, docs/RETENTION.md). */
+  engagementDrop?: boolean;
 }
 
 export const MAX_DAILY_ITEMS = 4;
@@ -144,6 +168,8 @@ function decideWorkout(input: DailyPlanInput, mode: DayMode, difficult: boolean,
   }
 
   const slowDown = state.safety.flags.includes('training_load');
+  const minutesOf = (variant: SessionVariant, requested: number) =>
+    session.minutesOf ? session.minutesOf(variant, requested) : requested;
   const workout = (variant: SessionVariant, minutes: number, reason: string): DailyItem => ({
     id: 'workout',
     kind: 'workout',
@@ -163,11 +189,12 @@ function decideWorkout(input: DailyPlanInput, mode: DayMode, difficult: boolean,
   if (difficult) {
     const min = minimalVersion(ctx, { slowDown });
     if (min.kind === 'session') {
+      const to = minutesOf('short', min.minutes);
       return {
-        item: workout('short', min.minutes, 'workout.difficult'),
+        item: workout('short', to, 'workout.difficult'),
         alternative: null,
-        adaptations: [{ key: 'daily.adapt.difficult_session', params: { from: session.minutes, to: min.minutes } }],
-        facts: { minutes: String(min.minutes) },
+        adaptations: [{ key: 'daily.adapt.difficult_session', params: { from: session.minutes, to } }],
+        facts: { minutes: String(to) },
       };
     }
     const alt =
@@ -191,40 +218,43 @@ function decideWorkout(input: DailyPlanInput, mode: DayMode, difficult: boolean,
   }
   // 3. Planned training, adapted to what the user declared.
   if (mode === 'short') {
+    const minutes = minutesOf('short', DAY_MODE.shortSessionMinutes);
     return {
       ...none,
-      item: workout('short', DAY_MODE.shortSessionMinutes, 'workout.short_day'),
-      adaptations: [{ key: 'daily.adapt.short_day', params: { minutes: DAY_MODE.shortSessionMinutes } }],
-      facts: { minutes: String(DAY_MODE.shortSessionMinutes) },
+      item: workout('short', minutes, 'workout.short_day'),
+      adaptations: [{ key: 'daily.adapt.short_day', params: { minutes } }],
+      facts: { minutes: String(minutes) },
     };
   }
   if (mode === 'low_motivation') {
+    const minutes = minutesOf('short', DAY_MODE.minimalSessionMinutes);
     return {
       ...none,
-      item: workout('short', DAY_MODE.minimalSessionMinutes, 'workout.low_motivation'),
-      adaptations: [{ key: 'daily.adapt.low_motivation', params: { minutes: DAY_MODE.minimalSessionMinutes } }],
-      facts: { minutes: String(DAY_MODE.minimalSessionMinutes) },
+      item: workout('short', minutes, 'workout.low_motivation'),
+      adaptations: [{ key: 'daily.adapt.low_motivation', params: { minutes } }],
+      facts: { minutes: String(minutes) },
     };
   }
   if (state.momentum.comeback) {
+    const minutes = minutesOf('short', DAY_MODE.shortSessionMinutes);
     return {
       ...none,
-      item: workout('short', DAY_MODE.shortSessionMinutes, 'workout.comeback'),
-      adaptations: [{ key: 'daily.adapt.comeback', params: { minutes: DAY_MODE.shortSessionMinutes } }],
+      item: workout('short', minutes, 'workout.comeback'),
+      adaptations: [{ key: 'daily.adapt.comeback', params: { minutes } }],
     };
   }
   const tired = (slowDown && state.safety.trainingLoadBasis !== 'frequency') || state.difficulties.fatigue === 'high';
   if (tired) {
     return {
       ...none,
-      item: workout('light', Math.round(session.minutes * 0.7), 'workout.light'),
+      item: workout('light', minutesOf('light', Math.round(session.minutes * 0.7)), 'workout.light'),
       adaptations: [{ key: 'daily.adapt.light', params: {} }],
     };
   }
   if (input.lightWeek) {
     return {
       ...none,
-      item: workout('light', Math.round(session.minutes * 0.7), 'workout.light_week'),
+      item: workout('light', minutesOf('light', Math.round(session.minutes * 0.7)), 'workout.light_week'),
       adaptations: [{ key: 'daily.adapt.light_week', params: {} }],
     };
   }
@@ -233,9 +263,10 @@ function decideWorkout(input: DailyPlanInput, mode: DayMode, difficult: boolean,
       session.minutes,
       Math.max(DAY_MODE.shortSessionMinutes, dayLog?.availableMinutes ?? DAY_MODE.shortSessionMinutes),
     );
-    return { ...none, item: workout('short', minutes, 'workout.short_slot') };
+    return { ...none, item: workout('short', minutesOf('short', minutes), 'workout.short_slot') };
   }
-  return { ...none, item: workout('full', session.minutes, 'workout.planned') };
+  const item = workout('full', session.minutes, 'workout.planned');
+  return { ...none, item: session.goal ? { ...item, params: { ...item.params, goal: session.goal } } : item };
 }
 
 function mealItem(input: DailyPlanInput): DailyItem | null {
@@ -272,6 +303,23 @@ function headline(input: DailyPlanInput): DailyPlan['headline'] {
   }
   // A different real figure from one day to the next.
   return options[hash(state.today) % options.length];
+}
+
+/**
+ * The user's own words are a resource, used sparingly (W-7 §15): the first day, a comeback, a
+ * milestone, a difficult or low-motivation day, a low motivation declared today, or engagement
+ * dropping. Never under the safety rule (the care anchor speaks then). Other days quote nothing.
+ */
+export function whyMoment(input: DailyPlanInput, kind: DayKind, mode: DayMode): boolean {
+  if (input.state.safety.active) return false;
+  return (
+    kind === 'first_day' ||
+    kind === 'comeback' ||
+    !!input.milestone ||
+    mode !== 'normal' ||
+    (input.dayLog?.motivation ?? 5) <= 2 ||
+    !!input.engagementDrop
+  );
 }
 
 function anchorContextFor(kind: DayKind, mode: DayMode, input: DailyPlanInput): AnchorContext {
@@ -421,16 +469,18 @@ export function buildDailyPlan(input: DailyPlanInput): DailyPlan {
   const kept = items.slice(0, MAX_DAILY_ITEMS);
 
   const context = anchorContextFor(kind, mode, input);
+  const why = whyMoment(input, kind, mode);
   const given = (['why', 'change', 'feel'] as const).filter((s) => state.motivation[s]?.trim());
   const earlier = input.history.filter((u) => u.date < today);
-  const slot = pickAnchorSlot([...given], context, earlier, today);
+  const slot = why ? pickAnchorSlot([...given], context, earlier, today) : null;
   const { trigger, facts } = messageTrigger(input, kind, mode, decision.facts);
   const message = composeMessage({
     trigger,
     date: today,
     facts,
-    state,
-    // The Today screen is private: the user's own words are always quoted there.
+    // The Today screen is private: the user's own words are quoted there, on the days they help
+    // (whyMoment); other days the message keeps a neutral anchor.
+    state: why ? state : { ...state, motivation: {} },
     quotePersonalWords: true,
     // Only days before today: the message stays the same all day long.
     history: earlier,
@@ -448,5 +498,13 @@ export function buildDailyPlan(input: DailyPlanInput): DailyPlan {
     message,
     headline: headline(input),
     adaptations: decision.adaptations,
+    offPlan:
+      !input.day?.items.some((i) => i.kind === 'workout') &&
+      !input.completed &&
+      !state.safety.active &&
+      state.difficulties.fatigue !== 'high' &&
+      !state.momentum.comeback &&
+      mode === 'normal',
+    sessionPlanned: !!input.day?.items.some((i) => i.kind === 'workout'),
   };
 }

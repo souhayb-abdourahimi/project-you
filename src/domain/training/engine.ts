@@ -20,7 +20,7 @@ export interface PrescribedExercise {
 export interface WorkoutTemplate {
   index: number;
   focus: SessionFocus;
-  exercises: PrescribedExercise[];
+  exercises: (PrescribedExercise & { standsFor?: string })[];
   estimatedMinutes: number;
 }
 
@@ -32,7 +32,16 @@ export interface WorkoutPlan {
 
 export interface WorkoutInput {
   goal: GoalType;
-  training: Pick<TrainingProfile, 'level' | 'sessionsPerWeek' | 'sessionMinutes' | 'equipment' | 'refusedExerciseIds'>;
+  training: Pick<
+    TrainingProfile,
+    'level' | 'sessionsPerWeek' | 'sessionMinutes' | 'equipment' | 'refusedExerciseIds'
+  > & {
+    /**
+     * Exercises moved to the end of their movement's options at a cycle evolution (W-5, D-037): the
+     * next option the engine knows takes their place; never excluded, never invented.
+     */
+    rotatedExerciseIds?: readonly string[];
+  };
 }
 
 const FOCUS_PATTERNS: Record<SessionFocus, MovementPattern[]> = {
@@ -92,11 +101,13 @@ function prescriptionFor(goal: GoalType, compound: boolean, level: TrainingLevel
 }
 
 /** Warm-up plus working sets and rests, in minutes. */
-export function estimateMinutes(exercises: Pick<PrescribedExercise, 'sets' | 'restSeconds'>[]): number {
-  const WARM_UP = 8;
+export function estimateMinutes(
+  exercises: Pick<PrescribedExercise, 'sets' | 'restSeconds'>[],
+  warmUpMinutes = 8,
+): number {
   const SET_SECONDS = 45;
   const seconds = exercises.reduce((s, e) => s + e.sets * (SET_SECONDS + e.restSeconds), 0);
-  return Math.round(WARM_UP + seconds / 60);
+  return Math.round(warmUpMinutes + seconds / 60);
 }
 
 export function exerciseCountFor(minutes: number, level: TrainingLevel): number {
@@ -131,9 +142,12 @@ export function generateWorkoutPlan(input: WorkoutInput): WorkoutPlan {
 
     for (const pattern of FOCUS_PATTERNS[focus]) {
       if (exercises.length >= count) break;
-      const options = candidatesFor(pattern, training.equipment, training.level, training.refusedExerciseIds).filter(
-        (e) => !used.has(e.id),
-      );
+      const rotated = training.rotatedExerciseIds ?? [];
+      const ordered = candidatesFor(pattern, training.equipment, training.level, training.refusedExerciseIds);
+      const options = [
+        ...ordered.filter((e) => !rotated.includes(e.id)),
+        ...ordered.filter((e) => rotated.includes(e.id)),
+      ].filter((e) => !used.has(e.id));
       if (options.length === 0) continue;
       // Rotate variations between repeated sessions of the same focus.
       const pick = options[occurrence % options.length];

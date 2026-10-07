@@ -28,9 +28,11 @@ Supabase / PostgreSQL. Migrations versionnées dans `supabase/migrations/` (horo
 | `shopping_list_items` | ShoppingList | coût estimé seulement si prix réel |
 | `food_expenses` | budget réel | dépenses saisies |
 | `exercises` | Exercise | catalogue |
-| `workout_plans` | WorkoutPlan | plan hebdo sérialisé (`jsonb`) + version du moteur |
-| `workout_sessions` | WorkoutSession | variante `full` / `short` / `light` |
-| `exercise_logs` | ExerciseLog / ExerciseHistory | une ligne par série |
+| `workout_plans` | WorkoutPlan | **jamais écrite, inutilisée** depuis D-031 (remplacée par `training_programs` + `planned_exercises`) ; suppression à décider |
+| `training_programs` | ProgramVersion | une ligne = une version publiée, immuable (`lineage_id` + `version`), un seul `active`, un seul `reconstructed` ; D-031 |
+| `workout_sessions` | WorkoutSession | séance prescrite (programme, focus, durée, raison, adaptation du jour) puis vécue (statut, variante, difficulté 1–5, report, notes) ; prescription figée (trigger) |
+| `planned_exercises` | PlannedExercise | prescription immuable par variante (séries, fourchette, repos, RPE cible, charge proposée, raison) ; D-031 |
+| `exercise_logs` | ExerciseLog / ExerciseHistory | une ligne par série (répétitions **ou** secondes), reliée à l'exercice prescrit (`planned_exercise_id`) |
 | `weight_logs` | WeightLog | |
 | `body_measurements` | BodyMeasurement | tour de taille, etc. |
 | `progress_photos` | ProgressPhoto | chemin dans le bucket **privé** `progress-photos/<user_id>/…` |
@@ -38,8 +40,39 @@ Supabase / PostgreSQL. Migrations versionnées dans `supabase/migrations/` (horo
 | `notification_preferences` | Notification | une ligne par catégorie |
 | `notification_settings` / `notification_history` | préférences et historique du canal notifications | D-024, voir ci-dessous |
 | `integration_connections` | CalendarConnection, HealthConnection | `kind` = calendar/health, scopes, statut ; aucun token en clair côté client |
-| `coach_memory` | mémoire structurée du coach | `kind` énuméré (aliment détesté, créneau préféré…) |
+| `coach_memory` | **héritée, inutilisée** (D-042) | ni lue ni écrite par l'app : la mémoire du coach vit dans `adjustments` (`coach.*`, D-039) ; exportée, supprimée avec le compte ; suppression ou usage futur à décider |
 | `ai_conversations` / `ai_messages` | AIConversation, AIMessage | phase 3 ; tables créées mais inutilisées au MVP |
+
+## Migration `20261002000001_workout_coach_foundation.sql` (W-1, D-031)
+
+Programmes versionnés et prescriptions immuables : `training_programs`, `planned_exercises` (RLS propriétaire, politiques restrictives de rattachement), colonnes de prescription et de ressenti sur `workout_sessions`, `planned_exercise_id` sur `exercise_logs` et `exercise_substitutions`, raisons de remplacement élargies, `adjustments.status = 'postponed'`, fonction `attach_reconstructed_training_history()`. Détail : `docs/TRAINING_ARCHITECTURE.md` §2–6. Tests : `supabase/tests/training.sql`.
+
+### Synchronisation (W-2, D-032)
+
+Aucune nouvelle migration en W-2. Les tables d'entraînement sont désormais écrites par l'app : ordre de push `training_programs` → `workout_sessions` → `planned_exercises` → `exercise_logs` / `exercise_substitutions` ; `training_programs` et `planned_exercises` ne sont jamais supprimées par la sync (`deleteOnMissing: false`), seulement par l'effacement Privacy Center ou la suppression du compte. Ids stables calculés sur l'appareil (upserts idempotents). L'app appelle `attach_reconstructed_training_history()` avant le pull tant qu'une séance n'a ni programme ni source. **La migration W-1 doit être appliquée sur Supabase avant de publier une version de l'app qui contient W-2.**
+
+## Migration `20261007000001_decision_revision.sql` (W-7.1, D-040)
+
+`adjustments.revision` : entier ≥ 0 (contrainte 0–1 000 000), défaut 0, figé par `adjustments_immutable`. Compteur logique par proposition : un appareil écrit 1 + la plus haute révision qu'il connaît, une annulation révision annulée + 1. Ordre en vigueur : révision, puis instant (`decided_at` comparé comme un instant), puis id. Lignes existantes : 0. RLS inchangée ; synchronisée (poussée si non nulle, relue) ; exportée et supprimée avec `adjustments`. Tests : `supabase/tests/training.sql`, `sync.db.test.ts`. **À appliquer sur Supabase après W-1, W-3, W-4 et W-5, avant toute version de l'app contenant W-7.1**, puis mettre à jour tous les appareils.
+
+W-7.1 ne change aucune autre table. `exercise_substitutions` est désormais supprimée logiquement par la sync quand la séance existe encore (`deleted_at`, colonne existante) : un remplacement annulé ne revient pas.
+
+## Migration `20261006000003_structural_adaptations.sql` (W-5, D-037)
+
+Aucune nouvelle table (audit : le journal `adjustments`, les versions et les prescriptions suffisent).
+
+- `adjustments` : `proposal_id` (id stable de la proposition, format contrôlé), `scope` (`session`, `sessions`, `week`, `weeks`, `durable`), `effective_to` (dernier jour inclus), `session_count` (1–12) ; contraintes de cohérence (fin ≥ début, `sessions` ⇒ nombre, `durable` ⇒ pas de fin) ; index `(user_id, proposal_id)` ; trigger `adjustments_immutable` : une décision n'est jamais réécrite (seuls `updated_at` / `deleted_at` bougent ; un upsert identique d'un second appareil passe).
+- `workout_sessions.adjustment_id` : la décision structurelle suivie par la prescription (référence souple), figée avec elle (`workout_sessions_prescription_immutable` recréé).
+- `training_programs.rotated_exercise_ids` : rotation de fin de cycle, paramètre figé de la version (`training_programs_immutable` recréé), seulement pour `source = 'engine'`.
+- RLS inchangée (politiques propriétaire existantes) ; export et suppression (Centre de confidentialité) lisent les lignes entières. Lignes d'avant W-5 valides telles quelles (colonnes nulles). Tests : `supabase/tests/training.sql` (W-5), `sync.db.test.ts`.
+
+## Migration `20261006000002_progression_v2.sql` (W-4, D-035)
+
+`planned_exercises` : contrainte `progression_action` élargie aux actions W-4 (`increase_load`, `increase_reps`, `maintain`, `retry`, `reduce_load`, `no_recommendation`), les valeurs W-2 restent valides pour l'historique ; nouvelles colonnes `target_reps` (répétitions ou secondes visées, dans la plage prescrite), `progression_confidence` (`insufficient` / `low` / `medium` / `high`) et `progression_params` (objet JSON ≤ 512 octets : les faits de la raison, jamais du texte libre), interdites sans action. Figées comme le reste de la ligne par le trigger d'immuabilité de W-1. Aucune nouvelle table, aucune nouvelle politique (RLS de `planned_exercises` inchangée). Appliquer une progression au futur = nouvelle ligne `workout_sessions` + ses `planned_exercises`, l'ancienne passe `superseded`. Tests : `supabase/tests/training.sql`, `sync.db.test.ts`. **À appliquer sur Supabase avant toute version de l'app contenant W-4** (sinon l'envoi des nouvelles prescriptions échoue).
+
+## Migration `20261006000001_workout_session.sql` (W-3, D-034)
+
+Nouvelle table `exercise_reports` : ce que l'utilisateur déclare sur un exercice prescrit d'une séance (« Je ne fais pas cet exercice » et sa raison, difficulté 1–5). Unique `(session_id, exercise_id)`, contraintes (raison seulement si non fait, un rapport dit toujours quelque chose), index `user_id, updated_at`, trigger `set_updated_at`, RLS propriétaire + politiques restrictives (séance et prescription du même utilisateur), aucun privilège `anon`. Synchronisée après `exercise_substitutions` ; supprimée seulement pour une séance encore présente sur l'appareil. Effacée en premier par le Privacy Center (catégorie séances). Tests : `supabase/tests/rls.sql`, `supabase/tests/training.sql`, `sync.db.test.ts`. **À appliquer sur Supabase avant toute version de l'app contenant W-3** (sinon le pull de `exercise_reports` échoue).
 
 ## Migration `20261001000001_sync_hardening.sql`
 

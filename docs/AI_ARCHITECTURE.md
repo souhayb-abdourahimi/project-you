@@ -37,7 +37,7 @@ Schémas : `src/domain/ai/schemas.ts`. Une sortie invalide est rejetée, jamais 
 
 ## Mémoire du coach
 
-Mémoire **structurée uniquement** (`coach_memory.kind` : `disliked_food`, `refused_exercise`, `motivation_style`, `preferred_slot`, `equipment`, `habit`). Pas de stockage arbitraire de texte sensible. Consultable et supprimable par l'utilisateur.
+Mémoire **structurée uniquement**. Aujourd'hui : lignes `coach.*` du journal `adjustments` (D-039), seule source ; la table `coach_memory` (`kind` : `disliked_food`, `refused_exercise`, `motivation_style`, `preferred_slot`, `equipment`, `habit`) est héritée et inutilisée, son sort est à décider avant le coach IA (D-042). Pas de stockage arbitraire de texte sensible. Consultable et supprimable par l'utilisateur.
 
 ## « Pourquoi cette recommandation ? »
 

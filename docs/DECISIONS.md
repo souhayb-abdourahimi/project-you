@@ -369,3 +369,279 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
 - **Alternatives** : une liste de sections à contrôler (refusée : chaque nouvelle section devrait y être ajoutée à la main) ; supprimer les mots « rattrapage » ou « échec » des textes (refusé : les phrases rassurantes en ont besoin) ; un relecteur humain seul (refusé : non systématique).
 - **Trade-offs** : des motifs lexicaux ne comprennent pas le sens ; ils attrapent les formulations connues et laissent passer une phrase blessante inédite. La relecture humaine des textes reste utile.
 - **Date** : 2026-10-01
+
+## D-030 — Workout Coach Engine : prévu figé, fait enregistré, écart dérivé (validée le 2026-10-02, voir D-031)
+
+- **Contexte** : demande du 2026-10-01 (phase 5, thread « Workout Coach Engine ») : faire de Project You un coach sportif longitudinal qui sait ce qui était prévu, ce qui a été fait, pourquoi il y a eu une différence et quelle adaptation proposer. Audit : `docs/WORKOUT_ENGINE.md` §1 ; architecture : `docs/TRAINING_ARCHITECTURE.md`. Aucun code applicatif avant validation.
+- **Constat principal** : le programme et la semaine sont recalculés à chaque rendu depuis le profil actuel (`usePlan`) ; `workout_plans` n'est jamais écrite ; la prescription par exercice et la charge proposée ne sont pas gardées. Le « prévu » de l'historique change donc avec le profil (compromis accepté par D-028), ce qui rend la comparaison prévu/fait impossible.
+- **Décision proposée** :
+  - **Pas de nouveau moteur de coaching** (règle 6) : `src/domain/training` reste un moteur de calcul pur (prescrire, figer, comparer, progresser) ; `src/domain/journey` reste le seul état, la seule voix, la seule sécurité et la seule adaptation ; `useJourney` reste le point d'assemblage.
+  - **Prévu figé** : nouvelle table `training_programs` (programme versionné, un seul actif, raison de chaque version) et `planned_exercises` (prescription figée par séance, charge proposée et action de progression) ; `workout_sessions` étendue (programme, focus, durée prévue, raison d'adaptation du jour, report synchronisé, difficulté 1–5) ; `workout_plans`, jamais écrite, supprimée.
+  - **Fait enregistré** : séries modifiables et supprimables (suppression logique), secondes dans `seconds`, heure de début, remplacements choisis par l'utilisateur, raisons `busy_equipment` et `discomfort` ajoutées. La fatigue reste dans `daily_checkins` (une seule source, lue par la sécurité).
+  - **Écart dérivé, raison déclarée** : `training/compare.ts` calcule le statut de chaque exercice et de chaque séance ; la raison vient uniquement de ce qui a été déclaré (remplacement, issue de séance, mode du jour, adaptation du coach, fatigue du jour), sinon « non renseignée ». Rien n'est stocké (comme D-028).
+  - **Adaptations** : nouvelles règles d'entraînement dans `journey/adaptation.ts` (durée de séance, remplaçant permanent, séries, stagnation, fin de cycle), mêmes blocages (sécurité, calibration, faible adhérence) ; `APPLICABLE_CHANGES` += `session_minutes`, `exercise_swap` ; décisions dans `adjustments` (pas de migration).
+  - **Historique antérieur** : rattaché à un programme `reconstructed`, sans prescription inventée.
+- **Alternatives** :
+  - garder le recalcul et stocker seulement un hash du profil : refusé (on saurait que le prévu a changé, pas ce qu'il était) ;
+  - stocker le plan de la semaine en un seul `jsonb` (`workout_plans`) : refusé (sync par différence ligne à ligne, contraintes et RLS par exercice impossibles, taille non bornée) ;
+  - stocker l'écart et la progression côté serveur : refusé (désynchronisation, D-028) ;
+  - un « TrainingCoachEngine » avec ses propres messages et notifications : refusé (règle 6).
+- **Trade-offs** : plus de lignes synchronisées (une séance prévue et ses exercices chaque semaine, même non faite) ; migration locale v4 à tester avec soin ; les seuils (cycle de 6 semaines, stagnation sur 3 séances / 3 semaines, 75 % de la durée, 2 remplacements) sont des paramètres de conception à faire relire avec ceux de D-024, D-026 et D-028.
+- **Points ouverts** : tranchés le 2026-10-02 (D-031).
+- **Date** : 2026-10-01
+
+## D-031 — Workout Coach : décisions validées et W-1 (modèle de données)
+
+- **Contexte** : validation de l'architecture D-030 par Souhayb le 2026-10-02, avec quatre réponses et sept décisions (A à G), puis demande de W-1 seul : le modèle de données persistant, sans UI ni sync. Détail : `docs/WORKOUT_ENGINE.md` §6–7, `docs/TRAINING_ARCHITECTURE.md` §2–6.
+- **Réponses** : cycle de 6 semaines, semaine allégée de fin de cycle proposée (accepter, refuser, reporter : `adjustments.status = 'postponed'` ajouté), jamais imposée ; difficulté en 5 mots (Très facile → Très difficile), stockée 1–5, sans obliger l'utilisateur à connaître le RPE ; historique rattaché à un programme « reconstitué » sans prescription inventée ; raisons de remplacement : machine prise, gêne / inconfort, technique inconnue, trop difficile aujourd'hui, matériel indisponible, manque de temps, préférence personnelle, autre (douleur : jamais de diagnostic ni d'encouragement à continuer).
+- **Décision (W-1)** :
+  - **A. Immuabilité** : `training_programs`, une ligne par **version publiée** (`lineage_id` + `version`), jamais réécrite ; seuls avancent le statut (`active` → `superseded` / `ended`) et la date de fin (posée une fois). Une adaptation publie v+1, l'historique garde v1. Triggers sur `training_programs`, `workout_sessions` (prescription figée, jamais de changement de programme) et `planned_exercises` (aucune modification ; un upsert identique d'un second appareil est accepté).
+  - **B. Types de données** : FACT, USER_REPORTED, RECOMMENDATION stockés, DERIVED jamais (table dans `docs/TRAINING_ARCHITECTURE.md` §2.6 et `TRAINING_DATA_KINDS`, testée).
+  - **C. Raison de prescription** structurée (`purpose` + `purpose_target`) sur la séance et chaque exercice ; pas de texte libre.
+  - **D. Préférences** : un remplacement répété (préférence, n'aime pas, technique inconnue) devient une question à l'utilisateur ; seule sa confirmation enregistre une préférence durable. Une gêne, une machine prise, un manque de temps ne deviennent jamais une préférence.
+  - **E. Prévu vs réalisé** : `planned_exercises` (exercice, ordre, séries, fourchette, unité, repos, RPE cible, charge proposée ou nulle, action et raison de progression, raison, variante) relié à la séance (focus, durée prévue, durée adaptée, raison) et à la version ; le réalisé (`exercise_logs`, `exercise_substitutions`, `workout_sessions` : séries, répétitions ou secondes, charge, difficulté, statut, remplacement, raison déclarée, notes) pointe vers la prescription (`planned_exercise_id`).
+  - **F.** Aucun second Adaptation Engine : le Workout Coach produit signaux et recommandations, `journey/adaptation.ts` décide.
+  - **G.** Les deux bugs confirmés (fatigue codée en dur dans `ExerciseCard`, séance courte toujours de 15 min) sont corrigés en **W-3**, avec l'écran de séance ; W-1 ne touche pas l'UI.
+  - **Étendre plutôt que doubler** : seules `training_programs` et `planned_exercises` sont nouvelles ; `workout_sessions`, `exercise_logs`, `exercise_substitutions`, `adjustments` sont étendues. Une seule table pour les programmes et leurs versions (une ligne = une version) plutôt que deux.
+  - **Historique** : fonction `attach_reconstructed_training_history()` (RLS appliquée, idempotente) : un programme reconstitué par utilisateur, sans paramètre (contraintes), séances `prescription_source = 'unknown'`, aucune ligne `planned_exercises`. Même règle côté domaine (`reconstructedProgram`, `attachLegacySessions`).
+- **Alternatives** :
+  - réutiliser `workout_plans` pour les versions : refusé (un `jsonb` hebdomadaire `unique (user_id, week_start)` ne porte ni lignée, ni version, ni contraintes par paramètre) ; laissée en place, inutilisée, sa suppression est une décision séparée ;
+  - une table `training_program_versions` séparée : refusé (une ligne par version suffit, la lignée regroupe les versions) ;
+  - réécrire la prescription du jour lors d'une adaptation : refusé (A) ; la variante adaptée a ses propres lignes ;
+  - autoriser la suppression logique d'une prescription : refusé ; seul l'effacement par l'utilisateur (Privacy Center, compte) supprime, ce qui n'est pas une réécriture.
+- **Trade-offs** :
+  - l'app n'écrit pas encore ces colonnes (W-2) ; jusque-là le comportement est inchangé ;
+  - deux appareils hors connexion qui publient chacun une version : l'index « un seul actif » refuse la seconde, à résoudre en W-2 ;
+  - `effective_from` d'un programme reconstitué = première séance connue au moment du rattachement ; une séance plus ancienne arrivée plus tard le rejoint sans changer cette date ;
+  - l'adaptation du jour (`adapted_minutes`, `adaptation_reason`) est modifiable jusqu'à la fin de la séance (un utilisateur peut passer de « courte » à « allégée » avant de commencer ; les deux prescriptions restent).
+- **Date** : 2026-10-02
+
+## D-032 — Workout Coach W-2 : publication, stockage local, sync et conflits
+
+- **Contexte** : demande de W-2 seul par Souhayb le 2026-10-02 (W-1 validé) : publier et relire la prescription, versionner, idempotence, conflit multi-appareil, hors connexion, historique reconstitué, variantes, hors programme, reports, erreurs structurées. Détail : `docs/TRAINING_ARCHITECTURE.md` §4–6.
+- **Décision** :
+  - **Publication** : `usePlan` lit l'existant ; sinon `ensureProgram` publie, `ensureWeek` fige la semaine, puis l'app relit la prescription enregistrée (`plan.sessionTemplate`). Le moteur ne sert plus qu'à proposer (hors programme).
+  - **Ids stables** (`trainingIds`) dérivés du compte, de la version, de `date#index`, de la variante et de la position : un redémarrage, une nouvelle tentative, un plantage ou un second appareil produisent les mêmes ids.
+  - **Déclencheurs de version** (`versionReason`) : fréquence (adaptation si décision `adjustments`), matériel, objectif, niveau, durée, exercices exclus, version du moteur, reprise. Rien d'autre. Première version effective au début de la semaine, les suivantes à partir d'aujourd'hui.
+  - **Source de vérité** : programmes et prescriptions = serveur (immuables), la copie locale est un cache ; réalisé = local d'abord (modification en attente gagne), puis serveur ; dérivé jamais stocké.
+  - **Conflit** : programme, le serveur gagne (sauf fermeture locale d'une version inchangée sur le serveur, vérifiée à trois points) ; même id avec paramètres différents → version locale perdue, séances non commencées et non poussées re-prescrites ; plusieurs actives → la plus haute gagne, à égalité le serveur ; la perdante est abandonnée (locale, sans séance commencée) ou fermée ; colonnes de prescription d'une séance toujours celles du serveur ; puis réévaluation et éventuelle v+1. Les faits ne sont jamais abandonnés.
+  - **Report** : la séance d'origine garde sa prescription (`rescheduled`, `rescheduled_to`), une copie est créée à la nouvelle date (contrainte W-1).
+  - **Hors programme** : `prescription_source = 'off_plan'`, aucune prescription inventée. Les séances antérieures sont rattachées par `attach_reconstructed_training_history()`, appelée avant le pull tant que nécessaire.
+  - **Erreurs** : `conflict`, `offline`, `rls`, `validation`, `server`, `invalid_data` (phase, table, nombre), jamais montrées en détail technique.
+  - **Stockage local v4** : relecture complète du compte une fois après la mise à jour.
+  - **Charge proposée** : progression sur l'historique réel, sinon `null`.
+- **Alternatives** : ids aléatoires (refusé : doublons après une nouvelle tentative ou sur un second appareil) ; dernière écriture gagne pour les programmes (refusé : écraserait silencieusement le serveur) ; réécrire la séance reportée (refusé : la prescription d'origine doit rester) ; une migration W-2 (inutile, le schéma W-1 suffit).
+- **Trade-offs** : une séance avec faits enregistrée sous une version perdante adopte la prescription du serveur si la même séance existe, sinon sa prescription locale est poussée sous la version du serveur ; collision de clé laissant une ligne serveur `planned` ; jours passés encore affichés depuis le planning courant (W-6) ; anciennes versions de l'app ignorent `superseded` ; aucune purge locale ; charge proposée avec fatigue « normale » (W-4) ; `SHORT_SESSION_MINUTES` = 15 (bug W-3) ; avant le premier pull la lignée dépend de la graine (`local` ou compte), ce qui peut créer une version de plus, puis converge.
+- **Date** : 2026-10-02
+
+## D-033 — Workout Coach : le serveur gagne pour le futur, la prescription utilisée gagne pour l'histoire
+
+- **Contexte** : revue W-2, points 3 et 4. Souhayb (2026-10-02) : une séance commencée ou contenant des faits ne doit jamais être rattachée après coup à une prescription différente de celle réellement présentée. Avec D-032, une séance avec faits enregistrée sous une version perdante prenait la prescription du serveur si celui-ci avait la même séance ; une collision `date#index` laissait la ligne du serveur `planned`. Détail : `docs/TRAINING_ARCHITECTURE.md` §5.
+- **Décision** :
+  - **Deux règles** : convergence de la sync (le serveur décide de la version active future) ; préservation de l'histoire (une prescription déjà utilisée reste liée aux faits produits sous elle).
+  - **Séance utilisée** : ouverte (`workout_sessions.started_at`, enregistré quand l'écran de séance montre la prescription le jour même ou après), une série, un remplacement, une issue ou une difficulté. Sa prescription devient historique ; un conflit ne peut plus la remplacer. Ouvrir n'empêche pas de reporter (la copie garde la même prescription).
+  - **Version perdante mais utilisée** : conservée, fermée (`superseded`, statut existant, aucune migration), sous sa propre lignée dérivée de son contenu (`trainingIds.archivedLineage`) car `(lineage_id, version)` est unique. Les séances utilisées sont gardées sous de nouveaux ids stables avec un contenu identique (`keptSession`), toujours `prescription_source = 'engine'`, jamais `off_plan`. La version du serveur reste la seule active.
+  - **Même séance prescrite deux fois** (même version, autre prescription sur le serveur) : la séance utilisée est gardée sous `trainingIds.kept`, même version.
+  - **Collision `date#index`** : la séance utilisée est celle du créneau ; une séance seulement prévue en face devient `superseded` (gardée, jamais comptée). Deux séances utilisées : les deux sont gardées ; la plus petite id garde le créneau sur tous les appareils, l'autre est affichée dans un créneau libre du même jour (`sessionSlots`, local) et sa ligne serveur garde sa date et son index.
+- **Alternatives** :
+  - un statut `conflict_archived` : refusé (migration et nouveau statut inutiles, `superseded` suffit) ;
+  - supprimer la version perdante ou ses séances : refusé (perte de faits) ;
+  - marquer la séance `off_plan` : refusé (elle était prescrite) ;
+  - garder la version perdante dans la même lignée avec un autre numéro : refusé (l'ordre des numéros décide de la version active).
+- **Trade-offs** : une version archivée apparaît comme une seconde « v2 » dans une autre lignée ; deux séances réelles pour le même créneau comptent chacune une fois (ce sont deux séances), la seconde dans un créneau `#6` sans modèle de séance associé jusqu'à l'historique W-6 ; ouvrir une séance future (avant son jour) ne l'enregistre pas comme vue.
+- **Date** : 2026-10-02
+
+## D-034 — Workout Coach W-3 : la séance réelle (saisie, durées, remplacement, issue)
+
+- **Contexte** : demande de W-3 seul par Souhayb le 2026-10-06 (W-2 et D-033 validés) : l'écran de séance réel, la saisie rapide, la correction, le minuteur, le remplacement avec raison, l'exercice non fait, le résumé, et les deux bugs confirmés (fatigue codée en dur dans `ExerciseCard`, séance courte annoncée 20 min qui en exécutait 15). Détail : `docs/WORKOUT_ENGINE.md` §8, `docs/TRAINING_ARCHITECTURE.md` §7.2.
+- **Décision** :
+  - **Moteur de séance** (`training/session.ts`, fonctions pures) : l'écran lit la prescription enregistrée et les faits, jamais le profil. Statut d'exercice, progression et issue de séance sont **dérivés**, jamais stockés.
+  - **Prévu ≠ fait** : « Proposé : 70 kg × 8–10 » vient de `planned_exercises` ; « Réalisé » vient des séries ; « Dernière fois » vient de la meilleure série réelle de la séance précédente avec cet exercice (sinon rien).
+  - **Préremplissage** (aucune charge inventée), dans l'ordre : série précédente du jour → charge proposée par la prescription → charge réelle de la dernière fois → 0 pour un exercice au poids du corps → champ vide. Un exercice chargé sans charge saisie est refusé avec un message (« 0 si tu n'en as pas pris »).
+  - **Bug fatigue (ExerciseCard supprimé)** : plus aucune décision de progression pendant la séance (`suggestProgression` retiré de l'UI, W-4). La fatigue du jour et la sécurité viennent de `JourneyState` : fatigue élevée ou `training_load` + hausse prévue → la charge de la dernière fois est préremplie avec la phrase « garder la charge » ; la prescription n'est pas modifiée.
+  - **Trois notions distinctes** : difficulté d'un exercice (facultative, après sa dernière série, `exercise_reports.difficulty`) ; difficulté de la séance (une question dans le résumé, `workout_sessions.difficulty`) ; fatigue du jour (Journey, `daily_checkins`, inchangée). Échelle en 5 mots (Très facile … Très difficile) stockée 1–5. Ressenti facultatif d'une série en 3 mots (Facile, Correct, Très difficile) stocké en RPE 6 / 8 / 10 (échelle des répétitions en réserve).
+  - **Séries** : charge + répétitions, ou charge + secondes pour un maintien (`{ reps: 0, seconds }` en local, `reps null, seconds` sur le serveur). Correction et suppression : `editSet` / `deleteSet` ; la sync supprime (soft delete) les lignes en trop **seulement** si la séance est encore projetée (`deleteOnMissing: 'with_session'`), et le pull applique les suppressions puis compacte.
+  - **Durées, une seule source** (`training/durations.ts`, `SESSION_DURATION`) : courte 15, minimale 20, plus courte 10, choix 10/15/20/30/45/60. Le Daily Coach annonce `plannedVariantMinutes` (variante stockée → sa durée ; sinon courte = minutes demandées bornées par la séance prévue ; allégée = estimation des lignes qu'elle construira) ; l'écran construit la variante avec ces mêmes minutes (`adaptSession({ minutes })`) et les stocke (`adapted_minutes`) ; ensuite tout le monde lit la valeur stockée.
+  - **Courte ≠ allégée** : courte = les exercices essentiels dans l'ordre, repos ≤ 60 s, échauffement de 4 min, ajustée aux minutes, charges gardées ; allégée = ~60 % des séries, RPE ≤ 6, charges gardées sauf une hausse prévue (jamais de hausse un jour allégé). Une variante stockée n'est jamais recréée ; ce n'est jamais une coupure après N minutes.
+  - **Remplacement** : seulement à la demande, avant la première série de l'exercice ; raison d'abord, puis alternatives, l'utilisateur choisit ; prévu, réalisé et raison enregistrés ; annulable tant qu'aucune série. Gêne → jamais « continue » : remplacer, ne pas faire l'exercice ou terminer la séance ici ; technique inconnue → consignes et alternative plus simple, jamais une préférence ; machine prise → ponctuel. Préférence : observation répétée → question en fin de séance → confirmation → exercice exclu du profil (nouvelle version, D-032) ; « le garder » ne redemande qu'après de nouvelles occurrences.
+  - **« Je ne fais pas cet exercice »** : nouvelle table `exercise_reports` (`not_performed`, raison de la liste fermée, difficulté 1–5), la prescription reste.
+  - **Issue de séance** : `completed` / `partial` (dérivé) / `stopped` (terminée plus tôt avec une raison : `workout_sessions.status = completed` + `outcome_reason`) / `skipped`. Jamais « échec ».
+  - **Minuteur de repos** : état en mémoire sur des horodatages (`useWorkoutUi`), démarre après une série, ignorer / +30 s / pause / reprise, continue d'un écran à l'autre, jamais bloquant.
+  - **Écriture locale** : un échec d'écriture sur l'appareil est signalé (bannière) sans perdre la séance en mémoire ; la prochaine écriture réessaie.
+- **Alternatives** :
+  - difficulté demandée à chaque série : refusé (trop de questions, une main) ;
+  - fatigue demandée en fin de séance : refusé (une seule source de fatigue, le Journey) ;
+  - « non fait » stocké dans `planned_exercises` : refusé (prescription immuable) ;
+  - couper la séance complète après 15 min : refusé (demande explicite) ;
+  - charge proposée recalculée pendant la séance : refusé (W-4, et la prescription fait foi).
+- **Trade-offs** : une séance hors programme n'a pas de `started_at` (durée « Donnée indisponible » dans le résumé) ; `keptExercises` reste local ; le remplacement n'est proposé qu'avant la première série ; la correspondance mots → RPE est une convention à faire relire ; la migration `20261006000001` doit être appliquée sur Supabase avant toute version de l'app contenant W-3 (le pull de `exercise_reports` échoue sinon).
+- **Date** : 2026-10-06
+
+## D-035 — Workout Coach W-4 : Progression Engine v2
+
+- **Contexte** : demande de W-4 seul par Souhayb le 2026-10-06 (W-3 / D-034 validés) : transformer les séances réelles en recommandations de progression prudentes, explicables et longitudinales, appliquées à la prochaine prescription seulement. Détail : `docs/TRAINING_PROGRESSION.md`.
+- **Décision** :
+  - **Moteur** (`training/progression.ts`, pur) : `recommendProgression` lit l'historique **de l'exercice seul** (`training/history.ts`, 42 jours, faits stockés uniquement) et rend une `ProgressionRecommendation` (action, raison + faits, confiance, prescription précédente et proposée, preuves utilisées et exclues, signaux). Actions : `increase_load`, `increase_reps`, `maintain`, `retry`, `reduce_load`, `no_recommendation`. `suggestProgression` est supprimé ; les actions W-2 (`add_reps`, `keep`, `deload`, `first_time`) restent lisibles dans l'historique.
+  - **Double progression** : +1 répétition (ou +5 s pour un maintien) à partir de la 2ᵉ séance ; sommet de plage solide 2 fois de suite à la même charge → +1 palier du catalogue et retour au bas de plage. Une séance = première lecture (`maintain`), jamais une hausse. Une séance sous la plage → `retry` ; 2 sur les 3 dernières → −1 palier (jamais plus). Très difficile → `maintain`.
+  - **Contexte** : allégée exclue ; courte, arrêtée, sous fatigue déclarée = neutres si pas au sommet ; une séance neutre plus récente encore sous la plage ou très difficile bloque la hausse ; arrêt pour douleur, gêne, « trop difficile aujourd'hui » bloquent la hausse ; machine prise / manque de temps ne sont pas des signaux ; les séries d'un remplaçant restent à son historique.
+  - **Une seule couche de décision** : `gateProgression` dans `journey/adaptation.ts` applique le contexte du jour depuis `JourneyState` (sécurité active → pas de hausse ; fatigue élevée aujourd'hui → la séance d'aujourd'hui seulement ; `profile.noPush` → jamais de hausse de charge). La fatigue a une seule définition (`declaredFatigue`, partagée par l'état du Journey et l'historique).
+  - **Signaux de plan** : stagnation (≥ 4 séances complètes sur ≥ 21 jours, régularité ≥ 70 %) → conseil `progression_review` ; baisse sur ≥ 2 exercices (3 séances chacune sous la précédente) → semaine allégée proposée. Toujours via `adapt()` ; sous sécurité, seule la sécurité parle.
+  - **Futur seulement, sans nouvelle version** : la progression d'un exercice est une **nouvelle prescription de séance**, pas une nouvelle version de programme (les paramètres de D-032 ne changent pas). `refreshWeek` (appelé par `useJourney`) re-prescrit les séances de la semaine non commencées (date ≥ aujourd'hui, aucun fait, pas ouvertes, sans adaptation du jour, pas déplacées) quand les propositions diffèrent ; id dérivé de l'empreinte des propositions (`trainingIds.revision`) ; une prescription identique plus ancienne est ressuscitée ; la précédente est `superseded`. Lundi 70 kg reste 70 kg ; mercredi reçoit 72,5 kg.
+  - **Migration** `20261006000002_progression_v2.sql` : contrainte `progression_action` élargie (anciennes valeurs gardées), `target_reps` (dans la plage), `progression_confidence`, `progression_params` (objet ≤ 512 octets), tous figés par le trigger d'immuabilité existant. Les colonnes ne sont projetées que lorsqu'elles sont renseignées (les lignes anciennes gardent leur contenu et leur empreinte).
+  - **Affichage** : « Proposé : 72,5 kg × 6 reps », une ligne courte d'action, « Pourquoi ? » avec les faits et la confiance ; ligne « Objectif de la séance » du Daily Coach (`sessionGoal`) sur une séance complète ; records de durée pour les maintiens ; tendances sans séances allégées ni courtes.
+- **Alternatives** :
+  - nouvelle version de programme à chaque progression : refusé (une version par séance, contraire à D-032) ;
+  - modifier la prescription future en place : refusé (immuable) ;
+  - hausse après une seule séance au sommet : refusé (demande explicite) ;
+  - `reduce_volume` / `regress` : non produits, faute de modèle de variante plus facile dans les prescriptions (W-5) ;
+  - proposition à accepter exercice par exercice avant la séance : non retenu (W-2 appliquait déjà la charge proposée ; l'utilisateur garde la main pendant la séance). Tranché par Souhayb le 2026-10-06 : voir D-036.
+- **Trade-offs** : seuils à faire relire (`PROGRESSION`, `PERFORMANCE_DOWN_EXERCISES`) ; régularité inconnue (historique d'avant W-1) → jamais de plateau ; une séance ouverte avant le bilan du jour n'est plus re-prescrite (le préremplissage garde alors la charge) ; deux appareils aux données momentanément différentes peuvent produire deux révisions successives, qui convergent avec la sync ; la migration `20261006000002` doit être appliquée sur Supabase avant toute version de l'app contenant W-4.
+- **Date** : 2026-10-06
+
+## D-036 — Workout Coach : micro-progression automatique, changement de programme accepté (validée le 2026-10-06)
+
+- **Contexte** : point laissé ouvert par D-035 (appliquer les propositions de progression automatiquement ou les faire accepter une à une). Tranché par Souhayb le 2026-10-06, en validant W-4.
+- **Décision** : deux régimes, selon la nature du changement.
+  - **Micro-progression → automatique et réversible.** Appliquée sans confirmation à la prochaine prescription, à condition de respecter toutes les règles du Progression Engine (D-035, `docs/TRAINING_PROGRESSION.md`) et de passer par `gateProgression` :
+    - `increase_reps` (+1 répétition) ;
+    - `increase_load` d'**un seul** palier ;
+    - `maintain` ;
+    - `retry` ;
+    - `reduce_load` d'**un seul** palier ;
+    - progression en secondes pour un maintien (+5 s).
+    
+    L'utilisateur garde toujours le contrôle pendant la séance : il peut modifier la charge proposée, les répétitions ou les secondes, et ce qu'il fait réellement est enregistré tel quel. Une micro-progression est une nouvelle prescription de séance (jamais une nouvelle version de programme) ; elle reste réversible, puisque la séance suivante relit ce qui a été fait.
+  - **Changement de programme → explicite et accepté par l'utilisateur.** Toute adaptation structurelle demande une confirmation explicite avant de s'appliquer :
+    - semaine allégée ;
+    - changement durable d'exercice ;
+    - changement de fréquence ;
+    - changement de split ;
+    - réduction importante de volume ;
+    - modification majeure du programme.
+    
+    Ces changements passent par une proposition (`mode: 'proposed'` dans `adapt()`) ou par une action explicite de l'utilisateur (profil, préférences), jamais par `refreshWeek`.
+- **État du code à W-4** : conforme.
+  - `refreshWeek` n'applique que des actions de micro-progression. `reduce_load` est limité à un palier (`PROGRESSION.reduceSteps = 1`), `increase_load` à un palier du catalogue.
+  - La semaine allégée due à une baisse de performance (`performance_down`) est **proposée**. La stagnation est un **conseil** (`progression_review`), sans changement automatique.
+  - Le remplacement en séance reste ponctuel (une séance) ; un changement durable d'exercice passe par les exercices refusés du profil (nouvelle version, D-032).
+  - `reduce_volume` et `regress` ne sont pas produits.
+- **Règle pour la suite (W-5 et après)** : toute nouvelle action classée structurelle (`reduce_volume` important, `regress` durable, changement de split ou de fréquence, fin de cycle) sera une proposition à accepter, jamais une application automatique. Une nouvelle action ne devient automatique que si elle est une micro-progression au sens ci-dessus, avec une décision écrite ici.
+- **Alternatives** :
+  - tout faire accepter, exercice par exercice : refusé (friction à chaque séance pour des ajustements mineurs et réversibles) ;
+  - tout appliquer automatiquement, y compris les changements de programme : refusé (l'utilisateur doit choisir ce qui change la structure de son entraînement).
+- **Date** : 2026-10-06
+
+## D-037 — Workout Coach W-5 : adaptations structurelles (proposées, acceptées, suivies)
+
+- **Contexte** : W-5 demandé par Souhayb le 2026-10-06 (« Passe maintenant à W-5 uniquement »), sous la règle D-036 : un changement structurel est une proposition explicite, acceptée, appliquée, historisée. Détail : `docs/TRAINING_STRUCTURE.md`.
+- **Décision** :
+  - **Un seul moteur.** Les règles structurelles sont des règles de l'Adaptation Engine (`adapt()`, `journey/structural.ts`), nourries par des signaux structurés (`StructuralSignals`, assemblés depuis les faits stockés). Pas de second moteur, pas de second journal.
+  - **Tout changement structurel est `mode: 'proposed'`**, sans exception : semaine allégée, reprise, volume réduit, variante plus facile, changement durable d'exercice, bilan de fin de cycle, fréquence. Seule la règle micro `held_break` (aucune hausse de charge après 14 jours sans séance) s'applique seule : c'est un maintien, donc une micro-progression au sens de D-036.
+  - **Journal append-only.** Chaque réponse (appliquer, pas maintenant, refuser, revenir en arrière) est une nouvelle ligne de `adjustments` avec l'id stable de la proposition. La décision en vigueur est la plus récente (puis l'id) ; aucune ligne n'est réécrite (trigger SQL `adjustments_immutable`). Revenir en arrière = nouvelle ligne `reverted`, toujours postérieure.
+  - **Portée connue avant le oui** : séance, séances (N), semaine, semaines, durable. Pas d'adaptation sans fin connue, sauf les changements durables, qui créent une version et se défont par une nouvelle version.
+  - **Temporaire = nouvelle prescription, durable = nouvelle version.** Volume réduit, variante plus facile et reprise re-prescrivent les séances pas commencées, liées à la décision (`workout_sessions.adjustment_id`, figé). Changement durable d'exercice et évolution de fin de cycle publient une nouvelle version (`program.reason.adaptation`, `program.reason.cycle`, `training_programs.rotated_exercise_ids`). La semaine allégée reste la variante allégée du jour + blocage des hausses : le programme n'est jamais transformé entier.
+  - **Split = fréquence.** Le moteur dérive le split de la fréquence ; pas de type `split_change` distinct.
+  - **Raisons temporaires** (machine prise, matériel absent, pas le temps) : jamais un changement de programme, jamais une préférence.
+  - **Gêne** : une question (« Cet exercice t'a gêné plusieurs fois. Veux-tu le remplacer dans ton programme ? »), jamais un diagnostic ; la garde de ton refuse désormais « Tu as une blessure ».
+  - **Stagnation** : conseil d'abord (ordre de prudence) ; semaine allégée proposée seulement si le plateau dure et que les séances sont très dures ; rotation d'exercices seulement au bilan de fin de cycle ; jamais de changement d'alimentation pour une stagnation d'entraînement.
+  - **Fin de cycle** : un bilan avec options (continuer, semaine allégée, faire évoluer), jamais une semaine allégée imposée ; le cycle redémarre à chaque réponse.
+  - **Refus respecté** (28 jours, et de nouvelles occurrences pour un exercice), « pas maintenant » ≠ refus (7 jours), écart de 14 jours après une adaptation terminée.
+  - **Multi-appareil** : deux réponses contradictoires hors ligne gardent leurs deux lignes ; la plus récente gagne partout ; les prescriptions convergent ensuite.
+  - **`keptExercises`** : pas de table ; « le garder » est une décision `declined` synchronisée. La question de fin de séance écrit la même décision que le Daily Coach.
+  - **Effet** : avant/après sur la même durée (prévu, fait, fatigue), observations sans causalité.
+  - **Catalogue** : relations `EASIER_VARIANTS` par id, testées (même mouvement, jamais plus difficile).
+- **Alternatives** :
+  - nouvelle table `structural_adaptations` / `kept_exercises` : refusé (le journal existant suffit ; une table de plus = RLS, export, sync, suppression en double) ;
+  - mettre à jour la décision en place pour « revenir en arrière » : refusé (perd l'historique, conflit multi-appareil silencieux) ;
+  - semaine allégée comme réécriture de toute la semaine prescrite : refusé (le programme entier serait transformé ; la variante du jour existe déjà) ;
+  - reprise après pause comme nouvelle version : refusé (temporaire, deux séances) ;
+  - changement durable via le profil (`refusedExerciseIds`, W-3) : remplacé par la décision (traçable, réversible, synchronisée, liée à la version).
+- **Trade-offs** : seuils `STRUCTURE` à faire relire (liste dans `docs/TRAINING_STRUCTURE.md` §13) ; une portée « séances » terminée tôt bloque la reproposition jusqu'à son maximum + 14 jours ; l'appareil qui n'est pas à jour (avant W-5) ne peut plus réécrire une décision (refus serveur) : mettre à jour tous les appareils ; la migration `20261006000003_structural_adaptations.sql` doit être appliquée sur Supabase avant toute version de l'app contenant W-5 ; l'effet n'est qu'observé (pas d'apprentissage des règles avant W-6).
+- **Date** : 2026-10-06
+
+## D-038 — Workout Coach W-6 : intégrations (Programme, historique, Progress Journey, explications)
+
+- **Contexte** : feu vert de Souhayb pour W-6 le 2026-10-06 (« Feu vert pour W-6. »), avec la direction visuelle du même jour : pas de refonte, mais domaine / view models / composants séparés et composants remplaçables. Périmètre : ligne W-6 de `docs/WORKOUT_ENGINE.md` §6 et `docs/TRAINING_ARCHITECTURE.md` §8.
+- **Décision** :
+  - **Prévu / fait dérivé, jamais stocké** (`training/compare.ts`) : la séance prévue est la prescription stockée de la variante utilisée, le fait est ce qui a été enregistré (séries, remplacements et raisons, exercices non réalisés, issue, ressenti). Statuts : faite, faite en partie, terminée plus tôt, commencée, repos choisi, remplacée, déplacée, « rien de noté » (jamais « ratée » ni « manquée »). Sans prescription (hors programme, avant W-1) : seulement ce qui a été noté, rien à comparer.
+  - **Les jours passés viennent de leurs prescriptions** (`training/week-view.ts`) : un profil changé mercredi ne réécrit plus lundi, ni à l'écran Programme ni dans l'adhérence (`plannedSessionDates`). Une semaine sans prescription (avant W-2, ou application non ouverte) garde le planning reconstruit depuis le profil, comme avant. Aujourd'hui et la suite : le planning courant.
+  - **Programme** : la semaine vécue jour par jour, la version en vigueur et sa raison (`program.reason.*`, enfin affichées), la semaine allégée, l'adaptation suivie par chaque séance, « Déplacer » pour une séance à venir pas commencée (même `rescheduleSession` que W-2), séance supplémentaire d'un jour (D-033) et séance hors programme montrées comme telles.
+  - **Historique** (`/history`, `journey/training-history.ts`) : 12 semaines, la plus récente d'abord ; par semaine, prévu / fait en faits, séances détaillables exercice par exercice, versions publiées, réponses aux propositions (journal D-037, réponses seulement) avec l'effet observé après une adaptation acceptée. Lecture seule : « Revenir en arrière » reste dans la carte « Pourquoi mon plan a changé ? ».
+  - **Progress Journey** : une carte « Cette semaine » (séances faites ou adaptées sur prévues, séries faites sur prévues dans les séances faites, séances hors programme, séances à venir), formulée positivement, avec le lien vers l'historique. Aucune nouvelle estimation.
+  - **Explications** (`journey/explain.ts`) : `explainExercise` (« Pourquoi cet exercice ? » : objectif stocké sur la ligne prescrite), `explainLoad` (« Pourquoi cette charge ? » : action, raison avec ses nombres, confiance, données utilisées ; rien pour un remplacement), `explainVersion`, `explainDecision`. L'écran de séance les consomme ; une future couche IA ne pourra que reformuler ces objets.
+  - **Daily Coach** : il lisait déjà la séance figée (W-3, durée annoncée = durée stockée). W-6 ajoute `offPlan` : un jour de repos ordinaire (rien de prévu, rien de fait, pas de signal de sécurité, pas de fatigue élevée, pas de reprise, journée normale), une séance hors programme est proposée discrètement sous la journée, jamais comme un élément du jour ni comme un rattrapage.
+  - **Notifications** : aucun nouveau déclencheur (aucune migration de `notification_history`) ; elles lisent la séance figée par le `DailyPlan`.
+  - **Couches UI** (direction visuelle du 2026-10-06) : domaine pur → view model (`features/program/useProgramWeek.ts`, `useTrainingHistory.ts` : clés et valeurs, aucun texte) → petits composants à base de tokens (`ProgramDay`, `SessionStatusLine`, `HistoryWeek`, `SessionFacts`, `DecisionRow`, `WeekFacts`, `TrainingWeekCard`, `OffPlanOffer`). L'écran Programme ne contient plus de logique.
+  - **Aucune migration** : tout est dérivé de tables existantes.
+- **Non fait, volontairement** :
+  - **apprentissage des règles à partir de l'effet observé** : les seuils restent ceux relus à la main ; l'effet reste une observation montrée à l'utilisateur. Ajuster une règle seule à partir de quelques semaines d'un seul utilisateur serait opaque et fragile ;
+  - **« Très difficile » en fin de séance compté comme un jour de fatigue** (proposition de `TRAINING_ARCHITECTURE.md` §8, à valider) : non appliqué ;
+  - **refonte visuelle** : phase dédiée ultérieure.
+- **Alternatives** : stocker les statuts prévu / fait (refusé : dérivé, D-031 B) ; recalculer les jours passés depuis le profil (refusé : c'était le défaut corrigé) ; mettre l'historique dans Progression (refusé : écran déjà long, l'historique est un écran à part relié depuis Programme et Progression).
+- **Trade-offs** : une semaine partiellement prescrite (installation de W-2 en milieu de semaine) est lue depuis ses prescriptions pour ses jours passés ; l'écran « Ton bilan » (`review.tsx`) relit encore la semaine passée depuis le profil ; l'historique est limité à 12 semaines ; ouvrir une séance un autre jour que celui de la séance 0 d'une journée à deux séances ouvre la première (comportement existant).
+- **Date** : 2026-10-06
+
+
+## D-039 — Workout Coach W-7 : coach du jour longitudinal (une priorité, causes demandées, mémoire confirmée)
+
+- **Contexte** : W-6 validé et feu vert de Souhayb pour W-7 le 2026-10-06 (« Passe maintenant à W-7 uniquement. »), demande en 56 points. Hors périmètre explicite : refonte visuelle premium, préparation App Store, photo alimentaire, chatbot, nouvelle couche IA décisionnelle, W-8.
+- **Décision** :
+  - **Une fonction d'arbitrage unique** : `coachDay()` (`journey/coach.ts`), pure, au-dessus du `DailyPlan` (qui reste la construction du jour, D-028). Une priorité par jour, dans l'ordre sécurité > reprise > adaptation structurelle > séance du jour > difficulté récurrente > nutrition > récupération > progression > motivation / why > contenu léger ; une action principale, au plus 3 faits, une action secondaire, une question ; « Pourquoi ce choix ? » = faits → règle → recommandation. L'écran, les notifications et Réglages consomment ; aucun ne décide.
+  - **La sécurité gagne toujours** (`safety.ts` réutilisé tel quel) : sous sécurité, pas de proposition, pas de question, pas de célébration, pas de séance hors programme.
+  - **Une cause n'est jamais déduite** : après 2 séances prévues sans rien de noté en 14 jours (depuis le début du parcours, aujourd'hui exclu), et sans cause récente (réponse < 14 j, raison d'une séance sautée, problème du bilan hebdo), le coach demande « Qu'est-ce qui t'a le plus bloqué ? » avec des réponses fermées. Chaque cause mène à un moteur existant (version courte, « comment je me sens », version plus petite, alléger, déplacer, remplacer) ; « Autre » ne reçoit aucune solution inventée ; « Douleur / gêne » rappelle la prudence et, si ça persiste, un professionnel de santé.
+  - **Mémoire du coach = journal `adjustments`, pas la table `coach_memory`** : réponses stockées comme lignes `coach.blocker` et `coach.memory.short_day` (`kind = 'planning'`, réponse fermée dans `to`, preuves dans `evidence`, `proposal_id` stable `coach:…`). Le journal est déjà synchronisé, append-only (trigger d'immuabilité), sous RLS, exporté et supprimé par le Privacy Center ; ses contraintes acceptent ces lignes (test dans `supabase/tests/training.sql`). « Oublier » = `revertDecision` ; le dernier geste par proposition gagne sur tous les appareils. Ces lignes sont exclues de tout ce qui lit des décisions d'adaptation. `coach_memory` (sans `updated_at`, `deleted_at` ni statut) aurait demandé une migration et une nouvelle sync pour moins de garanties : elle reste inutilisée. **Aucune migration W-7.**
+  - **Une seule chose apprise** : « séance courte tel jour de la semaine », proposée seulement après que l'utilisateur l'a choisie lui-même 2 fois le même jour en 6 semaines, retenue seulement après « Oui », visible et oubliable dans Réglages, et dont le seul effet est d'offrir la version courte ce jour-là (le plan reste le plan). Jamais une source de vérité.
+  - **Cadence centralisée** (`CADENCE`, `coach-memory.ts`) et anti-répétition : une question par jour au plus, 3 j de pause, 2 affichages sur 14 j, « Pas maintenant » 7 j ; lignes déjà montrées sur l'appareil (`coachShown`, 90 j) comptées seulement pour les jours précédents (écran stable dans la journée).
+  - **Le « pourquoi » avec parcimonie** (`whyMoment`) : premier jour, reprise, jalon, mode du jour non normal, motivation basse déclarée, risque d'abandon ; jamais sous sécurité. Les autres jours, la phrase de l'utilisateur n'est pas citée.
+  - **Suivi après adaptation** : pendant une adaptation temporaire, une ligne de rappel ; dans les 7 jours après sa fin, une fois, l'effet observé (`adaptationEffects`, D-038) sans causalité, ou « pas encore assez de recul » sous 2 séances prévues.
+  - **Célébration** : seulement un jalon réel (`milestoneToCelebrate`) ; retenue les jours de sécurité, reprise, proposition ou question de cause ; un jour de célébration, la question attend.
+  - **Notifications** : `todayPriority` dans le canal ; les jours de reprise, de proposition structurelle ou de question de cause, les déclencheurs de félicitation / progrès / why sont retenus (une notification ne dit jamais moins important que l'écran). Heures calmes, maximum par jour et pause inchangés.
+  - **Bilan** : `review.tsx` lit la semaine passée depuis ses prescriptions (`plannedSessionDates`), comme Programme depuis W-6.
+  - **Correction W-5** : la réponse « séances par semaine » affichait une clé brute pour son impact ; texte ajouté FR/EN, libellé précis « Passer à {{to}} séances par semaine », test de complétude sur toutes les adaptations structurelles.
+- **Non fait, volontairement** : apprendre d'autres habitudes (jour de repos, heure) ou ajuster des seuils à partir des réponses ; deux séances le même jour dans la carte du coach (la première s'ouvre, comportement existant) ; anti-répétition synchronisée des lignes montrées (par appareil, comme l'historique de voix) ; toute couche IA.
+- **Alternatives** : utiliser `coach_memory` (refusé, voir plus haut) ; laisser l'écran combiner `DailyPlan`, proposition et célébration (refusé : c'était plusieurs décideurs) ; déduire la cause des données (refusé : §5 de la demande, règle 7) ; un score pondéré au lieu d'un ordre strict (refusé : moins explicable).
+- **Trade-offs** : un jour de proposition, la séance du jour passe en second (la carte de proposition mène, la séance reste dans « Aujourd'hui ») ; la question peut attendre plusieurs jours derrière d'autres priorités ; seuils `CADENCE` de conception, à relire.
+- **Date** : 2026-10-07
+
+## D-040 — Ordre des réponses multi-appareil : révision logique, puis instant, puis id (W-7.1)
+
+- **Contexte** : audit Astra du 2026-10-07. La réponse en vigueur sur une proposition était la plus récente par `decided_at`, comparé **comme du texte** : `…Z` et `…+00:00` (même instant) se classaient mal, et un appareil en avance de 20 minutes gagnait contre une réponse donnée après, en connaissance de cause, sur un autre appareil. W-7.1 demande de ne pas prétendre « dernière intention humaine » si ce n'est pas garanti.
+- **Décision** :
+  - Colonne `adjustments.revision` (migration `20261007000001_decision_revision.sql`, entier ≥ 0, défaut 0, figée par `adjustments_immutable`). Un appareil écrit **1 + la plus haute révision qu'il connaît sur la proposition** (`sequenced()` dans le chemin d'écriture du store, `saveAdjustment`) ; une annulation écrit révision annulée + 1.
+  - Ordre (`byDecision`) : révision, puis instant (`Date.parse`, jamais le texte), puis id. Les lectures chronologiques (historique, journal) trient par instant (`byInstant`).
+  - **Garanti** : un geste fait après avoir vu (synchronisé) une autre réponse gagne toujours, quelles que soient les horloges ; une annulation passe toujours après ce qu'elle annule, même depuis un appareil en retard ; formes ISO équivalentes = même instant ; ordre identique sur tous les appareils (convergence déterministe) ; append-only, rien n'est perdu hors ligne.
+  - **Non garanti** (et jamais affiché comme tel) : deux réponses données hors ligne sans se voir ont la même révision ; l'horloge de l'appareil départage, puis l'id. Avec A à l'heure et B en avance de 20 min, la réponse de B gagne même si A a répondu après. Le contrat est documenté et testé (`decision-order.test.ts`), pas présenté comme « ta dernière réponse ».
+  - Lignes d'avant la migration : révision 0, ordre par instant (comportement W-5 à W-7, corrigé pour l'ISO).
+- **Alternatives** : `server_received_at` (refusé : l'ordre d'arrivée au serveur n'est pas l'ordre humain, une réponse hors ligne synchronisée tard gagnerait, et l'appareil ne le connaît qu'après un pull) ; horloge logique hybride (refusé : plus de surface pour le même cas non décidable) ; garder `decided_at` seul (refusé : dépend des horloges).
+- **Déploiement** : additif. **À appliquer sur Supabase (SQL Editor) après W-1, W-3, W-4 et W-5, avant toute version de l'app contenant W-7.1** ; une version sans la colonne continue de fonctionner (défaut 0) mais ses réponses se rangent en révision 0 : mettre à jour tous les appareils. RLS inchangée (politiques propriétaire). Export et suppression : colonne de `adjustments` (catégorie « Suivi du parcours », cascade à la suppression du compte). Tests : `supabase/tests/training.sql`, `sync.db.test.ts`, `decision-order.test.ts`.
+- **Date** : 2026-10-07
+
+## D-041 — Effet d'une adaptation : couverture des données, jamais d'amélioration par absence (W-7.1)
+
+- **Contexte** : `adaptationEffects()` comparait des comptes de jours de fatigue : sans check-in après une adaptation, 0 jour de fatigue donnait « moins de fatigue ». Les fenêtres pouvaient inclure le jour en cours et l'effet disparaissait après « Revenir en arrière ».
+- **Décision** :
+  - Seuils centralisés `EFFECT_COVERAGE` (`journey/effect-coverage.ts`) : fatigue comparée seulement si chaque fenêtre a au moins 50 % de jours avec un check-in de fatigue **et** au moins 3 jours ; complétion comparée seulement avec au moins 2 séances prévues (depuis leurs prescriptions) de chaque côté. `CADENCE.minHindsightSessions` lit la même constante.
+  - Chaque effet porte une lecture par dimension : `higher`, `lower`, `same` ou **`insufficient_data`**. Sous le seuil, le Daily Coach, Progression et l'historique disent « Pas assez de données pour évaluer la fatigue. » (et l'équivalent pour les séances).
+  - Fenêtres comparables : jours complets seulement (une adaptation en cours s'arrête à hier), fenêtre « avant » de même longueur ; la fatigue est un **taux** sur les jours renseignés, pas un compte.
+  - Un effet est calculé pour chaque décision appliquée, y compris annulée ensuite : la réponse suivante ferme la fenêtre (`endedBy: 'answer'`) et l'effet observé reste dans l'historique. Le suivi du coach ne parle pas d'une adaptation fermée par une réponse.
+  - Toujours sans causalité (« Après cette adaptation… »), jamais une estimation (règle 7).
+- **Alternatives** : interpoler les jours manquants (refusé : donnée inventée) ; exiger 100 % de couverture (refusé : jamais atteint, l'effet ne s'afficherait jamais).
+- **Trade-offs** : seuils de conception [relire] ; deux définitions de « fatigue » coexistent (check-in ≥ seuil d'adaptation ici, fatigue ≥ 4 ou énergie ≤ 2 dans `declaredFatigue`) : non unifiées en W-7.1 (voir D-042).
+- **Date** : 2026-10-07
+
+## D-042 — Workout Coach W-7.1 : consolidation fiabilité W-6 / W-7
+
+- **Contexte** : demande de Souhayb du 2026-10-07 (« W-7.1 — CONSOLIDATION FIABILITÉ W-6/W-7 », aucune nouvelle feature, pas de W-8, pas de refonte, pas de fusion) d'après l'audit Astra. Ordre multi-appareil : D-040 ; couverture des effets : D-041.
+- **Décision** :
+  - **D-033, identité de la prescription utilisée** : deux appareils peuvent construire une version courte différente de la même séance (même id, même `prescribed_at`). Le pull compare aussi le **contenu** des lignes `planned_exercises` ; s'il diffère pour une séance déjà utilisée, l'appareil garde ses lignes sous des ids propres (`trainingIds.kept(session, prescribed_at, empreinte)`, empreinte = variante, position, exercice, séries, plage, unité, charge et répétitions visées). Les faits de A restent liés à la prescription de A ; rien n'est reconstruit.
+  - **Remplacement annulé** : `exercise_substitutions` passe en suppression logique quand la séance existe encore (`deleteOnMissing: 'with_session'`) et le pull applique `deleted_at` : un remplacement annulé hors ligne ne revient plus.
+  - **Deux séances le même jour** : chaque lien (coach, Programme, adaptation) porte l'index de la séance ; la route `/workout/[date]?index=` ouvre celle-là, jamais la première du jour par défaut. Aucun id technique affiché.
+  - **Passé sans prescription** : une semaine passée sans aucune prescription stockée est **inconnue** (`weekPrescriptionKnown`, `unknownPrescriptionDates`) : « Prescription d'origine indisponible. » dans Programme, l'adhérence (jours exclus des deux côtés, aucun dénominateur inventé), le bilan hebdomadaire et Progression. Plus aucune reconstruction depuis le profil actuel. Le bilan d'une semaine passée est identique après un changement de profil (testé).
+  - **Matrice de contexte des séances** (`training/session-context.ts`) : variante faite + décision structurelle suivie (normalisée par `structureKey`, une semaine allégée de fin de cycle est une semaine allégée) → `full`, `off_plan`, `short`, `reduced`, `light`, `restart`. Une seule table dit ce que chaque contexte peut dire du niveau (plateau, déclin, tendance : oui / seulement au haut de la plage pour `short` / non) et des records (non pour `light` et `restart`). Lue par `readExposure` (plateau, tendance, PERFORMANCE_DOWN), `exerciseTrends`, `personalRecords` et le jalon « Premier record ». Une reprise ou un volume réduit ne crée plus de faux plateau ni de « en baisse » ; revenir à sa charge habituelle après une reprise n'est pas un record.
+  - **Adaptations empilées** : une séance n'a qu'un emplacement « adaptation du jour » (`adapted_minutes`, `adaptation_reason`). Minutes et raison décrivent toujours la même variante ; la version courte le prend quand elle existe (ses minutes sont celles de l'utilisateur), la version allégée se lit depuis ses lignes. Léger puis court : 20 min annoncées = 20 min stockées et lues ; lignes complètes et allégées, id de séance, `prescribed_at` et `adjustment_id` inchangés.
+  - **Confidentialité** : « Supprimer les repas » efface aussi les coches de la semaine précédente gardée pour le bilan (`previousMealPlan`), et les compte. La suppression d'une catégorie renvoie `complete`, `partial` (tables effacées / restantes) ou `failed` : seul `complete` efface l'appareil et dit « Données supprimées. » ; sinon les données et les empreintes de sync restent (rien n'est renvoyé au serveur), le message dit que ce n'est pas terminé, et réessayer recommence depuis la première table (idempotent). Suppression du compte : l'écran ne quitte qu'en cas de succès ; le message d'échec ne prétend plus que « rien n'a été supprimé ». `delete-account` liste le bucket page après page et dans les sous-dossiers, et une erreur de listage arrête la suppression au lieu de valoir « aucune photo » (**à redéployer** : `supabase functions deploy delete-account`).
+  - **`coach_memory` : héritée, inutilisée**. Ni lue ni écrite par l'app ; la mémoire du coach vit dans `adjustments` (`coach.*`, D-039), seule source de vérité. La table reste exportée (`EXPORT_ONLY_TABLES`) et supprimée avec le compte (cascade). Décision reportée : migration de suppression, ou usage précis futur (coach IA) avec `updated_at`, `deleted_at`, statut et sync ; jamais deux sources.
+  - **Cadence** : seuils W-7 inchangés (`CADENCE`).
+- **Non fait, volontairement** : nettoyage Storage vérifié sur le vrai projet (aucune photo n'est encore envoyée par l'app ; bucket `progress-photos` et ses politiques absents des migrations : TODO avant bêta, I2 de la revue PR #1) ; unification des deux définitions de fatigue ; suppression d'une catégorie propagée aux autres appareils (limite existante).
+- **Alternatives** : stocker les minutes de chaque variante (refusé : migration pour une valeur dérivable côté allégé) ; reconstruire une semaine passée depuis le profil de l'époque (refusé : non stocké, ce serait inventé) ; effacer l'appareil malgré un échec partiel (refusé : l'écran dirait « supprimé » alors que le serveur garde des données).
+- **Date** : 2026-10-07

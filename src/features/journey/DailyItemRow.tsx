@@ -52,7 +52,13 @@ export function useItemAction(item: DailyItem, today: string): { label: string; 
         run: () =>
           router.push({
             pathname: '/workout/[date]',
-            params: { date: today, ...(p.variant !== 'full' ? { variant: String(p.variant) } : {}) },
+            // The duration announced here is the one the session is built for (D-034).
+            params: {
+              date: today,
+              // The session this item is about, never the first one of the day by default (W-7.1).
+              ...(p.sessionIndex !== undefined ? { index: String(p.sessionIndex) } : {}),
+              ...(p.variant !== 'full' ? { variant: String(p.variant), minutes: String(p.minutes) } : {}),
+            },
           }),
       };
     case 'activity':
@@ -123,6 +129,11 @@ export function DailyItemRow({ item, today }: { item: DailyItem; today: string }
           {item.kind === 'workout' && !done && item.params.start ? (
             <Text variant="caption" color="textMuted">
               {t('daily.item.workoutAt', { time: item.params.start })}
+            </Text>
+          ) : null}
+          {item.kind === 'workout' && !done && item.params.goal ? (
+            <Text variant="caption" color="textMuted">
+              {t(`daily.item.goal_${item.params.goal}`)}
             </Text>
           ) : null}
           {item.kind === 'meal' && item.params.nextSlot ? (

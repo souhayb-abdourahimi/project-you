@@ -23,6 +23,7 @@ export function channelInput(journey: Journey): JourneyChannelInput {
       ? { id: journey.celebration.id, facts: milestoneFacts(journey.celebration.id) }
       : null,
     keptGoingDates: journey.keptGoingDates,
+    todayPriority: journey.coach.priority,
     todaySession: !workout
       ? 'none'
       : workout.status === 'done'
