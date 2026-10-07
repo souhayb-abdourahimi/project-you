@@ -3,11 +3,11 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Button, Text } from '@/components/ui';
+import { Button, Icon, Text, type IconName } from '@/components/ui';
 import type { DailyItem } from '@/domain/journey/daily-plan';
 import { explainItem } from '@/domain/journey/explain';
 import { useDataStore } from '@/state/data';
-import { MIN_TOUCH, radius, spacing, useColors } from '@/theme';
+import { MIN_TOUCH, opacity, radius, spacing, useColors } from '@/theme';
 
 type T = (key: string, params?: Record<string, unknown>) => string;
 
@@ -81,27 +81,29 @@ export function useItemAction(item: DailyItem, today: string): { label: string; 
 }
 
 /** "Pourquoi ?": the structured explanation and the data it relies on. */
-export function WhyToggle({ item }: { item: DailyItem }) {
+export function WhyToggle({ item, dark }: { item: DailyItem; dark?: boolean }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const why = explainItem(item);
   return (
-    <View>
+    <View style={{ gap: spacing.xs }}>
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
         aria-expanded={open}
         onPress={() => setOpen(!open)}
-        style={styles.why}>
-        <Text variant="label" color="primary">
+        style={({ pressed }) => [styles.why, pressed && { opacity: opacity.subtle }]}>
+        <Text variant="captionStrong" color={dark ? 'onInverse' : 'primary'}>
           {open ? t('daily.hideWhy') : t('daily.why')}
         </Text>
       </Pressable>
       {open ? (
-        <View style={{ gap: spacing.xs }}>
-          <Text variant="caption">{t(why.key, why.params)}</Text>
+        <View style={{ gap: spacing.xs }} accessibilityLiveRegion="polite">
+          <Text variant="caption" color={dark ? 'onInverse' : 'textPrimary'}>
+            {t(why.key, why.params)}
+          </Text>
           {why.dataUsed.length > 0 ? (
-            <Text variant="caption" color="textMuted">
+            <Text variant="caption" color={dark ? 'onInverseMuted' : 'textMuted'}>
               {t('daily.basedOn', { data: why.dataUsed.map((d) => t(`reasons.${d}`)).join(', ') })}
             </Text>
           ) : null}
@@ -111,21 +113,32 @@ export function WhyToggle({ item }: { item: DailyItem }) {
   );
 }
 
+const ROW_ICON: Record<DailyItem['kind'], IconName> = {
+  workout: 'workout',
+  activity: 'walk',
+  recovery: 'mobility',
+  meal: 'meal',
+  checkin: 'checkin',
+  weigh_in: 'weight',
+  safety: 'safety',
+};
+
+/** One line of "Ta journée": what it is, its planned facts, one action, and why it is there. */
 export function DailyItemRow({ item, today }: { item: DailyItem; today: string }) {
   const { t } = useTranslation();
   const colors = useColors();
   const action = useItemAction(item, today);
   const done = item.status === 'done';
   return (
-    <View
-      style={[styles.row, { borderColor: colors.border, backgroundColor: colors.surface }]}
-      accessibilityLabel={`${itemLabel(item, t)}${done ? `, ${t('daily.done')}` : ''}`}>
+    <View style={styles.row} accessibilityLabel={`${itemLabel(item, t)}${done ? `, ${t('daily.done')}` : ''}`}>
       <View style={styles.header}>
-        <Text accessibilityElementsHidden importantForAccessibility="no" color={done ? 'success' : 'textMuted'}>
-          {done ? '✓' : '○'}
-        </Text>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text color={done ? 'textMuted' : 'text'}>{itemLabel(item, t)}</Text>
+        <View style={[styles.well, { backgroundColor: done ? colors.successSubtle : colors.surfaceSubtle }]}>
+          <Icon name={done ? 'check' : ROW_ICON[item.kind]} size="sm" color={done ? 'success' : 'textSecondary'} />
+        </View>
+        <View style={styles.text}>
+          <Text variant="bodyMedium" color={done ? 'textMuted' : 'textPrimary'}>
+            {itemLabel(item, t)}
+          </Text>
           {item.kind === 'workout' && !done && item.params.start ? (
             <Text variant="caption" color="textMuted">
               {t('daily.item.workoutAt', { time: item.params.start })}
@@ -141,16 +154,18 @@ export function DailyItemRow({ item, today }: { item: DailyItem; today: string }
               {t('daily.item.meal_next', { slot: t(`enums.slot.${item.params.nextSlot}`) })}
             </Text>
           ) : null}
+          <WhyToggle item={item} />
         </View>
-        {action ? <Button compact variant="secondary" label={action.label} onPress={action.run} /> : null}
+        {action ? <Button compact variant="tertiary" label={action.label} onPress={action.run} /> : null}
       </View>
-      <WhyToggle item={item} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.md, padding: spacing.md, gap: spacing.xs },
-  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
+  row: { paddingVertical: spacing.md, gap: spacing.xs },
+  header: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  well: { width: 36, height: 36, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+  text: { flex: 1, gap: 2 },
   why: { minHeight: MIN_TOUCH, justifyContent: 'center', alignSelf: 'flex-start' },
 });

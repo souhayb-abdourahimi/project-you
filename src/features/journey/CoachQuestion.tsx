@@ -1,6 +1,9 @@
 import { useTranslation } from 'react-i18next';
 
-import { Button, Card, Row, Text } from '@/components/ui';
+import { View } from 'react-native';
+
+import { Button, Card, Icon, Row, Text } from '@/components/ui';
+import { spacing } from '@/theme';
 import type { CoachQuestion as Question } from '@/domain/journey/coach';
 
 import { useCoachAnswer } from './useCoachAnswer';
@@ -16,8 +19,14 @@ export function CoachQuestion({ question, today }: { question: Question; today: 
   const { answer } = useCoachAnswer(today);
   return (
     <Card>
-      <Text>{say(question.intro)}</Text>
-      <Text variant="heading" accessibilityRole="header">
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+        <Icon name="coach" size="sm" color="primary" />
+        <Text variant="captionStrong" color="textSecondary">
+          {t('daily.coach')}
+        </Text>
+      </View>
+      <Text color="textSecondary">{say(question.intro)}</Text>
+      <Text variant="title3" accessibilityRole="header">
         {say(question.text)}
       </Text>
       <Row>

@@ -69,7 +69,7 @@ test('light week: proposed on Today with its facts, applied on "yes", shown, the
 
   await openTab(page, 'Programme');
   await expect(text(page, 'Semaine allégée')).toBeVisible();
-  await openTab(page, 'Progression');
+  await openTab(page, 'Progrès');
   await expect(text(page, 'Programme allégé cette semaine')).toBeVisible();
 
   // Going back: a new decision, the first one stays in the journal.
@@ -124,7 +124,7 @@ test('repeated discomfort: a question, a confirmation, then a new program versio
     [1, 'superseded'],
     [2, 'active'],
   ]);
-  await openTab(page, 'Progression');
+  await openTab(page, 'Progrès');
   await expect(text(page, 'Exercice remplacé après confirmation')).toBeVisible();
   expect(errors).toEqual([]);
 });

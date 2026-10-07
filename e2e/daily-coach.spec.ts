@@ -21,7 +21,7 @@ test('first day: a welcome, one action, and an empty story that says so', async 
   await expect(text(page, 'Ta prochaine action')).toBeVisible();
   await expect(text(page, 'Ta journée')).toBeVisible();
 
-  await openTab(page, 'Progression');
+  await openTab(page, 'Progrès');
   await expect(text(page, 'Ton histoire commence aujourd’hui')).toBeVisible();
   await expect(button(page, 'Voir ma journée')).toBeVisible();
   expect(errors).toEqual([]);

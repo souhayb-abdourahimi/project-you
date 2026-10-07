@@ -163,7 +163,7 @@ test('light weeks do not make a plateau or a drop: the next goal builds on the f
   await expect(text(page, 'Tu peux viser une répétition de plus.')).toBeVisible();
   // Mon évolution: no "40 kg" drop, no advice to review the progression.
   await page.goto('/');
-  await openTab(page, 'Progression');
+  await openTab(page, 'Progrès');
   await expect(text(page, 'Revoir la progression de tes charges')).toBeHidden();
   await expect(page.getByText(/Développé couché barre : .*40 kg/).filter({ visible: true })).toHaveCount(0);
   expect(errors).toEqual([]);

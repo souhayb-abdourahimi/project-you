@@ -27,13 +27,13 @@ const en: LocaleShape = {
     grams: '{{value}} g',
     mass: '{{value, mass}}',
     cm: '{{value}} cm',
-    localMode: 'Local mode: your data stays on this device (Supabase not configured).',
+    localMode: 'Local mode: your data stays on this device.',
     offline: 'Offline: your changes will sync later.',
     error: 'Something went wrong. Your data is kept on this device.',
     yes: 'Yes',
     no: 'No',
   },
-  tabs: { today: 'Today', program: 'Program', nutrition: 'Nutrition', progress: 'Progress', explore: 'Explore' },
+  tabs: { today: 'Today', program: 'Program', nutrition: 'Nutrition', progress: 'Progress', profile: 'Profile' },
   auth: {
     title: 'Welcome to Project You',
     subtitle: 'A coach that adapts to your real life.',
@@ -260,6 +260,25 @@ const en: LocaleShape = {
     mealPrep: 'Meal prep {{start}}–{{end}}',
     shopping: 'Groceries {{start}}–{{end}}',
     motivation: 'Motivation',
+    hero: {
+      minutes: '{{count}} min',
+      variant: { short: 'Short version', light: 'Lighter version' },
+    },
+    snapshot: {
+      title: 'At a glance',
+      sessions: 'Sessions',
+      sessionsCaption: 'this week',
+      sessionsA11y: '{{done}} of {{planned}} planned session(s) done this week',
+      protein: 'Protein',
+      proteinCaption: 'estimate',
+      proteinA11y: '{{eaten}} g of protein logged out of a {{target}} g target, estimate',
+      steps: 'Steps',
+      stepsCaption: 'today',
+      weight: 'Weight',
+      weightCaption: 'recent average',
+    },
+    later: 'Later today',
+    dayMode: 'Today',
   },
   /**
    * The coach of the day (W-7, src/domain/journey/coach.ts): one main action, a few facts, one
@@ -1312,15 +1331,6 @@ const en: LocaleShape = {
     },
     flag: { fast_weight_loss: 'fast weight loss', low_intake: 'meals under your benchmarks' },
   },
-  explore: {
-    title: 'Explore around me',
-    subtitle: 'Gyms, parks, clubs, university activities…',
-    unavailable:
-      'Place search arrives in phase 2. We only show real, sourced data: no invented hours, prices or crowd levels.',
-    categories: 'Planned categories',
-    categoryList:
-      'Gyms · Running · Football · Basketball · Tennis · Swimming · Cycling · Climbing · Yoga · Dance · Martial arts · Weight training · Hiking · Parks · Stadiums · Sports halls · Clubs · University activities',
-  },
   checkin: {
     title: 'Weekly check-in',
     intro: 'Under a minute. Only the first question is needed; answer the rest if you want.',
@@ -2080,6 +2090,16 @@ const en: LocaleShape = {
       offline: 'The server did not confirm the deletion: your data stays on this device. Try again once online.',
     },
   },
+  profile: {
+    title: 'Profile',
+    summary: '{{goal}} · {{count}} session(s) a week',
+    groups: { profile: 'My profile', follow: 'Tracking and reminders', data: 'My data and account' },
+    measurements: 'My measurements',
+    reminders: 'Reminders',
+    memory: 'What the coach remembers',
+    privacy: 'Privacy',
+    allSettings: 'All settings',
+  },
   settings: {
     title: 'Settings',
     language: 'Language',
@@ -2106,17 +2126,26 @@ const en: LocaleShape = {
       profile: { title: 'You', intro: 'What is used to estimate your needs. Your weigh-ins stay in My progress.' },
       goal: {
         title: 'Goal',
-        intro: 'Changing your goal creates a new version of your program from today. What you already did does not change.',
+        intro:
+          'Changing your goal creates a new version of your program from today. What you already did does not change.',
       },
-      motivation: { title: 'Motivation', intro: 'Your own words, quoted in your reminders if you wish. Every answer is optional.' },
+      motivation: {
+        title: 'Motivation',
+        intro: 'Your own words, quoted in your reminders if you wish. Every answer is optional.',
+      },
       training: {
         title: 'Training',
-        intro: 'Gym, equipment, level, frequency and length. A change applies to upcoming workouts, never to past ones.',
+        intro:
+          'Gym, equipment, level, frequency and length. A change applies to upcoming workouts, never to past ones.',
       },
-      schedule: { title: 'Availability', intro: 'When you can train. Upcoming workouts are placed again, the past stays.' },
+      schedule: {
+        title: 'Availability',
+        intro: 'When you can train. Upcoming workouts are placed again, the past stays.',
+      },
       nutrition: {
         title: 'Food',
-        intro: 'Diet, allergies, exclusions, meals, kitchen and budget. An allergy always comes before everything else.',
+        intro:
+          'Diet, allergies, exclusions, meals, kitchen and budget. An allergy always comes before everything else.',
       },
     },
     summary: {
@@ -2224,8 +2253,7 @@ const en: LocaleShape = {
         'Your program follows the adjustment accepted on {{date}}: {{count}} workout a week (your answer: {{answer}}). Changing the frequency here replaces that adjustment.',
       frequency_other:
         'Your program follows the adjustment accepted on {{date}}: {{count}} workouts a week (your answer: {{answer}}). Changing the frequency here replaces that adjustment.',
-      calories:
-        'An accepted calorie adjustment is in progress ({{offset}} kcal a day). Changing your goal removes it.',
+      calories: 'An accepted calorie adjustment is in progress ({{offset}} kcal a day). Changing your goal removes it.',
     },
     fields: {
       user: {
@@ -2292,7 +2320,8 @@ const en: LocaleShape = {
   },
   measurements: {
     title: 'Correct my measurements',
-    intro: 'A weigh-in or a measurement entered by mistake can be corrected or deleted here. Your trends are recalculated from what remains.',
+    intro:
+      'A weigh-in or a measurement entered by mistake can be corrected or deleted here. Your trends are recalculated from what remains.',
     empty: 'No measurement recorded yet.',
     more_one: '{{count}} older measurement is not shown here. You will find it in your export.',
     more_other: '{{count}} older measurements are not shown here. You will find them in your export.',

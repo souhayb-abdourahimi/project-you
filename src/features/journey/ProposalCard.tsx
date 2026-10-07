@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
-import { Button, Card, Row, Text } from '@/components/ui';
+import { Button, Card, Icon, Row, Text } from '@/components/ui';
 import type { Recommendation } from '@/domain/journey/adaptation';
 import { proposalView, type Copy, type ProposalAnswer } from '@/domain/journey/proposal';
 import type { IsoDate } from '@/domain/shared/dates';
@@ -30,12 +30,15 @@ export function ProposalCard({ recommendation: r, today }: { recommendation: Rec
     view.confirm && !confirming ? setConfirming(answer) : decide(r, 'applied', answer);
 
   return (
-    <Card>
-      <Text variant="caption" color="textMuted">
-        {t('adaptation.proposal')}
-      </Text>
-      <Text>{say(view.message)}</Text>
-      <Text variant="heading">{changeText}</Text>
+    <Card tone="accent">
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+        <Icon name="coach" size="sm" color="primary" />
+        <Text variant="overline" color="primary">
+          {t('adaptation.proposal')}
+        </Text>
+      </View>
+      <Text variant="title3">{changeText}</Text>
+      <Text color="textSecondary">{say(view.message)}</Text>
       {view.duration ? <Text variant="caption">{say(view.duration)}</Text> : null}
       {view.impact ? <Text variant="caption">{say(view.impact)}</Text> : null}
       {why ? (

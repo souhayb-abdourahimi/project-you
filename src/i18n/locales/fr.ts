@@ -25,7 +25,7 @@ const fr = {
     grams: '{{value}} g',
     mass: '{{value, mass}}',
     cm: '{{value}} cm',
-    localMode: 'Mode local : tes données restent sur cet appareil (Supabase non configuré).',
+    localMode: 'Mode local : tes données restent sur cet appareil.',
     offline: 'Hors connexion : tes changements seront synchronisés plus tard.',
     error: 'Une erreur est survenue. Tes données sont conservées sur l’appareil.',
     yes: 'Oui',
@@ -35,8 +35,8 @@ const fr = {
     today: 'Aujourd’hui',
     program: 'Programme',
     nutrition: 'Nutrition',
-    progress: 'Progression',
-    explore: 'Explorer',
+    progress: 'Progrès',
+    profile: 'Profil',
   },
   auth: {
     title: 'Bienvenue sur Project You',
@@ -73,7 +73,8 @@ const fr = {
       title: 'Quelle est ton année de naissance ?',
       label: 'Année de naissance',
       hint: 'Elle sert uniquement à estimer tes besoins. Project You est conçu pour les adultes (18 ans et plus).',
-      tooYoung: 'Project You est réservé aux personnes de 18 ans et plus : le parcours ne peut pas continuer avec cette année de naissance.',
+      tooYoung:
+        'Project You est réservé aux personnes de 18 ans et plus : le parcours ne peut pas continuer avec cette année de naissance.',
       outOfRange: 'Vérifie l’année saisie.',
     },
     'profile.body': { title: 'Ta taille et ton poids', height: 'Taille (cm)', weight: 'Poids ({{unit}})' },
@@ -267,6 +268,25 @@ const fr = {
     mealPrep: 'Préparation des repas {{start}}–{{end}}',
     shopping: 'Courses {{start}}–{{end}}',
     motivation: 'Motivation',
+    hero: {
+      minutes: '{{count}} min',
+      variant: { short: 'Version courte', light: 'Version allégée' },
+    },
+    snapshot: {
+      title: 'En un coup d’œil',
+      sessions: 'Séances',
+      sessionsCaption: 'cette semaine',
+      sessionsA11y: '{{done}} séance(s) faite(s) sur {{planned}} prévue(s) cette semaine',
+      protein: 'Protéines',
+      proteinCaption: 'estimation',
+      proteinA11y: '{{eaten}} g de protéines notées sur un objectif de {{target}} g, estimation',
+      steps: 'Pas',
+      stepsCaption: 'aujourd’hui',
+      weight: 'Poids',
+      weightCaption: 'moyenne récente',
+    },
+    later: 'Ensuite',
+    dayMode: 'Aujourd’hui',
   },
   /**
    * The coach of the day (W-7, src/domain/journey/coach.ts): one main action, a few facts, one
@@ -1330,15 +1350,6 @@ const fr = {
     },
     flag: { fast_weight_loss: 'perte de poids rapide', low_intake: 'repas sous tes repères' },
   },
-  explore: {
-    title: 'Explorer autour de moi',
-    subtitle: 'Salles, parcs, clubs, activités universitaires…',
-    unavailable:
-      'Recherche de lieux disponible en phase 2. Nous n’affichons que des données réelles et sourcées : pas d’horaires, de prix ni de fréquentation inventés.',
-    categories: 'Catégories prévues',
-    categoryList:
-      'Salles · Running · Football · Basket · Tennis · Natation · Vélo · Escalade · Yoga · Danse · Arts martiaux · Musculation · Randonnée · Parcs · Stades · Gymnases · Clubs · Activités universitaires',
-  },
   checkin: {
     title: 'Check-in de la semaine',
     intro: 'Moins d’une minute. Seule la première question est nécessaire ; tu réponds au reste si tu veux.',
@@ -2117,6 +2128,16 @@ const fr = {
         'Le serveur n’a pas confirmé la suppression : tes données restent sur cet appareil. Réessaie une fois connecté.',
     },
   },
+  profile: {
+    title: 'Profil',
+    summary: '{{goal}} · {{count}} séance(s) par semaine',
+    groups: { profile: 'Mon profil', follow: 'Suivi et rappels', data: 'Mes données et mon compte' },
+    measurements: 'Mes mesures',
+    reminders: 'Rappels',
+    memory: 'Ce que le coach retient',
+    privacy: 'Confidentialité',
+    allSettings: 'Tous les réglages',
+  },
   settings: {
     title: 'Réglages',
     language: 'Langue',
@@ -2143,17 +2164,26 @@ const fr = {
       profile: { title: 'Toi', intro: 'Ce qui sert à estimer tes besoins. Tes pesées restent dans Mon évolution.' },
       goal: {
         title: 'Objectif',
-        intro: 'Changer d’objectif crée une nouvelle version de ton programme à partir d’aujourd’hui. Ce que tu as déjà fait ne change pas.',
+        intro:
+          'Changer d’objectif crée une nouvelle version de ton programme à partir d’aujourd’hui. Ce que tu as déjà fait ne change pas.',
       },
-      motivation: { title: 'Motivation', intro: 'Tes mots, cités dans tes rappels si tu le souhaites. Chaque réponse est facultative.' },
+      motivation: {
+        title: 'Motivation',
+        intro: 'Tes mots, cités dans tes rappels si tu le souhaites. Chaque réponse est facultative.',
+      },
       training: {
         title: 'Entraînement',
-        intro: 'Salle, matériel, niveau, fréquence et durée. Un changement s’applique aux séances à venir, jamais aux séances passées.',
+        intro:
+          'Salle, matériel, niveau, fréquence et durée. Un changement s’applique aux séances à venir, jamais aux séances passées.',
       },
-      schedule: { title: 'Disponibilités', intro: 'Les créneaux où tu peux t’entraîner. Les séances à venir sont replacées, le passé reste.' },
+      schedule: {
+        title: 'Disponibilités',
+        intro: 'Les créneaux où tu peux t’entraîner. Les séances à venir sont replacées, le passé reste.',
+      },
       nutrition: {
         title: 'Alimentation',
-        intro: 'Régime, allergies, exclusions, repas, cuisine et budget. Une allergie passe toujours avant tout le reste.',
+        intro:
+          'Régime, allergies, exclusions, repas, cuisine et budget. Une allergie passe toujours avant tout le reste.',
       },
     },
     summary: {
@@ -2201,8 +2231,10 @@ const fr = {
         pending_one: 'Synchronisation en attente : {{count}} changement est enregistré sur cet appareil.',
         pending_other: 'Synchronisation en attente : {{count}} changements sont enregistrés sur cet appareil.',
         offline_one: 'Hors ligne : {{count}} changement est gardé sur cet appareil et partira au retour du réseau.',
-        offline_other: 'Hors ligne : {{count}} changements sont gardés sur cet appareil et partiront au retour du réseau.',
-        sign_in_again: 'Ta session a expiré : reconnecte-toi pour envoyer tes changements. Rien n’est perdu sur cet appareil.',
+        offline_other:
+          'Hors ligne : {{count}} changements sont gardés sur cet appareil et partiront au retour du réseau.',
+        sign_in_again:
+          'Ta session a expiré : reconnecte-toi pour envoyer tes changements. Rien n’est perdu sur cet appareil.',
         not_sent:
           'Certains changements ne sont pas encore acceptés par le serveur. Ils restent sur cet appareil et repartiront à la prochaine synchronisation.',
       },

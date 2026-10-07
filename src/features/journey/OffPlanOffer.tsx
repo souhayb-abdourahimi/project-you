@@ -13,9 +13,7 @@ export function OffPlanOffer({ coach }: { coach: CoachDay }) {
   if (!coach.offPlan) return null;
   return (
     <Card muted>
-      <Text variant="caption" color="textMuted">
-        {t('daily.offPlan.body')}
-      </Text>
+      <Text color="textSecondary">{t('daily.offPlan.body')}</Text>
       <Button
         compact
         variant="ghost"

@@ -4,6 +4,9 @@ Tâches importantes à ne pas perdre entre deux sessions. Référence des IDs : 
 
 ## En cours / prochaine étape
 
+- [ ] **W-9 premium UI (D-044)** : passes 1–3 faites (design system, navigation, Aujourd'hui), en attente de validation de Souhayb avant les passes 4–12 (Workout, Programme, Nutrition, Progrès, bilan / historique, Profil / Réglages / Confidentialité, états, motion / accessibilité, web / Android).
+- [ ] W-9 : relire le mode sombre écran par écran (tokens prêts, contraste testé) ; haptique légère quand une infrastructure existe ; l'onglet Explorer et ses chaînes ont été retirés (les lieux restent dans Réglages).
+
 - [ ] **M-01 / M-19** : relancer `npm run test:live` (corrigé pour Jest) pour valider RLS et sync sur le projet réel. Migrations appliquées, `delete-account` déployée, connexion validée par curl (2026-10-01).
 - [ ] Tester la suppression de compte sur le projet réel (fonction déployée le 2026-10-01).
 - [ ] E2E avec un vrai compte (inscription → sync → second appareil) une fois le réseau vers Supabase disponible.
