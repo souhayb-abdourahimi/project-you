@@ -98,21 +98,22 @@ L'écran Aujourd'hui affiche le même message (`SafetyNotice`) et masque la cart
 - Conservé 90 jours, puis effacé.
 - Exporté dans le Centre de confidentialité (réglages de l'appareil), effacé avec les données de l'appareil.
 
-Côté serveur, `notification_history` a la même forme (contrainte SQL : `template_id` ne peut contenir que des identifiants du catalogue, `facts` ≤ 512 octets). La synchronisation de l'historique et des préférences n'est **pas encore branchée** (voir TODO) : les rappels sont planifiés par appareil.
+Côté serveur, `notification_history` a la même forme (contrainte SQL : `template_id` ne peut contenir que des identifiants du catalogue, `facts` ≤ 512 octets). Les **préférences** sont synchronisées avec le compte depuis W-8 (`notification_settings`, D-043) ; l'historique ne l'est pas encore (voir TODO) : les rappels sont planifiés par appareil, avec l'autorisation système de chaque appareil.
 
 ## Préférences
 
 Écran Réglages → Notifications :
 
-- interrupteur général (permission demandée à ce moment-là, jamais au premier lancement) ;
-- catégories : séances, repas, pesée, courses, bilan, motivation, calendrier ;
-- plafond quotidien, heures calmes, heures du rappel repas, du message de motivation et de la pesée ;
+- interrupteur général (permission demandée à ce moment-là, jamais au premier lancement) ; « Autoriser sur cet appareil » quand le compte a activé les rappels mais pas cet appareil ;
+- catégories (W-8 : une catégorie = au moins un déclencheur réel, testé) : séances, repas, pesée, bilan de la semaine, progrès, étapes franchies, motivation, courses. « Calendrier » (aucun déclencheur) est retiré ; « Bilan de la semaine » et « Étapes franchies » reprennent la valeur de « Progrès » à la migration ;
+- maximum par jour (1 à 4), heures calmes **désactivables** (heures locales de l'appareil : un changement d'heure ne déplace rien ; début = fin : aucune heure calme, l'écran le signale ; plage à cheval sur minuit : un rappel du matin est décalé à la fin, un rappel du soir est retiré), heures du rappel repas, du message de motivation, **jour** et heure de la pesée ;
 - **Messages du coach** : citer mes mots (défaut : oui), me relancer après quelques jours sans activité (défaut : oui), fêter mes séances et mes semaines (défaut : oui) ;
-- **pause de 7 jours** (vacances, maladie, envie de souffler) : rien n'est planifié avant la fin de la pause.
+- **pause de 3, 7 ou 14 jours** (vacances, maladie, envie de souffler) : rien n'est planifié avant la fin de la pause, « Reprendre les rappels » l'arrête.
+- Les messages de prudence ne sont pas une catégorie : ils partent même catégorie désactivée (règle 8).
 
 Le ton (`gentle` / `direct`) vient du profil (`user_preferences.motivation_style`) : quelques variantes plus directes ne sont proposées qu'aux personnes qui l'ont choisi.
 
-Tables serveur : `notification_preferences` (une ligne par catégorie, existante) et `notification_settings` (une ligne par utilisateur : plafond, heures, options du coach, pause).
+Tables serveur : `notification_settings` (une ligne par utilisateur : plafond, heures calmes et leur interrupteur, heures, options du coach, pause, catégories en jsonb ; synchronisée, W-8) ; `notification_preferences` (une ligne par catégorie) est héritée, jamais écrite, exportée et supprimée avec le compte. Une préférence jamais modifiée sur un appareil (`prefsSaved` faux) n'écrase pas celle du compte.
 
 ## Web
 
@@ -122,5 +123,6 @@ Les rappels programmés ne sont pas disponibles sur le web (l'écran le dit) ; l
 
 - `src/domain/notifications/__tests__/engine.test.ts` : règles, plafonds, heures calmes, absence, succès, fatigue, sécurité, rotation, déterminisme.
 - `src/domain/notifications/__tests__/history.test.ts` : réconciliation, ouverture, purge à 90 jours.
+- `src/domain/notifications/__tests__/settings.test.ts` (W-8) : chaque catégorie a un déclencheur réel, migration des préférences, heures calmes (plage normale, à cheval sur minuit, désactivées, début = fin, nuit de changement d'heure) ; `src/state/__tests__/notifications.test.ts` : migration du stockage v2 → v3 ; `e2e/settings.spec.ts`.
 - `src/domain/journey/__tests__/` : état unique, règle de sécurité, catalogue ↔ traductions, garde de ton sur chaque texte FR et EN, conformité des `templateId` à la contrainte SQL.
 - `supabase/tests/rls.sql` : isolation des deux tables, upsert par `client_id`, refus d'un texte libre dans `template_id`, purge limitée à ses propres lignes.

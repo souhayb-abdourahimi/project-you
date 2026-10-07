@@ -65,10 +65,37 @@ Audit et architecture : `docs/WORKOUT_ENGINE.md`, `docs/TRAINING_ARCHITECTURE.md
   - [ ] Redéployer l'Edge Function `delete-account` (`supabase functions deploy delete-account`) : listage paginé et récursif des photos
   - [ ] Unifier les deux définitions de « fatigue déclarée » (effets : check-in ≥ seuil d'adaptation ; progression : fatigue ≥ 4 ou énergie ≤ 2)
   - [ ] Faire relire les seuils `EFFECT_COVERAGE` (50 % des jours et 3 check-ins minimum, 2 séances prévues)
-- [ ] W-8 (uniquement sur le mot de Souhayb)
+- [x] W-8 Complétude produit et Réglages (D-043, `docs/SETTINGS_ARCHITECTURE.md`, revue `revue-w8-product-completeness.md`, en attente de validation) : voir la section « W-8 » ci-dessous
 - [ ] Décider la suppression de `workout_plans` (jamais écrite) et de `workout_sessions.plan_id`, après vérification qu'elle est vide en production
 - [ ] Appliquer la migration `20261002000001` sur le projet Supabase réel (SQL Editor) après fusion
 - [ ] Faire relire les seuils de D-030 avec ceux de D-024 / D-026 / D-028
+
+## W-8 — restes classés (D-043)
+
+### Bloquant W-8 (avant fusion)
+- [ ] Appliquer la migration `20261007000002_settings_contract.sql` sur Supabase (SQL Editor) avant de publier une version contenant W-8 ; vérifier que le bucket `progress-photos` est privé et que ses quatre politiques existent.
+
+### Avant bêta publique
+- [ ] Activer Leaked Password Protection (Authentication › Providers › Email, plan Pro et plus, ou Management API `password_hibp_enabled`).
+- [ ] Décider l'âge minimum (proposition : 18+, `SETTINGS_ARCHITECTURE.md` §11).
+- [ ] Chiffrer les données santé locales (`py.health.v1`) ou ne garder que des agrégats.
+- [ ] Fournisseur de lieux de production (D-019) : Overpass public appelé directement depuis l'app.
+- [ ] Faire relire les libellés de Réglages et de « Ce qui va changer » par de vrais utilisateurs.
+
+### Natif (appareil réel)
+- [ ] Dérouler `SETTINGS_ARCHITECTURE.md` §13 : permission notifications, heures calmes et pause, minuteur en arrière-plan, clavier, zones sûres, retour au premier plan, garde de sortie (`Alert`) sur iOS et Android.
+
+### Redesign (phase premium, plus tard)
+- [ ] Sélecteur d'heure natif à la place des champs HH:MM ; lignes de réglages et cartes au style final.
+- [ ] Pas de charge en livres (aujourd'hui 2,5 kg ≈ 5,5 lb).
+
+### Post-lancement
+- [ ] Longueurs en pouces (aujourd'hui cm seulement).
+- [ ] Suppression d'une catégorie propagée aux autres appareils (D-042).
+- [ ] Supprimer `coach_memory`, `notification_preferences`, `workout_plans` et `workout_sessions.plan_id` après vérification qu'elles sont vides en production (migration dédiée).
+
+### Obsolète (fermé par W-8)
+- [x] Politiques Storage `progress-photos` ; synchronisation de `notification_settings` ; catégorie « Calendrier » sans déclencheur ; « Ce que le coach retient » sans pourquoi ni confirmation.
 
 ## Daily Coach + Progress Journey (D-028)
 
@@ -83,11 +110,12 @@ Plan de la phase (ordre demandé) ; détail dans `docs/DAILY_COACH.md`, `docs/PR
 - [ ] Chemin de « Mon évolution » : rendre chaque étape focalisable au lecteur d'écran sur le web (aujourd'hui un libellé sur un conteneur)
 - [ ] Faire relire les seuils de D-028 (calibration, adhérence, ±150 kcal, plateau, score de risque) avec ceux de D-024/D-026
 - [ ] Photos de progression : section masquée tant que les politiques Storage n'existent pas (voir Sécurité)
-- [ ] `coach_memory` : réaffecter ou supprimer quand le coach IA arrive (D-028 : mémoire dérivée, rien à y stocker)
+- [ ] `coach_memory` : option A retenue en W-8 (D-043) ; suppression post-lancement si vide en production
 
 ## Transformation Journey (D-024)
 
-- [ ] Synchroniser `notification_settings` et `notification_history` (tables et RLS prêtes, l'app garde tout sur l'appareil pour l'instant), puis `daily_checkins`.
+- [x] Synchroniser `notification_settings` (W-8, D-043).
+- [ ] Synchroniser `notification_history`, puis `daily_checkins`.
 - [ ] Étapes J-2 à J-7 de `docs/TRANSFORMATION_JOURNEY.md` : reprises par la phase D-028 ci-dessus.
 - [ ] Faire relire les seuils de la règle de sécurité et les fourchettes de rythme par un professionnel de santé avant la bêta publique.
 - [ ] Règle 7 : retirer l'« énergie active » estimée de l'écran Santé (`HealthCard`, PR #1).
@@ -112,7 +140,8 @@ Plan de la phase (ordre demandé) ; détail dans `docs/DAILY_COACH.md`, `docs/PR
 
 - [ ] Remplacer le harness `supabase/tests` par `supabase test db` (pgTAP) quand Docker est disponible.
 - [ ] Rate limiting des Edge Functions (IA, suppression de compte).
-- [ ] Politiques Storage du bucket `progress-photos` (migration dédiée quand la fonctionnalité photo arrive) ; vérifier le nettoyage Storage de `delete-account` sur le vrai projet (pagination et échec sur erreur de listage faits en W-7.1, non vérifiés en réel).
+- [x] Bucket privé et politiques Storage `progress-photos` (W-8, testés en base locale).
+- [ ] Vérifier le nettoyage Storage de `delete-account` sur le vrai projet (pagination et échec sur erreur de listage faits en W-7.1, non vérifiés en réel).
 - [ ] Identifiants de `goals` et des repas dérivés du `user_id` : passer la clé de conflit à `(user_id, id)` ou ajouter un sel aléatoire.
 - [ ] Découper `src/features/onboarding/StepContent.tsx` (449 lignes).
 - [ ] Placeholders de dates/heures codés en dur dans l'onboarding : passer par i18n.
