@@ -844,6 +844,33 @@ describe('workout session (W-3)', () => {
     for (const d of [a, b]) expect(await d.sync()).toMatchObject({ pushed: 0, failed: 0 });
   });
 
+  it('a replacement undone offline does not come back, here or on the other device (W-7.1)', async () => {
+    const a = device(SCENARIOS.muscleGain);
+    a.open('2026-09-28');
+    await a.sync(true);
+    const [first] = exercises(a, MONDAY);
+    a.swap(MONDAY, first, 'dumbbell_press');
+    await a.sync();
+    const b = device(SCENARIOS.muscleGain);
+    await b.sync();
+    expect(b.state().exerciseSwaps?.[MONDAY]).toEqual({ [first]: 'dumbbell_press' });
+    // A undoes the replacement (store.swapExercise back to the planned exercise), offline.
+    const { [first]: _undone, ...rest } = a.state().exerciseSwaps![MONDAY];
+    const { [first]: _reason, ...restReasons } = a.state().swapReasons![MONDAY];
+    a.set({
+      exerciseSwaps: { ...a.state().exerciseSwaps, [MONDAY]: rest },
+      swapReasons: { ...a.state().swapReasons, [MONDAY]: restReasons },
+    });
+    // Back online: push, then pull (the server row was updated after the last pull).
+    expect((await a.sync()).errors).toEqual([]);
+    expect((await a.sync()).errors).toEqual([]);
+    expect(a.state().exerciseSwaps?.[MONDAY]?.[first]).toBeUndefined();
+    expect(fake.rows('exercise_substitutions').filter((r) => r.deleted_at == null)).toHaveLength(0);
+    await b.sync();
+    expect(b.state().exerciseSwaps?.[MONDAY]?.[first]).toBeUndefined();
+    for (const d of [a, b]) expect(await d.sync()).toMatchObject({ pushed: 0, failed: 0 });
+  });
+
   it('a session stopped early syncs with its reason, never as a failure', async () => {
     const a = device(SCENARIOS.muscleGain);
     a.open('2026-09-28');

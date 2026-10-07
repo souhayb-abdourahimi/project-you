@@ -346,7 +346,8 @@ export const SYNC_TABLES: Record<SyncTable, TableSpec> = {
   body_measurements: { key: 'id', deleteOnMissing: true },
   daily_checkins: { key: 'id', deleteOnMissing: false },
   weekly_checkins: { key: 'id', deleteOnMissing: true },
-  exercise_substitutions: { key: 'id', deleteOnMissing: false },
+  // An undone replacement is soft-deleted (W-7.1): it never comes back from the server.
+  exercise_substitutions: { key: 'id', deleteOnMissing: 'with_session' },
   exercise_reports: { key: 'id', deleteOnMissing: 'with_session' },
   journey_milestones: { key: 'id', deleteOnMissing: false },
   adjustments: { key: 'id', deleteOnMissing: false },
@@ -1271,8 +1272,16 @@ export function applyRemote(
 
   for (const r of rows('exercise_substitutions')) {
     const key = keyById.get(String(r.session_id));
-    if (!key || r.deleted_at != null) continue;
+    if (!key) continue;
     const from = String(r.from_exercise_id);
+    if (r.deleted_at != null) {
+      // Undone on another device (W-7.1); a pending local change is not in `rows` and wins.
+      const { [from]: _swap, ...swaps } = next.exerciseSwaps![key] ?? {};
+      const { [from]: _reason, ...reasons } = next.swapReasons![key] ?? {};
+      next.exerciseSwaps![key] = swaps;
+      next.swapReasons![key] = reasons;
+      continue;
+    }
     next.exerciseSwaps![key] = { ...next.exerciseSwaps![key], [from]: String(r.to_exercise_id) };
     const reason = r.reason as ReplacementReason | null | undefined;
     if (reason) next.swapReasons![key] = { ...next.swapReasons![key], [from]: reason };
