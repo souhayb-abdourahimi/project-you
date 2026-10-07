@@ -678,3 +678,8 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
   - **Captures** : `npm run screens` (Playwright, config séparée), pas de tests d'image comparée (fragiles entre machines, infrastructure lourde).
 - **Alternatives** : renommer tous les tokens dans tous les écrans (refusé : gros diff sans valeur avant les passes écran par écran) ; garder Explorer comme 6e onglet (refusé : la cible fixe cinq onglets) ; une bibliothèque d'icônes en plus (refusé : une seule famille).
 - **Date** : 2026-10-07
+
+### D-044 addendum (passe 3.1, 2026-10-07) : Aujourd'hui, image puis données puis coach
+
+Ordre d'Aujourd'hui : héros (avec visuel) → résumé hiérarchisé (une carte Nutrition avec un seul anneau de protéines, puis la semaine et les pas ou le poids) → mot du coach → la journée. Le visuel du héros suit une priorité fixe : média réel de la séance, sinon bibliothèque Project You, sinon visuel dessiné ; aucune photo aléatoire du web. Les pas n'ont un graphique qu'avec au moins 3 jours mesurés (`MIN_STEP_DAYS`). Quand la célébration affiche déjà le titre du jalon, le mot du coach garde seulement son message. Aucune règle métier déplacée : `todayGlance` (`src/features/today/view.ts`) ne fait que lire le plan, le journey et les données de santé partagées.
+

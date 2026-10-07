@@ -10,7 +10,7 @@ import {
   Icon,
   IconButton,
   LoadingScreen,
-  MetricCard,
+  CoachNote,
   Screen,
   ScreenHeader,
   Section,
@@ -19,10 +19,8 @@ import {
 import { MILESTONES } from '@/domain/journey/milestones';
 import type { DayMode } from '@/domain/journey/outcomes';
 import { renderMessage } from '@/domain/journey/voice/composer';
-import { fromKg } from '@/domain/settings/units';
 import { daysBetween } from '@/domain/shared/dates';
 import { HealthCard } from '@/features/health/HealthCard';
-import { useActivitySummary } from '@/features/health/useActivitySummary';
 import { CoachCard } from '@/features/journey/CoachCard';
 import { CoachQuestion } from '@/features/journey/CoachQuestion';
 import { DailyItemRow } from '@/features/journey/DailyItemRow';
@@ -32,14 +30,12 @@ import { DayEnergyWarning } from '@/features/nutrition/DayEnergyWarning';
 import { MealCard } from '@/features/nutrition/MealCard';
 import { PlanDiagnosisCard } from '@/features/nutrition/PlanDiagnosisCard';
 import { SyncNotice } from '@/features/settings/SyncNotice';
-import { todaySnapshot, type SnapshotMetric } from '@/features/today/view';
+import { TodayGlance } from '@/features/today/TodayGlance';
 import { useJourney, type Journey } from '@/hooks/useJourney';
-import { useMassUnit } from '@/hooks/useMassUnit';
-import { usePlan, type Plan } from '@/hooks/usePlan';
-import { formatDate, formatNumber, nowTime } from '@/lib/format';
+import { usePlan } from '@/hooks/usePlan';
+import { formatDate, nowTime } from '@/lib/format';
 import { isSupabaseConfigured } from '@/services/supabase';
 import { useDataStore } from '@/state/data';
-import { useHealthStore } from '@/state/health';
 import { useNotificationStore } from '@/state/notifications';
 import { layout, spacing, useColors } from '@/theme';
 
@@ -85,6 +81,21 @@ export default function TodayScreen() {
   const organisation = day?.items.filter((i) => i.kind === 'meal_prep' || i.kind === 'shopping') ?? [];
   const voice = renderMessage(daily.message, (key, params) => t(key, params));
   const rest = daily.items.filter((i) => i.kind !== 'safety');
+  // The celebration card already shows the milestone's title: the coach note keeps only its words.
+  const celebrated = coach.celebration && daily.message.templateId.startsWith('milestone_reached|');
+  // While the safety rule is active, the coach slows down instead of motivating (rule 8).
+  const motivation = state.safety.active ? null : (
+    <CoachNote label={t('today.motivation')} title={celebrated ? undefined : voice.title} message={voice.body}>
+      {daily.anchor ? (
+        <View style={styles.anchor}>
+          <Text variant="caption" color="textMuted">
+            {t('daily.startedBecause')}
+          </Text>
+          <Text variant="bodyMedium">« {daily.anchor.text} »</Text>
+        </View>
+      ) : null}
+    </CoachNote>
+  );
 
   return (
     <Screen airy>
@@ -118,7 +129,9 @@ export default function TodayScreen() {
         <OffPlanOffer coach={coach} />
       </View>
 
-      <Snapshot plan={plan} journey={journey} />
+      {/* Image, then data, then one word from the coach: its question, else the message of the day. */}
+      <TodayGlance plan={plan} journey={journey} />
+      {coach.question ? null : motivation}
 
       <Section title={t('daily.planTitle')}>
         <Card style={styles.list}>
@@ -138,29 +151,9 @@ export default function TodayScreen() {
         <QuickActions journey={journey} today={plan.today} />
       </Section>
 
-      <HealthCard plan={plan} />
+      {coach.question ? motivation : null}
 
-      {/* While the safety rule is active, the coach slows down instead of motivating (rule 8). */}
-      {state.safety.active ? null : (
-        <Card tone="subtle">
-          <View style={styles.inline}>
-            <Icon name="coach" size="sm" color="primary" />
-            <Text variant="captionStrong" color="textSecondary">
-              {t('today.motivation')}
-            </Text>
-          </View>
-          <Text variant="headline">{voice.title}</Text>
-          <Text color="textSecondary">{voice.body}</Text>
-          {daily.anchor ? (
-            <View style={{ gap: spacing.xs, marginTop: spacing.xs }}>
-              <Text variant="caption" color="textMuted">
-                {t('daily.startedBecause')}
-              </Text>
-              <Text variant="bodyMedium">« {daily.anchor.text} »</Text>
-            </View>
-          ) : null}
-        </Card>
-      )}
+      <HealthCard plan={plan} />
 
       <Section title={t('today.meals')}>
         <DayEnergyWarning day={meals} />
@@ -179,83 +172,6 @@ export default function TodayScreen() {
         </View>
       )}
     </Screen>
-  );
-}
-
-/** Three numbers at most, all measured or entered (never estimated progress, CLAUDE.md rule 7). */
-function Snapshot({ plan, journey }: { plan: Plan; journey: Journey }) {
-  const { t, i18n } = useTranslation();
-  const unit = useMassUnit();
-  const health = useActivitySummary(plan);
-  const stepsWanted = useHealthStore((s) => s.wanted.includes('steps'));
-  const meals = plan.mealPlan?.days.find((d) => d.date === plan.today)?.meals ?? null;
-  const metrics = todaySnapshot({
-    week: journey.trainingWeek,
-    meals,
-    proteinTargetG: plan.targets.proteinG,
-    stepsToday: stepsWanted ? (health?.stepsToday.today ?? null) : null,
-    weightAvgKg: journey.progress.body.weight?.currentAvgKg ?? null,
-    bodyOrder: journey.progress.bodyOrder,
-  });
-  if (metrics.length === 0) return null;
-  const n = (v: number) => formatNumber(v, i18n.language);
-  const card = (m: SnapshotMetric) => {
-    switch (m.id) {
-      case 'sessions':
-        return (
-          <MetricCard
-            key={m.id}
-            icon="sessions"
-            iconColor="training"
-            label={t('today.snapshot.sessions')}
-            value={n(m.done)}
-            unit={`/ ${n(m.planned)}`}
-            caption={t('today.snapshot.sessionsCaption')}
-            accessibilityLabel={t('today.snapshot.sessionsA11y', { done: m.done, planned: m.planned })}
-          />
-        );
-      case 'protein':
-        return (
-          <MetricCard
-            key={m.id}
-            icon="protein"
-            iconColor="nutrition"
-            label={t('today.snapshot.protein')}
-            value={n(m.eatenG)}
-            unit={`/ ${n(m.targetG)} g`}
-            caption={t('today.snapshot.proteinCaption')}
-            accessibilityLabel={t('today.snapshot.proteinA11y', { eaten: m.eatenG, target: m.targetG })}
-          />
-        );
-      case 'steps':
-        return (
-          <MetricCard
-            key={m.id}
-            icon="steps"
-            iconColor="recovery"
-            label={t('today.snapshot.steps')}
-            value={n(m.steps)}
-            caption={t('today.snapshot.stepsCaption')}
-          />
-        );
-      case 'weight':
-        return (
-          <MetricCard
-            key={m.id}
-            icon="weight"
-            iconColor="progress"
-            label={t('today.snapshot.weight')}
-            value={n(fromKg(m.kg, unit))}
-            unit={unit}
-            caption={t('today.snapshot.weightCaption')}
-          />
-        );
-    }
-  };
-  return (
-    <View style={styles.snapshot} accessibilityLabel={t('today.snapshot.title')}>
-      {metrics.map(card)}
-    </View>
   );
 }
 
@@ -336,7 +252,7 @@ function Celebration({ journey }: { journey: Journey }) {
 const styles = StyleSheet.create({
   block: { gap: spacing.sm },
   stack: { gap: layout.stackGap },
-  snapshot: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  anchor: { gap: spacing.xs, marginTop: spacing.xs },
   list: { paddingVertical: spacing.xs, gap: 0 },
   divider: { borderTopWidth: StyleSheet.hairlineWidth },
   organisation: { paddingVertical: spacing.sm },

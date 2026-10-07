@@ -1,9 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
-import { View } from 'react-native';
-
-import { Button, Card, Icon, Row, Text } from '@/components/ui';
-import { spacing } from '@/theme';
+import { Button, CoachNote, Row, Text } from '@/components/ui';
 import type { CoachQuestion as Question } from '@/domain/journey/coach';
 
 import { useCoachAnswer } from './useCoachAnswer';
@@ -18,15 +15,8 @@ export function CoachQuestion({ question, today }: { question: Question; today: 
   const say = useSay();
   const { answer } = useCoachAnswer(today);
   return (
-    <Card>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-        <Icon name="coach" size="sm" color="primary" />
-        <Text variant="captionStrong" color="textSecondary">
-          {t('daily.coach')}
-        </Text>
-      </View>
-      <Text color="textSecondary">{say(question.intro)}</Text>
-      <Text variant="title3" accessibilityRole="header">
+    <CoachNote label={t('today.coachQuestion')} message={say(question.intro)}>
+      <Text variant="headline" accessibilityRole="header">
         {say(question.text)}
       </Text>
       <Row>
@@ -44,6 +34,6 @@ export function CoachQuestion({ question, today }: { question: Question; today: 
         ))}
       </Row>
       <Button compact variant="ghost" label={t('coachDay.question.later')} onPress={() => answer(question, null)} />
-    </Card>
+    </CoachNote>
   );
 }

@@ -6,19 +6,21 @@
 import type { DailyItem } from '@/domain/journey/daily-plan';
 import type { BodyBlock } from '@/domain/journey/progress-journey';
 import type { PlannedMeal } from '@/domain/meals/planner';
-import type { WeekComparison } from '@/domain/training/compare';
+import { addDays, startOfWeek, type IsoDate } from '@/domain/shared/dates';
+import { isDone, type WeekComparison } from '@/domain/training/compare';
 
 /** The few lines under the hero's title: planned facts only. */
 export type HeroChip =
   | { kind: 'minutes'; minutes: number }
   | { kind: 'variant'; variant: 'short' | 'light' }
+  | { kind: 'location'; location: string }
   | { kind: 'start'; time: string };
 
 export interface HeroContent {
   /** The hero's title: the focus of a session, else the item's own line (itemLabel). */
   focus: string | null;
   chips: HeroChip[];
-  /** The graphite surface is kept for a session to do; a calmer day stays light. */
+  /** The graphite surface (with its visual) is kept for a session to do; a calmer day stays light. */
   tone: 'inverse' | 'surface';
 }
 
@@ -29,48 +31,89 @@ export function heroContent(item: DailyItem): HeroContent {
   if (item.kind === 'workout' && item.status === 'todo') {
     if (Number.isFinite(minutes) && minutes > 0) chips.push({ kind: 'minutes', minutes });
     if (p.variant === 'short' || p.variant === 'light') chips.push({ kind: 'variant', variant: p.variant });
+    if (p.location === 'gym' || p.location === 'home') chips.push({ kind: 'location', location: p.location });
     if (typeof p.start === 'string' && p.start) chips.push({ kind: 'start', time: p.start });
     return { focus: typeof p.focus === 'string' ? p.focus : null, chips, tone: 'inverse' };
   }
   return { focus: null, chips, tone: 'surface' };
 }
 
-export type SnapshotMetric =
-  | { id: 'sessions'; done: number; planned: number }
-  | { id: 'protein'; eatenG: number; targetG: number }
-  | { id: 'steps'; steps: number }
-  | { id: 'weight'; kg: number };
+/** A day of the week strip: neutral words, a session not done is never "missed" (no guilt). */
+export type WeekDayState = 'done' | 'adapted' | 'planned' | 'not_done' | 'rest';
 
-/** At most three small numbers: a glance, never a dashboard. */
-export const MAX_SNAPSHOT = 3;
+export interface TodayGlance {
+  /** Protein of the meals marked eaten (the leading number), energy second; planned values. */
+  nutrition: { proteinG: number; proteinTargetG: number; kcal: number; kcalTarget: number } | null;
+  /** This week's sessions, done over planned, and a strip Monday → Sunday. */
+  week: { done: number; planned: number; days: { date: IsoDate; state: WeekDayState; today: boolean }[] } | null;
+  /** Steps measured by the phone: today, and the last seven days when at least three are known. */
+  steps: { today: number | null; days: (number | null)[] | null } | null;
+  /** Recent average of real weigh-ins and the change since the start, only when the goal shows it. */
+  weight: { kg: number; changeKg: number | null } | null;
+}
 
-export interface SnapshotInput {
-  /** This week's training, planned vs done (compareWeek). */
+export interface GlanceInput {
+  today: IsoDate;
   week: WeekComparison;
   /** Today's planned meals; null without a meal plan. */
   meals: readonly PlannedMeal[] | null;
   proteinTargetG: number;
-  /** Steps measured today by the phone (Apple Health / Health Connect), null when not shared. */
-  stepsToday: number | null;
-  /** Recent average of the real weigh-ins (Progress Journey), null without any. */
-  weightAvgKg: number | null;
+  kcalTarget: number;
+  /** Daily step totals from Apple Health / Health Connect; null when steps are not shared. */
+  steps: readonly { date: IsoDate; value: number }[] | null;
+  weight: { currentAvgKg: number | null; changeKg: number | null } | null;
   /** Body blocks the goal shows (bodyOrder): weight is never pushed when the goal hides it. */
   bodyOrder: readonly BodyBlock[];
 }
 
-export function todaySnapshot(input: SnapshotInput): SnapshotMetric[] {
-  const out: SnapshotMetric[] = [];
-  const { week } = input;
+/** Days with data needed before the steps chart is drawn (otherwise: the value alone). */
+export const MIN_STEP_DAYS = 3;
+
+function weekStrip(week: WeekComparison, today: IsoDate): TodayGlance['week'] {
   // A week whose prescriptions are unknown has no honest denominator (W-7.1).
-  if (week.planned > 0 && !week.prescriptionUnknown)
-    out.push({ id: 'sessions', done: week.done, planned: week.planned });
-  if (input.meals && input.meals.length > 0 && input.proteinTargetG > 0) {
+  if (week.planned === 0 || week.prescriptionUnknown) return null;
+  const monday = startOfWeek(today);
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(monday, i);
+    const sessions = week.sessions.filter((s) => s.date === date && s.status !== 'moved');
+    let state: WeekDayState = 'rest';
+    if (sessions.some((s) => isDone(s.status))) state = 'done';
+    else if (sessions.some((s) => s.status === 'replaced')) state = 'adapted';
+    else if (sessions.some((s) => s.status === 'skipped' || (s.status === 'not_recorded' && date < today)))
+      state = 'not_done';
+    else if (sessions.length > 0) state = 'planned';
+    return { date, state, today: date === today };
+  });
+  return { done: week.done, planned: week.planned, days };
+}
+
+export function todayGlance(input: GlanceInput): TodayGlance {
+  const { meals, today } = input;
+  let nutrition: TodayGlance['nutrition'] = null;
+  if (meals && meals.length > 0 && input.proteinTargetG > 0) {
     // Meals the user marked as eaten, with their planned values (the same estimate as Nutrition).
-    const eaten = input.meals.filter((m) => m.status === 'eaten').reduce((s, m) => s + m.nutrition.proteinG, 0);
-    out.push({ id: 'protein', eatenG: Math.round(eaten), targetG: Math.round(input.proteinTargetG) });
+    const eaten = meals.filter((m) => m.status === 'eaten');
+    nutrition = {
+      proteinG: Math.round(eaten.reduce((s, m) => s + m.nutrition.proteinG, 0)),
+      proteinTargetG: Math.round(input.proteinTargetG),
+      kcal: Math.round(eaten.reduce((s, m) => s + m.nutrition.kcal, 0)),
+      kcalTarget: Math.round(input.kcalTarget),
+    };
   }
-  if (input.stepsToday !== null) out.push({ id: 'steps', steps: input.stepsToday });
-  else if (input.weightAvgKg !== null && input.bodyOrder.includes('weight'))
-    out.push({ id: 'weight', kg: input.weightAvgKg });
-  return out.slice(0, MAX_SNAPSHOT);
+
+  let steps: TodayGlance['steps'] = null;
+  if (input.steps) {
+    const byDate = new Map(input.steps.map((s) => [s.date, s.value]));
+    const days = Array.from({ length: 7 }, (_, i) => byDate.get(addDays(today, i - 6)) ?? null);
+    const known = days.filter((d) => d !== null).length;
+    const todaySteps = byDate.get(today) ?? null;
+    if (todaySteps !== null || known > 0) steps = { today: todaySteps, days: known >= MIN_STEP_DAYS ? days : null };
+  }
+
+  const weight =
+    input.weight?.currentAvgKg != null && input.bodyOrder.includes('weight')
+      ? { kg: input.weight.currentAvgKg, changeKg: input.weight.changeKg }
+      : null;
+
+  return { nutrition, week: weekStrip(input.week, today), steps, weight };
 }

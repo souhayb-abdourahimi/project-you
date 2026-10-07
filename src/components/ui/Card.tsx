@@ -80,10 +80,13 @@ export function HeroCard({
   children,
   tone = 'inverse',
   titleVariant = 'title1',
+  media,
 }: {
   overline: string;
   title: string;
   titleVariant?: 'title1' | 'title2' | 'title3';
+  /** A visual filling the card behind its content (HeroMedia); the text stays on top. */
+  media?: ReactNode;
   meta?: ReactNode;
   icon?: IconName;
   children?: ReactNode;
@@ -91,7 +94,8 @@ export function HeroCard({
 }) {
   const dark = tone === 'inverse';
   return (
-    <Card tone={tone} raised={tone !== 'positive'} style={styles.hero}>
+    <Card tone={tone} raised={tone !== 'positive'} style={[styles.hero, media ? styles.heroMedia : null]}>
+      {media}
       <View style={styles.heroTop}>
         {icon ? <Icon name={icon} size="sm" color={dark ? 'onInverseMuted' : 'primary'} /> : null}
         <Text variant="overline" color={dark ? 'onInverseMuted' : 'textSecondary'}>
@@ -216,6 +220,7 @@ const styles = StyleSheet.create({
   card: { borderRadius: radius.card, padding: layout.cardPadding, gap: spacing.sm },
   dense: { padding: spacing.lg, borderRadius: radius.lg },
   hero: { gap: spacing.md, padding: spacing.xl },
+  heroMedia: { overflow: 'hidden', minHeight: 300, justifyContent: 'flex-end', paddingTop: spacing['3xl'] },
   heroTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   heroBody: { gap: spacing.md, marginTop: spacing.xs },
   meta: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },

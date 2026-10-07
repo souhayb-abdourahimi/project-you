@@ -259,3 +259,42 @@ const styles = StyleSheet.create({
   avatar: { borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   flex: { flex: 1 },
 });
+
+/**
+ * A personal word from the coach (W-9 §3.1): a small round mark, "Ton coach", a short message and
+ * at most one action. A note, not a chat bubble and not a block of data.
+ */
+export function CoachNote({
+  label,
+  title,
+  message,
+  children,
+}: {
+  label: string;
+  title?: string;
+  message?: string;
+  children?: ReactNode;
+}) {
+  const colors = useColors();
+  return (
+    <Card style={coachStyles.card}>
+      <View style={[coachStyles.mark, { backgroundColor: colors.primarySubtle }]}>
+        <Icon name="coach" size="md" color="primary" />
+      </View>
+      <View style={coachStyles.body}>
+        <Text variant="captionStrong" color="primary">
+          {label}
+        </Text>
+        {title ? <Text variant="headline">{title}</Text> : null}
+        {message ? <Text color="textSecondary">{message}</Text> : null}
+        {children}
+      </View>
+    </Card>
+  );
+}
+
+const coachStyles = StyleSheet.create({
+  card: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
+  mark: { width: 40, height: 40, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
+  body: { flex: 1, gap: spacing.xs },
+});

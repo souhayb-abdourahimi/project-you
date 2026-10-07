@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
-import { Badge, Button, HeroCard, Text, type IconName } from '@/components/ui';
+import { Badge, Button, HeroCard, HeroMedia, Text, type IconName } from '@/components/ui';
 import type { Recommendation } from '@/domain/journey/adaptation';
 import type { CoachDay } from '@/domain/journey/coach';
 import type { DailyItem, DailyItemKind } from '@/domain/journey/daily-plan';
@@ -74,6 +74,8 @@ export function CoachCard({
       title={title}
       titleVariant={item ? 'title1' : 'title3'}
       tone={hero?.tone ?? (primary ? 'surface' : 'positive')}
+      // No exercise media exists yet (media_url is empty): the drawn artwork stands in, never a stock photo.
+      media={dark && item ? <HeroMedia icon={KIND_ICON[item.kind]} /> : undefined}
       meta={hero && hero.chips.length > 0 ? hero.chips.map((c) => <Chip key={c.kind} chip={c} dark={dark} />) : null}>
       {coach.calm ? <Text color={dark ? 'onInverseMuted' : 'textSecondary'}>{t('coachDay.calm')}</Text> : null}
       <Facts coach={coach} dark={dark} />
@@ -115,6 +117,8 @@ function Chip({ chip, dark }: { chip: HeroChip; dark: boolean }) {
       return <Badge tone={tone} icon="time" label={t('today.hero.minutes', { count: chip.minutes })} />;
     case 'variant':
       return <Badge tone={tone} label={t(`today.hero.variant.${chip.variant}`)} />;
+    case 'location':
+      return <Badge tone={tone} label={t(`enums.location.${chip.location}`)} />;
     case 'start':
       return <Badge tone={tone} label={t('daily.item.workoutAt', { time: chip.time })} />;
   }

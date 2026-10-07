@@ -1,6 +1,6 @@
 import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 
-import { MIN_TOUCH, radius, spacing, typography, useColors } from '@/theme';
+import { radius, spacing, typography, useColors } from '@/theme';
 
 import { Text } from './Text';
 

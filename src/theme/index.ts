@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AccessibilityInfo, useColorScheme } from 'react-native';
+import { AccessibilityInfo, Platform, useColorScheme, type ViewStyle } from 'react-native';
 
 import { palette, type ColorScheme, type Colors } from './tokens';
 
@@ -28,4 +28,9 @@ export function useReducedMotion(): boolean {
     };
   }, []);
   return reduced;
+}
+
+/** A CSS gradient as a style: `backgroundImage` on the web, the native equivalent elsewhere. */
+export function gradientStyle(css: string): ViewStyle {
+  return (Platform.OS === 'web' ? { backgroundImage: css } : { experimental_backgroundImage: css }) as ViewStyle;
 }

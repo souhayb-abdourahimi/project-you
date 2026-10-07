@@ -181,6 +181,17 @@ export const HEADING_VARIANTS: readonly TypographyVariant[] = [
   'heading',
 ];
 
+/**
+ * The only gradients of the app: a soft light behind the hero's artwork and the scrim that keeps
+ * text readable over a photo. Never a decorative rainbow.
+ */
+export const gradients = {
+  heroGlow:
+    'radial-gradient(circle at 85% 20%, rgba(70, 116, 255, 0.55) 0%, rgba(29, 78, 216, 0.18) 38%, rgba(18, 23, 34, 0) 70%)',
+  heroScrim:
+    'linear-gradient(180deg, rgba(10, 13, 20, 0.10) 0%, rgba(10, 13, 20, 0.55) 55%, rgba(10, 13, 20, 0.92) 100%)',
+} as const;
+
 export const iconSize = { sm: 16, md: 20, lg: 24, xl: 28 } as const;
 
 /** Durations (ms). Every animation is skipped when Reduce Motion is on. */

@@ -1,8 +1,8 @@
 import type { DailyItem } from '@/domain/journey/daily-plan';
 import type { PlannedMeal } from '@/domain/meals/planner';
-import type { WeekComparison } from '@/domain/training/compare';
+import type { SessionComparison, WeekComparison } from '@/domain/training/compare';
 
-import { heroContent, todaySnapshot, type SnapshotInput } from '../view';
+import { heroContent, todayGlance, type GlanceInput } from '../view';
 
 const week = (over: Partial<WeekComparison> = {}): WeekComparison => ({
   weekStart: '2026-09-28',
@@ -21,41 +21,73 @@ const week = (over: Partial<WeekComparison> = {}): WeekComparison => ({
 const meal = (status: PlannedMeal['status'], proteinG: number) =>
   ({ status, nutrition: { kcal: 500, proteinG, carbsG: 50, fatG: 10 } }) as unknown as PlannedMeal;
 
-const input = (over: Partial<SnapshotInput> = {}): SnapshotInput => ({
+const input = (over: Partial<GlanceInput> = {}): GlanceInput => ({
+  today: '2026-09-30',
   week: week(),
   meals: [meal('eaten', 31.6), meal('planned', 40), meal('skipped', 20)],
   proteinTargetG: 140,
-  stepsToday: null,
-  weightAvgKg: 75.2,
+  kcalTarget: 2400,
+  steps: null,
+  weight: { currentAvgKg: 75.2, changeKg: -1.4 },
   bodyOrder: ['weight', 'waist', 'consistency'],
   ...over,
 });
 
-describe('todaySnapshot: three real numbers at most', () => {
-  it('sessions of the week, protein of the meals marked eaten, then the recent weight', () => {
-    expect(todaySnapshot(input())).toEqual([
-      { id: 'sessions', done: 1, planned: 3 },
-      { id: 'protein', eatenG: 32, targetG: 140 },
-      { id: 'weight', kg: 75.2 },
-    ]);
+const session = (date: string, status: SessionComparison['status']) => ({ date, status }) as SessionComparison;
+
+describe('todayGlance: real values only', () => {
+  it('nutrition: protein and energy of the meals marked eaten, against the targets', () => {
+    expect(todayGlance(input()).nutrition).toEqual({ proteinG: 32, proteinTargetG: 140, kcal: 500, kcalTarget: 2400 });
+    expect(todayGlance(input({ meals: null })).nutrition).toBeNull();
   });
 
-  it('measured steps come before the weight', () => {
-    expect(todaySnapshot(input({ stepsToday: 6400 })).map((m) => m.id)).toEqual(['sessions', 'protein', 'steps']);
+  it('the week strip: done, adapted, not done in grey words, planned ahead, rest', () => {
+    const strip = todayGlance(
+      input({
+        week: week({
+          sessions: [
+            session('2026-09-28', 'completed'),
+            session('2026-09-29', 'skipped'),
+            session('2026-09-30', 'planned'),
+            session('2026-10-01', 'replaced'),
+            session('2026-10-03', 'moved'),
+          ],
+        }),
+      }),
+    ).week!;
+    expect(strip.days.map((d) => d.state)).toEqual(['done', 'not_done', 'planned', 'adapted', 'rest', 'rest', 'rest']);
+    expect(strip.days.find((d) => d.today)?.date).toBe('2026-09-30');
+    expect(todayGlance(input({ week: week({ prescriptionUnknown: true }) })).week).toBeNull();
+    expect(todayGlance(input({ week: week({ planned: 0 }) })).week).toBeNull();
   });
 
-  it('never shows the weight when the goal hides it, nor a value that does not exist', () => {
-    const out = todaySnapshot(
-      input({ bodyOrder: ['performance', 'consistency'], meals: null, week: week({ planned: 0, done: 0 }) }),
+  it('steps: the chart only with three measured days or more, a missing day stays empty', () => {
+    const two = todayGlance(
+      input({
+        steps: [
+          { date: '2026-09-30', value: 4000 },
+          { date: '2026-09-29', value: 9000 },
+        ],
+      }),
     );
-    expect(out).toEqual([]);
-    expect(todaySnapshot(input({ weightAvgKg: null })).map((m) => m.id)).toEqual(['sessions', 'protein']);
+    expect(two.steps).toEqual({ today: 4000, days: null });
+    const three = todayGlance(
+      input({
+        steps: [
+          { date: '2026-09-30', value: 4000 },
+          { date: '2026-09-28', value: 8000 },
+          { date: '2026-09-24', value: 6000 },
+        ],
+      }),
+    );
+    expect(three.steps?.days).toEqual([6000, null, null, null, 8000, null, 4000]);
+    expect(todayGlance(input({ steps: [] })).steps).toBeNull();
   });
 
-  it('no denominator for a week whose prescriptions are unknown (W-7.1)', () => {
-    expect(todaySnapshot(input({ week: week({ prescriptionUnknown: true }) })).map((m) => m.id)).not.toContain(
-      'sessions',
-    );
+  it('weight: only when the goal shows it and a real average exists', () => {
+    expect(todayGlance(input()).weight).toEqual({ kg: 75.2, changeKg: -1.4 });
+    expect(todayGlance(input({ bodyOrder: ['performance', 'consistency'] })).weight).toBeNull();
+    expect(todayGlance(input({ weight: { currentAvgKg: null, changeKg: null } })).weight).toBeNull();
   });
 });
 
@@ -70,11 +102,14 @@ const item = (over: Partial<DailyItem>): DailyItem => ({
 
 describe('heroContent: planned facts only', () => {
   it('a session to do: its focus, minutes, version and start, on the graphite surface', () => {
-    expect(heroContent(item({ params: { focus: 'upper', minutes: 20, variant: 'short', start: '18:00' } }))).toEqual({
+    expect(
+      heroContent(item({ params: { focus: 'upper', minutes: 20, variant: 'short', location: 'gym', start: '18:00' } })),
+    ).toEqual({
       focus: 'upper',
       chips: [
         { kind: 'minutes', minutes: 20 },
         { kind: 'variant', variant: 'short' },
+        { kind: 'location', location: 'gym' },
         { kind: 'start', time: '18:00' },
       ],
       tone: 'inverse',

@@ -68,6 +68,10 @@ Une seule famille : **SF Symbols** sur iOS, **Material Symbols** sur Android et 
 | `ScreenHeader`, `Section`, `Avatar` | en-tête d'écran, section, initiale (aucune photo inventée) |
 | `Skeleton`, `LoadingScreen` | chargement en forme de l'écran à venir, pas de gros spinner |
 | `EmptyState` | explique, rassure, propose l'étape suivante |
+| `HeroMedia` | le visuel du héros : le média réel de la séance s'il existe (`uri`), sinon le visuel de la bibliothèque Project You (halo `gradients.heroGlow`, anneaux, pictogramme du type) ; jamais une photo prise au hasard ; décoratif, le héros reste lisible sans lui |
+| `ProgressRing` | UN anneau pour UNE valeur principale (Aujourd'hui : protéines des repas notés / cible) ; valeur dite en texte (`accessibilityValue.text`) ; jamais quatre anneaux |
+| `MiniBars` | petit graphique en barres d'une semaine, données réelles seulement : un jour sans donnée est un point, jamais une barre à zéro ; dessiné à partir de 3 jours connus, sinon la valeur seule ; décrit en une phrase |
+| `CoachNote` | le mot du coach : pastille, « Ton coach », un message court, une action au plus ; une note, pas un chat |
 
 Les cartes métier (séance, repas, progrès, coach) se composent de ces primitives dans `src/features/*` ; pas de quarante variantes presque identiques.
 

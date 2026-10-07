@@ -5,6 +5,7 @@ export { Icon, ICONS, type IconName } from './Icon';
 export {
   Avatar,
   Banner,
+  CoachNote,
   EmptyState,
   LoadingScreen,
   MockBadge,
@@ -26,3 +27,5 @@ export { ConfirmButton } from './ConfirmButton';
 export { SwitchRow } from './SwitchRow';
 export { LinkRow } from './LinkRow';
 export { ListGroup, ListRow } from './List';
+export { HeroMedia } from './HeroMedia';
+export { MiniBars, ProgressRing } from './Viz';

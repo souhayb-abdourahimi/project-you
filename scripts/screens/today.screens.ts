@@ -29,6 +29,44 @@ test('today: training day with a history', async ({ page }) => {
   await shot(page, 'today-training-full');
 });
 
+test('today: steps shared from the phone (MOCK health data)', async ({ page }) => {
+  await page.clock.setFixedTime(WEDNESDAY);
+  await seedProfile(page, SCENARIOS.beginner);
+  await seedData(page, history({ from: '2026-08-03', to: '2026-09-29' }));
+  // MOCK: seven daily step totals as Apple Health / Health Connect would hand them over.
+  const steps = [6120, 8430, 5210, 9870, 7340, 4980, 3215].map((value, i) => ({
+    date: `2026-09-${String(24 + i).padStart(2, '0')}`,
+    value,
+  }));
+  await page.addInitScript((value) => {
+    localStorage.setItem(
+      'py.health.v1',
+      JSON.stringify({
+        state: {
+          connected: true,
+          wanted: ['steps'],
+          availability: null,
+          permissions: null,
+          data: { weights: [], steps: value, activeKcal: [], workouts: [] },
+          lastSyncAt: null,
+          notice: null,
+        },
+        version: 1,
+      }),
+    );
+  }, steps);
+  await page.goto('/');
+  await page.getByText('Ta prochaine action').first().waitFor();
+  // A real action of the user: breakfast and lunch marked as eaten, so the protein ring has a value.
+  await page.getByRole('button', { name: 'Merci !' }).click();
+  await openTab(page, 'Nutrition');
+  for (let i = 0; i < 2; i++) await page.getByRole('button', { name: 'Je l’ai mangé' }).first().click();
+  await openTab(page, 'Aujourd’hui');
+  await page.getByText('Ta prochaine action').first().waitFor();
+  await shot(page, 'today-steps', false);
+  await shot(page, 'today-steps-full');
+});
+
 test('today: first day', async ({ page }) => {
   await page.clock.setFixedTime(WEDNESDAY);
   await seedProfile(page, SCENARIOS.beginner);
