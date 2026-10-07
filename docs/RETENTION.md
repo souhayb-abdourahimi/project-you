@@ -80,7 +80,7 @@ Mémoire **structurée et dérivée** : recalculée depuis les données brutes, 
 | **Événements** | retour après absence, jalon atteint, adaptation acceptée/refusée, changement de disponibilités | journaux, `journey_milestones`, `adjustments` | oui, via ces tables |
 | **Données sensibles** | douleur, santé, ressenti | — | **jamais** dans la mémoire : la douleur reste un choix du Weekly Check-in de la semaine concernée, rien n'est généralisé ni interprété |
 
-Une préférence n'est **appliquée qu'après confirmation**. Le Centre de confidentialité affiche « Ce que le coach a retenu » (liste dérivée, avec la donnée source) et chaque élément renvoie à la donnée qui permet de le corriger ou le supprimer. La table `coach_memory` existante reste inutilisée dans cette phase (rien à stocker qui ne soit déjà ailleurs) ; elle sera supprimée ou réaffectée quand le coach IA arrivera (TODO).
+Une préférence n'est **appliquée qu'après confirmation**. Le Centre de confidentialité affiche « Ce que le coach a retenu » (liste dérivée, avec la donnée source) et chaque élément renvoie à la donnée qui permet de le corriger ou le supprimer. La table `coach_memory` existante reste inutilisée dans cette phase (rien à stocker qui ne soit déjà ailleurs) ; elle sera supprimée ou réaffectée quand le coach IA arrivera (TODO ; héritée et inutilisée, D-042).
 
 ## 6. Confidentialité
 

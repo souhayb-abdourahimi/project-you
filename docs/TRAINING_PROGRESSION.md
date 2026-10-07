@@ -27,7 +27,7 @@ PRESCRIPTION (planned_exercises, figée)
 | Difficulté de l'exercice / de la séance | `exercise_reports.difficulty`, `workout_sessions.difficulty` (1–5) | 5 = très difficile |
 | Ressenti d'une série « Très difficile » | RPE 10 stocké par W-3 | très difficile |
 | Fatigue déclarée | `daily_checkins` du jour ou de la veille (`declaredFatigue`, la définition du Journey) | séance neutre, pas comptée contre |
-| Variante faite | `completedSessions.variant` / `sessionVariants` | allégée = exclue ; courte = neutre si non complète |
+| Variante faite et structure suivie | `completedSessions.variant` / `sessionVariants`, décision de la prescription (`session-context.ts`, W-7.1) | matrice partagée : allégée (y compris semaine allégée de fin de cycle) = exclue ; reprise et volume réduit = neutres (`adapted`) ; courte = neutre si non complète |
 | Séance arrêtée | `outcome_reason` (`stopped`) | neutre ; arrêt pour douleur = jamais un succès, bloque la hausse |
 | Non fait, remplacé | `exercise_reports.not_performed` + raison, `exercise_substitutions` + raison | voir §6 |
 | Régularité | séances prévues avec cet exercice faites / prévues et passées (fenêtre) | condition de stagnation |

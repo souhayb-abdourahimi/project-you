@@ -52,14 +52,19 @@ Audit et architecture : `docs/WORKOUT_ENGINE.md`, `docs/TRAINING_ARCHITECTURE.md
   - [ ] Apprentissage des règles à partir de l'effet observé : volontairement non fait (D-038) ; à rediscuter avec assez de données
 - [x] W-6 Intégrations (D-038, revue `revue-w6-workout-coach.md`, en attente de validation) : prévu / fait, Programme, historique, Progress Journey, explications, séance hors programme un jour de repos ; aucune migration
   - [ ] Décider si « Très difficile » en fin de séance compte comme un jour de fatigue (proposition `TRAINING_ARCHITECTURE.md` §8, non appliquée)
-  - [ ] Ouvrir la bonne séance un jour à deux séances (la route ouvre la première)
+  - [x] Ouvrir la bonne séance un jour à deux séances (W-7.1 : `?index=`, D-042)
   - [ ] Historique au-delà de 12 semaines (pagination)
 - [x] W-7 Coach du jour longitudinal (D-039, `docs/DAILY_COACH.md` §13, revue `revue-w7-workout-coach.md`, en attente de validation) : une priorité par jour, question de cause fermée, mémoire confirmée et oubliable, cadence, suivi après adaptation, notifications alignées ; aucune migration
   - [ ] Faire relire les seuils `CADENCE` (`coach-memory.ts`) : 14 j, 2 occurrences, cause valable 14 j, pause 3 j, 2 affichages, « Pas maintenant » 7 j, habitude 2 fois / 6 semaines, suivi 7 j, recul 2 séances
   - [ ] Anti-repétition des lignes du coach par appareil (`coachShown`, 90 j) : la question est aussi bornée par le journal synchronisé, mais un suivi d'adaptation peut se montrer une fois par appareil
-  - [ ] Deux séances le même jour : la carte du coach ouvre la première (inchangé, phase de finition)
+  - [x] Deux séances le même jour : chaque lien ouvre sa séance (W-7.1, D-042)
   - [ ] Autres habitudes possibles (jour de repos préféré, heure) : volontairement non apprises tant que la première n'est pas validée en usage réel
-  - [ ] Table `coach_memory` toujours inutilisée : décider sa suppression ou son usage (D-039)
+  - [ ] Table `coach_memory` héritée et inutilisée (documentée, D-042) : décider sa suppression (migration) ou un usage précis (coach IA), jamais deux sources
+- [x] W-7.1 Consolidation fiabilité W-6 / W-7 (D-040, D-041, D-042, revue `revue-w7-1-workout-coach.md`, en attente de validation) : ordre multi-appareil par révision, couverture des effets, identité D-033 par contenu, remplacement annulé, deux séances, passé inconnu, matrice de contexte, adaptations empilées, confidentialité (repas, suppression partielle, listage photos)
+  - [ ] Appliquer la migration `20261007000001_decision_revision.sql` sur Supabase (après W-1, W-3, W-4, W-5) avant toute version de l'app contenant W-7.1 ; mettre à jour tous les appareils
+  - [ ] Redéployer l'Edge Function `delete-account` (`supabase functions deploy delete-account`) : listage paginé et récursif des photos
+  - [ ] Unifier les deux définitions de « fatigue déclarée » (effets : check-in ≥ seuil d'adaptation ; progression : fatigue ≥ 4 ou énergie ≤ 2)
+  - [ ] Faire relire les seuils `EFFECT_COVERAGE` (50 % des jours et 3 check-ins minimum, 2 séances prévues)
 - [ ] W-8 (uniquement sur le mot de Souhayb)
 - [ ] Décider la suppression de `workout_plans` (jamais écrite) et de `workout_sessions.plan_id`, après vérification qu'elle est vide en production
 - [ ] Appliquer la migration `20261002000001` sur le projet Supabase réel (SQL Editor) après fusion
@@ -107,7 +112,7 @@ Plan de la phase (ordre demandé) ; détail dans `docs/DAILY_COACH.md`, `docs/PR
 
 - [ ] Remplacer le harness `supabase/tests` par `supabase test db` (pgTAP) quand Docker est disponible.
 - [ ] Rate limiting des Edge Functions (IA, suppression de compte).
-- [ ] Politiques Storage du bucket `progress-photos` (migration dédiée quand la fonctionnalité photo arrive) ; `delete-account` : paginer la liste des photos et échouer si elle ne peut pas être lue.
+- [ ] Politiques Storage du bucket `progress-photos` (migration dédiée quand la fonctionnalité photo arrive) ; vérifier le nettoyage Storage de `delete-account` sur le vrai projet (pagination et échec sur erreur de listage faits en W-7.1, non vérifiés en réel).
 - [ ] Identifiants de `goals` et des repas dérivés du `user_id` : passer la clé de conflit à `(user_id, id)` ou ajouter un sel aléatoire.
 - [ ] Découper `src/features/onboarding/StepContent.tsx` (449 lignes).
 - [ ] Placeholders de dates/heures codés en dur dans l'onboarding : passer par i18n.

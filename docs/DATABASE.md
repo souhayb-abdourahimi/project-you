@@ -40,7 +40,7 @@ Supabase / PostgreSQL. Migrations versionnées dans `supabase/migrations/` (horo
 | `notification_preferences` | Notification | une ligne par catégorie |
 | `notification_settings` / `notification_history` | préférences et historique du canal notifications | D-024, voir ci-dessous |
 | `integration_connections` | CalendarConnection, HealthConnection | `kind` = calendar/health, scopes, statut ; aucun token en clair côté client |
-| `coach_memory` | mémoire structurée du coach | `kind` énuméré (aliment détesté, créneau préféré…) |
+| `coach_memory` | **héritée, inutilisée** (D-042) | ni lue ni écrite par l'app : la mémoire du coach vit dans `adjustments` (`coach.*`, D-039) ; exportée, supprimée avec le compte ; suppression ou usage futur à décider |
 | `ai_conversations` / `ai_messages` | AIConversation, AIMessage | phase 3 ; tables créées mais inutilisées au MVP |
 
 ## Migration `20261002000001_workout_coach_foundation.sql` (W-1, D-031)
@@ -50,6 +50,12 @@ Programmes versionnés et prescriptions immuables : `training_programs`, `planne
 ### Synchronisation (W-2, D-032)
 
 Aucune nouvelle migration en W-2. Les tables d'entraînement sont désormais écrites par l'app : ordre de push `training_programs` → `workout_sessions` → `planned_exercises` → `exercise_logs` / `exercise_substitutions` ; `training_programs` et `planned_exercises` ne sont jamais supprimées par la sync (`deleteOnMissing: false`), seulement par l'effacement Privacy Center ou la suppression du compte. Ids stables calculés sur l'appareil (upserts idempotents). L'app appelle `attach_reconstructed_training_history()` avant le pull tant qu'une séance n'a ni programme ni source. **La migration W-1 doit être appliquée sur Supabase avant de publier une version de l'app qui contient W-2.**
+
+## Migration `20261007000001_decision_revision.sql` (W-7.1, D-040)
+
+`adjustments.revision` : entier ≥ 0 (contrainte 0–1 000 000), défaut 0, figé par `adjustments_immutable`. Compteur logique par proposition : un appareil écrit 1 + la plus haute révision qu'il connaît, une annulation révision annulée + 1. Ordre en vigueur : révision, puis instant (`decided_at` comparé comme un instant), puis id. Lignes existantes : 0. RLS inchangée ; synchronisée (poussée si non nulle, relue) ; exportée et supprimée avec `adjustments`. Tests : `supabase/tests/training.sql`, `sync.db.test.ts`. **À appliquer sur Supabase après W-1, W-3, W-4 et W-5, avant toute version de l'app contenant W-7.1**, puis mettre à jour tous les appareils.
+
+W-7.1 ne change aucune autre table. `exercise_substitutions` est désormais supprimée logiquement par la sync quand la séance existe encore (`deleted_at`, colonne existante) : un remplacement annulé ne revient pas.
 
 ## Migration `20261006000003_structural_adaptations.sql` (W-5, D-037)
 

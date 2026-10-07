@@ -122,6 +122,8 @@ Audit : chaque exercice a `pattern`, `muscles`, `equipment`, `level`, `compound`
 
 Pour chaque adaptation appliquée : cause (raison + faits), intervention, période, avant/après sur le même nombre de jours (séances prévues, faites, jours de fatigue), observations. Jamais une causalité : « Après cette adaptation, tes séances ont été mieux complétées (14 jours comparés aux 14 jours d'avant). » L'apprentissage (ajuster les règles selon l'effet) est laissé à W-6.
 
+**Couverture (W-7.1, D-041)** : seuils `EFFECT_COVERAGE` (`journey/effect-coverage.ts`). Fatigue comparée seulement avec un check-in de fatigue sur au moins 50 % des jours et au moins 3 jours de chaque côté, en taux ; complétion seulement avec au moins 2 séances prévues de chaque côté. Sinon `insufficient_data` : « Pas assez de données pour évaluer la fatigue. » Jours complets seulement, fenêtre « avant » de même longueur. Un effet observé reste visible après « Revenir en arrière » (la réponse ferme la fenêtre).
+
 ## 10. Écrans
 
 - **Aujourd'hui** : une proposition structurelle au plus (`primaryProposal`), jamais sous sécurité.
@@ -131,7 +133,7 @@ Pour chaque adaptation appliquée : cause (raison + faits), intervention, pério
 
 ## 11. Multi-appareil et hors ligne
 
-- Une décision est une ligne : aucune n'est perdue. Deux appareils qui répondent différemment hors ligne gardent leurs deux lignes ; la décision en vigueur est la plus récente (`decided_at`, puis id), la même partout (`effectiveDecisions`). Une annulation est toujours postérieure à ce qu'elle annule.
+- Une décision est une ligne : aucune n'est perdue. Deux appareils qui répondent différemment hors ligne gardent leurs deux lignes ; la décision en vigueur se choisit par révision logique, puis instant, puis id (D-040), la même partout (`effectiveDecisions`). Une réponse donnée après avoir vu l'autre gagne toujours ; deux réponses données hors ligne sans se voir sont départagées par l'horloge des appareils (déterministe, pas une preuve d'ordre réel). Une annulation est toujours postérieure à ce qu'elle annule.
 - Les prescriptions convergent : après la sync, chaque appareil re-prescrit à partir de la décision en vigueur, avec les mêmes ids.
 - Hors ligne : voir, répondre et s'entraîner fonctionne (tout est local) ; la sync pousse les réponses ensuite.
 
