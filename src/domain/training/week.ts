@@ -54,8 +54,12 @@ export const trainingIds = {
    */
   revision: (programId: string, key: SessionKey, fingerprint: string) =>
     stableUuid(`${programId}:training:session:${key}:rev:${fingerprint}`),
-  /** A used session kept with its own prescription when the server holds another one for its id. */
-  kept: (sessionId: string, prescribedAt: string) => stableUuid(`${sessionId}:training:kept:${prescribedAt}`),
+  /**
+   * A used session kept with its own prescription when the server holds another one for its id:
+   * derived from its content too (W-7.1), so two different kept versions never share an id.
+   */
+  kept: (sessionId: string, prescribedAt: string, fingerprint: string) =>
+    stableUuid(`${sessionId}:training:kept:${prescribedAt}:${fingerprint}`),
 };
 
 /** Where a session without prescription comes from (`workout_sessions.prescription_source`). */
@@ -721,7 +725,25 @@ export function archivedVersion(lost: ProgramVersion, winner: ProgramVersion): P
  * what the user actually saw. `programId` is the archived version when the session's version lost.
  */
 export function keptSession(p: PrescribedSession, programId: string, key: SessionKey): PrescribedSession {
-  const id = programId === p.programId ? trainingIds.kept(p.id, p.prescribedAt) : trainingIds.session(programId, key);
+  const content = p.exercises
+    .map((e) =>
+      [
+        e.variant,
+        e.position,
+        e.exerciseId,
+        e.sets,
+        e.repsMin,
+        e.repsMax,
+        e.unit,
+        e.targetLoadKg,
+        e.targetReps,
+        e.prescribedAt,
+      ].join('.'),
+    )
+    .sort()
+    .join('|');
+  const id =
+    programId === p.programId ? trainingIds.kept(p.id, p.prescribedAt, content) : trainingIds.session(programId, key);
   return deepFreeze({
     ...p,
     id,

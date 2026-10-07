@@ -1074,7 +1074,15 @@ export function applyRemote(
     const other =
       server?.prescription_source === 'engine' &&
       Date.parse(String(server.prescribed_at)) !== Date.parse(p.prescribedAt);
-    if (!lostVersion && !other) continue;
+    // Same session and time, but another variant content (a short version computed on each
+    // device, W-7.1): the rows used here are the history, never the other device's.
+    const otherRows = valid('planned_exercises').some((r) => {
+      if (String(r.session_id) !== id) return false;
+      const mine = p.exercises.find((x) => x.id === String(r.id));
+      if (!mine) return p.exercises.some((x) => x.variant === r.variant);
+      return hashRow(plannedRow(mine)) !== hashRow(plannedRow(plannedFromRow(r)));
+    });
+    if (!lostVersion && !other && !otherRows) continue;
     let programId = p.programId;
     if (lostVersion) {
       const archived = archivedVersion(

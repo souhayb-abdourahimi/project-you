@@ -13,7 +13,7 @@ import { adherence } from '@/domain/journey/adherence';
 import type { PrescribedSession } from '@/domain/training/program';
 import { appliedDecisions, decisionFor, effectiveDecisions, revertDecision } from '@/domain/journey/adjustments';
 import { STRUCTURE, structureFor } from '@/domain/training/structure';
-import { activeProgram, prescriptionFor, refreshWeek, rescheduleSession } from '@/domain/training/week';
+import { activeProgram, adaptSession, prescriptionFor, refreshWeek, rescheduleSession } from '@/domain/training/week';
 
 import { classifySyncError, syncOnce, type SyncClient } from '../sync';
 
@@ -679,6 +679,64 @@ describe('historical truth: the server decides the future, the prescription used
       [exercise]: { notPerformed: true, notPerformedReason: 'no_time' },
     });
     for (const d of [r.a, r.b]) expect(await d.sync()).toMatchObject({ pushed: 0, failed: 0 });
+  });
+
+  it('same session, a different short version on each device: A’s facts stay on the short version A used (W-7.1)', async () => {
+    const a = device(SCENARIOS.muscleGain);
+    a.open('2026-09-28');
+    await a.sync(true);
+    const b = device(SCENARIOS.muscleGain);
+    await b.sync();
+    /** "J'ai N minutes" on a device (useWorkoutSession: the short rows are added, then read). */
+    const short = (d: ReturnType<typeof device>, minutes: number, at: string) => {
+      const session = live(d, WEDNESDAY);
+      const next = adaptSession({
+        session,
+        program: activeProgram(d.state().programs!),
+        variant: 'short',
+        minutes,
+        training: SCENARIOS.muscleGain.training,
+        done: false,
+        prescribedAt: at,
+      })!;
+      d.set({
+        prescriptions: { ...d.state().prescriptions, [next.id]: next },
+        sessionVariants: { ...d.state().sessionVariants, [WEDNESDAY]: 'short' },
+      });
+      return next.exercises.filter((e) => e.variant === 'short');
+    };
+    fake.setOffline(true);
+    const usedByA = short(a, 15, '2026-09-30T10:00:00.000Z');
+    const exercise = usedByA[0].exerciseId;
+    a.logSet(WEDNESDAY, exercise, 12, 0);
+    const byB = short(b, 30, '2026-09-30T09:00:00.000Z');
+    const shortContent = (rows: PrescribedSession['exercises']) =>
+      rows.map(({ exerciseId, sets, position }) => ({ exerciseId, sets, position }));
+    expect(shortContent(byB)).not.toEqual(shortContent(usedByA));
+    fake.setOffline(false);
+    expect((await b.sync()).errors).toEqual([]);
+    expect((await a.sync()).errors).toEqual([]);
+    expect((await a.sync()).errors).toEqual([]);
+    expect((await b.sync()).errors).toEqual([]);
+
+    // On A, the session still shows exactly the short version A used.
+    const keptOnA = live(a, WEDNESDAY);
+    expect(shortContent(keptOnA.exercises.filter((e) => e.variant === 'short'))).toEqual(shortContent(usedByA));
+    // On the server, A's set points to a planned row of that same short version, same content.
+    const log = fake.rows('exercise_logs').find((l) => l.exercise_id === exercise)!;
+    const plannedRow = fake.table('planned_exercises').get(String(log.planned_exercise_id))!;
+    expect(plannedRow).toMatchObject({ session_id: keptOnA.id, variant: 'short', exercise_id: exercise });
+    const serverShort = fake
+      .rows('planned_exercises')
+      .filter((e) => e.session_id === keptOnA.id && e.variant === 'short')
+      .sort((x, y) => Number(x.position) - Number(y.position))
+      .map((e) => ({ exerciseId: e.exercise_id, sets: e.sets, position: e.position }));
+    expect(serverShort).toEqual(shortContent(usedByA));
+    // B reads the same: its own session, the day of A's facts, both converged.
+    expect(shortContent(live(b, WEDNESDAY).exercises.filter((e) => e.variant === 'short'))).toEqual(
+      shortContent(usedByA),
+    );
+    for (const d of [a, b]) expect(await d.sync()).toMatchObject({ pushed: 0, failed: 0 });
   });
 
   it('a session not used adopts the server prescription (the future converges)', async () => {

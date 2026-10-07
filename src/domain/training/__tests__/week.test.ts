@@ -522,6 +522,11 @@ describe('historical truth (D-033)', () => {
     expect(kept.prescribedAt).toBe(p.prescribedAt);
     // Same version, other prescription on the server: new session id, same program.
     const same = keptSession(p, p.programId, WEDNESDAY);
-    expect(same).toMatchObject({ programId: p.programId, id: trainingIds.kept(p.id, p.prescribedAt) });
+    expect(same.programId).toBe(p.programId);
+    expect(same.id).not.toBe(p.id);
+    // Derived from the content too (W-7.1): another content kept for the same session, another id.
+    const other = keptSession({ ...p, exercises: p.exercises.slice(1) }, p.programId, WEDNESDAY);
+    expect(other.id).not.toBe(same.id);
+    expect(keptSession(p, p.programId, WEDNESDAY).id).toBe(same.id);
   });
 });
