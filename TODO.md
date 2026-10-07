@@ -25,7 +25,7 @@ Audit et architecture : `docs/WORKOUT_ENGINE.md`, `docs/TRAINING_ARCHITECTURE.md
 - [x] W-2 Stockage local v4, figer la semaine, sync des nouvelles tables, appel de `attach_reconstructed_training_history()`, conflit de deux versions publiées hors connexion (D-032, revue `revue-w2-workout-coach.md`)
   - [ ] Appliquer la migration W-1 sur Supabase avant toute version de l'app contenant W-2 ; mettre à jour tous les appareils (une ancienne version ignore les séances `superseded`)
   - [x] W-6 : jours passés de la semaine lus depuis les prescriptions (Programme et adhérence) ; une semaine sans prescription garde le planning reconstruit (D-038)
-  - [ ] « Ton bilan » (`review.tsx`) relit encore la semaine passée avec `scheduleOfWeek` : le brancher sur `programWeek`
+  - [x] « Ton bilan » (`review.tsx`) lit la semaine passée depuis ses prescriptions (`plannedSessionDates`, W-7)
   - [ ] Purger les prescriptions anciennes du stockage local (aucun élagage aujourd'hui)
   - [x] W-4 : fatigue du jour branchée (séance du jour re-prescrite, `gateProgression`)
   - [x] D-033 vérité historique : une séance utilisée garde sa prescription malgré un conflit ; version perdante mais utilisée archivée ; collision `date#index` résolue (ligne prévue `superseded`, deux séances réelles gardées)
@@ -54,7 +54,13 @@ Audit et architecture : `docs/WORKOUT_ENGINE.md`, `docs/TRAINING_ARCHITECTURE.md
   - [ ] Décider si « Très difficile » en fin de séance compte comme un jour de fatigue (proposition `TRAINING_ARCHITECTURE.md` §8, non appliquée)
   - [ ] Ouvrir la bonne séance un jour à deux séances (la route ouvre la première)
   - [ ] Historique au-delà de 12 semaines (pagination)
-- [ ] W-7 E2E et revue critique
+- [x] W-7 Coach du jour longitudinal (D-039, `docs/DAILY_COACH.md` §13, revue `revue-w7-workout-coach.md`, en attente de validation) : une priorité par jour, question de cause fermée, mémoire confirmée et oubliable, cadence, suivi après adaptation, notifications alignées ; aucune migration
+  - [ ] Faire relire les seuils `CADENCE` (`coach-memory.ts`) : 14 j, 2 occurrences, cause valable 14 j, pause 3 j, 2 affichages, « Pas maintenant » 7 j, habitude 2 fois / 6 semaines, suivi 7 j, recul 2 séances
+  - [ ] Anti-repétition des lignes du coach par appareil (`coachShown`, 90 j) : la question est aussi bornée par le journal synchronisé, mais un suivi d'adaptation peut se montrer une fois par appareil
+  - [ ] Deux séances le même jour : la carte du coach ouvre la première (inchangé, phase de finition)
+  - [ ] Autres habitudes possibles (jour de repos préféré, heure) : volontairement non apprises tant que la première n'est pas validée en usage réel
+  - [ ] Table `coach_memory` toujours inutilisée : décider sa suppression ou son usage (D-039)
+- [ ] W-8 (uniquement sur le mot de Souhayb)
 - [ ] Décider la suppression de `workout_plans` (jamais écrite) et de `workout_sessions.plan_id`, après vérification qu'elle est vide en production
 - [ ] Appliquer la migration `20261002000001` sur le projet Supabase réel (SQL Editor) après fusion
 - [ ] Faire relire les seuils de D-030 avec ceux de D-024 / D-026 / D-028
@@ -67,7 +73,7 @@ Plan de la phase (ordre demandé) ; détail dans `docs/DAILY_COACH.md`, `docs/PR
 - [x] 1–10 : DailyPlan, Daily Coach, Progress Journey, Weekly Check-in + « Ton bilan », Adaptation Engine, notifications, écran Aujourd'hui, Mon évolution, E2E, revue finale (PR #4, 2026-10-01)
 - [x] Migration `20261001000004_daily_coach.sql`
 - [ ] E2E `low_logging` seul et application d'une proposition calorique : couverts en unitaires seulement (historique repas non semable de façon fiable)
-- [ ] Mémoire du coach : écran de confirmation des suggestions (exercice refusé deux fois, recette non aimée/aimée) ; aujourd'hui calculées, pas encore affichées
+- [ ] Mémoire du coach : écran de confirmation des suggestions (exercice refusé deux fois, recette non aimée/aimée) ; aujourd'hui calculées, pas encore affichées (W-7 a ajouté la carte « Ce que le coach retient » dans Réglages pour l'habitude « séance courte » seulement)
 - [ ] Adhérence des semaines passées : les créneaux occupés du calendrier ne sont pas rejoués (seulement la semaine en cours)
 - [ ] Chemin de « Mon évolution » : rendre chaque étape focalisable au lecteur d'écran sur le web (aujourd'hui un libellé sur un conteneur)
 - [ ] Faire relire les seuils de D-028 (calibration, adhérence, ±150 kcal, plateau, score de risque) avec ceux de D-024/D-026

@@ -101,6 +101,10 @@ Bornes : jamais plus de ±150 kcal/jour par adaptation, jamais sous `floorKcal`,
 
 Les règles d'entraînement structurelles (reprise, semaine allégée, volume réduit, variante plus facile, changement durable d'exercice, bilan de fin de cycle) sont des règles de ce moteur, appliquées après la branche sécurité : `journey/structural.ts`. Chaque réponse est une ligne du journal (§9), avec l'id stable de la proposition et sa portée. Détail, seuils et écrans : `docs/TRAINING_STRUCTURE.md`.
 
+**Dans le coach du jour (W-7, D-039)** : la proposition de tête (`primaryProposal`) est une priorité de `coachDay()` (rang 3, après sécurité et reprise ; sous sécurité elle attend, en reprise seule « reprise en douceur » peut mener). Elle s'affiche avec la carte et les réponses D-037 inchangées. Pendant une adaptation temporaire, le coach le rappelle en une ligne (« Cette semaine reste allégée. ») ; dans les 7 jours après sa fin, il dit une fois l'effet observé (`adaptationEffects`), sans jamais l'attribuer à l'adaptation, ou « pas encore assez de recul » sous 2 séances prévues. Le libellé de la réponse à « séances par semaine » est désormais précis (« Passer à 2 séances par semaine ») et son impact est écrit (clé manquante corrigée).
+
+Les réponses du coach (cause déclarée, habitude confirmée) sont aussi des lignes de `adjustments` (préfixe `coach.`), mais **jamais** des décisions d'adaptation : elles sont exclues de `effectiveDecisions`, `overriddenDecisions`, de l'historique et de la mémoire du parcours (`docs/DAILY_COACH.md` §13.4).
+
 ## 6. Plateau (stagnation)
 
 Signal `plateau`, **jamais avant 28 jours** de parcours, sur une fenêtre de **21 jours** :
@@ -138,6 +142,7 @@ Aucun texte libre (minimisation des données : la douleur, par exemple, est un c
 - **Plan de la semaine suivante** : nombre de séances (après adaptation acceptée), jours prévus, éventuelle semaine allégée.
 - **Données manquantes dites** : « Pas de pesée cette semaine : je ne peux rien conclure sur ton poids. » Jamais de conclusion inventée.
 - Sans check-in : le bilan se fait avec les seules données et le dit.
+- **Semaine passée telle que prescrite** (W-7) : `review.tsx` passe `plannedSessionDates` (jours prévus lus depuis les prescriptions stockées, `week-view.ts`) ; un profil changé depuis ne réécrit plus le bilan de la semaine passée.
 
 ## 9. Traçabilité
 
