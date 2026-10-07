@@ -5,6 +5,7 @@ import {
   draftFromSnapshot,
   emptyDraft,
   getStep,
+  type DraftSection,
   type OnboardingDraft,
   type OnboardingStepId,
 } from '@/domain/onboarding/steps';
@@ -15,7 +16,7 @@ import { useProfileStore } from '@/state/profile';
 
 import { commitProfile } from './useCommitProfile';
 
-type Update = <K extends keyof OnboardingDraft>(section: K, patch: Partial<OnboardingDraft[K]>) => void;
+type Update = <K extends DraftSection>(section: K, patch: Partial<OnboardingDraft[K]>) => void;
 
 /**
  * Edit form of one section of the profile (D-043): the same questions as the onboarding, on a copy

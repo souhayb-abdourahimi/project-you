@@ -68,8 +68,9 @@ const en: LocaleShape = {
     'profile.age': {
       title: 'What year were you born?',
       label: 'Birth year',
-      hint: 'Only used to estimate your needs.',
-      tooYoung: 'Project You is for people aged 16 and over.',
+      hint: 'Only used to estimate your needs. Project You is designed for adults (18 and over).',
+      tooYoung: 'Project You is for people aged 18 and over: the questionnaire cannot continue with this birth year.',
+      outOfRange: 'Check the year you entered.',
     },
     'profile.body': { title: 'Your height and weight', height: 'Height (cm)', weight: 'Weight ({{unit}})' },
     'profile.sex': {

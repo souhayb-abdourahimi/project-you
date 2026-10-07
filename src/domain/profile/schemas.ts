@@ -1,6 +1,12 @@
 import { z } from 'zod';
 
-export const MIN_AGE = 16;
+/**
+ * Project You is for adults (D-043, validated 2026-10-07): a birth year entered in the questionnaire
+ * or in Réglages must give 18 or more. Before W-8 the minimum was 16: an account created then keeps
+ * its unchanged birth year (`acceptedBirthYear`), and the protections of minors stay in the engines
+ * (`noDeficitProfile`, `ADULT_AGE`, journey `noPush`). Age is computed from the birth year only.
+ */
+export const MIN_AGE = 18;
 export const MAX_AGE = 100;
 
 export const Sex = z.enum(['female', 'male', 'unspecified']);

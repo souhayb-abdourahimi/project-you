@@ -65,7 +65,7 @@ Audit et architecture : `docs/WORKOUT_ENGINE.md`, `docs/TRAINING_ARCHITECTURE.md
   - [ ] Redéployer l'Edge Function `delete-account` (`supabase functions deploy delete-account`) : listage paginé et récursif des photos
   - [ ] Unifier les deux définitions de « fatigue déclarée » (effets : check-in ≥ seuil d'adaptation ; progression : fatigue ≥ 4 ou énergie ≤ 2)
   - [ ] Faire relire les seuils `EFFECT_COVERAGE` (50 % des jours et 3 check-ins minimum, 2 séances prévues)
-- [x] W-8 Complétude produit et Réglages (D-043, `docs/SETTINGS_ARCHITECTURE.md`, revue `revue-w8-product-completeness.md`, en attente de validation) : voir la section « W-8 » ci-dessous
+- [x] W-8 Complétude produit et Réglages (D-043, `docs/SETTINGS_ARCHITECTURE.md`, revue `revue-w8-product-completeness.md`, validé le 2026-10-07, âge 18+ appliqué) : voir la section « W-8 » ci-dessous
 - [ ] Décider la suppression de `workout_plans` (jamais écrite) et de `workout_sessions.plan_id`, après vérification qu'elle est vide en production
 - [ ] Appliquer la migration `20261002000001` sur le projet Supabase réel (SQL Editor) après fusion
 - [ ] Faire relire les seuils de D-030 avec ceux de D-024 / D-026 / D-028
@@ -73,11 +73,11 @@ Audit et architecture : `docs/WORKOUT_ENGINE.md`, `docs/TRAINING_ARCHITECTURE.md
 ## W-8 — restes classés (D-043)
 
 ### Bloquant W-8 (avant fusion)
-- [ ] Appliquer la migration `20261007000002_settings_contract.sql` sur Supabase (SQL Editor) avant de publier une version contenant W-8 ; vérifier que le bucket `progress-photos` est privé et que ses quatre politiques existent.
+- [x] Migration `20261007000002_settings_contract.sql` appliquée sur le projet réel le 2026-10-07 (colonnes, index, bucket privé et quatre politiques vérifiés par Souhayb).
 
 ### Avant bêta publique
 - [ ] Activer Leaked Password Protection (Authentication › Providers › Email, plan Pro et plus, ou Management API `password_hibp_enabled`).
-- [ ] Décider l'âge minimum (proposition : 18+, `SETTINGS_ARCHITECTURE.md` §11).
+- [x] Âge minimum 18+ appliqué (D-043, `SETTINGS_ARCHITECTURE.md` §11) ; vérifier en production s'il existe des comptes de 16–17 ans créés avant (ils gardent leurs protections).
 - [ ] Chiffrer les données santé locales (`py.health.v1`) ou ne garder que des agrégats.
 - [ ] Fournisseur de lieux de production (D-019) : Overpass public appelé directement depuis l'app.
 - [ ] Faire relire les libellés de Réglages et de « Ce qui va changer » par de vrais utilisateurs.
@@ -87,7 +87,7 @@ Audit et architecture : `docs/WORKOUT_ENGINE.md`, `docs/TRAINING_ARCHITECTURE.md
 
 ### Redesign (phase premium, plus tard)
 - [ ] Sélecteur d'heure natif à la place des champs HH:MM ; lignes de réglages et cartes au style final.
-- [ ] Pas de charge en livres (aujourd'hui 2,5 kg ≈ 5,5 lb).
+- [ ] Pas de charge en livres (aujourd'hui 2,5 kg ≈ 5,5 lb) : accepté provisoirement, **à faire avant une sortie publique internationale**.
 
 ### Post-lancement
 - [ ] Longueurs en pouces (aujourd'hui cm seulement).

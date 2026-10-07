@@ -25,6 +25,26 @@ export interface OnboardingDraft {
   budget: Partial<BudgetProfile>;
   schedule: Partial<ScheduleProfile>;
   preferences: Partial<PreferencesProfile>;
+  /**
+   * Birth year of the saved profile when the draft edits it (D-043): kept as is, it stays accepted
+   * even if it was entered under the former 16+ rule. Any other value must give 18 or more.
+   */
+  acceptedBirthYear?: number;
+}
+
+/** The answer groups of a draft (everything the questions edit). */
+export type DraftSection = Exclude<keyof OnboardingDraft, 'acceptedBirthYear'>;
+
+export type AgeCheck = 'ok' | 'missing' | 'too_young' | 'out_of_range';
+
+/** The questionnaire's age rule (18+, D-043); see `acceptedBirthYear` for profiles created before. */
+export function checkAge(draft: Pick<OnboardingDraft, 'user' | 'acceptedBirthYear'>, referenceYear: number): AgeCheck {
+  const birthYear = draft.user.birthYear;
+  if (birthYear === undefined) return 'missing';
+  const age = referenceYear - birthYear;
+  if (age > MAX_AGE) return 'out_of_range';
+  if (age >= MIN_AGE || (birthYear === draft.acceptedBirthYear && age >= 0)) return 'ok';
+  return age < 0 ? 'out_of_range' : 'too_young';
 }
 
 export function emptyDraft(): OnboardingDraft {
@@ -91,11 +111,7 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     id: 'profile.age',
     section: 'profile',
     isVisible: always,
-    isComplete: (d, year) => {
-      if (d.user.birthYear === undefined) return false;
-      const age = year - d.user.birthYear;
-      return age >= MIN_AGE && age <= MAX_AGE;
-    },
+    isComplete: (d, year) => checkAge(d, year) === 'ok',
   },
   {
     id: 'profile.body',
@@ -204,8 +220,8 @@ export function firstIncompleteStep(draft: OnboardingDraft, referenceYear: numbe
 export type SnapshotResult = { ok: true; snapshot: UserContextSnapshot } | { ok: false; issues: string[] };
 
 export function buildSnapshot(draft: OnboardingDraft, now: Date): SnapshotResult {
-  const age = draft.user.birthYear === undefined ? undefined : now.getFullYear() - draft.user.birthYear;
-  if (age !== undefined && (age < MIN_AGE || age > MAX_AGE)) {
+  const age = checkAge(draft, now.getFullYear());
+  if (age === 'too_young' || age === 'out_of_range') {
     return { ok: false, issues: ['user.birthYear: age_out_of_range'] };
   }
   const hasGym = draft.training.hasGym ?? false;
@@ -262,6 +278,7 @@ function withBodyweight<T extends string>(equipment: T[]): (T | 'bodyweight')[] 
  */
 export function draftFromSnapshot(snapshot: UserContextSnapshot): OnboardingDraft {
   return {
+    acceptedBirthYear: snapshot.user.birthYear,
     user: { ...snapshot.user },
     goal: { ...snapshot.goal, priorities: { ...snapshot.goal.priorities } },
     motivation: { ...snapshot.motivation },

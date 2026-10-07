@@ -2,6 +2,7 @@ import type { UserContextSnapshot } from '../../profile/schemas';
 import { SCENARIOS } from '../../scenarios';
 import {
   buildSnapshot,
+  checkAge,
   draftFromSnapshot,
   emptyDraft,
   firstIncompleteStep,
@@ -62,11 +63,39 @@ describe('adaptive onboarding', () => {
     expect(firstIncompleteStep(completeDraft(), 2026)).toBeNull();
   });
 
-  it('rejects ages below 16', () => {
+  it('18+ (D-043): a 17-year-old cannot continue, 18 can (birth year only)', () => {
+    const now = new Date('2026-09-30T10:00:00Z');
     const d = completeDraft();
-    d.user = { ...d.user, birthYear: 2012 };
-    expect(firstIncompleteStep(d, 2026)).toBe('profile.age');
-    expect(buildSnapshot(d, new Date('2026-09-30T10:00:00Z')).ok).toBe(false);
+    for (const [birthYear, check] of [
+      [2012, 'too_young'],
+      [2010, 'too_young'],
+      [2009, 'too_young'],
+      [2008, 'ok'],
+      [1926, 'ok'],
+      [1925, 'out_of_range'],
+      [2030, 'out_of_range'],
+    ] as const) {
+      d.user = { ...d.user, birthYear };
+      expect([birthYear, checkAge(d, 2026)]).toEqual([birthYear, check]);
+      expect(firstIncompleteStep(d, 2026) === 'profile.age').toBe(check !== 'ok');
+      expect(buildSnapshot(d, now).ok).toBe(check === 'ok');
+    }
+    expect(checkAge(emptyDraft(), 2026)).toBe('missing');
+  });
+
+  it('an account created under the former 16+ rule keeps its birth year, never a new minor one', () => {
+    const now = new Date('2026-09-30T10:00:00Z');
+    const legacy = draftFromSnapshot({ ...SCENARIOS.studentMediumBudget, user: { ...SCENARIOS.studentMediumBudget.user, birthYear: 2009 } });
+    expect(legacy.acceptedBirthYear).toBe(2009);
+    // Unchanged: still editable (name, goal…), so nobody is locked out of their own profile.
+    expect(checkAge(legacy, 2026)).toBe('ok');
+    expect(buildSnapshot(legacy, now).ok).toBe(true);
+    // Any other under-18 year is refused, even on that account.
+    legacy.user = { ...legacy.user, birthYear: 2010 };
+    expect(checkAge(legacy, 2026)).toBe('too_young');
+    expect(buildSnapshot(legacy, now).ok).toBe(false);
+    // A fresh questionnaire has no accepted year.
+    expect(emptyDraft().acceptedBirthYear).toBeUndefined();
   });
 
   it('builds a valid snapshot and drops answers from hidden steps', () => {

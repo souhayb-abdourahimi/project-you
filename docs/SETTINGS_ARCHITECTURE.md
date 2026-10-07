@@ -161,13 +161,25 @@ la section Entraînement le dit (`DecisionNote`).
 | Privacy Center | suppression partielle ou échouée (D-042), export échoué |
 | Séance | hors ligne, synchronisation en attente (W-3) |
 
-## 11. Âge minimum (proposition, à valider)
+## 11. Âge minimum : 18 ans et plus (décision validée le 2026-10-07)
 
-Aujourd'hui : âge minimum **16 ans** (`MIN_AGE`) ; entre 16 et 17 ans et en cas d'IMC < 18,5,
-jamais de déficit calorique (`noDeficitProfile`, `ADULT_AGE = 18`). **Proposition** : pour la
-bêta publique, réserver l'app aux adultes (18+) — pas de consentement parental à gérer (RGPD art. 8
-en France : 15 ans, mais l'app traite des données de santé), conditions des stores plus simples,
-pas d'objectif de poids pour un mineur. Non appliqué : décision produit à valider par Souhayb.
+- **Contrat** : Project You est réservé aux adultes (`MIN_AGE = 18`), pour la bêta et la v1
+  publique. L'âge se calcule depuis l'année de naissance seulement (minimisation) : en 2026, 2008
+  est accepté, 2009 ne l'est pas.
+- **Règle unique** : `checkAge` (`domain/onboarding/steps.ts`) → `ok`, `missing`, `too_young`,
+  `out_of_range` (plus de 100 ans, ou année future). Lue par l'étape de l'onboarding (« Continuer »
+  désactivé), `buildSnapshot` (aucun profil construit) et le formulaire Réglages › Toi
+  (« Enregistrer » désactivé). Un utilisateur de moins de 18 ans ne poursuit pas le parcours.
+- **Message** neutre, sans vocabulaire médical ni juridique : « Project You est réservé aux
+  personnes de 18 ans et plus : le parcours ne peut pas continuer avec cette année de naissance. »
+  L'indication du champ le dit avant la saisie.
+- **Comptes créés avant (règle 16+)** : leur année de naissance **inchangée** reste acceptée
+  (`acceptedBirthYear`, repris du profil enregistré), pour ne bloquer personne hors de ses propres
+  données ; toute autre année sous 18 ans est refusée. Les protections historiques restent en place
+  et inchangées : jamais de déficit sous 18 ans ou IMC < 18,5 (`noDeficitProfile`,
+  `ADULT_AGE`), aucune incitation à perdre du poids (`noPush` du parcours), ajustements caloriques
+  bornés. Le schéma du profil ne rejette pas un âge stocké, pour que la synchronisation ne perde
+  jamais un profil existant.
 
 ## 12. Audits
 

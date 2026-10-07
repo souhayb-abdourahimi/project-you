@@ -12,7 +12,7 @@ Code : `src/domain/nutrition/engine.ts`, `src/domain/meals/*`. Tests : `__tests_
 
 | Cas | Règle |
 |---|---|
-| Moins de 18 ans | aucun déficit (`minor_no_deficit`) ; l'onboarding refuse < 16 ans |
+| Moins de 18 ans | aucun déficit (`minor_no_deficit`) ; l'onboarding refuse < 18 ans depuis W-8 (D-043) ; la protection reste pour les profils créés avant |
 | IMC < 18,5 | aucun déficit (`underweight_no_deficit`) |
 | Plancher | calories ≥ max(dépense de repos, 1200 F / 1500 H / 1350 non renseigné) (`calorie_floor_applied`) |
 | Objectif agressif | perte > 1 % du poids/sem ou prise > 0,5 %/sem → `aggressive` + date réaliste proposée ; l'utilisateur garde le choix |

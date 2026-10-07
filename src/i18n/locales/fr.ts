@@ -72,8 +72,9 @@ const fr = {
     'profile.age': {
       title: 'Quelle est ton année de naissance ?',
       label: 'Année de naissance',
-      hint: 'Elle sert uniquement à estimer tes besoins.',
-      tooYoung: 'Project You est réservé aux personnes de 16 ans et plus.',
+      hint: 'Elle sert uniquement à estimer tes besoins. Project You est conçu pour les adultes (18 ans et plus).',
+      tooYoung: 'Project You est réservé aux personnes de 18 ans et plus : le parcours ne peut pas continuer avec cette année de naissance.',
+      outOfRange: 'Vérifie l’année saisie.',
     },
     'profile.body': { title: 'Ta taille et ton poids', height: 'Taille (cm)', weight: 'Poids ({{unit}})' },
     'profile.sex': {

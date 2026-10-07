@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import { Banner, Card, ChoiceGroup, Text, TextField } from '@/components/ui';
-import { buildSnapshot, type OnboardingDraft, type OnboardingStepId } from '@/domain/onboarding/steps';
+import { buildSnapshot, checkAge, type DraftSection, type OnboardingDraft, type OnboardingStepId } from '@/domain/onboarding/steps';
 import { monthlyFromWeekly } from '@/domain/meals/budget';
 import { assessGoalFeasibility, computeNutritionTargets } from '@/domain/nutrition/engine';
 import {
@@ -13,7 +13,6 @@ import {
   GoalType,
   KitchenEquipment,
   LifeStatus,
-  MIN_AGE,
   Sex,
   TrainingLevel,
 } from '@/domain/profile/schemas';
@@ -26,7 +25,7 @@ import { DietRecap } from './DietRecap';
 import { ListField, MassField, NumberField, toggle } from './fields';
 import { ScheduleEditor } from './ScheduleEditor';
 
-type Update = <K extends keyof OnboardingDraft>(section: K, patch: Partial<OnboardingDraft[K]>) => void;
+type Update = <K extends DraftSection>(section: K, patch: Partial<OnboardingDraft[K]>) => void;
 
 const PRIORITIES = ['aesthetics', 'strength', 'health', 'performance'] as const;
 const MEALS = [2, 3, 4, 5];
@@ -68,14 +67,20 @@ export function StepContent({
           />
         );
       case 'profile.age': {
-        const age = draft.user.birthYear !== undefined ? year - draft.user.birthYear : undefined;
+        const age = checkAge(draft, year);
         return (
           <NumberField
             label={t('onboarding.profile.age.label')}
             hint={t('onboarding.profile.age.hint')}
             value={draft.user.birthYear}
             onChange={(birthYear) => update('user', { birthYear })}
-            error={age !== undefined && age < MIN_AGE ? t('onboarding.profile.age.tooYoung') : undefined}
+            error={
+              age === 'too_young'
+                ? t('onboarding.profile.age.tooYoung')
+                : age === 'out_of_range'
+                  ? t('onboarding.profile.age.outOfRange')
+                  : undefined
+            }
           />
         );
       }
