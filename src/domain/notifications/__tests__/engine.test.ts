@@ -363,10 +363,10 @@ describe('W-7: notifications follow the coach of the day (§43–44)', () => {
   const today = '2026-09-28';
   const milestone = { id: 'first_month', facts: { months: '1' } };
 
-  it('a comeback or a structural proposal leads today: no celebration, no daily why instead', () => {
+  it('a comeback, a structural proposal or the cause question leads today: no celebration, no daily why', () => {
     const normal = plan({ journey: { milestone, todayPriority: 'session' } });
     expect(ofTrigger(normal, 'milestone_reached').length).toBe(1);
-    for (const todayPriority of ['comeback', 'structural']) {
+    for (const todayPriority of ['comeback', 'structural', 'difficulty']) {
       const held = plan({ journey: { milestone, todayPriority } });
       const onToday = held.filter((n) => n.date === today).map((n) => n.trigger);
       expect(onToday).not.toContain('milestone_reached');

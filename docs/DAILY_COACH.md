@@ -349,7 +349,7 @@ La phrase de l'utilisateur (« Pourquoi tu as commencé ») n'est citée que : p
 
 ### 13.7 Notifications
 
-`todayPriority` entre dans le canal : un jour de reprise ou de proposition structurelle, les déclencheurs de félicitation / progrès / why (`HELD_BY_COACH`) sont retenus pour la journée. Heures calmes, maximum par jour et pause restent appliqués par le planificateur existant, inchangé.
+`todayPriority` entre dans le canal : un jour de reprise, de proposition structurelle ou de question de cause (les jours où l'écran retient la célébration), les déclencheurs de félicitation / progrès / why (`HELD_BY_COACH`) sont retenus pour la journée. Heures calmes, maximum par jour et pause restent appliqués par le planificateur existant, inchangé.
 
 ### 13.8 Écran
 

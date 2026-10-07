@@ -50,7 +50,10 @@ export interface JourneyChannelInput {
   todayPriority?: string;
 }
 
-/** Held back today when Today leads with a comeback or a structural proposal (W-7 §43). */
+/**
+ * Held back today when Today holds its celebration: a comeback, a structural proposal or the cause
+ * question leads (W-7 §43, same rule as `coachDay`).
+ */
 export const HELD_BY_COACH: Trigger[] = [
   'milestone_reached',
   'success_streak',
@@ -255,6 +258,6 @@ export function collectCandidates(input: {
       out.push({ trigger, date, time: prefs.motivationTime, facts: { since, days: String(days) } });
     }
   }
-  const held = journey.todayPriority === 'comeback' || journey.todayPriority === 'structural';
+  const held = ['comeback', 'structural', 'difficulty'].includes(journey.todayPriority ?? '');
   return held ? out.filter((c) => !(c.date === state.today && HELD_BY_COACH.includes(c.trigger))) : out;
 }
