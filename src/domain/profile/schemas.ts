@@ -1,6 +1,12 @@
 import { z } from 'zod';
 
-export const MIN_AGE = 16;
+/**
+ * Project You is for adults (D-043, validated 2026-10-07): a birth year entered in the questionnaire
+ * or in Réglages must give 18 or more. Before W-8 the minimum was 16: an account created then keeps
+ * its unchanged birth year (`acceptedBirthYear`), and the protections of minors stay in the engines
+ * (`noDeficitProfile`, `ADULT_AGE`, journey `noPush`). Age is computed from the birth year only.
+ */
+export const MIN_AGE = 18;
 export const MAX_AGE = 100;
 
 export const Sex = z.enum(['female', 'male', 'unspecified']);
@@ -169,8 +175,11 @@ export const ScheduleProfile = z.object({
 export type ScheduleProfile = z.infer<typeof ScheduleProfile>;
 
 export const PreferencesProfile = z.object({
+  /** Language of the account (informative: the screen language is a device setting, D-043). */
   locale: z.enum(['fr', 'en']),
   motivationStyle: z.enum(['gentle', 'direct']),
+  /** How masses are shown and typed (W-8); stored values stay in kg. Absent = kg. */
+  weightUnit: z.enum(['kg', 'lb']).optional(),
 });
 export type PreferencesProfile = z.infer<typeof PreferencesProfile>;
 
@@ -189,6 +198,11 @@ export const UserContextSnapshot = z.object({
   preferences: PreferencesProfile,
 });
 export type UserContextSnapshot = z.infer<typeof UserContextSnapshot>;
+
+/** The mass unit of a profile (kg when never chosen). */
+export function weightUnitOf(snapshot: { preferences: { weightUnit?: 'kg' | 'lb' } } | null): 'kg' | 'lb' {
+  return snapshot?.preferences.weightUnit ?? 'kg';
+}
 
 export function ageFromBirthYear(birthYear: number, referenceYear: number): number {
   return referenceYear - birthYear;

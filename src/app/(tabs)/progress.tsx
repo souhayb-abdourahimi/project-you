@@ -6,7 +6,7 @@ import { View } from 'react-native';
 import { Banner, Button, Card, LoadingScreen, Screen, Section, Text } from '@/components/ui';
 import type { ProgressJourney, ProgressSection } from '@/domain/journey/progress-journey';
 import { getExercise } from '@/domain/training/exercises';
-import { NumberField } from '@/features/onboarding/fields';
+import { MassField, NumberField } from '@/features/onboarding/fields';
 import { Recommendations } from '@/features/journey/Recommendations';
 import { TrainingWeekCard } from '@/features/program/TrainingWeekCard';
 import { useJourney } from '@/hooks/useJourney';
@@ -155,7 +155,7 @@ function Body({
         <View key="weight" style={{ gap: 2 }}>
           <Text variant="label">{t('progress.body.weight')}</Text>
           <Text variant={recomposition ? 'body' : 'heading'}>
-            {weight.currentAvgKg === null ? t('common.unavailable') : t('common.kg', { value: weight.currentAvgKg })}
+            {weight.currentAvgKg === null ? t('common.unavailable') : t('common.mass', { value: weight.currentAvgKg })}
           </Text>
           <Text color="textMuted" variant={recomposition ? 'caption' : 'body'}>
             {weight.changeKg === null
@@ -195,10 +195,10 @@ function QuickEntry({ today }: { today: string }) {
   const [formKey, setFormKey] = useState(0);
   return (
     <Card muted>
-      <NumberField
+      <MassField
         key={`w${formKey}`}
-        label={t('onboarding.profile.body.weight')}
-        value={weight}
+        label={(unit) => t('onboarding.profile.body.weight', { unit })}
+        valueKg={weight}
         onChange={setWeight}
       />
       <Button

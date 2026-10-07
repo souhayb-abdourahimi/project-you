@@ -1,12 +1,17 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-import { draftFromSnapshot, emptyDraft, type OnboardingDraft, type OnboardingStepId } from '@/domain/onboarding/steps';
+import {
+  draftFromSnapshot,
+  emptyDraft,
+  type DraftSection,
+  type OnboardingDraft,
+  type OnboardingStepId,
+} from '@/domain/onboarding/steps';
 import type { UserContextSnapshot } from '@/domain/profile/schemas';
 
 import { persistStorage } from './storage';
 
-type DraftSection = keyof OnboardingDraft;
 
 interface ProfileState {
   draft: OnboardingDraft;

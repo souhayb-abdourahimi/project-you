@@ -90,7 +90,7 @@ export default function ReviewScreen() {
         />
         <StatTile
           label={t('review.weight')}
-          value={r.weight.averageKg === null ? t('common.unavailable') : t('common.kg', { value: r.weight.averageKg })}
+          value={r.weight.averageKg === null ? t('common.unavailable') : t('common.mass', { value: r.weight.averageKg })}
         />
         <StatTile
           label={t('review.budget')}

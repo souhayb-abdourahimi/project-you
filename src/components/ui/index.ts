@@ -9,3 +9,5 @@ export { Text } from './Text';
 export { TextField } from './TextField';
 export { NumberStepper } from './NumberStepper';
 export { ConfirmButton } from './ConfirmButton';
+export { SwitchRow } from './SwitchRow';
+export { LinkRow } from './LinkRow';

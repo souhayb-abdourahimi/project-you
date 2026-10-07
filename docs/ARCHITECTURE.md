@@ -70,7 +70,8 @@ data/ciqual/           fichier officiel Ciqual 2025, non modifié
 2. Les écritures ne modifient que le store local ; aucune file d'attente à maintenir dans chaque action.
 3. Le service de sync (`src/services/sync.ts`, lancé par `useSync` à la connexion, toutes les 30 s et au retour au premier plan) **tire** d'abord les lignes modifiées depuis le dernier curseur serveur (`updated_at`, recouvrement de 60 s), les fusionne, puis **pousse** la différence entre la projection de l'état local (`src/domain/sync/projection.ts`) et l'empreinte de ce qui a déjà été synchronisé.
 4. Conflits : un changement local pas encore poussé gagne ; sinon le serveur gagne. Suppressions logiques (`deleted_at`) pour l'inventaire, les pesées, les mensurations et les dépenses ; l'historique (repas consommés, séances, séries) n'est jamais supprimé automatiquement. Première connexion d'un appareil ayant des données locales : les données du compte gagnent, les données uniquement locales sont envoyées. Données d'un autre compte présentes sur l'appareil : effacées avant la synchronisation. Déconnexion : données locales effacées. Détails : D-015.
-5. Testé contre le vrai schéma, les migrations et les politiques RLS (`src/services/__tests__/sync.db.test.ts`, lancé par `npm run test:db` et en CI).
+5. Réglages (W-8, D-043) : une source par réglage, compte (snapshot, `notification_settings`) ou appareil (langue, autorisations) ; correspondance complète et effets d'un changement dans `docs/SETTINGS_ARCHITECTURE.md`. L'état de sync est montré en mots simples (`src/domain/sync/status.ts`) ; la déconnexion synchronise d'abord.
+6. Testé contre le vrai schéma, les migrations et les politiques RLS (`src/services/__tests__/sync.db.test.ts`, lancé par `npm run test:db` et en CI).
 
 Fonctionne hors connexion : séance, repas, inventaire, poids, progression, recettes déjà téléchargées.
 

@@ -40,9 +40,10 @@ export const allPrefsOn = (patch: Partial<NotificationPreferences> = {}): Notifi
     meals: true,
     weigh_in: true,
     shopping: true,
+    checkin: true,
     progress: true,
+    milestones: true,
     motivation: true,
-    calendar: true,
   },
   ...patch,
 });

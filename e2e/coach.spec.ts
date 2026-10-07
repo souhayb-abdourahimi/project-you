@@ -91,7 +91,7 @@ test('an ordinary day: nothing to adjust, the plan, and no quote of the user’s
   expect(errors).toEqual([]);
 });
 
-test('a habit: observed, asked, kept after "oui", visible in Réglages and forgotten in one tap', async ({ page }) => {
+test('a habit: observed, asked, kept after "oui", visible in Réglages and forgotten after one confirmation', async ({ page }) => {
   const errors = collectErrors(page);
   // Two Wednesdays where the user chose "J'ai 15 minutes", and today is a Wednesday. The other
   // sessions happened: nothing else leads today.
@@ -125,7 +125,11 @@ test('a habit: observed, asked, kept after "oui", visible in Réglages and forgo
   await button(page, 'Réglages').click();
   await expect(text(page, 'Ce que le coach retient')).toBeVisible();
   await expect(text(page, /^Séance courte le mercredi/)).toBeVisible();
+  await expect(text(page, /Pourquoi : tu l’as confirmé/)).toBeVisible();
   await button(page, /^Oublier : Séance courte le mercredi/).click();
+  // Forgetting asks once (W-8 §29): nothing is written before the yes.
+  await expect.poll(() => coachRows(page)).toHaveLength(1);
+  await button(page, 'Oui, oublier').click();
   await expect
     .poll(() => coachRows(page))
     .toEqual([

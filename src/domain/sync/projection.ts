@@ -22,6 +22,7 @@ import {
   type SessionReason,
 } from '../journey/outcomes';
 import { MAIN_PROBLEMS, type WeeklyCheckin } from '../journey/weekly-checkin';
+import { normalizePreferences, type NotificationPreferences } from '../notifications/types';
 import type { FoodExpense } from '../meals/budget';
 import type { InventoryItem, InventorySource, InventoryUnit } from '../meals/inventory';
 import type { MealSlot } from '../meals/recipes';
@@ -75,6 +76,8 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const finite = z.coerce.number().finite();
 const nullableFinite = z.union([z.null(), z.undefined(), finite]);
 const deletedRow = z.object({ deleted_at: z.string() });
+/** A Postgres `time` ("22:00:00") or "22:00". */
+const clock = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/);
 const FOCUSES = ['full_a', 'full_b', 'upper', 'lower'] as const;
 const REMOTE_ROWS = {
   inventory_items: z.object({
@@ -242,10 +245,32 @@ const REMOTE_ROWS = {
     session_count: z.coerce.number().int().min(1).nullish(),
     revision: z.coerce.number().int().min(0).nullish(),
   }),
+  // W-8 (D-043): the reminder preferences of the account (the device keeps its permission and history).
+  notification_settings: z.object({
+    enabled: z.boolean(),
+    max_per_day: z.coerce.number().int().min(1).max(6),
+    quiet_start: clock,
+    quiet_end: clock,
+    meal_reminder_time: clock,
+    motivation_time: clock,
+    weigh_in_day: z.coerce.number().int().min(1).max(7),
+    weigh_in_time: clock,
+    quote_personal_words: z.boolean(),
+    absence_reminders: z.boolean(),
+    celebrations: z.boolean(),
+    paused_until: isoDate.nullish(),
+    quiet_enabled: z.boolean().nullish(),
+    categories: z.record(z.string(), z.boolean()).nullish(),
+  }),
 } satisfies Partial<Record<string, z.ZodType>>;
 
 export interface SyncableState {
   snapshot: UserContextSnapshot | null;
+  /**
+   * Reminder preferences of the account (W-8, `notification_settings`). Null until the user changed
+   * them or the account's copy arrived: a device never pushes untouched defaults over the account's.
+   */
+  notificationPrefs?: NotificationPreferences | null;
   inventory: InventoryItem[];
   weights: (WeightEntry & { id: string })[];
   waist: (WaistEntry & { id: string })[];
@@ -295,6 +320,7 @@ export type SyncTable =
   | 'goals'
   | 'motivations'
   | 'user_preferences'
+  | 'notification_settings'
   | 'inventory_items'
   | 'meal_plan_items'
   | 'food_expenses'
@@ -334,6 +360,7 @@ export const SYNC_TABLES: Record<SyncTable, TableSpec> = {
   goals: { key: 'id', deleteOnMissing: false },
   motivations: { key: 'user_id', deleteOnMissing: false },
   user_preferences: { key: 'user_id', deleteOnMissing: false },
+  notification_settings: { key: 'user_id', deleteOnMissing: false },
   inventory_items: { key: 'id', deleteOnMissing: true },
   meal_plan_items: { key: 'id', deleteOnMissing: false },
   food_expenses: { key: 'id', deleteOnMissing: true },
@@ -534,6 +561,45 @@ function plannedOf(p: PrescribedSession, variant: SessionVariant): PlannedExerci
   return rows.length > 0 ? rows : p.exercises.filter((e) => e.variant === 'full');
 }
 
+function notificationRow(n: NotificationPreferences): Row {
+  return {
+    enabled: n.enabled,
+    max_per_day: n.maxPerDay,
+    quiet_enabled: n.quietEnabled,
+    quiet_start: n.quietStart,
+    quiet_end: n.quietEnd,
+    meal_reminder_time: n.mealReminderTime,
+    motivation_time: n.motivationTime,
+    weigh_in_day: n.weighInDay,
+    weigh_in_time: n.weighInTime,
+    quote_personal_words: n.quotePersonalWords,
+    absence_reminders: n.absenceReminders,
+    celebrations: n.celebrations,
+    paused_until: n.pausedUntil,
+    categories: { ...n.categories },
+  };
+}
+
+function notificationFromRow(r: Row): NotificationPreferences {
+  const hhmm = (v: unknown) => String(v).slice(0, 5);
+  return normalizePreferences({
+    enabled: r.enabled === true,
+    maxPerDay: Number(r.max_per_day),
+    quietEnabled: r.quiet_enabled !== false,
+    quietStart: hhmm(r.quiet_start),
+    quietEnd: hhmm(r.quiet_end),
+    mealReminderTime: hhmm(r.meal_reminder_time),
+    motivationTime: hhmm(r.motivation_time),
+    weighInDay: Number(r.weigh_in_day),
+    weighInTime: hhmm(r.weigh_in_time),
+    quotePersonalWords: r.quote_personal_words !== false,
+    absenceReminders: r.absence_reminders !== false,
+    celebrations: r.celebrations !== false,
+    pausedUntil: str(r.paused_until) ?? null,
+    categories: (r.categories && typeof r.categories === 'object' ? r.categories : {}) as Record<string, boolean>,
+  });
+}
+
 /** Rows the server should hold for this user, per table and key. Never includes `updated_at` (server-owned). */
 export function project(state: SyncableState, userId: string): Record<SyncTable, Map<string, Row>> {
   const out = Object.fromEntries(SYNC_TABLE_ORDER.map((t) => [t, new Map<string, Row>()])) as Record<
@@ -581,8 +647,12 @@ export function project(state: SyncableState, userId: string): Record<SyncTable,
       weekly_food_budget_cents: s.budget.weeklyFoodBudgetCents,
       currency: s.budget.currency,
       motivation_style: s.preferences.motivationStyle,
+      // W-8: only once chosen, so a profile is pushed as before until the user picks a unit.
+      ...(s.preferences.weightUnit ? { weight_unit: s.preferences.weightUnit } : {}),
     });
   }
+  const n = state.notificationPrefs;
+  if (n) put('notification_settings', notificationRow(n));
 
   for (const i of state.inventory) {
     put('inventory_items', {
@@ -1450,11 +1520,23 @@ export function applyRemote(
       lifestyle: { lifeStatus: profile.life_status ?? 'other', kitchen: prefs.kitchen ?? [] },
       budget: { weeklyFoodBudgetCents: Number(prefs.weekly_food_budget_cents ?? 0), currency: prefs.currency ?? 'EUR' },
       schedule: prefs.schedule,
-      preferences: { locale: profile.locale ?? 'fr', motivationStyle: prefs.motivation_style ?? 'gentle' },
+      preferences: {
+        locale: profile.locale ?? 'fr',
+        motivationStyle: prefs.motivation_style ?? 'gentle',
+        // 'kg' is the column default: kept only once a device chose a unit, so an untouched
+        // account reads back exactly as it was written.
+        ...(prefs.weight_unit === 'lb' || (prefs.weight_unit === 'kg' && state.snapshot?.preferences.weightUnit)
+          ? { weightUnit: prefs.weight_unit as 'kg' | 'lb' }
+          : {}),
+      },
     });
     if (parsed.success) next.snapshot = parsed.data;
     else rejected += 1;
   }
+
+  // Reminder preferences (W-8): the account's copy, unless this device changed them since.
+  const settings = rows('notification_settings')[0];
+  if (settings) next.notificationPrefs = notificationFromRow(settings);
 
   // Everything now local matches what the server holds, except pending local changes.
   const after = project(next, userId);

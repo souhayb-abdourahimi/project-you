@@ -1,6 +1,8 @@
 import { useState } from 'react';
 
 import { TextField } from '@/components/ui';
+import { fromKg, toKg } from '@/domain/settings/units';
+import { useMassUnit } from '@/hooks/useMassUnit';
 import { parseNumber, splitList } from '@/lib/format';
 
 /** Numeric input that keeps the raw text while typing and commits parsed values. */
@@ -30,6 +32,37 @@ export function NumberField({
         setText(next);
         onChange(parseNumber(next));
       }}
+    />
+  );
+}
+
+/**
+ * A body weight or a load: typed in the user's unit, kept in kg (D-043). `label` receives the unit
+ * as the `unit` parameter of its text.
+ */
+export function MassField({
+  label,
+  valueKg,
+  onChange,
+  hint,
+  error,
+}: {
+  label: (unit: string) => string;
+  valueKg: number | undefined;
+  onChange: (kg: number | undefined) => void;
+  hint?: string;
+  error?: string;
+}) {
+  const unit = useMassUnit();
+  return (
+    <NumberField
+      // A new unit starts a new field: the typed text is never read in the other unit.
+      key={unit}
+      label={label(unit)}
+      hint={hint}
+      error={error}
+      value={valueKg === undefined ? undefined : fromKg(valueKg, unit)}
+      onChange={(v) => onChange(v === undefined ? undefined : toKg(v, unit))}
     />
   );
 }

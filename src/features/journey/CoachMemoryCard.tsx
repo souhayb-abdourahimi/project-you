@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
-import { Button, Card, Row, Text } from '@/components/ui';
+import { Card, ConfirmButton, Text } from '@/components/ui';
 import { shortDayMemory } from '@/domain/journey/coach-memory';
 import { toIsoDate } from '@/domain/shared/dates';
 import { useDataStore } from '@/state/data';
@@ -9,8 +9,9 @@ import { useCoachAnswer } from './useCoachAnswer';
 import { useSay } from './useSay';
 
 /**
- * "Ce que le coach retient" (W-7 §10): only what the user confirmed, visible, and forgotten in one
- * tap. Forgetting is a new row of the journal (synced, exported, deleted with the account).
+ * "Ce que le coach retient" (W-7 §10, W-8 §6): only what the user confirmed, visible, and forgotten
+ * after one confirmation. Forgetting is a new row of the journal (synced, exported, deleted with
+ * the account). The legacy `coach_memory` table is not read (D-043).
  */
 export function CoachMemoryCard() {
   const { t } = useTranslation();
@@ -29,17 +30,22 @@ export function CoachMemoryCard() {
           key: 'coachDay.memory.short_day',
           params: { weekday: `coachDay.weekday.${m.weekday}`, date: m.since },
         });
+        // What, why and since when (W-8 §6); forgetting asks once (§29), then is a journal row.
         return (
-          <Row key={m.weekday}>
-            <Text style={{ flex: 1 }}>{label}</Text>
-            <Button
-              compact
+          <Card key={m.weekday} muted>
+            <Text>{label}</Text>
+            <Text variant="caption" color="textMuted">
+              {t('coachDay.memory.why')}
+            </Text>
+            <ConfirmButton
               variant="ghost"
               label={t('coachDay.memory.forget')}
               accessibilityLabel={t('coachDay.memory.forgetA11y', { item: label })}
-              onPress={() => forget(m)}
+              message={t('coachDay.memory.forgetConfirm', { item: label })}
+              confirmLabel={t('coachDay.memory.forgetYes')}
+              onConfirm={() => forget(m)}
             />
-          </Row>
+          </Card>
         );
       })}
     </Card>

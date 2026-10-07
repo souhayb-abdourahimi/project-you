@@ -1,3 +1,5 @@
+import { fromKg, type MassUnit } from '@/domain/settings/units';
+
 export function formatMoney(cents: number, locale: string, currency = 'EUR'): string {
   return new Intl.NumberFormat(locale === 'en' ? 'en-GB' : 'fr-FR', { style: 'currency', currency }).format(
     cents / 100,
@@ -41,4 +43,33 @@ export function splitList(text: string): string[] {
 /** A load or any decimal as the user reads it ("67,5" in French). */
 export function formatNumber(value: number, locale: string): string {
   return new Intl.NumberFormat(locale === 'en' ? 'en-GB' : 'fr-FR', { maximumFractionDigits: 2 }).format(value);
+}
+
+/**
+ * A number the screens already formatted for the locale ("67,5", "1,234.5", "+0,3"), read back.
+ * Used by the mass formatter, which receives values from generic parameter maps.
+ */
+export function parseLocalized(value: unknown, locale: string): number | undefined {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+  if (typeof value !== 'string') return undefined;
+  const clean = value.replace(/[\s\u00a0\u202f]/g, '').replace('\u2212', '-');
+  // The last separator is the decimal one; a lone comma is a decimal comma, except English thousands.
+  const comma = clean.lastIndexOf(',');
+  const dot = clean.lastIndexOf('.');
+  const englishThousands = locale === 'en' && /^[+-]?\d{1,3}(,\d{3})+$/.test(clean);
+  const normalized =
+    comma > dot && !englishThousands ? clean.replace(/\./g, '').replace(',', '.') : clean.replace(/,/g, '');
+  const n = Number(normalized);
+  return clean === '' || Number.isNaN(n) ? undefined : n;
+}
+
+/**
+ * A mass stored in kg, in the user's unit ("67,5 kg", "148.8 lb"). The only place a stored mass is
+ * converted for display (D-043); a sign typed by the caller ("+0,3") is kept.
+ */
+export function formatMass(valueKg: unknown, locale: string, unit: MassUnit): string {
+  const kg = parseLocalized(valueKg, locale);
+  if (kg === undefined) return String(valueKg);
+  const plus = typeof valueKg === 'string' && valueKg.trim().startsWith('+') ? '+' : '';
+  return `${plus}${formatNumber(fromKg(kg, unit), locale)} ${unit}`;
 }

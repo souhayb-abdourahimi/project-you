@@ -115,6 +115,15 @@ interface DataState {
   addExpense: (amountCents: number, spentOn: IsoDate) => void;
   logWeight: (date: IsoDate, weightKg: number) => void;
   logWaist: (date: IsoDate, cm: number) => void;
+  /**
+   * Corrections (W-8, D-043): a mistaken weigh-in or measurement is changed or removed. Synced as an
+   * update or a deletion of that row; what depends on it (trend, weight basis) is derived again.
+   */
+  correctWeight: (id: string, weightKg: number) => void;
+  deleteWeight: (id: string) => void;
+  correctWaist: (id: string, cm: number) => void;
+  deleteWaist: (id: string) => void;
+  deleteMeasurement: (id: string) => void;
   logSet: (session: SessionKey, exerciseId: string, set: LoggedSet) => void;
   /** Corrects a set already entered (the done part stays editable, W-1). */
   editSet: (session: SessionKey, exerciseId: string, index: number, set: LoggedSet) => void;
@@ -370,6 +379,12 @@ export const useDataStore = create<DataState>()(
           const entry = { id: existing?.id ?? newId(), date, cm };
           return { waist: [...s.waist.filter((w) => w.date !== date), entry] };
         }),
+      correctWeight: (id, weightKg) =>
+        set((s) => ({ weights: s.weights.map((w) => (w.id === id ? { ...w, weightKg } : w)) })),
+      deleteWeight: (id) => set((s) => ({ weights: s.weights.filter((w) => w.id !== id) })),
+      correctWaist: (id, cm) => set((s) => ({ waist: s.waist.map((w) => (w.id === id ? { ...w, cm } : w)) })),
+      deleteWaist: (id) => set((s) => ({ waist: s.waist.filter((w) => w.id !== id) })),
+      deleteMeasurement: (id) => set((s) => ({ measurements: s.measurements.filter((m) => m.id !== id) })),
       logSet: (session, exerciseId, loggedSet) =>
         set((s) => ({
           ...withSession(s, session),
@@ -479,7 +494,8 @@ export const useDataStore = create<DataState>()(
             : { sessionOpened: { ...s.sessionOpened, [session]: now() } },
         ),
       applySync: (patch) => {
-        const { snapshot: _snapshot, ...data } = patch;
+        // The profile and the reminder preferences live in their own stores (useSync writes them).
+        const { snapshot: _snapshot, notificationPrefs: _prefs, ...data } = patch;
         set(data);
       },
       setOwner: (ownerId) => set({ ownerId }),

@@ -1,3 +1,4 @@
+import { DEFAULT_NOTIFICATION_PREFERENCES } from '../../notifications/types';
 import { SCENARIOS } from '../../scenarios';
 import { publishWeek } from '../../scenarios/training';
 import {
@@ -51,6 +52,8 @@ function fullState(): SyncableState {
     setLogs: { ...base.setLogs, [prescribed]: { [first.exerciseId]: [{ reps: 8, loadKg: 20 }] } },
     sessionDifficulty: { [prescribed]: 3 },
     exerciseReports: { [prescribed]: { [first.exerciseId]: { difficulty: 4 } } },
+    // W-8: reminder preferences the user changed (synced through notification_settings).
+    notificationPrefs: { ...DEFAULT_NOTIFICATION_PREFERENCES, enabled: true, quietStart: '23:00' },
   };
 }
 
@@ -267,6 +270,32 @@ describe('applyRemote', () => {
     ]);
     // Nothing to push back right after a pull, and nothing duplicated.
     expect(diff(project(state, USER), synced)).toEqual({ upserts: [], deletes: [] });
+  });
+
+  it('W-8: reminder preferences converge between devices; local unsent changes win; untouched ones are never sent', () => {
+    const source = fullState();
+    expect(project({ ...source, notificationPrefs: null }, USER).notification_settings.size).toBe(0);
+    // A device that never changed them takes the account's.
+    const fresh = applyRemote({ ...emptyState(), notificationPrefs: null }, asServer(source), USER, {});
+    expect(fresh.state.notificationPrefs).toEqual(source.notificationPrefs);
+    // Changed here while offline, not pushed yet: kept, then sent.
+    const synced = syncedFor(source);
+    const local = { ...source, notificationPrefs: { ...source.notificationPrefs!, quietEnabled: false } };
+    const merged = applyRemote(local, asServer(source), USER, synced);
+    expect(merged.state.notificationPrefs?.quietEnabled).toBe(false);
+    expect(diff(project(merged.state, USER), merged.synced).upserts.map((u) => u.table)).toEqual(['notification_settings']);
+  });
+
+  it('W-8: the mass unit is read back only once chosen; the stored weights never change', () => {
+    const source = fullState();
+    const server = asServer(source);
+    server.user_preferences = server.user_preferences!.map((r) => ({ ...r, weight_unit: 'kg' }));
+    expect(applyRemote(emptyState(), server, USER, {}).state.snapshot?.preferences.weightUnit).toBeUndefined();
+    const lb = asServer(source);
+    lb.user_preferences = lb.user_preferences!.map((r) => ({ ...r, weight_unit: 'lb' }));
+    const { state } = applyRemote(emptyState(), lb, USER, {});
+    expect(state.snapshot?.preferences.weightUnit).toBe('lb');
+    expect(state.weights).toEqual(source.weights);
   });
 
   it('keeps local changes that are not pushed yet', () => {

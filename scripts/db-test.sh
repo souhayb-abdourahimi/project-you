@@ -30,6 +30,8 @@ echo "→ RLS tests"
 run_psql "$DATABASE_URL" -f supabase/tests/rls.sql
 echo "→ Workout Coach tests (versions, immutable prescriptions, reconstructed history, RLS)"
 run_psql "$DATABASE_URL" -f supabase/tests/training.sql
+echo "→ Settings tests (reminder preferences, mass unit, photo storage, FK indexes)"
+run_psql "$DATABASE_URL" -f supabase/tests/settings.sql
 echo "→ Sync integration tests (real schema + RLS)"
 DATABASE_URL="$DATABASE_URL" npx jest --ci src/services/__tests__/sync.db.test.ts
 echo "✓ database tests passed"

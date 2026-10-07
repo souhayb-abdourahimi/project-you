@@ -11,7 +11,7 @@ import {
   type MainProblem,
   type WeeklyCheckin,
 } from '@/domain/journey/weekly-checkin';
-import { NumberField } from '@/features/onboarding/fields';
+import { MassField, NumberField } from '@/features/onboarding/fields';
 import { usePlan } from '@/hooks/usePlan';
 import { useWeights } from '@/hooks/useWeights';
 import { useDataStore } from '@/state/data';
@@ -107,7 +107,11 @@ export default function CheckinScreen() {
             {t('checkin.bodyHint')}
           </Text>
           {body.weight ? (
-            <NumberField label={t('onboarding.profile.body.weight')} value={weight} onChange={setWeight} />
+            <MassField
+              label={(unit) => t('onboarding.profile.body.weight', { unit })}
+              valueKg={weight}
+              onChange={setWeight}
+            />
           ) : null}
           {body.measurements ? <NumberField label={t('progress.waist')} value={waistCm} onChange={setWaistCm} /> : null}
         </Card>
