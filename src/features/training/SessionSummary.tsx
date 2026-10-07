@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
-import { Button, Card, ChoiceGroup, StatTile, Text } from '@/components/ui';
+import { Button, Card, ChoiceGroup, Icon, MetricCard, Text } from '@/components/ui';
 import { getExercise } from '@/domain/training/exercises';
 import { DIFFICULTY_LEVELS, difficultyLevel } from '@/domain/training/program';
 import type { SessionResult, SessionSummary as Summary } from '@/domain/training/session';
@@ -32,12 +32,19 @@ export function SessionSummary({
   const outcome = result === 'stopped' || result === 'partial' ? result : 'completed';
   return (
     <View style={styles.root}>
-      <Text variant="title" accessibilityLiveRegion="polite">
-        {t('workout.summary.title')}
-      </Text>
-      <Text color="textMuted">{t(`workout.summary.result.${outcome}`)}</Text>
+      {/* A calm, positive close: what was done, never what was not (no-guilt design). */}
+      <Card tone="positive" style={styles.hero}>
+        <View style={styles.inline}>
+          <Icon name="done" size="lg" color="success" />
+          <Text variant="title2" accessibilityLiveRegion="polite" style={styles.flex}>
+            {t('workout.summary.title')}
+          </Text>
+        </View>
+        <Text color="textSecondary">{t(`workout.summary.result.${outcome}`)}</Text>
+      </Card>
       <View style={styles.tiles}>
-        <StatTile
+        <MetricCard
+          icon="time"
           label={t('workout.summary.duration')}
           value={
             summary.minutes !== null
@@ -45,15 +52,20 @@ export function SessionSummary({
               : t('workout.summary.unknown')
           }
         />
-        <StatTile
+        <MetricCard
+          icon="workout"
+          iconColor="training"
           label={t('workout.summary.exercises')}
           value={t('workout.summary.ratio', { done: summary.exercisesDone, total: summary.exercisesTotal })}
         />
-        <StatTile label={t('workout.summary.sets')} value={String(summary.sets)} />
+        <MetricCard icon="sessions" iconColor="training" label={t('workout.summary.sets')} value={String(summary.sets)} />
       </View>
       {summary.replacements.length > 0 ? (
-        <Card muted>
-          <Text variant="label">{t('workout.summary.replacements')}</Text>
+        <Card tone="subtle">
+          <View style={styles.inline}>
+            <Icon name="swap" size="sm" color="textSecondary" />
+            <Text variant="headline">{t('workout.summary.replacements')}</Text>
+          </View>
           {summary.replacements.map((r) => (
             <Text key={r.fromId}>{t('workout.summary.replacement', { from: name(r.fromId), to: name(r.toId) })}</Text>
           ))}
@@ -66,9 +78,12 @@ export function SessionSummary({
       ) : null}
       {summary.records.length > 0 ? (
         <Card>
-          <Text variant="label" color="success">
-            {t('workout.summary.records')}
-          </Text>
+          <View style={styles.inline}>
+            <Icon name="celebrate" size="sm" color="success" />
+            <Text variant="headline" color="success">
+              {t('workout.summary.records')}
+            </Text>
+          </View>
           {summary.records.map((r) => (
             <Text key={r.exerciseId}>
               {t(`workout.summary.record_${r.kind}`, {
@@ -81,7 +96,7 @@ export function SessionSummary({
         </Card>
       ) : null}
       <Card>
-        <Text variant="heading">{t('workout.sessionDifficulty')}</Text>
+        <Text variant="title3">{t('workout.sessionDifficulty')}</Text>
         <ChoiceGroup
           single
           label={t('workout.sessionDifficulty')}
@@ -96,7 +111,7 @@ export function SessionSummary({
         ) : null}
       </Card>
       {preference ? (
-        <Card muted>
+        <Card tone="subtle">
           {preference.answer === 'removed' ? (
             <Text accessibilityLiveRegion="polite">
               {preference.replacement
@@ -131,6 +146,9 @@ export function SessionSummary({
 
 const styles = StyleSheet.create({
   root: { gap: spacing.lg },
+  hero: { gap: spacing.sm },
+  inline: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  flex: { flex: 1 },
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
 });

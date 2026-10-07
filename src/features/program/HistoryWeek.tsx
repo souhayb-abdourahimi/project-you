@@ -1,6 +1,9 @@
 import { useTranslation } from 'react-i18next';
 
-import { Card, Text } from '@/components/ui';
+import { StyleSheet, View } from 'react-native';
+
+import { Badge, Card, Text } from '@/components/ui';
+import { spacing, useColors } from '@/theme';
 import { formatDate } from '@/lib/format';
 
 import { DecisionRow } from './DecisionRow';
@@ -11,24 +14,30 @@ import { WeekFacts } from './WeekFacts';
 /** One week of the history: facts, sessions, program versions, answers to proposals. */
 export function HistoryWeek({ week }: { week: HistoryWeekView }) {
   const { t, i18n } = useTranslation();
+  const colors = useColors();
   return (
-    <Card>
-      <Text variant="heading" accessibilityRole="header">
+    <Card raised={week.current} style={styles.card}>
+      <Text variant="title3" accessibilityRole="header">
         {week.current
           ? t('history.thisWeek')
           : t('history.weekOf', { date: formatDate(week.weekStart, i18n.language) })}
       </Text>
       <WeekFacts totals={week.totals} current={week.current} />
       {week.versions.map((v) => (
-        <Text key={v.version} color="primary">
-          {t('history.version', { version: v.version })} · {t(v.key)}
-        </Text>
+        <Badge
+          key={v.version}
+          tone="primary"
+          icon="program"
+          label={`${t('history.version', { version: v.version })} · ${t(v.key)}`}
+        />
       ))}
       {week.sessions.map((s) => (
-        <SessionFacts key={s.key} session={s} />
+        <View key={s.key} style={[styles.divided, { borderTopColor: colors.border }]}>
+          <SessionFacts session={s} />
+        </View>
       ))}
       {week.decisions.length > 0 ? (
-        <Text variant="label" color="textMuted">
+        <Text variant="captionStrong" color="textMuted" style={[styles.divided, { borderTopColor: colors.border }]}>
           {t('history.decisions')}
         </Text>
       ) : null}
@@ -38,3 +47,8 @@ export function HistoryWeek({ week }: { week: HistoryWeekView }) {
     </Card>
   );
 }
+
+const styles = StyleSheet.create({
+  card: { gap: spacing.md },
+  divided: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: spacing.md },
+});

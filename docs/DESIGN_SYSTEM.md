@@ -71,9 +71,23 @@ Une seule famille : **SF Symbols** sur iOS, **Material Symbols** sur Android et 
 | `HeroMedia` | le visuel du héros : le média réel de la séance s'il existe (`uri`), sinon le visuel de la bibliothèque Project You (halo `gradients.heroGlow`, anneaux, pictogramme du type) ; jamais une photo prise au hasard ; décoratif, le héros reste lisible sans lui |
 | `ProgressRing` | UN anneau pour UNE valeur principale (Aujourd'hui : protéines des repas notés / cible) ; valeur dite en texte (`accessibilityValue.text`) ; jamais quatre anneaux. Cible atteinte ou dépassée : l'anneau est plein (plafonné à 100 %), même couleur, ni rouge ni avertissement, le texte et le lecteur d'écran gardent la valeur réelle (112 / 109 g) |
 | `MiniBars` | petit graphique en barres d'une semaine, données réelles seulement : un jour sans donnée est un point, jamais une barre à zéro ; dessiné à partir de 3 jours connus, sinon la valeur seule ; décrit en une phrase |
+| `TrendLine` | ligne discrète de points réels (Progrès : moyennes hebdomadaires des pesées, `weightAverageAt`) ; échelle ajustée aux valeurs (une tendance, pas une quantité depuis zéro) ; une semaine sans deux pesées est un trou ; dessinée à partir de 2 semaines connues ; décrite en une phrase |
+| `LinkRow` (`icon`, `grouped`) | ligne qui ouvre un écran ; dans un `ListGroup` (Réglages, Confidentialité) |
 | `CoachNote` | le mot du coach : pastille, « Ton coach », un message court, une action au plus ; une note, pas un chat |
 
 Les cartes métier (séance, repas, progrès, coach) se composent de ces primitives dans `src/features/*` ; pas de quarante variantes presque identiques.
+
+## Hiérarchie par écran (W-9 passes 4 à 9)
+
+Chaque écran reprend la direction d'Aujourd'hui sans la copier : sa hiérarchie suit sa tâche.
+
+- **Séance** : en-tête graphite (nom, durée prescrite, objectif, barre des séries), exercice en cours en carte surélevée, repos en anneau qui se vide (minuteur réel), liste de la séance groupée et numérotée, bilan positif (fait, jamais ce qui manque).
+- **Programme** : la semaine en frise (date à gauche, aujourd'hui en pastille bleue), séances en cartes avec faits en chips, jours de repos sur une ligne calme.
+- **Nutrition** : repères du jour (énergie en grand, trois macros « repas notés / cible » en barres), raccourcis Chez moi / Courses, repas avec statut en badge, budget en dernier.
+- **Progrès** : semaine (séances faites / prévues), depuis le début, habitudes, performance, corps avec courbe des pesées, parcours en frise verticale.
+- **Bilan de la semaine** : carte d'ouverture bleue, chiffres en tuiles (une valeur absente dit « Donnée indisponible »), parties avec icône.
+- **Historique** : une carte par semaine, séances séparées par des filets, chevron quand le détail s'ouvre.
+- **Réglages, Confidentialité** : listes groupées type iOS avec icônes ; ce qui est stocké en liste ; suppression ligne par ligne, toujours confirmée.
 
 ## Petits écrans
 

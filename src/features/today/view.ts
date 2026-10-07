@@ -8,6 +8,7 @@ import type { BodyBlock } from '@/domain/journey/progress-journey';
 import type { PlannedMeal } from '@/domain/meals/planner';
 import { addDays, startOfWeek, type IsoDate } from '@/domain/shared/dates';
 import { isDone, type WeekComparison } from '@/domain/training/compare';
+import { dayIntake } from '@/features/nutrition/view';
 
 /** The few lines under the hero's title: planned facts only. */
 export type HeroChip =
@@ -91,12 +92,12 @@ export function todayGlance(input: GlanceInput): TodayGlance {
   const { meals, today } = input;
   let nutrition: TodayGlance['nutrition'] = null;
   if (meals && meals.length > 0 && input.proteinTargetG > 0) {
-    // Meals the user marked as eaten, with their planned values (the same estimate as Nutrition).
-    const eaten = meals.filter((m) => m.status === 'eaten');
+    // Meals the user marked as eaten, with their planned values: the same sum as Nutrition.
+    const intake = dayIntake(meals);
     nutrition = {
-      proteinG: Math.round(eaten.reduce((s, m) => s + m.nutrition.proteinG, 0)),
+      proteinG: intake.proteinG,
       proteinTargetG: Math.round(input.proteinTargetG),
-      kcal: Math.round(eaten.reduce((s, m) => s + m.nutrition.kcal, 0)),
+      kcal: intake.kcal,
       kcalTarget: Math.round(input.kcalTarget),
     };
   }

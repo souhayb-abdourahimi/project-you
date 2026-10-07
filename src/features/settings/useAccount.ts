@@ -7,7 +7,8 @@ import { signOut, useSession } from '@/services/auth';
 import { isSupabaseConfigured } from '@/services/supabase';
 import { useProfileStore } from '@/state/profile';
 
-export type SignOutState = { kind: 'idle' } | { kind: 'busy' } | { kind: 'pending'; count: number } | { kind: 'failed' };
+export type SignOutState =
+  { kind: 'idle' } | { kind: 'busy' } | { kind: 'pending'; count: number } | { kind: 'failed' };
 
 /**
  * Account actions of Réglages (D-043). Signing out clears this device (D-015), so the changes not

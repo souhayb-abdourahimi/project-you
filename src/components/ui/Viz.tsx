@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { radius, spacing, useColors, type ColorToken } from '@/theme';
+import { opacity, radius, spacing, useColors, type ColorToken } from '@/theme';
 
 /**
  * A circular progress for ONE main value (W-9). Drawn with two clipped half rings (no SVG
@@ -12,6 +12,7 @@ export function ProgressRing({
   size = 112,
   stroke = 10,
   color = 'primary',
+  track = 'surfaceSubtle',
   label,
   children,
 }: {
@@ -23,6 +24,8 @@ export function ProgressRing({
   size?: number;
   stroke?: number;
   color?: ColorToken;
+  /** The empty part of the ring (`surface` on a tinted card). */
+  track?: ColorToken;
   /** The value in words ("92 g sur 140 g de protéines"). */
   label: string;
   children?: ReactNode;
@@ -40,7 +43,7 @@ export function ProgressRing({
       accessibilityLabel={label}
       accessibilityValue={{ min: 0, max: 100, now: Math.round(p * 100), text: label }}
       style={{ width: size, height: size }}>
-      <View style={[ring, styles.abs, { borderColor: colors.surfaceSubtle }]} />
+      <View style={[ring, styles.abs, { borderColor: colors[track] }]} />
       {angle > 0 ? (
         <>
           {/* 0 → 180°: a left half ring turned clockwise into the right half. */}
@@ -134,4 +137,95 @@ const styles = StyleSheet.create({
   bars: { flexDirection: 'row', alignItems: 'stretch', gap: spacing.xs },
   barSlot: { flex: 1, justifyContent: 'flex-end', alignItems: 'center' },
   bar: { width: '100%', maxWidth: 14, borderRadius: radius.sm / 2 },
+  segment: { position: 'absolute', height: 2, borderRadius: radius.pill },
+  point: { position: 'absolute', borderRadius: radius.pill, borderWidth: 2 },
 });
+
+/**
+ * A quiet line of real points (W-9 §7), e.g. weekly weight averages. The scale fits the values (a
+ * trend, not a zero-based amount); a missing point is a gap, never an invented value. Decorative
+ * for screen readers: `label` says the trend in words.
+ */
+export function TrendLine({
+  values,
+  label,
+  color = 'primary',
+  height = 72,
+}: {
+  values: readonly (number | null)[];
+  label: string;
+  color?: ColorToken;
+  height?: number;
+}) {
+  const colors = useColors();
+  const [width, setWidth] = useState(0);
+  const known = values.filter((v): v is number => v !== null);
+  const min = Math.min(...known);
+  const max = Math.max(...known);
+  const span = max - min || 1;
+  const dot = 8;
+  const step = values.length > 1 ? (width - dot) / (values.length - 1) : 0;
+  const point = (v: number, i: number) => ({
+    x: i * step + dot / 2,
+    // Flat series sit in the middle; otherwise the highest value on top.
+    y: max === min ? height / 2 : dot / 2 + ((max - v) / span) * (height - dot),
+  });
+  const last = values.length - 1;
+  return (
+    <View
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={label}
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+      style={{ height }}>
+      {width > 0
+        ? values.map((v, i) => {
+            const next = values[i + 1];
+            if (v === null || next === null || next === undefined) return null;
+            const a = point(v, i);
+            const b = point(next, i + 1);
+            const length = Math.hypot(b.x - a.x, b.y - a.y);
+            const angle = Math.atan2(b.y - a.y, b.x - a.x);
+            return (
+              <View
+                key={`s${i}`}
+                style={[
+                  styles.segment,
+                  {
+                    width: length,
+                    left: (a.x + b.x) / 2 - length / 2,
+                    top: (a.y + b.y) / 2 - 1,
+                    backgroundColor: colors[color],
+                    opacity: opacity.disabled,
+                    transform: [{ rotate: `${angle}rad` }],
+                  },
+                ]}
+              />
+            );
+          })
+        : null}
+      {width > 0
+        ? values.map((v, i) => {
+            if (v === null) return null;
+            const p = point(v, i);
+            return (
+              <View
+                key={`p${i}`}
+                style={[
+                  styles.point,
+                  {
+                    left: p.x - dot / 2,
+                    top: p.y - dot / 2,
+                    width: dot,
+                    height: dot,
+                    backgroundColor: i === last ? colors[color] : colors.surface,
+                    borderColor: colors[color],
+                  },
+                ]}
+              />
+            );
+          })
+        : null}
+    </View>
+  );
+}

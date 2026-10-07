@@ -4,7 +4,7 @@ Tâches importantes à ne pas perdre entre deux sessions. Référence des IDs : 
 
 ## En cours / prochaine étape
 
-- [ ] **W-9 premium UI (D-044)** : passes 1–3 et 3.1 faites (design system, navigation, Aujourd'hui avec visuel du héros, anneau protéines, mini graphique des pas, mot du coach), en attente de validation de Souhayb avant les passes 4–12 (Workout, Programme, Nutrition, Progrès, bilan / historique, Profil / Réglages / Confidentialité, états, motion / accessibilité, web / Android).
+- [ ] **W-9 premium UI (D-044)** : passes 1–3, 3.1, 3.2 (Aujourd'hui validé) et 4–9 faites (Séance, Programme, Nutrition, Progrès, Bilan, Historique, Profil / Réglages / Confidentialité). Reste : états (chargement / vide / erreur / hors ligne) écran par écran, motion et accessibilité, web / Android, puis revue-w9-premium-ui.md (22 points). Pas de fusion sans son accord.
 - [ ] W-9 : relire le mode sombre écran par écran (tokens prêts, contraste testé) ; haptique légère quand une infrastructure existe ; l'onglet Explorer et ses chaînes ont été retirés (les lieux restent dans Réglages).
 - [ ] W-9 : brancher de vrais médias d'exercice dans `HeroMedia` (`uri`) quand la bibliothèque Project You en aura ; aujourd'hui le catalogue n'en a aucun, le visuel dessiné s'affiche.
 

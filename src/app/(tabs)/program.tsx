@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
-import { Banner, LoadingScreen, Rationale, Screen, Text } from '@/components/ui';
+import { Banner, Card, LoadingScreen, Rationale, Screen, ScreenHeader, Section } from '@/components/ui';
 import { ProgramDay } from '@/features/program/ProgramDay';
 import { ProgramVersionCard } from '@/features/program/ProgramVersionCard';
 import { useProgramWeek } from '@/features/program/useProgramWeek';
@@ -14,20 +14,22 @@ export default function ProgramScreen() {
   if (!plan || !week) return <LoadingScreen />;
 
   return (
-    <Screen>
-      <Text variant="display" accessibilityRole="header">
-        {t('program.title')}
-      </Text>
+    <Screen airy>
+      <ScreenHeader title={t('program.title')} />
       {week.lightWeek ? <Banner tone="primary" message={t('program.adapted.light_week')} /> : null}
       {plan.schedule.warnings.map((w) => (
         <Banner key={w} message={t(`program.warnings.${w}`)} />
       ))}
       <ProgramVersionCard version={week.version} />
-      {week.days.map((day) => (
-        <ProgramDay key={day.date} day={day} />
-      ))}
-      <Rationale data={plan.workoutPlan.rationale} />
-      <Rationale data={plan.schedule.rationale} />
+      <Section title={t('program.week')}>
+        {week.days.map((day) => (
+          <ProgramDay key={day.date} day={day} />
+        ))}
+      </Section>
+      <Card tone="subtle" dense>
+        <Rationale data={plan.workoutPlan.rationale} label={t('program.whySessions')} />
+        <Rationale data={plan.schedule.rationale} label={t('program.whySchedule')} />
+      </Card>
     </Screen>
   );
 }

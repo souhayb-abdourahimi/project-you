@@ -2,11 +2,24 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { MIN_TOUCH, spacing, useColors } from '@/theme';
 
-import { Icon } from './Icon';
+import { Icon, type IconName } from './Icon';
 import { Text } from './Text';
 
 /** A row that opens another screen: its title, an optional summary of the current value. */
-export function LinkRow({ label, summary, onPress }: { label: string; summary?: string; onPress: () => void }) {
+export function LinkRow({
+  label,
+  summary,
+  icon,
+  grouped,
+  onPress,
+}: {
+  label: string;
+  summary?: string;
+  icon?: IconName;
+  /** Inside a ListGroup: the row carries its own inner padding. */
+  grouped?: boolean;
+  onPress: () => void;
+}) {
   const colors = useColors();
   return (
     <Pressable
@@ -14,7 +27,12 @@ export function LinkRow({ label, summary, onPress }: { label: string; summary?: 
       accessibilityRole="link"
       accessibilityLabel={summary ? `${label}, ${summary}` : label}
       onPress={onPress}
-      style={({ pressed }) => [styles.row, pressed ? { backgroundColor: colors.surfaceSubtle } : null]}>
+      style={({ pressed }) => [
+        styles.row,
+        grouped && styles.grouped,
+        pressed ? { backgroundColor: colors.surfaceSubtle } : null,
+      ]}>
+      {icon ? <Icon name={icon} size="md" color="textSecondary" /> : null}
       <View style={styles.text}>
         <Text variant="bodyMedium">{label}</Text>
         {summary ? (
@@ -36,5 +54,6 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingVertical: spacing.xs,
   },
-  text: { flex: 1, gap: 2 },
+  grouped: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  text: { flex: 1, gap: spacing.xxs },
 });

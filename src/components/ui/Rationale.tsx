@@ -8,7 +8,7 @@ import { MIN_TOUCH, spacing } from '@/theme';
 import { Text } from './Text';
 
 /** "Pourquoi cette recommandation ?" — shows the engine's structured explanation, never model reasoning. */
-export function Rationale({ data }: { data: RationaleData }) {
+export function Rationale({ data, label }: { data: RationaleData; label?: string }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const tr = (key: string) => t(`reasons.${key}`, data.params ?? {});
@@ -20,7 +20,7 @@ export function Rationale({ data }: { data: RationaleData }) {
         onPress={() => setOpen(!open)}
         style={{ minHeight: MIN_TOUCH, justifyContent: 'center' }}>
         <Text variant="label" color="primary">
-          {t('common.why')}
+          {label ?? t('common.why')}
         </Text>
       </Pressable>
       {open ? (

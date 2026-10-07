@@ -30,7 +30,7 @@ export function ExerciseFacts({
   const plan = planKey(exercise);
   return (
     <View style={styles.root}>
-      <Text variant="heading" accessibilityRole="text">
+      <Text variant="title3" accessibilityRole="text">
         {t('workout.target', {
           sets: exercise.sets,
           min: exercise.repsMin,

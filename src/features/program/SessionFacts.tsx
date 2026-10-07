@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Text } from '@/components/ui';
+import { Icon, Text } from '@/components/ui';
 import type { ExerciseComparison, SessionComparison } from '@/domain/training/compare';
 import { DIFFICULTY_LEVELS } from '@/domain/training/program';
 import { getExercise } from '@/domain/training/exercises';
@@ -32,7 +32,10 @@ export function SessionFacts({ session: s }: { session: SessionComparison }) {
         disabled={s.exercises.length === 0}
         onPress={() => setOpen(!open)}
         style={styles.toggle}>
-        <Text variant="label">{title}</Text>
+        <Text variant="bodyMedium" style={styles.flex}>
+          {title}
+        </Text>
+        {s.exercises.length > 0 ? <Icon name="chevron" size="sm" color="textMuted" /> : null}
       </Pressable>
       {s.extra ? <Text color="textMuted">{t('program.extraSession')}</Text> : null}
       <SessionStatusLine status={s.status} movedTo={s.movedTo} replacedBy={s.replacedBy} />
@@ -87,6 +90,7 @@ function ExerciseLine({ exercise: e }: { exercise: ExerciseComparison }) {
 
 const styles = StyleSheet.create({
   root: { gap: spacing.xs },
-  toggle: { minHeight: MIN_TOUCH, justifyContent: 'center' },
+  toggle: { minHeight: MIN_TOUCH, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  flex: { flex: 1 },
   exercise: { paddingLeft: spacing.md },
 });

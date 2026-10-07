@@ -577,6 +577,8 @@ const fr = {
     restLogged: 'Repos noté. À demain !',
   },
   program: {
+    whySessions: 'Pourquoi ces séances ?',
+    whySchedule: 'Pourquoi ces horaires ?',
     title: 'Ton programme',
     week: 'Cette semaine',
     sessions: 'Séances',
@@ -707,7 +709,7 @@ const fr = {
     loadMissing: 'Indique la charge utilisée (0 si tu n’en as pas pris).',
     header: {
       exerciseOf: 'Exercice {{index}} sur {{total}}',
-      progress: '{{done}} séries sur {{total}}',
+      progress: 'Séries : {{done}} / {{total}}',
       purpose: 'Objectif : {{purpose}}',
       minutes: 'Environ {{count}} min',
     },
@@ -911,6 +913,8 @@ const fr = {
     },
   },
   nutrition: {
+    energy: 'Énergie',
+    mealsEaten: '{{eaten}} repas notés sur {{meals}}',
     title: 'Nutrition',
     targets: 'Tes repères du jour',
     targetsHint: 'Estimations, ajustées selon ta progression.',
@@ -1070,6 +1074,7 @@ const fr = {
     costUnknown: 'Coût : donnée indisponible',
   },
   progress: {
+    quickEntry: 'Noter une mesure',
     note: {
       no_weight: 'Pas encore de pesée : note ton poids quelques matins par semaine pour voir ta tendance.',
       no_waist: 'Pas encore de tour de taille : une mesure tous les quinze jours suffit pour suivre ce qui change.',
@@ -1101,6 +1106,8 @@ const fr = {
         '{{done}} séance(s) faite(s) sur {{planned}} prévue(s) ces 4 dernières semaines, dont {{adapted}} adaptée(s)',
     },
     body: {
+      trendA11y: 'Moyennes hebdomadaires de tes pesées : {{count}} semaines connues, de {{first}} à {{last}}.',
+      trendCaption: 'Moyenne de tes pesées, semaine par semaine ({{count}} dernières semaines)',
       title: 'Corps',
       waist: 'Tour de taille',
       weight: 'Poids (moyenne de tes pesées sur 7 jours)',
@@ -1407,6 +1414,8 @@ const fr = {
     save: 'Voir mon bilan',
   },
   review: {
+    overline: 'Bilan de la semaine',
+    weekOf: 'Semaine du {{date}}',
     title: 'Bilan de la semaine',
     open: 'Voir le bilan de la semaine',
     noProfile: 'Termine ton profil pour voir ton bilan de la semaine.',

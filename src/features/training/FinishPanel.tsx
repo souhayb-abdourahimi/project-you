@@ -27,7 +27,7 @@ export function FinishPanel({
     return <Button variant="secondary" label={t('workout.finish')} onPress={() => setConfirming(true)} />;
   return (
     <Card>
-      <Text variant="heading">{t('workout.finishTitle')}</Text>
+      <Text variant="title3">{t('workout.finishTitle')}</Text>
       <Text color="textMuted">{t('workout.finishRemaining', { count: remaining })}</Text>
       <Text variant="caption" color="textMuted">
         {t('workout.stopReasonTitle')}

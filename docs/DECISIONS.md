@@ -683,3 +683,7 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
 
 Ordre d'Aujourd'hui : héros (avec visuel) → résumé hiérarchisé (une carte Nutrition avec un seul anneau de protéines, puis la semaine et les pas ou le poids) → mot du coach → la journée. Le visuel du héros suit une priorité fixe : média réel de la séance, sinon bibliothèque Project You, sinon visuel dessiné ; aucune photo aléatoire du web. Les pas n'ont un graphique qu'avec au moins 3 jours mesurés (`MIN_STEP_DAYS`). Quand la célébration affiche déjà le titre du jalon, le mot du coach garde seulement son message. Aucune règle métier déplacée : `todayGlance` (`src/features/today/view.ts`) ne fait que lire le plan, le journey et les données de santé partagées.
 
+### D-044 addendum (passes 3.2 à 9, 2026-10-07) : Aujourd'hui validé, style décliné
+
+Souhayb a validé Aujourd'hui (passe 3.1) et demandé deux micro-corrections (3.2) : petits écrans plus denses (`useCompact()`, cibles tactiles inchangées) et anneau plafonné à 100 % avec la valeur réelle en texte, sans rouge ni avertissement. Le style est ensuite décliné sur Séance, Programme, Nutrition, Progrès, Bilan, Historique, Profil, Réglages et Confidentialité, chaque écran gardant sa propre hiérarchie (docs/DESIGN_SYSTEM.md). Deux view models purs s'ajoutent, sans règle métier : `dayIntake` (somme des repas marqués mangés, partagée par Aujourd'hui et Nutrition) et `weightTrend` (moyennes de `weightAverageAt`). Un budget dépassé passe en orange, plus en rouge.
+

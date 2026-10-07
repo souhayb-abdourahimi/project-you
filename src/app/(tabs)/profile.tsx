@@ -3,20 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { Avatar, ListGroup, ListRow, Screen, Text } from '@/components/ui';
-import { SETTINGS_SECTIONS, type SettingsSection } from '@/domain/settings/sections';
+import { SETTINGS_SECTIONS } from '@/domain/settings/sections';
 import { sectionSummary } from '@/features/settings/summaries';
 import { useNotificationStore } from '@/state/notifications';
 import { useProfileStore } from '@/state/profile';
+import { SECTION_ICON } from '@/features/settings/icons';
 import { spacing } from '@/theme';
-
-const SECTION_ICON = {
-  profile: 'profile',
-  goal: 'progress',
-  motivation: 'coach',
-  training: 'workout',
-  schedule: 'program',
-  nutrition: 'nutrition',
-} as const satisfies Record<SettingsSection, string>;
 
 /**
  * Profil (W-9 navigation): who you are and what the coach works from, in a few grouped rows. Every

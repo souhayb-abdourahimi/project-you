@@ -565,6 +565,8 @@ const en: LocaleShape = {
     restLogged: 'Rest logged. See you tomorrow!',
   },
   program: {
+    whySessions: 'Why these sessions?',
+    whySchedule: 'Why these times?',
     title: 'Your program',
     week: 'This week',
     sessions: 'Sessions',
@@ -694,7 +696,7 @@ const en: LocaleShape = {
     loadMissing: 'Enter the load you used (0 if none).',
     header: {
       exerciseOf: 'Exercise {{index}} of {{total}}',
-      progress: '{{done}} of {{total}} sets',
+      progress: 'Sets: {{done}} / {{total}}',
       purpose: 'Goal: {{purpose}}',
       minutes: 'About {{count}} min',
     },
@@ -897,6 +899,8 @@ const en: LocaleShape = {
     },
   },
   nutrition: {
+    energy: 'Energy',
+    mealsEaten: '{{eaten}} of {{meals}} meals logged',
     title: 'Nutrition',
     targets: 'Today’s guide',
     targetsHint: 'Estimates, adjusted to your progress.',
@@ -1053,6 +1057,7 @@ const en: LocaleShape = {
     costUnknown: 'Cost: data unavailable',
   },
   progress: {
+    quickEntry: 'Log a measurement',
     note: {
       no_weight: 'No weigh-in yet: log your weight a few mornings a week to see your trend.',
       no_waist: 'No waist measurement yet: one every two weeks is enough to follow what changes.',
@@ -1084,6 +1089,8 @@ const en: LocaleShape = {
         '{{done}} workout(s) done out of {{planned}} planned over the last 4 weeks, {{adapted}} of them adapted',
     },
     body: {
+      trendA11y: 'Weekly averages of your weigh-ins: {{count}} weeks known, from {{first}} to {{last}}.',
+      trendCaption: 'Average of your weigh-ins, week by week (last {{count}} weeks)',
       title: 'Body',
       waist: 'Waist',
       weight: 'Weight (7-day average of your weigh-ins)',
@@ -1388,6 +1395,8 @@ const en: LocaleShape = {
     save: 'See my review',
   },
   review: {
+    overline: 'Weekly review',
+    weekOf: 'Week of {{date}}',
     title: 'Weekly review',
     open: 'See the weekly review',
     noProfile: 'Finish your profile to see your weekly review.',

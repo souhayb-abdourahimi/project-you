@@ -17,7 +17,7 @@ export function SyncStatusCard() {
   const last = lastSyncedAt ? new Date(lastSyncedAt) : null;
   return (
     <Card>
-      <Text variant="heading">{t('settings.sync.title')}</Text>
+      <Text variant="title3">{t('settings.sync.title')}</Text>
       <Text accessibilityLiveRegion="polite">{t(`settings.sync.view.${view}`, { count: pending })}</Text>
       {last && view !== 'local_only' ? (
         <Text variant="caption" color="textMuted">

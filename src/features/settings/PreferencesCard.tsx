@@ -11,7 +11,7 @@ export function PreferencesCard() {
   const p = usePreferenceSettings();
   return (
     <Card>
-      <Text variant="heading">{t('settings.display.title')}</Text>
+      <Text variant="title3">{t('settings.display.title')}</Text>
       <Text variant="label">{t('settings.language')}</Text>
       <ChoiceGroup
         single

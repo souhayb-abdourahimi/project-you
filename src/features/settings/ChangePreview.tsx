@@ -18,7 +18,7 @@ export function ChangePreview({ impact }: { impact: ProfileImpact }) {
   return (
     <Card muted>
       <View accessibilityLiveRegion="polite" style={{ gap: spacing.sm }}>
-        <Text variant="heading">{t('settings.impact.title')}</Text>
+        <Text variant="title3">{t('settings.impact.title')}</Text>
         <Text variant="caption" color="textMuted">
           {t('settings.impact.changed', { fields })}
         </Text>
@@ -27,7 +27,8 @@ export function ChangePreview({ impact }: { impact: ProfileImpact }) {
         ))}
         {impact.replaced.map(({ decision, reason }) => (
           <Text key={decision.id}>
-            - {t(`settings.impact.replaced.${reason}`, {
+            -{' '}
+            {t(`settings.impact.replaced.${reason}`, {
               date: formatDate(decision.effectiveFrom, i18n.language),
               from: decision.from,
               to: decision.to,

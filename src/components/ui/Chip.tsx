@@ -91,11 +91,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   group: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  badgeText: { flexShrink: 1 },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
     alignSelf: 'flex-start',
+    maxWidth: '100%',
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs + 1,
@@ -122,7 +124,7 @@ export function Badge({ label, tone = 'neutral', icon }: { label: string; tone?:
   return (
     <View style={[styles.badge, { backgroundColor: colors[look.background] }]}>
       {icon ? <Icon name={icon} size={14} color={look.foreground} /> : null}
-      <Text variant="captionStrong" color={look.foreground}>
+      <Text variant="captionStrong" color={look.foreground} style={styles.badgeText}>
         {label}
       </Text>
     </View>

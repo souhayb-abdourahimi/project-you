@@ -1,13 +1,18 @@
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Text } from '@/components/ui';
+import { Icon, Text, type IconName } from '@/components/ui';
 import { getExercise } from '@/domain/training/exercises';
 import type { LoggedSet } from '@/domain/training/progression';
 import { exerciseStatus, type ExerciseReport, type SessionExercise } from '@/domain/training/session';
-import { MIN_TOUCH, radius, spacing, useColors } from '@/theme';
+import { MIN_TOUCH, radius, spacing, useColors, type ColorToken } from '@/theme';
 
-const MARK = { pending: '○', in_progress: '◐', done: '✓', not_performed: '–' } as const;
+const MARK: Record<string, { icon: IconName; color: ColorToken }> = {
+  pending: { icon: 'todo', color: 'textMuted' },
+  in_progress: { icon: 'partial', color: 'primary' },
+  done: { icon: 'done', color: 'success' },
+  not_performed: { icon: 'skipped', color: 'textMuted' },
+};
 
 /** The whole session at a glance; any exercise can be opened (order is a suggestion). */
 export function ExerciseList({
@@ -28,56 +33,64 @@ export function ExerciseList({
   const colors = useColors();
   return (
     <View style={styles.root}>
-      <Text variant="label" color="textMuted">
-        {t('workout.list')}
-      </Text>
-      {exercises.map((e, i) => {
-        const done = sets[e.exerciseId] ?? [];
-        const status = exerciseStatus(e, done, reports[e.prescribedId]);
-        const name = getExercise(e.exerciseId)?.name[lang] ?? e.exerciseId;
-        const label =
-          status === 'in_progress'
-            ? t('workout.status.in_progress', { done: done.length, total: e.sets })
-            : t(`workout.status.${status}`);
-        return (
-          <Pressable
-            key={e.prescribedId}
-            accessibilityRole="button"
-            accessibilityLabel={`${name}, ${label}`}
-            accessibilityHint={t('workout.goTo', { name })}
-            accessibilityState={{ selected: i === current }}
-            onPress={() => onOpen(i)}
-            style={[
-              styles.row,
-              {
-                borderColor: i === current ? colors.primary : colors.border,
-                backgroundColor: i === current ? colors.surfaceMuted : colors.surface,
-              },
-            ]}>
-            <Text color={status === 'done' ? 'success' : 'textMuted'}>{MARK[status]}</Text>
-            <Text style={styles.name} color={status === 'not_performed' ? 'textMuted' : 'text'}>
-              {name}
-            </Text>
-            <Text variant="caption" color="textMuted">
-              {label}
-            </Text>
-          </Pressable>
-        );
-      })}
+      <Text variant="title3">{t('workout.list')}</Text>
+      <View style={[styles.group, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        {exercises.map((e, i) => {
+          const done = sets[e.exerciseId] ?? [];
+          const status = exerciseStatus(e, done, reports[e.prescribedId]);
+          const name = getExercise(e.exerciseId)?.name[lang] ?? e.exerciseId;
+          const label =
+            status === 'in_progress'
+              ? t('workout.status.in_progress', { done: done.length, total: e.sets })
+              : t(`workout.status.${status}`);
+          return (
+            <Pressable
+              key={e.prescribedId}
+              accessibilityRole="button"
+              accessibilityLabel={`${name}, ${label}`}
+              accessibilityHint={t('workout.goTo', { name })}
+              accessibilityState={{ selected: i === current }}
+              onPress={() => onOpen(i)}
+              style={({ pressed }) => [
+                styles.row,
+                i > 0 && { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth },
+                {
+                  backgroundColor:
+                    i === current ? colors.primarySubtle : pressed ? colors.surfaceSubtle : 'transparent',
+                },
+              ]}>
+              <Text variant="captionStrong" color={i === current ? 'primary' : 'textMuted'} style={styles.index}>
+                {i + 1}
+              </Text>
+              <Text
+                style={styles.name}
+                variant={i === current ? 'bodyMedium' : 'body'}
+                color={status === 'not_performed' ? 'textMuted' : 'textPrimary'}>
+                {name}
+              </Text>
+              <Text variant="caption" color="textMuted">
+                {label}
+              </Text>
+              <Icon name={MARK[status].icon} size="sm" color={MARK[status].color} />
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { gap: spacing.xs },
+  root: { gap: spacing.md },
+  group: { borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   row: {
-    minHeight: MIN_TOUCH,
+    minHeight: MIN_TOUCH + spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
   },
+  index: { width: 16, textAlign: 'center' },
   name: { flex: 1 },
 });
