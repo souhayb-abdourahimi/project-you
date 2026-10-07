@@ -402,10 +402,14 @@ export function adaptPrescription(input: {
   const { session, adapted } = input;
   if (adapted.variant === 'full' || session.exercises.some((e) => e.variant === adapted.variant)) return session;
   const purpose = sessionPurpose(input.program?.params?.goal ?? 'maintenance', adapted.variant);
+  // One slot for the adaptation of the day (D-034), minutes and reason always of the same variant
+  // (W-7.1: never light's reason with short's rows). The short version owns it when there is one:
+  // its minutes are the user's, the rows cannot give them back; light is the estimate of its rows.
+  const owns = session.adaptedMinutes === null || adapted.variant === 'short';
   return deepFreeze({
     ...session,
-    adaptedMinutes: session.adaptedMinutes ?? input.minutes,
-    adaptationReason: session.adaptationReason ?? input.reasonKey,
+    adaptedMinutes: owns ? input.minutes : session.adaptedMinutes,
+    adaptationReason: owns ? input.reasonKey : session.adaptationReason,
     exercises: [
       ...session.exercises,
       ...plannedRows({

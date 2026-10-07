@@ -312,6 +312,35 @@ describe('durations (D-034): what the coach announces is what is prescribed', ()
     expect(variantMinutes(short, 'short')).toBe(20);
   });
 
+  it('stacked adaptations, light then short (W-7.1): the final prescription is coherent', () => {
+    const r = first();
+    const p = r.prescriptions[r.sessionIds[MONDAY]];
+    const light = adapt(p, 'light');
+    // Then "J'ai 20 minutes" the same day: what the coach announces is what is stored and read.
+    const announced = plannedVariantMinutes(light, 'short', 20);
+    expect(announced).toBe(20);
+    const both = adapt(light, 'short', 20);
+    expect(variantMinutes(both, 'short')).toBe(20);
+    expect(both.adaptedMinutes).toBe(20);
+    expect(both.adaptationReason).toBe('workout.variant.short');
+    // The light rows stay as built, with their own duration; the full rows are untouched.
+    expect(both.exercises.filter((e) => e.variant !== 'short')).toEqual(light.exercises);
+    expect(variantMinutes(both, 'light')).toBe(variantMinutes(light, 'light'));
+    // Same session, same structural decision, no row of another session, every row once.
+    expect(both).toMatchObject({ id: p.id, plannedMinutes: p.plannedMinutes, prescribedAt: p.prescribedAt });
+    expect(both.adjustmentId).toBe(p.adjustmentId);
+    const underRestart = adapt(adapt({ ...p, adjustmentId: 'adj-restart' }, 'light'), 'short', 20);
+    expect(underRestart.adjustmentId).toBe('adj-restart');
+    expect(both.exercises.every((e) => e.sessionId === p.id)).toBe(true);
+    expect(new Set(both.exercises.map((e) => e.id)).size).toBe(both.exercises.length);
+    const positions = (v: string) => both.exercises.filter((e) => e.variant === v).map((e) => e.position);
+    for (const v of ['full', 'light', 'short']) expect(positions(v)).toEqual(positions(v).map((_, i) => i));
+    // Short then light keeps the short minutes (light is read from its own rows).
+    const other = adapt(adapt(p, 'short', 20), 'light');
+    expect(variantMinutes(other, 'short')).toBe(20);
+    expect(variantMinutes(other, 'light')).toBe(variantMinutes(light, 'light'));
+  });
+
   it('light: announced and stored with the same estimate, fewer sets than full', () => {
     const r = first();
     const p = r.prescriptions[r.sessionIds[MONDAY]];
