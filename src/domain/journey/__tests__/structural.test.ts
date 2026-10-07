@@ -1,5 +1,5 @@
 import { addDays } from '../../shared/dates';
-import { STRUCTURE } from '../../training/structure';
+import { STRUCTURE, STRUCTURAL_CHANGES } from '../../training/structure';
 import { adapt, primaryProposal, undecided, type AdaptationInput, type Recommendation } from '../adaptation';
 import type { Adherence } from '../adherence';
 import {
@@ -20,6 +20,7 @@ import {
   type StructuralSignals,
 } from '../structural';
 import { toneIssues } from '../voice/tone';
+import en from '../../../i18n/locales/en';
 import fr from '../../../i18n/locales/fr';
 
 /** W-5 (D-036, D-037): the structural rules of the Adaptation Engine, scenario by scenario (§33). */
@@ -558,5 +559,29 @@ describe('proposal wording: what, why, how long, what it does (§18, §27)', () 
     expect(v.answers).toEqual([
       { option: null, label: { key: 'adaptation.applyLabel.reduce_volume', params: {} }, scope: r.scope },
     ]);
+  });
+
+  it('every structural change has its impact and a precise apply label in FR and EN (W-7 §50)', () => {
+    const tree = (locale: { adaptation: object }) =>
+      locale.adaptation as unknown as Record<string, Record<string, string>>;
+    for (const locale of [fr, en]) {
+      for (const key of STRUCTURAL_CHANGES) {
+        expect([key, typeof tree(locale).impact[key]]).toEqual([key, 'string']);
+        if (key !== 'cycle_review') expect([key, typeof tree(locale).applyLabel[key]]).toEqual([key, 'string']);
+      }
+    }
+    const frequency = proposalView(
+      {
+        id: 'training:sessions_per_week:2026-09-28',
+        kind: 'training',
+        change: { key: 'sessions_per_week', from: 3, to: 2 },
+        reason: { key: 'adaptation.reason.missed_sessions', params: {} },
+        evidence: {},
+        mode: 'proposed',
+        scope: { kind: 'durable' },
+      },
+      (id) => id,
+    );
+    expect(frequency.answers[0].label).toEqual({ key: 'adaptation.applyLabel.sessions_per_week', params: { to: 2 } });
   });
 });

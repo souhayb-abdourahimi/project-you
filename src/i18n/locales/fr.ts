@@ -266,6 +266,121 @@ const fr = {
     shopping: 'Courses {{start}}–{{end}}',
     motivation: 'Motivation',
   },
+  /**
+   * The coach of the day (W-7, src/domain/journey/coach.ts): one main action, a few facts, one
+   * question at most. Facts only, never a cause, never a reproach (tone guard, FR and EN).
+   */
+  coachDay: {
+    calm: 'Rien de particulier à ajuster aujourd’hui.',
+    why: 'Pourquoi ce choix ?',
+    whyHide: 'Masquer le pourquoi',
+    basedOn: 'Basé sur : {{facts}}.',
+    notEnoughData: 'Je n’ai pas assez de données pour en dire plus.',
+    opensScreen: 'Ouvre l’écran correspondant',
+    rule: {
+      safety: 'Prendre soin de toi passe avant tout le reste aujourd’hui.',
+      comeback: 'Tu reviens après une pause : on reprend simplement, sans rien empiler.',
+      structural: 'Une adaptation de ton programme est proposée : elle passe avant le reste aujourd’hui.',
+      session: 'Une séance est prévue aujourd’hui : c’est l’action principale.',
+      difficulty: 'Plusieurs séances prévues n’ont pas eu lieu récemment : savoir ce qui bloque aide à ajuster.',
+      nutrition: 'Pas de séance aujourd’hui : le point utile concerne tes repas.',
+      recovery: 'Aujourd’hui, la récupération passe en premier.',
+      progression: 'Ta prochaine séance contient une progression prévue.',
+      motivation: 'Une journée calme : un repère sur ton parcours.',
+      light: 'Une journée calme, sans rien d’urgent.',
+    },
+    basis: {
+      safety: 'les signaux de tes derniers jours',
+      comeback: '{{days}} jour(s) sans activité notée',
+      schedule: 'ton planning de la semaine',
+      day_mode: 'le format de journée que tu as choisi',
+      not_happened: '{{count}} séance(s) prévue(s) sans enregistrement sur {{days}} jours',
+      nutrition: 'ton plan de repas d’aujourd’hui',
+      fatigue: 'la fatigue que tu as déclarée',
+      progression: 'tes dernières séances notées',
+    },
+    question: {
+      later: 'Pas maintenant',
+      blocker: {
+        intro: 'J’ai vu que plusieurs séances prévues n’ont pas eu lieu récemment.',
+        text: 'Qu’est-ce qui t’a le plus bloqué ?',
+      },
+      short_day: {
+        intro: 'Tu as choisi une séance courte {{count}} fois le {{weekday}}.',
+        text: 'Tu veux que je garde ce format en tête pour ce jour ?',
+        yes: 'Oui, garde-le en tête',
+        no: 'Non merci',
+      },
+    },
+    blocker: {
+      time: 'Manque de temps',
+      fatigue: 'Fatigue',
+      pain: 'Douleur / gêne',
+      motivation: 'Motivation',
+      schedule: 'Planning',
+      equipment: 'Matériel',
+      other: 'Autre',
+    },
+    blockerA11y: 'Ce qui m’a le plus bloqué : {{cause}}',
+    cause: {
+      time: 'C’est noté : le temps. Une séance courte compte, elle aussi.',
+      fatigue: 'C’est noté : la fatigue. Dis-moi comment tu te sens aujourd’hui, la séance s’ajustera.',
+      motivation: 'C’est noté : la motivation. Une version plus petite suffit pour garder le fil.',
+      pain: 'C’est noté : une douleur ou une gêne. On reste prudent : rien n’augmente sur un mouvement qui gêne, et pendant la séance « Remplacer » propose un autre mouvement. Si la gêne persiste, parles-en à un professionnel de santé.',
+      schedule: 'C’est noté : le planning. Tu peux déplacer une séance sur un autre jour de la semaine.',
+      equipment:
+        'C’est noté : le matériel. Pendant la séance, « Remplacer » propose un exercice avec ce qui est disponible.',
+      other: 'C’est noté. Le plan reste le même, et tu peux l’alléger à tout moment.',
+    },
+    action: {
+      short_version: 'Faire la version courte',
+      how_i_feel: 'Dire comment je me sens aujourd’hui',
+      smaller_version: 'Faire une version plus petite',
+      lighten_today: 'Alléger la séance d’aujourd’hui',
+      move_session: 'Déplacer une séance',
+      shopping: 'Voir la liste de courses',
+      meals: 'Voir mes repas',
+    },
+    active: {
+      light_week: 'Cette semaine reste allégée.',
+      restart: 'La reprise en douceur continue.',
+      reduce_volume: 'Le volume reste réduit pour l’instant.',
+      easier_variant: 'Les variantes plus simples restent en place pour l’instant.',
+    },
+    change: {
+      light_week: 'la semaine allégée',
+      restart: 'la reprise en douceur',
+      reduce_volume: 'la période à volume réduit',
+      easier_variant: 'les variantes plus simples',
+      exercise_change: 'le changement d’exercice',
+      cycle_review: 'la fin de cycle',
+    },
+    followup: {
+      not_enough: 'Après {{change}}, on n’a pas encore assez de recul pour en dire plus.',
+      more_complete: 'Après {{change}}, tu as complété davantage de séances.',
+      less_complete: 'Après {{change}}, moins de séances ont été complétées qu’avant. On pourra en reparler au bilan.',
+      fatigue_lower: 'Après {{change}}, tu as déclaré moins de jours de fatigue.',
+      same: 'Après {{change}}, le rythme des séances est resté le même.',
+    },
+    nutrition: {
+      missing_ingredients: 'Il te manque {{count}} ingrédient(s) pour tes repas d’aujourd’hui.',
+      day_incomplete: 'Ton plan de repas d’aujourd’hui est incomplet : un repas de plus peut le compléter.',
+      plan_gap:
+        'Ton plan de repas ne peut pas être complet avec tes contraintes actuelles : des pistes sont proposées.',
+      shopping_today: 'Des courses sont prévues aujourd’hui.',
+    },
+    progression: '{{exercise}} : {{load}} kg prévus.',
+    memory: {
+      short_day_fact: 'Tu m’as dit préférer une séance courte le {{weekday}} : la version courte est prête si tu veux.',
+      title: 'Ce que le coach retient',
+      intro: 'Seulement ce que tu as confirmé. Tu peux l’oublier à tout moment.',
+      empty: 'Le coach ne retient rien pour l’instant. Il te demande toujours avant de retenir quelque chose.',
+      short_day: 'Séance courte le {{weekday}} (depuis le {{date}})',
+      forget: 'Oublier',
+      forgetA11y: 'Oublier : {{item}}',
+    },
+    weekday: { 1: 'lundi', 2: 'mardi', 3: 'mercredi', 4: 'jeudi', 5: 'vendredi', 6: 'samedi', 7: 'dimanche' },
+  },
   daily: {
     offPlan: {
       body: 'Rien n’est prévu aujourd’hui : le repos fait partie du programme. Si tu as envie de bouger, une séance hors programme reste possible.',
@@ -1026,6 +1141,7 @@ const fr = {
     advice: 'Conseil',
     apply: 'Appliquer',
     decline: 'Refuser',
+    answerA11y: '{{answer}} : {{change}}',
     postpone: 'Pas maintenant',
     keep: 'Le garder',
     why: 'Pourquoi ?',
@@ -1039,6 +1155,7 @@ const fr = {
       reduce_volume: 'Réduire le volume',
       easier_variant: 'Essayer la variante',
       exercise_change: 'Le remplacer',
+      sessions_per_week: 'Passer à {{to}} séances par semaine',
     },
     option: {
       continue: 'Continuer ainsi',
@@ -1062,6 +1179,7 @@ const fr = {
       exercise_change: 'Les séances déjà faites ne changent pas ; les prochaines suivent la nouvelle version.',
       cycle_review: 'Continuer ainsi, prévoir une semaine allégée, ou faire évoluer quelques exercices.',
       cycle_evolve: 'Continuer ainsi, prévoir une semaine allégée, ou faire évoluer : {{list}}.',
+      sessions_per_week: 'Les séances déjà faites ne changent pas ; les semaines suivantes suivent ce nouveau rythme.',
     },
     confirm: {
       exercise_change:

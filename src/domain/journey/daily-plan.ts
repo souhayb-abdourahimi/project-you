@@ -43,7 +43,10 @@ export interface DailyPlan {
   items: DailyItem[];
   /** First item still to do (never the safety notice itself); null when the day is done. */
   main: DailyItem | null;
-  /** The answer quoted under "Pourquoi tu as commencé" (one of why / change / feel). */
+  /**
+   * The answer quoted under "Pourquoi tu as commencé" (one of why / change / feel), only on the days
+   * it helps (W-7 §15, `whyMoment`); null on an ordinary day.
+   */
   anchor: { slot: 'why' | 'change' | 'feel'; text: string } | null;
   message: ComposedMessage;
   headline: { key: string; params: Record<string, string | number> };
@@ -53,6 +56,8 @@ export interface DailyPlan {
    * an ordinary day without safety signal, fatigue or comeback. Never an item, never a catch-up.
    */
   offPlan: boolean;
+  /** A session was planned today (whatever became of it). */
+  sessionPlanned: boolean;
 }
 
 export interface DailyPlanInput {
@@ -96,6 +101,8 @@ export interface DailyPlanInput {
   lightWeek?: boolean;
   /** Everything the voice already said, on every channel. */
   history: VoiceUse[];
+  /** Engagement is dropping (retention risk `watch` or `act`, docs/RETENTION.md). */
+  engagementDrop?: boolean;
 }
 
 export const MAX_DAILY_ITEMS = 4;
@@ -298,6 +305,23 @@ function headline(input: DailyPlanInput): DailyPlan['headline'] {
   return options[hash(state.today) % options.length];
 }
 
+/**
+ * The user's own words are a resource, used sparingly (W-7 §15): the first day, a comeback, a
+ * milestone, a difficult or low-motivation day, a low motivation declared today, or engagement
+ * dropping. Never under the safety rule (the care anchor speaks then). Other days quote nothing.
+ */
+export function whyMoment(input: DailyPlanInput, kind: DayKind, mode: DayMode): boolean {
+  if (input.state.safety.active) return false;
+  return (
+    kind === 'first_day' ||
+    kind === 'comeback' ||
+    !!input.milestone ||
+    mode !== 'normal' ||
+    (input.dayLog?.motivation ?? 5) <= 2 ||
+    !!input.engagementDrop
+  );
+}
+
 function anchorContextFor(kind: DayKind, mode: DayMode, input: DailyPlanInput): AnchorContext {
   if (kind === 'comeback' || mode === 'low_motivation' || (input.dayLog?.motivation ?? 5) <= 2) return 'comeback';
   if (input.milestone) return 'progress';
@@ -445,16 +469,18 @@ export function buildDailyPlan(input: DailyPlanInput): DailyPlan {
   const kept = items.slice(0, MAX_DAILY_ITEMS);
 
   const context = anchorContextFor(kind, mode, input);
+  const why = whyMoment(input, kind, mode);
   const given = (['why', 'change', 'feel'] as const).filter((s) => state.motivation[s]?.trim());
   const earlier = input.history.filter((u) => u.date < today);
-  const slot = pickAnchorSlot([...given], context, earlier, today);
+  const slot = why ? pickAnchorSlot([...given], context, earlier, today) : null;
   const { trigger, facts } = messageTrigger(input, kind, mode, decision.facts);
   const message = composeMessage({
     trigger,
     date: today,
     facts,
-    state,
-    // The Today screen is private: the user's own words are always quoted there.
+    // The Today screen is private: the user's own words are quoted there, on the days they help
+    // (whyMoment); other days the message keeps a neutral anchor.
+    state: why ? state : { ...state, motivation: {} },
     quotePersonalWords: true,
     // Only days before today: the message stays the same all day long.
     history: earlier,
@@ -479,5 +505,6 @@ export function buildDailyPlan(input: DailyPlanInput): DailyPlan {
       state.difficulties.fatigue !== 'high' &&
       !state.momentum.comeback &&
       mode === 'normal',
+    sessionPlanned: !!input.day?.items.some((i) => i.kind === 'workout'),
   };
 }

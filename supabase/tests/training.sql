@@ -350,6 +350,20 @@ select pg_temp.expect_error($s$
 insert into public.adjustments (user_id, kind, change_key, reason_key, status, effective_from)
 values ('00000000-0000-0000-0000-00000000000c', 'reduce_load', 'light_week', 'adaptation.reason.end_of_cycle', 'postponed', '2026-11-16');
 select pg_temp.expect((select count(*) from public.adjustments where status = 'postponed') = 1, 'a proposal can be postponed');
+
+-- W-7 (D-039): the coach's own entries fit the journal as it is (no migration): a cause picked
+-- from a closed list, a confirmed short day, and "Oublier" as a new row on the same proposal.
+insert into public.adjustments (user_id, kind, change_key, to_value, reason_key, evidence, status, effective_from, proposal_id)
+values ('00000000-0000-0000-0000-00000000000c', 'planning', 'coach.blocker', '"time"', 'coach.question.blocker',
+        '{"sessions": 2, "days": 14}', 'applied', '2026-11-16', 'coach:blocker:2026-11-16');
+insert into public.adjustments (user_id, kind, change_key, from_value, to_value, reason_key, status, effective_from, proposal_id, scope)
+values ('00000000-0000-0000-0000-00000000000c', 'planning', 'coach.memory.short_day', '3', '"short"', 'coach.question.short_day',
+        'applied', '2026-11-16', 'coach:memory:short_day.3', 'durable'),
+       ('00000000-0000-0000-0000-00000000000c', 'planning', 'coach.memory.short_day', '3', '"short"', 'coach.question.short_day',
+        'reverted', '2026-11-17', 'coach:memory:short_day.3', null);
+select pg_temp.expect(
+  (select count(*) from public.adjustments where change_key like 'coach.%') = 3,
+  'coach answers and their revert are journal rows (owner only, synced, exported, deleted with the account)');
 commit;
 
 -- ---------------------------------------------------------------------------

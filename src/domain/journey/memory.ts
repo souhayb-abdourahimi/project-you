@@ -7,6 +7,7 @@
 import type { IsoDate, Weekday } from '../shared/dates';
 import { weekdayOf } from '../shared/dates';
 import type { ReplacementReason } from '../training/replacement';
+import { isCoachEntry } from './coach-memory';
 import type { MealReason } from './outcomes';
 
 export const MEMORY = {
@@ -140,7 +141,7 @@ export function journeyMemory(input: MemoryInput): JourneyMemory {
   const events: MemoryEvent[] = [
     ...Object.entries(input.milestones).map(([id, m]) => ({ kind: 'milestone' as const, id, on: m.reachedOn })),
     ...input.adjustments
-      .filter((a) => a.status !== 'proposed')
+      .filter((a) => a.status !== 'proposed' && !isCoachEntry(a))
       .map((a) => ({
         kind: 'adjustment' as const,
         changeKey: a.changeKey,

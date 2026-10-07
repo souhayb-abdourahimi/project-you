@@ -5,6 +5,7 @@
  * one in force. Nothing is deleted, so the history keeps every proposal, refusal and revert.
  */
 import { addDays, daysBetween, startOfWeek, type IsoDate } from '../shared/dates';
+import { isCoachEntry } from './coach-memory';
 
 export const ADAPTATION_KINDS = [
   'nutrition',
@@ -73,12 +74,13 @@ const byDecision = (a: Adjustment, b: Adjustment) => a.decidedAt.localeCompare(b
 /**
  * The decision in force for each proposal: the latest one (time of the gesture, then id), on every
  * device the same. Two devices that answered differently offline both keep their row; the later
- * gesture wins, the other stays in the journal (never lost silently).
+ * gesture wins, the other stays in the journal (never lost silently). The coach's own entries (a
+ * cause, a confirmed preference, W-7) are not adaptation decisions: `coachEntries` reads them.
  */
 export function effectiveDecisions(adjustments: readonly Adjustment[]): Map<string, Adjustment> {
   const out = new Map<string, Adjustment>();
   for (const a of [...adjustments].sort(byDecision)) {
-    if (a.status === 'proposed') continue;
+    if (a.status === 'proposed' || isCoachEntry(a)) continue;
     out.set(decidedRecommendation(a), a);
   }
   return out;
@@ -87,7 +89,7 @@ export function effectiveDecisions(adjustments: readonly Adjustment[]): Map<stri
 /** Decisions overridden by a later one on the same proposal (another device, a revert). */
 export function overriddenDecisions(adjustments: readonly Adjustment[]): Adjustment[] {
   const effective = new Set([...effectiveDecisions(adjustments).values()].map((a) => a.id));
-  return adjustments.filter((a) => a.status !== 'proposed' && !effective.has(a.id));
+  return adjustments.filter((a) => a.status !== 'proposed' && !isCoachEntry(a) && !effective.has(a.id));
 }
 
 /** Applied decisions still in force (not reverted, not overridden), oldest first. */

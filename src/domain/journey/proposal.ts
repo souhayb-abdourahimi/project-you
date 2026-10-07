@@ -48,6 +48,7 @@ const APPLY_LABEL: Record<string, string> = {
   reduce_volume: 'adaptation.applyLabel.reduce_volume',
   easier_variant: 'adaptation.applyLabel.easier_variant',
   exercise_change: 'adaptation.applyLabel.exercise_change',
+  sessions_per_week: 'adaptation.applyLabel.sessions_per_week',
 };
 
 function durationOf(scope: ProposalScope | null | undefined, changeKey: string): Copy | null {
@@ -108,7 +109,17 @@ export function proposalView(r: Recommendation, name: (id: string) => string): P
           label: copy(`adaptation.option.${option}`),
           scope: cycleOptionScope(option),
         }))
-      : [{ option: null, label: copy(APPLY_LABEL[key] ?? 'adaptation.apply'), scope: r.scope ?? null }];
+      : [
+          {
+            option: null,
+            // A precise label ("Alléger cette semaine", "Passer à 2 séances par semaine"), W-7 §50.
+            label: copy(
+              APPLY_LABEL[key] ?? 'adaptation.apply',
+              key === 'sessions_per_week' && r.change.to !== undefined ? { to: r.change.to } : {},
+            ),
+            scope: r.scope ?? null,
+          },
+        ];
   const evolution = key === 'cycle_review' && options.includes('evolve') ? pairs(r.change.from, undefined, name) : '';
   return {
     id: r.id,

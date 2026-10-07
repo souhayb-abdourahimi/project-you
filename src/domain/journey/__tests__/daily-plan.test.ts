@@ -258,9 +258,27 @@ describe('DailyPlan', () => {
     expect(kinds(busy)[0]).toBe('safety');
   });
 
+  it('quotes the why only on the days it helps (W-7 §15), never under safety', () => {
+    // An ordinary day: no quote, and the message keeps a neutral anchor.
+    const ordinary = buildDailyPlan(input());
+    expect(ordinary.anchor).toBeNull();
+    expect(ordinary.message.anchorSlot).toBe('none');
+    expect(buildDailyPlan(input({ day: restDay })).anchor).toBeNull();
+    // A comeback, a milestone, a low motivation, a lighter day, engagement dropping: quoted.
+    expect(buildDailyPlan(input({}, { comeback: true })).anchor?.slot).toBe('why');
+    expect(buildDailyPlan(input({ milestone: { sessions: '10' } })).anchor).not.toBeNull();
+    expect(buildDailyPlan(input({ dayLog: { date: TODAY, motivation: 2 } })).anchor?.slot).toBe('why');
+    expect(buildDailyPlan(input({ dayLog: { date: TODAY, mode: 'short' } })).anchor).not.toBeNull();
+    expect(buildDailyPlan(input({ engagementDrop: true })).anchor).not.toBeNull();
+    const safety = buildDailyPlan(
+      input({ engagementDrop: true }, { comeback: true, safety: { active: true, flags: ['low_intake'] } }),
+    );
+    expect(safety.anchor).toBeNull();
+  });
+
   it('chooses why, change or feel from the context, never concatenated, never the same two days running', () => {
-    expect(buildDailyPlan(input()).anchor?.slot).toBe('change');
-    expect(buildDailyPlan(input({ day: restDay })).anchor?.slot).toBe('feel');
+    expect(buildDailyPlan(input({ engagementDrop: true })).anchor?.slot).toBe('change');
+    expect(buildDailyPlan(input({ day: restDay, engagementDrop: true })).anchor?.slot).toBe('feel');
     expect(buildDailyPlan(input({}, { comeback: true })).anchor?.slot).toBe('why');
     const yesterday: VoiceUse[] = [
       {
@@ -271,7 +289,7 @@ describe('DailyPlan', () => {
         channel: 'screen',
       },
     ];
-    const p = buildDailyPlan(input({ history: yesterday }));
+    const p = buildDailyPlan(input({ history: yesterday, engagementDrop: true }));
     expect(p.anchor?.slot).toBe('why');
     expect(p.anchor?.text).toBe('être fier de moi');
   });

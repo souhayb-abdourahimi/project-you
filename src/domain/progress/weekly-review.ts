@@ -20,6 +20,12 @@ export interface WeeklyReviewInput {
   today: IsoDate;
   goal: GoalType;
   schedule: WeeklyPlan;
+  /**
+   * Planned sessions of the week as they were prescribed (W-6 `plannedSessionDates`): past days
+   * from their stored prescriptions, never rebuilt from today's profile (W-7 §38). Without it, the
+   * schedule's workout days are used (a week before W-2).
+   */
+  plannedSessionDates?: IsoDate[];
   completedSessions: { date: IsoDate; sessionIndex: number; variant: 'full' | 'short' | 'light' }[];
   setLogs: Record<string, Record<string, LoggedSet[]>>;
   mealPlan: WeeklyMealPlan | null;
@@ -75,9 +81,11 @@ const inWeek = (date: IsoDate, weekStart: IsoDate) => date >= weekStart && date 
 
 export function weeklyReview(input: WeeklyReviewInput): WeeklyReview {
   const { weekStart } = input;
-  const workoutDays = input.schedule.days.filter((d) => d.items.some((i) => i.kind === 'workout'));
-  const planned = workoutDays.length;
-  const plannedSoFar = workoutDays.filter((d) => d.date <= input.today).length;
+  const plannedDates =
+    input.plannedSessionDates?.filter((d) => inWeek(d, weekStart)) ??
+    input.schedule.days.filter((d) => d.items.some((i) => i.kind === 'workout')).map((d) => d.date);
+  const planned = plannedDates.length;
+  const plannedSoFar = plannedDates.filter((d) => d <= input.today).length;
   const done = input.completedSessions.filter((c) => inWeek(c.date, weekStart));
   const shortOrLight = done.filter((c) => c.variant !== 'full').length;
   const outcomes = Object.entries(input.sessionOutcomes ?? {}).filter(([k]) => inWeek(k.split('#')[0], weekStart));

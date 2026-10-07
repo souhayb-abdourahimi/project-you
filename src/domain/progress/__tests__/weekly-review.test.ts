@@ -4,6 +4,8 @@ import { planWeek as planMeals } from '../../meals/planner';
 import { computeNutritionTargets } from '../../nutrition/engine';
 import { planWeek } from '../../planning/engine';
 import { SCENARIOS } from '../../scenarios';
+import { publishWeek } from '../../scenarios/training';
+import { plannedSessionDates } from '../../training/week-view';
 import { weeklyReview, type WeeklyReviewInput } from '../weekly-review';
 
 const WEEK = '2026-09-28';
@@ -30,6 +32,33 @@ function input(s = SCENARIOS.studentMediumBudget, patch: Partial<WeeklyReviewInp
     ...patch,
   };
 }
+
+describe('weeklyReview: the past week as it was prescribed (W-7 §38)', () => {
+  it('a profile changed since then does not rewrite the planned sessions of the past week', () => {
+    const s = SCENARIOS.muscleGain;
+    // The week was published with 3 sessions; the profile now asks for 4 on other days.
+    const records = publishWeek(s, { today: WEEK, weekStart: WEEK, seed: 'local', at: `${WEEK}T07:00:00.000Z` });
+    const four = {
+      ...s,
+      training: { ...s.training, sessionsPerWeek: 4 },
+      schedule: {
+        ...s.schedule,
+        availability: [2, 4, 6, 7].map((day) => ({ day: day as 2 | 4 | 6 | 7, start: '09:00', end: '20:00' })),
+      },
+    };
+    const now = planWeek({ weekStart: WEEK, schedule: four.schedule, training: four.training });
+    const dates = plannedSessionDates({
+      records,
+      facts: { setLogs: {}, completedSessions: [] },
+      today: '2026-10-06',
+      weeks: [{ weekStart: WEEK, schedule: now.days }],
+    });
+    const fromProfile = weeklyReview(input(s, { schedule: now, today: '2026-10-04' }));
+    const asPrescribed = weeklyReview(input(s, { schedule: now, today: '2026-10-04', plannedSessionDates: dates }));
+    expect(fromProfile.sessions.planned).toBe(4);
+    expect(asPrescribed.sessions.planned).toBe(3);
+  });
+});
 
 describe('weeklyReview', () => {
   it('counts a short session as a win and proposes smaller steps, never blame', () => {

@@ -358,3 +358,33 @@ describe('NotificationEngine: safety first (CLAUDE.md rule 8)', () => {
     expect(normal.some((n) => n.body[2].key === 'coach.meaning.meal_planned.lose')).toBe(true);
   });
 });
+
+describe('W-7: notifications follow the coach of the day (§43–44)', () => {
+  const today = '2026-09-28';
+  const milestone = { id: 'first_month', facts: { months: '1' } };
+
+  it('a comeback or a structural proposal leads today: no celebration, no daily why instead', () => {
+    const normal = plan({ journey: { milestone, todayPriority: 'session' } });
+    expect(ofTrigger(normal, 'milestone_reached').length).toBe(1);
+    for (const todayPriority of ['comeback', 'structural']) {
+      const held = plan({ journey: { milestone, todayPriority } });
+      const onToday = held.filter((n) => n.date === today).map((n) => n.trigger);
+      expect(onToday).not.toContain('milestone_reached');
+      expect(onToday).not.toContain('daily_why');
+      // The days after keep their usual messages; the session reminder stays.
+      expect(held.some((n) => n.date > today && n.trigger === 'daily_why')).toBe(true);
+    }
+  });
+
+  it('never a motivational message at night, whatever the chosen time; the pause and the cap hold', () => {
+    const night = plan({ prefs: allPrefsOn({ motivationTime: '23:30' }) });
+    expect(night.filter((n) => n.category === 'motivation')).toEqual([]);
+    expect(night.every((n) => n.time >= '07:30' && n.time < '22:00')).toBe(true);
+    const paused = plan({ prefs: allPrefsOn({ pausedUntil: '2026-10-01' }) });
+    expect(paused.every((n) => n.date >= '2026-10-01')).toBe(true);
+    const capped = plan({ prefs: allPrefsOn({ maxPerDay: 1 }) });
+    const perDay = new Map<string, number>();
+    for (const n of capped) perDay.set(n.date, (perDay.get(n.date) ?? 0) + 1);
+    expect(Math.max(...perDay.values())).toBe(1);
+  });
+});
