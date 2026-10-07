@@ -128,7 +128,8 @@ test('every tab is reachable from the navigation', async ({ page }) => {
   for (const [tab, heading] of [
     ['Programme', 'Ton programme'],
     ['Nutrition', 'Tes repères du jour'],
-    ['Progression', 'Voir le bilan de la semaine'],
+    ['Progrès', 'Voir le bilan de la semaine'],
+    ['Profil', 'Mon profil'],
     ['Aujourd’hui', 'J’ai 15 minutes'],
   ]) {
     await openTab(page, tab);

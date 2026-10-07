@@ -21,14 +21,14 @@ export function BudgetCard() {
 
   return (
     <Card>
-      <Text variant="heading">{t('nutrition.budget')}</Text>
-      <Text variant="title">
+      <Text variant="title3">{t('nutrition.budget')}</Text>
+      <Text variant="title2">
         {t('nutrition.budgetValue', { spent: money(summary.spentCents), planned: money(summary.plannedCents) })}
       </Text>
       <ProgressBar
         value={summary.ratio}
         label={t('nutrition.budget')}
-        color={summary.status === 'over' ? 'danger' : summary.status === 'tight' ? 'warning' : 'success'}
+        color={summary.status === 'on_track' ? 'success' : 'warning'}
       />
       <Text color="textMuted">{t('nutrition.budgetRemaining', { amount: money(summary.remainingCents) })}</Text>
       <NumberField key={formKey} label={t('nutrition.expenseAmount')} value={amount} onChange={setAmount} />

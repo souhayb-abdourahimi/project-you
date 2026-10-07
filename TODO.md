@@ -4,6 +4,10 @@ Tâches importantes à ne pas perdre entre deux sessions. Référence des IDs : 
 
 ## En cours / prochaine étape
 
+- [ ] **W-9 premium UI (D-044)** : passes 1–3, 3.1, 3.2 (Aujourd'hui validé) et 4–9 faites (Séance, Programme, Nutrition, Progrès, Bilan, Historique, Profil / Réglages / Confidentialité). Reste : états (chargement / vide / erreur / hors ligne) écran par écran, motion et accessibilité, web / Android, puis revue-w9-premium-ui.md (22 points). Pas de fusion sans son accord.
+- [ ] W-9 : relire le mode sombre écran par écran (tokens prêts, contraste testé) ; haptique légère quand une infrastructure existe ; l'onglet Explorer et ses chaînes ont été retirés (les lieux restent dans Réglages).
+- [ ] W-9 : brancher de vrais médias d'exercice dans `HeroMedia` (`uri`) quand la bibliothèque Project You en aura ; aujourd'hui le catalogue n'en a aucun, le visuel dessiné s'affiche.
+
 - [ ] **M-01 / M-19** : relancer `npm run test:live` (corrigé pour Jest) pour valider RLS et sync sur le projet réel. Migrations appliquées, `delete-account` déployée, connexion validée par curl (2026-10-01).
 - [ ] Tester la suppression de compte sur le projet réel (fonction déployée le 2026-10-01).
 - [ ] E2E avec un vrai compte (inscription → sync → second appareil) une fois le réseau vers Supabase disponible.

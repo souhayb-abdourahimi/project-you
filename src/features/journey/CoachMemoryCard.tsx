@@ -23,7 +23,7 @@ export function CoachMemoryCard() {
   const { confirmed } = shortDayMemory({ today, dayLogs, adjustments });
   return (
     <Card>
-      <Text variant="heading">{t('coachDay.memory.title')}</Text>
+      <Text variant="title3">{t('coachDay.memory.title')}</Text>
       <Text color="textMuted">{t(confirmed.length ? 'coachDay.memory.intro' : 'coachDay.memory.empty')}</Text>
       {confirmed.map((m) => {
         const label = say({

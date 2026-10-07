@@ -15,7 +15,12 @@ export function SyncNotice() {
     <>
       <Banner tone="textMuted" message={t(`settings.sync.view.${view}`, { count: pending })} />
       {view === 'sign_in_again' ? (
-        <Button compact variant="secondary" label={t('settings.sync.details')} onPress={() => router.push('/settings')} />
+        <Button
+          compact
+          variant="secondary"
+          label={t('settings.sync.details')}
+          onPress={() => router.push('/settings')}
+        />
       ) : null}
     </>
   );

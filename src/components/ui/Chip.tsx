@@ -1,6 +1,8 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { MIN_TOUCH, radius, spacing, useColors } from '@/theme';
+import { MIN_TOUCH, borderWidth, radius, spacing, useColors, type ColorToken } from '@/theme';
+
+import { Icon, type IconName } from './Icon';
 
 import { Text } from './Text';
 
@@ -32,11 +34,11 @@ export function Chip({
       style={[
         styles.chip,
         {
-          borderColor: selected ? colors.primary : colors.border,
-          backgroundColor: selected ? colors.surfaceMuted : colors.surface,
+          borderColor: selected ? colors.primary : colors.borderStrong,
+          backgroundColor: selected ? colors.primarySubtle : colors.surface,
         },
       ]}>
-      <Text variant="label" color={selected ? 'primary' : 'text'}>
+      <Text variant="captionStrong" color={selected ? 'primary' : 'textPrimary'}>
         {label}
       </Text>
     </Pressable>
@@ -84,9 +86,47 @@ const styles = StyleSheet.create({
   chip: {
     minHeight: MIN_TOUCH,
     borderRadius: radius.pill,
-    borderWidth: 1.5,
+    borderWidth: borderWidth.strong,
     paddingHorizontal: spacing.lg,
     justifyContent: 'center',
   },
   group: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  badgeText: { flexShrink: 1 },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 1,
+  },
 });
+
+export type BadgeTone = 'neutral' | 'primary' | 'positive' | 'caution' | 'onDark';
+
+const BADGE: Record<BadgeTone, { background: ColorToken; foreground: ColorToken }> = {
+  neutral: { background: 'surfaceSubtle', foreground: 'textSecondary' },
+  primary: { background: 'primarySubtle', foreground: 'primary' },
+  positive: { background: 'successSubtle', foreground: 'success' },
+  caution: { background: 'warningSubtle', foreground: 'warning' },
+  onDark: { background: 'inverseFill', foreground: 'onInverse' },
+};
+
+/**
+ * A status chip (duration, state, difficulty): information, never a button. A missed session is
+ * `neutral`, never red (no-guilt design).
+ */
+export function Badge({ label, tone = 'neutral', icon }: { label: string; tone?: BadgeTone; icon?: IconName }) {
+  const colors = useColors();
+  const look = BADGE[tone];
+  return (
+    <View style={[styles.badge, { backgroundColor: colors[look.background] }]}>
+      {icon ? <Icon name={icon} size={14} color={look.foreground} /> : null}
+      <Text variant="captionStrong" color={look.foreground} style={styles.badgeText}>
+        {label}
+      </Text>
+    </View>
+  );
+}

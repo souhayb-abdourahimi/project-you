@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
-import { Button, Card, Text } from '@/components/ui';
+import { Button, Card, Icon, ProgressRing, Text } from '@/components/ui';
 import { restRemaining } from '@/domain/training/session';
 import { spacing } from '@/theme';
 import { useWorkoutUi } from '@/state/workout';
@@ -30,24 +30,31 @@ export function RestTimer({ session }: { session: string }) {
   const left = Math.min(restRemaining(rest, now), Math.ceil(rest.totalMs / 1000));
   const ui = useWorkoutUi.getState();
   return (
-    <Card muted>
+    <Card tone="accent">
+      {/* The ring empties as the rest runs: a real timer, its seconds said in words. */}
       <View style={styles.row}>
-        <Text variant="label" color="textMuted">
-          {t('workout.rest.title')}
-        </Text>
-        <Text
-          variant="display"
-          accessibilityRole="timer"
-          accessibilityLabel={t('workout.rest.label', { seconds: left })}
-          style={styles.clock}>
-          {clock(left)}
-        </Text>
+        <ProgressRing
+          value={rest.totalMs > 0 ? (left * 1000) / rest.totalMs : 0}
+          size={88}
+          stroke={8}
+          track="surface"
+          label={t('workout.rest.label', { seconds: left })}>
+          <Text variant="metric" style={styles.clock}>
+            {clock(left)}
+          </Text>
+        </ProgressRing>
+        <View style={styles.text}>
+          <View style={styles.title}>
+            <Icon name="timer" size="sm" color="primary" />
+            <Text variant="headline">{t('workout.rest.title')}</Text>
+          </View>
+          {left === 0 ? (
+            <Text color="success" accessibilityLiveRegion="polite">
+              {t('workout.rest.over')}
+            </Text>
+          ) : null}
+        </View>
       </View>
-      {left === 0 ? (
-        <Text color="success" accessibilityLiveRegion="polite">
-          {t('workout.rest.over')}
-        </Text>
-      ) : null}
       <View style={styles.actions}>
         <Button compact variant="secondary" label={t('workout.rest.skip')} onPress={ui.skipRest} />
         <Button
@@ -71,7 +78,9 @@ export function RestTimer({ session }: { session: string }) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  text: { flex: 1, gap: spacing.xs },
+  title: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   clock: { fontVariant: ['tabular-nums'] },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
 });

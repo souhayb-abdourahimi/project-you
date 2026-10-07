@@ -1,11 +1,12 @@
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
-import { Button, Card, ConfirmButton, LinkRow, MockBadge, Row, Screen, Text } from '@/components/ui';
+import { Button, Card, ConfirmButton, LinkRow, ListGroup, MockBadge, Row, Screen, Text } from '@/components/ui';
 import { SCENARIOS } from '@/domain/scenarios';
 import { SETTINGS_SECTIONS } from '@/domain/settings/sections';
 import { CoachMemoryCard } from '@/features/journey/CoachMemoryCard';
 import { AccountCard } from '@/features/settings/AccountCard';
+import { SECTION_ICON } from '@/features/settings/icons';
 import { PreferencesCard } from '@/features/settings/PreferencesCard';
 import { sectionSummary } from '@/features/settings/summaries';
 import { SyncStatusCard } from '@/features/settings/SyncStatusCard';
@@ -31,49 +32,57 @@ export default function SettingsScreen() {
   };
 
   return (
-    <Screen>
+    <Screen airy>
       <SyncStatusCard />
       {snapshot ? (
-        <Card>
-          <Text variant="heading">{t('settings.profile.title')}</Text>
+        <ListGroup title={t('settings.profile.title')}>
           {SETTINGS_SECTIONS.map((section) => (
             <LinkRow
               key={section}
+              grouped
+              icon={SECTION_ICON[section]}
               label={t(`settings.sections.${section}.title`)}
               summary={sectionSummary(section, snapshot, t, year)}
               onPress={() => router.push(`/settings/${section}`)}
             />
           ))}
-        </Card>
+        </ListGroup>
       ) : null}
       <PreferencesCard />
-      <Card>
-        <Text variant="heading">{t('settings.notifications')}</Text>
+      <ListGroup title={t('settings.notifications')}>
         <LinkRow
+          grouped
+          icon="time"
           label={t('privacy.notifications')}
           summary={t(notificationsOn ? 'settings.summary.notificationsOn' : 'settings.summary.notificationsOff')}
           onPress={() => router.push('/notifications')}
         />
-      </Card>
+      </ListGroup>
       <CoachMemoryCard />
-      <Card>
-        <Text variant="heading">{t('settings.data.title')}</Text>
+      <ListGroup title={t('settings.data.title')}>
         <LinkRow
+          grouped
+          icon="weight"
           label={t('settings.data.measurements')}
           summary={t('settings.data.measurementsHint')}
           onPress={() => router.push('/measurements')}
         />
-        <LinkRow label={t('settings.openPrivacy')} summary={t('settings.privacyHint')} onPress={() => router.push('/privacy')} />
-      </Card>
-      <Card>
-        <Text variant="heading">{t('settings.integrations')}</Text>
-        <LinkRow label={t('calendar.open')} onPress={() => router.push('/calendar')} />
-        <LinkRow label={t('places.open')} onPress={() => router.push('/places')} />
-        <LinkRow label={t('health.open')} onPress={() => router.push('/health')} />
-      </Card>
+        <LinkRow
+          grouped
+          icon="safety"
+          label={t('settings.openPrivacy')}
+          summary={t('settings.privacyHint')}
+          onPress={() => router.push('/privacy')}
+        />
+      </ListGroup>
+      <ListGroup title={t('settings.integrations')}>
+        <LinkRow grouped icon="program" label={t('calendar.open')} onPress={() => router.push('/calendar')} />
+        <LinkRow grouped icon="walk" label={t('places.open')} onPress={() => router.push('/places')} />
+        <LinkRow grouped icon="steps" label={t('health.open')} onPress={() => router.push('/health')} />
+      </ListGroup>
       <AccountCard />
       <Card>
-        <Text variant="heading">{t('settings.restart.title')}</Text>
+        <Text variant="title3">{t('settings.restart.title')}</Text>
         <Text color="textMuted">{t('settings.restart.hint')}</Text>
         <Button
           variant="secondary"

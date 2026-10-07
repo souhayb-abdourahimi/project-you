@@ -80,7 +80,7 @@ test('pounds: weights and loads shown in lb, every stored value stays in kg', as
   await page.getByRole('radio', { name: 'Livres (lb)' }).filter({ visible: true }).first().click();
   await expect.poll(async () => (await profile(page)).preferences.weightUnit).toBe('lb');
   await page.goto('/');
-  await openTab(page, 'Progression');
+  await openTab(page, 'Progrès');
   await expect(text(page, /176,4\s?lb/)).toBeVisible();
   expect((await stored(page)).weights).toEqual([weights[0]]);
   expect(errors).toEqual([]);

@@ -665,3 +665,25 @@ Format : Decision · Reason · Alternatives · Trade-offs · Date. On ajoute, on
 - **Âge minimum : 18 ans et plus** (décision de Souhayb, 2026-10-07, bêta et v1 publique). `MIN_AGE = 18`, règle unique `checkAge` (onboarding, construction du profil, Réglages) ; message neutre ; un compte créé sous l'ancienne règle 16+ garde son année de naissance inchangée et toutes les protections des mineurs (`noDeficitProfile`, `ADULT_AGE`, `noPush`) restent. Détail : `docs/SETTINGS_ARCHITECTURE.md` §11.
 - **Alternatives** : langue synchronisée avec le compte (refusé : un appareil partagé ou un téléphone en anglais doit garder sa langue) ; écran d'édition « libre » sans aperçu (refusé : changements silencieux du programme) ; réécrire l'ajustement de fréquence (refusé : append-only, D-037).
 - **Date** : 2026-10-07
+
+## D-044 — Design system premium et navigation (W-9, passes 1 à 3)
+
+- **Contexte** : demande de Souhayb du 2026-10-07 (« W-9 — PREMIUM UI / UX PASS ») avec sa maquette de référence ; phase visuelle sans nouvelle règle métier. Il demande de s'arrêter après le design system, la navigation et l'écran Aujourd'hui pour valider le style avant de le décliner.
+- **Décision** :
+  - **Tokens** (`src/theme/tokens.ts`, `docs/DESIGN_SYSTEM.md`) : palette froide claire (fond `#F4F5F7`, bleu `#1D4ED8`, graphite `#121722`), couleurs métier en accent seulement, typographie `display → metricLarge`, rayons 14 / 16 / 20 / 22, ombres très légères, durées, opacités. Anciens noms gardés en alias : tous les écrans prennent la palette sans être repris un par un.
+  - **Icônes** : une famille, SF Symbols (iOS) / Material Symbols (Android, web) via `expo-symbols`, déjà installé ; aucune dépendance ajoutée.
+  - **Navigation** : Aujourd'hui, Programme, Nutrition, Progrès, **Profil** (remplace l'onglet Explorer, qui n'affichait qu'un « phase 2 » ; les lieux restent dans Réglages → Connexions). Barre native sur iOS / Android, barre maison sur le web.
+  - **Aujourd'hui** : la décision de `coachDay` devient un héros (graphite pour une séance à faire, clair sinon) ; une question du coach au plus ; un coup d'œil de trois chiffres au plus (`todaySnapshot`, pur et testé : séances de la semaine, protéines des repas notés en estimation, pas mesurés ou poids moyen seulement si l'objectif l'affiche) ; puis « Ta journée », la carte de motivation et les repas. Aucune règle déplacée dans React ; mêmes données → mêmes décisions.
+  - **Animations** : `Animated` de React Native et `AccessibilityInfo` (Reduce Motion), pas Reanimated (non initialisé dans Jest, pas utile pour des micro-animations). Pas d'haptique : aucune infrastructure existante, pas de nouvelle dépendance pour ça.
+  - **Captures** : `npm run screens` (Playwright, config séparée), pas de tests d'image comparée (fragiles entre machines, infrastructure lourde).
+- **Alternatives** : renommer tous les tokens dans tous les écrans (refusé : gros diff sans valeur avant les passes écran par écran) ; garder Explorer comme 6e onglet (refusé : la cible fixe cinq onglets) ; une bibliothèque d'icônes en plus (refusé : une seule famille).
+- **Date** : 2026-10-07
+
+### D-044 addendum (passe 3.1, 2026-10-07) : Aujourd'hui, image puis données puis coach
+
+Ordre d'Aujourd'hui : héros (avec visuel) → résumé hiérarchisé (une carte Nutrition avec un seul anneau de protéines, puis la semaine et les pas ou le poids) → mot du coach → la journée. Le visuel du héros suit une priorité fixe : média réel de la séance, sinon bibliothèque Project You, sinon visuel dessiné ; aucune photo aléatoire du web. Les pas n'ont un graphique qu'avec au moins 3 jours mesurés (`MIN_STEP_DAYS`). Quand la célébration affiche déjà le titre du jalon, le mot du coach garde seulement son message. Aucune règle métier déplacée : `todayGlance` (`src/features/today/view.ts`) ne fait que lire le plan, le journey et les données de santé partagées.
+
+### D-044 addendum (passes 3.2 à 9, 2026-10-07) : Aujourd'hui validé, style décliné
+
+Souhayb a validé Aujourd'hui (passe 3.1) et demandé deux micro-corrections (3.2) : petits écrans plus denses (`useCompact()`, cibles tactiles inchangées) et anneau plafonné à 100 % avec la valeur réelle en texte, sans rouge ni avertissement. Le style est ensuite décliné sur Séance, Programme, Nutrition, Progrès, Bilan, Historique, Profil, Réglages et Confidentialité, chaque écran gardant sa propre hiérarchie (docs/DESIGN_SYSTEM.md). Deux view models purs s'ajoutent, sans règle métier : `dayIntake` (somme des repas marqués mangés, partagée par Aujourd'hui et Nutrition) et `weightTrend` (moyennes de `weightAverageAt`). Un budget dépassé passe en orange, plus en rouge.
+

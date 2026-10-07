@@ -12,7 +12,7 @@ export function AccountCard() {
   const busy = account.signOutState.kind === 'busy';
   return (
     <Card>
-      <Text variant="heading">{t('settings.account')}</Text>
+      <Text variant="title3">{t('settings.account')}</Text>
       {account.signedIn ? (
         <>
           <Text>{t('settings.accountState.signedIn', { email: account.email ?? '' })}</Text>

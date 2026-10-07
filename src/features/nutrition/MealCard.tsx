@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
-import { Button, Card, ChoiceGroup, MockBadge, Rationale, Row, Text } from '@/components/ui';
+import { Badge, Button, Card, ChoiceGroup, Icon, MockBadge, Rationale, Row, Text } from '@/components/ui';
 import { MEAL_REASONS, type MealReason } from '@/domain/journey/outcomes';
 import { getFood, hasMockFood } from '@/domain/meals/catalog';
 import { alternativesFor, type PlannedMeal, type ReplaceReason } from '@/domain/meals/planner';
@@ -38,13 +38,14 @@ export function MealCard({ meal, compact }: { meal: PlannedMeal; compact?: boole
   return (
     <Card>
       <Row>
-        <Text variant="caption" color="textMuted" style={{ flex: 1 }}>
+        <Icon name="meal" size="sm" color="nutrition" />
+        <Text variant="captionStrong" color="textSecondary" style={{ flex: 1 }}>
           {t(`enums.slot.${meal.slot}`)} · {t('common.kcal', { value: Math.round(meal.nutrition.kcal) })} ·{' '}
           {t('common.minutes', { count: recipe.minutes })}
         </Text>
         {hasMockFood(meal.ingredients.map((i) => i.foodId)) ? <MockBadge /> : null}
       </Row>
-      <Text variant="heading">{recipe.name[lang]}</Text>
+      <Text variant={compact ? 'headline' : 'title3'}>{recipe.name[lang]}</Text>
       <Text variant="caption" color="textMuted">
         {t('nutrition.protein')} {Math.round(meal.nutrition.proteinG)} g · {t('nutrition.carbs')}{' '}
         {Math.round(meal.nutrition.carbsG)} g · {t('nutrition.fat')} {Math.round(meal.nutrition.fatG)} g
@@ -60,7 +61,7 @@ export function MealCard({ meal, compact }: { meal: PlannedMeal; compact?: boole
         </Text>
       ) : null}
       {meal.status === 'eaten' ? (
-        <Text color="success">{t('nutrition.eaten')}</Text>
+        <Badge tone="positive" icon="check" label={t('nutrition.eaten')} />
       ) : meal.status === 'skipped' || meal.status === 'replaced' ? (
         <View style={{ gap: spacing.xs }}>
           <Text color="textMuted">

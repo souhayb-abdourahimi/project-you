@@ -102,7 +102,7 @@ test('Progression: this week planned vs done, with the way to the history', asyn
   await seedProfile(page, SNAP);
   await seedData(page, data);
   await page.goto('/');
-  await openTab(page, 'Progression');
+  await openTab(page, 'Progrès');
   await expect(text(page, '1 séance(s) faite(s) sur 3 prévue(s) pour l’instant')).toBeVisible();
   await expect(text(page, '2 séance(s) encore à venir')).toBeVisible();
   await button(page, 'Voir l’historique').click();

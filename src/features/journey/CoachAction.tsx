@@ -26,11 +26,15 @@ export function CoachActionButton({
   items,
   today,
   secondary,
+  block,
+  onDark,
 }: {
   action: CoachAction;
   items: DailyItem[];
   today: string;
   secondary?: boolean;
+  block?: boolean;
+  onDark?: boolean;
 }) {
   const { t } = useTranslation();
   const say = useSay();
@@ -38,16 +42,17 @@ export function CoachActionButton({
   const item = action.kind === 'item' ? (items.find((i) => i.id === action.itemId) ?? null) : null;
   const itemAction = useItemAction(item ?? NONE, today);
   const variant = secondary ? 'secondary' : 'primary';
+  const look = { variant, block, onDark } as const;
   if (action.kind === 'proposal') return null;
   if (action.kind === 'item') {
-    return itemAction ? <Button variant={variant} label={itemAction.label} onPress={itemAction.run} /> : null;
+    return itemAction ? <Button {...look} label={itemAction.label} onPress={itemAction.run} /> : null;
   }
   if (action.kind === 'day_mode') {
-    return <Button variant={variant} label={say(action.label)} onPress={() => logDay(today, { mode: action.mode })} />;
+    return <Button {...look} label={say(action.label)} onPress={() => logDay(today, { mode: action.mode })} />;
   }
   return (
     <Button
-      variant={variant}
+      {...look}
       label={say(action.label)}
       accessibilityHint={t('coachDay.opensScreen')}
       onPress={() => router.push(ROUTES[action.route])}

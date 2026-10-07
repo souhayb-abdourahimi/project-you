@@ -1,44 +1,55 @@
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
-import { ProgressBar, Text } from '@/components/ui';
+import { Badge, Card, Icon, ProgressBar, Text } from '@/components/ui';
 import type { SessionProgress } from '@/domain/training/session';
 import { spacing } from '@/theme';
 
 import type { WorkoutSessionView } from './useWorkoutSession';
 
-/** Session name, goal, duration as prescribed, and how far along the session is. */
+/**
+ * The session's graphite header (W-9 §4): name, the prescribed facts as chips, and how far along
+ * it is. Facts only: the duration is the prescription's, never a measured or estimated value.
+ */
 export function SessionHeader({ view, progress }: { view: WorkoutSessionView; progress: SessionProgress }) {
   const { t } = useTranslation();
   const ratio = progress.setsPlanned > 0 ? progress.setsDone / progress.setsPlanned : 0;
   const progressLabel = t('workout.header.progress', { done: progress.setsDone, total: progress.setsPlanned });
   return (
-    <View style={styles.root}>
-      <Text variant="title">{t(`enums.focus.${view.focus}`)}</Text>
-      <View style={styles.meta}>
-        <Text variant="label" color={view.variant === 'full' ? 'textMuted' : 'primary'}>
+    <Card tone="inverse" raised style={styles.root}>
+      <View style={styles.overline}>
+        <Icon name="workout" size="sm" color="onInverseMuted" />
+        <Text variant="overline" color="onInverseMuted">
           {t(`workout.${view.variant}`)}
         </Text>
-        <Text variant="label" color="textMuted">
-          {t('workout.header.minutes', { count: view.minutes })}
-        </Text>
+      </View>
+      <Text variant="title1" color="onInverse">
+        {t(`enums.focus.${view.focus}`)}
+      </Text>
+      <View style={styles.meta}>
+        <Badge tone="onDark" icon="time" label={t('workout.header.minutes', { count: view.minutes })} />
         {view.purpose ? (
-          <Text variant="label" color="textMuted">
-            {t('workout.header.purpose', { purpose: t(`workout.purposes.${view.purpose}`) })}
-          </Text>
+          <Badge
+            tone="onDark"
+            label={t('workout.header.purpose', { purpose: t(`workout.purposes.${view.purpose}`) })}
+          />
         ) : null}
       </View>
-      {view.variant !== 'full' ? <Text color="textMuted">{t(`workout.variantNote.${view.variant}`)}</Text> : null}
-      {view.offPlan ? <Text color="textMuted">{t('workout.offPlan')}</Text> : null}
-      <ProgressBar value={ratio} label={progressLabel} />
-      <Text variant="caption" color="textMuted">
-        {progressLabel}
-      </Text>
-    </View>
+      {view.variant !== 'full' ? <Text color="onInverseMuted">{t(`workout.variantNote.${view.variant}`)}</Text> : null}
+      {view.offPlan ? <Text color="onInverseMuted">{t('workout.offPlan')}</Text> : null}
+      <View style={styles.progress}>
+        <ProgressBar value={ratio} label={progressLabel} track="inverseFill" />
+        <Text variant="captionStrong" color="onInverseMuted">
+          {progressLabel}
+        </Text>
+      </View>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
   root: { gap: spacing.sm },
-  meta: { flexDirection: 'row', flexWrap: 'wrap', columnGap: spacing.md, rowGap: spacing.xs },
+  overline: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  meta: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  progress: { gap: spacing.xs, marginTop: spacing.sm },
 });

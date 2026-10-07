@@ -15,8 +15,8 @@ export default function HistoryScreen() {
   if (!weeks) return <LoadingScreen />;
   const empty = weeks.every((w) => w.sessions.length === 0 && w.decisions.length === 0 && w.versions.length === 0);
   return (
-    <Screen>
-      <Text color="textMuted">{t('history.intro')}</Text>
+    <Screen airy>
+      <Text color="textSecondary">{t('history.intro')}</Text>
       {empty ? (
         <EmptyState message={t('history.empty')} />
       ) : (

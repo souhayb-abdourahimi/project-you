@@ -8,8 +8,8 @@ import { button, collectErrors, freezeClock, history, openTab, seedData, seedPro
  * history (MOCK data). The clock is frozen on Wednesday 30 September 2026, 10:00.
  */
 
-/** The coach card is labelled "Motivation"; it is hidden while the safety rule is active. */
-const coachCard = (page: Page) => page.getByText('Motivation', { exact: true }).filter({ visible: true });
+/** The coach's word of the day is labelled "Ton coach"; it is hidden while the safety rule is active. */
+const coachCard = (page: Page) => page.getByText('Ton coach', { exact: true }).filter({ visible: true });
 
 test('first day: a welcome, one action, and an empty story that says so', async ({ page }) => {
   const errors = collectErrors(page);
@@ -21,7 +21,7 @@ test('first day: a welcome, one action, and an empty story that says so', async 
   await expect(text(page, 'Ta prochaine action')).toBeVisible();
   await expect(text(page, 'Ta journée')).toBeVisible();
 
-  await openTab(page, 'Progression');
+  await openTab(page, 'Progrès');
   await expect(text(page, 'Ton histoire commence aujourd’hui')).toBeVisible();
   await expect(button(page, 'Voir ma journée')).toBeVisible();
   expect(errors).toEqual([]);

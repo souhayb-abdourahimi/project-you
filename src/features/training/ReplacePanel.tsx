@@ -41,7 +41,7 @@ export function ReplacePanel({
   const info = getExercise(exercise.exerciseId);
   return (
     <Card>
-      <Text variant="heading">{t('workout.replaceTitle')}</Text>
+      <Text variant="title3">{t('workout.replaceTitle')}</Text>
       <ChoiceGroup
         single
         label={t('workout.replaceTitle')}
@@ -96,7 +96,7 @@ export function NotPerformedPanel({
   const [reason, setReason] = useState<ReplacementReason | null>(null);
   return (
     <Card>
-      <Text variant="heading">{t('workout.notPerformedTitle')}</Text>
+      <Text variant="title3">{t('workout.notPerformedTitle')}</Text>
       <ChoiceGroup
         single
         label={t('workout.notPerformedTitle')}

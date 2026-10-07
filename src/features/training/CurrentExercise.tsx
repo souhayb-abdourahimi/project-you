@@ -38,11 +38,11 @@ export function CurrentExercise({
   const editSet = editing !== null ? ex.today[editing] : undefined;
 
   return (
-    <Card>
-      <Text variant="caption" color="textMuted">
+    <Card raised style={styles.card}>
+      <Text variant="overline" color="primary">
         {t('workout.header.exerciseOf', { index: ex.index + 1, total })}
       </Text>
-      <Text variant="title">{name}</Text>
+      <Text variant="title2">{name}</Text>
       {ex.replaced ? (
         <View style={styles.row}>
           <Text variant="caption" color="textMuted">
@@ -59,7 +59,7 @@ export function CurrentExercise({
       {/* One thing at a time: the replace / skip panel takes the place of the set entry. */}
       {panel !== null ? null : ex.status === 'not_performed' ? (
         <View style={styles.block}>
-          <Text variant="heading" color="textMuted">
+          <Text variant="headline" color="textMuted">
             {ex.report?.notPerformedReason
               ? t('workout.notPerformedReason', {
                   reason: t(`workout.replaceReasons.${ex.report.notPerformedReason}`),
@@ -87,7 +87,7 @@ export function CurrentExercise({
         />
       ) : doneAll ? (
         <View style={styles.block}>
-          <Text variant="heading" color="success">
+          <Text variant="headline" color="success">
             {t('workout.exerciseDone')}
           </Text>
           <Text variant="caption" color="textMuted">
@@ -148,6 +148,7 @@ export function CurrentExercise({
 }
 
 const styles = StyleSheet.create({
+  card: { gap: spacing.md },
   row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
   block: { gap: spacing.sm },
 });

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
-import { Banner } from '@/components/ui';
+import { Notice } from '@/components/ui';
 import type { JourneyState } from '@/domain/journey/state';
 import { composeMessage, renderMessage } from '@/domain/journey/voice/composer';
 import { safetyMessageFor } from '@/domain/journey/voice/safety-message';
@@ -15,5 +15,6 @@ export function SafetyNotice({ state }: { state: JourneyState | null }) {
   if (!state || !safety) return null;
   const message = composeMessage({ ...safety, date: state.today, state, quotePersonalWords: true, history: [] });
   const { title, body } = renderMessage(message, (key, params) => t(key, params));
-  return <Banner message={`${title}\n${body}`} />;
+  // A dedicated, calm surface: identifiable at once, never alarming (W-9).
+  return <Notice tone="caution" icon="safety" title={title} message={body} />;
 }

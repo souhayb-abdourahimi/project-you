@@ -43,7 +43,7 @@ export function PlanDiagnosisCard({ diagnosis, compact }: { diagnosis: PlanDiagn
   const missing = diagnosis.missingSlots.length > 0;
   return (
     <Card>
-      <Text variant="heading" accessibilityRole="header">
+      <Text variant="title3" accessibilityRole="header">
         {t(missing ? 'diagnosis.titleMissing' : 'diagnosis.titleProtein')}
       </Text>
       {missing ? (
