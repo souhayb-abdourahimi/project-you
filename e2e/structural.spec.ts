@@ -29,9 +29,12 @@ const tiredWeek = {
   dayLogs: ['2026-09-28', '2026-09-29', '2026-09-30'].map((date) => ({ date, energy: 2, motivation: 3, fatigue: 5 })),
 };
 
-/** The bench press bothered twice, on two sessions (a reason the user gave, never a diagnosis). */
+/**
+ * The bench press bothered twice, on two sessions (a reason the user gave, never a diagnosis).
+ * Monday's session was done too: not a comeback day, where only a gentle restart may lead (W-7).
+ */
 const discomfort = {
-  completedSessions: [done('2026-09-21'), done('2026-09-24')],
+  completedSessions: [done('2026-09-21'), done('2026-09-24'), done('2026-09-28')],
   swapReasons: {
     '2026-09-21#0': { bench_press: 'discomfort' },
     '2026-09-24#0': { bench_press: 'discomfort' },
@@ -84,7 +87,7 @@ test('light week: proposed on Today with its facts, applied on "yes", shown, the
 test('"Pas maintenant" is not a refusal; "Refuser" is kept with its context', async ({ page }) => {
   const errors = collectErrors(page);
   await start(page, tiredWeek);
-  await button(page, 'Pas maintenant').click();
+  await button(page, /^Pas maintenant : /).click();
   await expect(button(page, 'Alléger cette semaine')).toHaveCount(0);
   await expect.poll(() => answers(page)).toEqual([['light_week', 'postponed']]);
   expect(errors).toEqual([]);
@@ -93,7 +96,7 @@ test('"Pas maintenant" is not a refusal; "Refuser" is kept with its context', as
 test('"Refuser": recorded, nothing changes in the program', async ({ page }) => {
   const errors = collectErrors(page);
   await start(page, tiredWeek);
-  await button(page, 'Refuser').click();
+  await button(page, /^Refuser : /).click();
   await expect.poll(() => answers(page)).toEqual([['light_week', 'declined']]);
   await openTab(page, 'Programme');
   await expect(text(page, 'Semaine allégée')).toHaveCount(0);
@@ -129,7 +132,7 @@ test('repeated discomfort: a question, a confirmation, then a new program versio
 test('"Le garder": the exercise stays, the answer is kept', async ({ page }) => {
   const errors = collectErrors(page);
   await start(page, discomfort);
-  await button(page, 'Le garder').click();
+  await button(page, /^Le garder : /).click();
   await expect.poll(() => answers(page)).toEqual([['exercise_change', 'declined']]);
   const active = (await stored(page)).programs?.find((p) => p.status === 'active');
   expect(active?.params?.excludedExerciseIds).not.toContain('bench_press');

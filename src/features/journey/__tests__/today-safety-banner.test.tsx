@@ -81,6 +81,7 @@ describe('master switch off: the Today banner still carries the safety message',
   it('shows no banner and the motivation card when nothing is wrong', async () => {
     await render(<TodayScreen />);
     expect(showsSafetyBanner()).toBe(false);
-    expect(screen.getByText(motivationLabel)).toBeTruthy();
+    // The motivation card (the coach's question may also offer "Motivation" as an answer, W-7).
+    expect(screen.getAllByText(motivationLabel).length).toBeGreaterThan(0);
   });
 });

@@ -13,6 +13,8 @@ export interface ButtonProps {
   disabled?: boolean;
   loading?: boolean;
   accessibilityHint?: string;
+  /** A precise label when the visible one needs its context ("Pas maintenant : semaine allégée"). */
+  accessibilityLabel?: string;
   compact?: boolean;
   /** For a button that shows or hides content below it (announced as expanded / collapsed). */
   expanded?: boolean;
@@ -25,6 +27,7 @@ export function Button({
   disabled,
   loading,
   accessibilityHint,
+  accessibilityLabel,
   compact,
   expanded,
 }: ButtonProps) {
@@ -40,7 +43,7 @@ export function Button({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: !!inactive, busy: !!loading, expanded }}
       disabled={inactive}

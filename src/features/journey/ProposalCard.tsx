@@ -25,6 +25,7 @@ export function ProposalCard({ recommendation: r, today }: { recommendation: Rec
   const [confirming, setConfirming] = useState<ProposalAnswer | null>(null);
   const view = proposalView(r, (id) => getExercise(id)?.name[lang] ?? id);
   const say = (c: Copy) => t(c.key, c.params);
+  const changeText = view.change ? say(view.change) : changeLabel(r.change, t);
   const apply = (answer: ProposalAnswer) =>
     view.confirm && !confirming ? setConfirming(answer) : decide(r, 'applied', answer);
 
@@ -34,7 +35,7 @@ export function ProposalCard({ recommendation: r, today }: { recommendation: Rec
         {t('adaptation.proposal')}
       </Text>
       <Text>{say(view.message)}</Text>
-      <Text variant="heading">{view.change ? say(view.change) : changeLabel(r.change, t)}</Text>
+      <Text variant="heading">{changeText}</Text>
       {view.duration ? <Text variant="caption">{say(view.duration)}</Text> : null}
       {view.impact ? <Text variant="caption">{say(view.impact)}</Text> : null}
       {why ? (
@@ -60,8 +61,20 @@ export function ProposalCard({ recommendation: r, today }: { recommendation: Rec
           {view.answers.map((a) => (
             <Button key={a.option ?? 'apply'} compact label={say(a.label)} onPress={() => apply(a)} />
           ))}
-          <Button compact variant="secondary" label={t('adaptation.postpone')} onPress={() => decide(r, 'postponed')} />
-          <Button compact variant="ghost" label={say(view.declineLabel)} onPress={() => decide(r, 'declined')} />
+          <Button
+            compact
+            variant="secondary"
+            label={t('adaptation.postpone')}
+            accessibilityLabel={t('adaptation.answerA11y', { answer: t('adaptation.postpone'), change: changeText })}
+            onPress={() => decide(r, 'postponed')}
+          />
+          <Button
+            compact
+            variant="ghost"
+            label={say(view.declineLabel)}
+            accessibilityLabel={t('adaptation.answerA11y', { answer: say(view.declineLabel), change: changeText })}
+            onPress={() => decide(r, 'declined')}
+          />
           <Button
             compact
             variant="ghost"

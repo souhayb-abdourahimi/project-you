@@ -4,7 +4,7 @@ import { persist } from 'zustand/middleware';
 import { markOpened } from '@/domain/notifications/history';
 import type { CheckinSignal } from '@/domain/journey/state';
 import type { VoiceUse } from '@/domain/journey/voice/types';
-import { addDays } from '@/domain/shared/dates';
+import { addDays, type IsoDate } from '@/domain/shared/dates';
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   type NotificationCategory,
@@ -27,6 +27,11 @@ interface NotificationState {
   checkins: CheckinSignal[];
   /** What the Today screen said (template ids only, 90 days): one voice history with the notifications. */
   screenVoice: VoiceUse[];
+  /**
+   * Coach lines the Today screen showed (ids only, never text, 90 days): a question or a follow-up
+   * is not repeated day after day (W-7 §28). Device-level; answers live in the synced journal.
+   */
+  coachShown: { id: string; date: IsoDate }[];
   update: (patch: Partial<NotificationPreferences>) => void;
   toggleCategory: (category: NotificationCategory) => void;
   setPermission: (permission: NotificationState['permission']) => void;
@@ -35,6 +40,8 @@ interface NotificationState {
   clearLegacyCheckins: () => void;
   /** Records the coach message the Today screen showed today (once per day). */
   recordScreen: (use: VoiceUse) => void;
+  /** Records the coach lines shown today (once per id and day). */
+  recordCoach: (ids: string[], date: IsoDate) => void;
   reset: () => void;
 }
 
@@ -50,6 +57,7 @@ export const useNotificationStore = create<NotificationState>()(
       history: [],
       checkins: [],
       screenVoice: [],
+      coachShown: [],
       update: (patch) => set((s) => ({ prefs: { ...s.prefs, ...patch } })),
       toggleCategory: (category) =>
         set((s) => ({
@@ -70,6 +78,15 @@ export const useNotificationStore = create<NotificationState>()(
             ],
           };
         }),
+      recordCoach: (ids, date) =>
+        set((s) => {
+          const added = ids.filter((id) => !s.coachShown.some((u) => u.id === id && u.date === date));
+          if (added.length === 0) return {};
+          const from = addDays(date, -SCREEN_VOICE_DAYS);
+          return {
+            coachShown: [...s.coachShown.filter((u) => u.date >= from), ...added.map((id) => ({ id, date }))],
+          };
+        }),
       reset: () =>
         set({
           prefs: DEFAULT_NOTIFICATION_PREFERENCES,
@@ -77,6 +94,7 @@ export const useNotificationStore = create<NotificationState>()(
           history: [],
           checkins: [],
           screenVoice: [],
+          coachShown: [],
         }),
     }),
     {

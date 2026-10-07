@@ -9,6 +9,7 @@ import { Recommendations } from '@/features/journey/Recommendations';
 import { useJourney } from '@/hooks/useJourney';
 import { scheduleOfWeek, usePlan } from '@/hooks/usePlan';
 import { addDays } from '@/domain/shared/dates';
+import { plannedSessionDates } from '@/domain/training/week-view';
 import { formatMoney } from '@/lib/format';
 import { useWeights } from '@/hooks/useWeights';
 import { useDataStore } from '@/state/data';
@@ -39,11 +40,19 @@ export default function ReviewScreen() {
   const weekStart = openWeek ?? plan.weekStart;
   const current = weekStart === plan.weekStart;
   const checkin = data.weeklyCheckins.find((c) => c.weekStart === weekStart);
+  const schedule = current ? plan.schedule : scheduleOfWeek(plan.snapshot, weekStart, data.rescheduled);
   const r = weeklyReview({
     weekStart,
     today: current ? plan.today : addDays(weekStart, 6),
     goal: plan.snapshot.goal.type,
-    schedule: current ? plan.schedule : scheduleOfWeek(plan.snapshot, weekStart, data.rescheduled),
+    schedule,
+    // The past week as it was prescribed (W-6, D-038), not rebuilt from today's profile.
+    plannedSessionDates: plannedSessionDates({
+      records: data,
+      facts: data,
+      today: plan.today,
+      weeks: [{ weekStart, schedule: schedule.days }],
+    }),
     completedSessions: data.completedSessions,
     setLogs: data.setLogs,
     mealPlan: current ? plan.mealPlan : data.previousMealPlan,

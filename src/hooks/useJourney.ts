@@ -11,6 +11,8 @@ import {
 } from '@/domain/journey/adaptation';
 import { adherence } from '@/domain/journey/adherence';
 import { appliedCalorieOffset, appliedDecisions } from '@/domain/journey/adjustments';
+import { coachDay, progressionHighlight, type CoachDay } from '@/domain/journey/coach';
+import { blockerSignal, shortDayMemory } from '@/domain/journey/coach-memory';
 import { buildDailyPlan, type DailyPlan } from '@/domain/journey/daily-plan';
 import { journeyMemory, type JourneyMemory } from '@/domain/journey/memory';
 import { milestoneFacts, milestoneToCelebrate, type MilestoneStatus } from '@/domain/journey/milestones';
@@ -32,6 +34,7 @@ import { weeklyCheckinDue } from '@/domain/journey/weekly-checkin';
 import { summarizeWeek } from '@/domain/meals/budget';
 import type { PlannedMeal } from '@/domain/meals/planner';
 import { getRecipe } from '@/domain/meals/recipes';
+import { buildShoppingList } from '@/domain/meals/shopping';
 import { addDays, weekdayOf, type IsoDate } from '@/domain/shared/dates';
 import { sessionKey } from '@/domain/sync/projection';
 import type { SessionVariant } from '@/domain/training/adapt';
@@ -56,6 +59,8 @@ import { useWeights } from './useWeights';
 export interface Journey {
   state: JourneyState;
   daily: DailyPlan;
+  /** The coach of the day (W-7): what leads, what follows, what waits. The screens render it. */
+  coach: CoachDay;
   progress: ProgressJourney;
   /** The milestone to celebrate today (once, never under safety). */
   celebration: MilestoneStatus | null;
@@ -95,6 +100,7 @@ export function useJourney(plan: Plan | null): Journey | null {
   const data = useDataStore();
   const notificationHistory = useNotificationStore((s) => s.history);
   const screenVoice = useNotificationStore((s) => s.screenVoice);
+  const coachShown = useNotificationStore((s) => s.coachShown);
   const weighInDay = useNotificationStore((s) => s.prefs.weighInDay);
   const calendarBusy = useCalendarStore((s) => (s.connected && s.readBusy ? s.busy : null));
 
@@ -214,47 +220,6 @@ export function useJourney(plan: Plan | null): Journey | null {
     const structureOf = structureFor(data.adjustments, data, data.completedSessions);
     const structure = structureOf(today);
     const lightWeek = structure.lightWeek !== null;
-    const daily = buildDailyPlan({
-      state,
-      day,
-      meals: plan.mealPlan?.days.find((d) => d.date === today) ?? null,
-      // One duration (D-034): the stored prescription's, the one the workout screen runs.
-      session: template
-        ? {
-            sessionIndex,
-            focus: template.focus,
-            minutes: prescription?.plannedMinutes ?? snapshot.training.sessionMinutes,
-            goal: prescription ? sessionGoal(prescription.exercises) : null,
-            ...(prescription
-              ? {
-                  minutesOf: (v: SessionVariant, requested: number) =>
-                    plannedVariantMinutes(prescription, v, requested),
-                }
-              : {}),
-          }
-        : null,
-      completed: done ? { variant: done.variant } : null,
-      outcome: data.sessionOutcomes[sessionKey(today, sessionIndex)] ?? null,
-      dayLog: data.dayLogs.find((d) => d.date === today) ?? null,
-      freeMinutesToday: null,
-      fixedConstraintsToday: [...snapshot.schedule.fixedConstraints, ...busyToday].filter(
-        (c) => c.day === weekdayOf(today),
-      ).length,
-      weighInDay,
-      tracksWeight: weights.some((w) => w.date >= addDays(today, -30)),
-      weighedToday: weights.some((w) => w.date === today),
-      weeklyCheckinDue: weeklyCheckinDue(today, data.weeklyCheckins),
-      counts: {
-        sessions: progress.sinceStart.sessions,
-        activeDays: progress.sinceStart.activeDays,
-        weeks: progress.sinceStart.regularity.streakWeeks,
-      },
-      milestone: celebration ? milestoneFacts(celebration.id) : null,
-      keptGoingYesterday: keptGoingDates.includes(yesterday),
-      lightWeek,
-      history,
-    });
-
     // Adaptation: adherence over 14 and 28 days, the last two full weeks, spending.
     const adherenceInput = {
       today,
@@ -351,6 +316,48 @@ export function useJourney(plan: Plan | null): Journey | null {
       ignoredInARow: trailingIgnored,
     });
 
+    const daily = buildDailyPlan({
+      state,
+      day,
+      meals: plan.mealPlan?.days.find((d) => d.date === today) ?? null,
+      // One duration (D-034): the stored prescription's, the one the workout screen runs.
+      session: template
+        ? {
+            sessionIndex,
+            focus: template.focus,
+            minutes: prescription?.plannedMinutes ?? snapshot.training.sessionMinutes,
+            goal: prescription ? sessionGoal(prescription.exercises) : null,
+            ...(prescription
+              ? {
+                  minutesOf: (v: SessionVariant, requested: number) =>
+                    plannedVariantMinutes(prescription, v, requested),
+                }
+              : {}),
+          }
+        : null,
+      completed: done ? { variant: done.variant } : null,
+      outcome: data.sessionOutcomes[sessionKey(today, sessionIndex)] ?? null,
+      dayLog: data.dayLogs.find((d) => d.date === today) ?? null,
+      freeMinutesToday: null,
+      fixedConstraintsToday: [...snapshot.schedule.fixedConstraints, ...busyToday].filter(
+        (c) => c.day === weekdayOf(today),
+      ).length,
+      weighInDay,
+      tracksWeight: weights.some((w) => w.date >= addDays(today, -30)),
+      weighedToday: weights.some((w) => w.date === today),
+      weeklyCheckinDue: weeklyCheckinDue(today, data.weeklyCheckins),
+      counts: {
+        sessions: progress.sinceStart.sessions,
+        activeDays: progress.sinceStart.activeDays,
+        weeks: progress.sinceStart.regularity.streakWeeks,
+      },
+      milestone: celebration ? milestoneFacts(celebration.id) : null,
+      keptGoingYesterday: keptGoingDates.includes(yesterday),
+      lightWeek,
+      history,
+      engagementDrop: risk.level !== 'none',
+    });
+
     const memory = journeyMemory({
       completedDates: data.completedSessions.map((c) => c.date),
       weighInDates: weights.map((w) => w.date),
@@ -367,22 +374,70 @@ export function useJourney(plan: Plan | null): Journey | null {
       kept: keptExercises(data.adjustments, data.swapReasons, data.keptExercises),
     });
 
+    // The coach of the day: one arbitration over what the engines above already decided (W-7).
+    const active = activeAdaptations(data.adjustments, today, sessionsDoneUnder(data, data.completedSessions));
+    const todayMeals = plan.mealPlan?.days.find((d) => d.date === today) ?? null;
+    const stillPlanned = todayMeals?.meals.filter((m) => m.status === 'planned') ?? [];
+    const diagnosis = plan.mealPlan?.diagnosis;
+    const nextWorkout = plan.schedule.days
+      .filter((d) => d.date > today)
+      .flatMap((d) =>
+        d.items.flatMap((i) => (i.kind === 'workout' ? [{ date: d.date, index: i.sessionIndex }] : [])),
+      )[0];
+    const nextPrescription = nextWorkout ? plan.prescription(nextWorkout.date, nextWorkout.index) : null;
+    const coach = coachDay({
+      daily,
+      state,
+      proposal,
+      celebration: celebration?.id ?? null,
+      active,
+      effects,
+      blocker: blockerSignal({
+        today,
+        startedOn: state.journey.startedOn,
+        plannedDates: plannedSessionDates,
+        doneDates: data.completedSessions.map((c) => c.date),
+        outcomes: data.sessionOutcomes,
+        weeklyCheckins: data.weeklyCheckins,
+        adjustments: data.adjustments,
+      }),
+      shortDay: shortDayMemory({ today, dayLogs: data.dayLogs, adjustments: data.adjustments }),
+      nutrition: {
+        dayIncomplete: !!todayMeals?.energy?.incomplete,
+        planGap: !!diagnosis && (diagnosis.missingSlots.length > 0 || diagnosis.emptyDays > 0),
+        shoppingToday: !!day?.items.some((i) => i.kind === 'shopping'),
+        // Only with a real inventory: without one, nothing is said about what is missing.
+        missingIngredients:
+          data.inventory.length > 0 && stillPlanned.length > 0
+            ? buildShoppingList(stillPlanned, data.inventory, today).items.length
+            : null,
+      },
+      progression: progressionHighlight([
+        ...(prescription ? [{ when: 'today' as const, date: today, exercises: prescription.exercises }] : []),
+        ...(nextPrescription && nextWorkout
+          ? [{ when: 'next' as const, date: nextWorkout.date, exercises: nextPrescription.exercises }]
+          : []),
+      ]),
+      shown: coachShown,
+    });
+
     return {
       state,
       daily,
+      coach,
       progress,
       celebration,
       recommendations,
       proposal,
       structure,
       effects,
-      active: activeAdaptations(data.adjustments, today, sessionsDoneUnder(data, data.completedSessions)),
+      active,
       trainingWeek: compareWeek({ records: data, facts: data, weekStart: plan.weekStart, today }),
       risk,
       memory,
       keptGoingDates,
     };
-  }, [plan, data, weights, notificationHistory, screenVoice, weighInDay, calendarBusy, locale]);
+  }, [plan, data, weights, notificationHistory, screenVoice, coachShown, weighInDay, calendarBusy, locale]);
 
   // Milestones reached are recorded (synced) so that each is celebrated once, on any device.
   const recordMilestones = useDataStore((s) => s.recordMilestones);

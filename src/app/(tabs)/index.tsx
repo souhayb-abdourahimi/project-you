@@ -9,9 +9,10 @@ import type { DayMode } from '@/domain/journey/outcomes';
 import { renderMessage } from '@/domain/journey/voice/composer';
 import { daysBetween } from '@/domain/shared/dates';
 import { HealthCard } from '@/features/health/HealthCard';
-import { DailyItemRow, itemLabel, useItemAction, WhyToggle } from '@/features/journey/DailyItemRow';
+import { CoachCard } from '@/features/journey/CoachCard';
+import { CoachQuestion } from '@/features/journey/CoachQuestion';
+import { DailyItemRow } from '@/features/journey/DailyItemRow';
 import { OffPlanOffer } from '@/features/journey/OffPlanOffer';
-import { ProposalCard } from '@/features/journey/ProposalCard';
 import { SafetyNotice } from '@/features/journey/SafetyNotice';
 import { DayEnergyWarning } from '@/features/nutrition/DayEnergyWarning';
 import { MealCard } from '@/features/nutrition/MealCard';
@@ -30,7 +31,10 @@ export default function TodayScreen() {
   const plan = usePlan();
   const journey = useJourney(plan);
   const recordScreen = useNotificationStore((s) => s.recordScreen);
+  const recordCoach = useNotificationStore((s) => s.recordCoach);
   const message = journey?.daily.message;
+  const shownIds = journey?.coach.shownIds;
+  const shownDate = journey?.coach.date;
 
   // What the screen said joins the voice history shared with the notifications (anti-repetition).
   useEffect(() => {
@@ -44,13 +48,18 @@ export default function TodayScreen() {
     });
   }, [message, journey, recordScreen]);
 
+  // Questions and follow-ups shown today are not repeated on the next days (W-7 §28).
+  useEffect(() => {
+    if (shownIds && shownDate && shownIds.length > 0) recordCoach(shownIds, shownDate);
+  }, [shownIds, shownDate, recordCoach]);
+
   if (!plan || !journey) return <LoadingScreen />;
-  const { daily, state } = journey;
+  const { daily, state, coach } = journey;
   const name = plan.snapshot.user.displayName;
   const meals = plan.mealPlan?.days.find((d) => d.date === plan.today) ?? null;
   const day = plan.schedule.days.find((d) => d.date === plan.today) ?? null;
   const organisation = day?.items.filter((i) => i.kind === 'meal_prep' || i.kind === 'shopping') ?? [];
-  const coach = renderMessage(daily.message, (key, params) => t(key, params));
+  const voice = renderMessage(daily.message, (key, params) => t(key, params));
 
   return (
     <Screen>
@@ -66,18 +75,18 @@ export default function TodayScreen() {
       </Text>
       {!isSupabaseConfigured ? <Banner message={t('common.localMode')} /> : null}
       <SafetyNotice state={state} />
-      <Celebration journey={journey} />
-      {/* One structural proposal at most per day, never under the safety rule (D-037 §37). */}
-      {journey.proposal ? <ProposalCard recommendation={journey.proposal} today={plan.today} /> : null}
-
-      <MainAction journey={journey} today={plan.today} />
+      {/* The coach of the day decides what leads (W-7): a celebration waits under safety, a
+          comeback or a proposal; one proposal at most, never under safety (D-037 §37). */}
+      {coach.celebration ? <Celebration journey={journey} /> : null}
+      {coach.question && coach.priority === 'difficulty' ? (
+        <CoachQuestion question={coach.question} today={plan.today} />
+      ) : null}
+      <CoachCard coach={coach} items={daily.items} proposal={journey.proposal} today={plan.today} />
+      {coach.question && coach.priority !== 'difficulty' ? (
+        <CoachQuestion question={coach.question} today={plan.today} />
+      ) : null}
 
       {daily.mode !== 'normal' ? <Banner tone="primary" message={t(`daily.mode.${daily.mode}`)} /> : null}
-      {daily.adaptations.map((a) => (
-        <Text key={a.key} variant="caption" color="textMuted">
-          {t(a.key, a.params)}
-        </Text>
-      ))}
 
       <Section title={t('daily.planTitle')}>
         {daily.items
@@ -95,7 +104,7 @@ export default function TodayScreen() {
       </Section>
 
       <QuickActions journey={journey} today={plan.today} />
-      <OffPlanOffer daily={journey.daily} />
+      <OffPlanOffer coach={coach} />
 
       <HealthCard plan={plan} />
 
@@ -105,8 +114,8 @@ export default function TodayScreen() {
           <Text variant="caption" color="textMuted">
             {t('today.motivation')}
           </Text>
-          <Text variant="heading">{coach.title}</Text>
-          <Text>{coach.body}</Text>
+          <Text variant="heading">{voice.title}</Text>
+          <Text>{voice.body}</Text>
           {daily.anchor ? (
             <View style={{ gap: spacing.xs }}>
               <Text variant="caption" color="textMuted">
@@ -126,31 +135,6 @@ export default function TodayScreen() {
         ))}
       </Section>
     </Screen>
-  );
-}
-
-function MainAction({ journey, today }: { journey: Journey; today: string }) {
-  const { t } = useTranslation();
-  const main = journey.daily.main;
-  const action = useItemAction(
-    main ?? { id: 'none', kind: 'safety', status: 'done', params: {}, reason: 'safety' },
-    today,
-  );
-  return (
-    <Card>
-      <Text variant="caption" color="textMuted">
-        {t('daily.mainTitle')}
-      </Text>
-      {main ? (
-        <>
-          <Text variant="title">{itemLabel(main, t)}</Text>
-          {action ? <Button label={action.label} onPress={action.run} /> : null}
-          <WhyToggle item={main} />
-        </>
-      ) : (
-        <Text variant="title">{t('daily.allDone')}</Text>
-      )}
-    </Card>
   );
 }
 
