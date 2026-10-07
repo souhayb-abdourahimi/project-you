@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { AccessibilityInfo, Platform, useColorScheme, type ViewStyle } from 'react-native';
+import { AccessibilityInfo, Platform, useColorScheme, useWindowDimensions, type ViewStyle } from 'react-native';
 
-import { palette, type ColorScheme, type Colors } from './tokens';
+import { COMPACT_HEIGHT, COMPACT_WIDTH, palette, type ColorScheme, type Colors } from './tokens';
 
 export * from './tokens';
 
@@ -11,6 +11,12 @@ export function useScheme(): ColorScheme {
 
 export function useColors(): Colors {
   return palette[useScheme()];
+}
+
+/** True on a small phone: spacing tightens a little there, never the touch targets nor the desktop. */
+export function useCompact(): boolean {
+  const { width, height } = useWindowDimensions();
+  return width < COMPACT_WIDTH || height < COMPACT_HEIGHT;
 }
 
 /** True while the system asks for less motion: every animation is then skipped. */

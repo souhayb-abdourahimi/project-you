@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Animated, StyleSheet, View, type DimensionValue } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { layout, motion, radius, spacing, useColors, useReducedMotion, type ColorToken } from '@/theme';
+import { layout, motion, radius, spacing, useColors, useCompact, useReducedMotion, type ColorToken } from '@/theme';
 
 import { Card } from './Card';
 import { Icon, type IconName } from './Icon';
@@ -206,6 +206,8 @@ export function Section({ title, children, right }: { title: string; children: R
 
 /** The large header of a main screen: a title, a quiet line under it, an accessory on the right. */
 export function ScreenHeader({ title, subtitle, right }: { title: string; subtitle?: string; right?: ReactNode }) {
+  // A small phone keeps the greeting on one line: one step down the type scale, same hierarchy.
+  const compact = useCompact();
   return (
     <View style={styles.header}>
       <View style={styles.flex}>
@@ -214,7 +216,7 @@ export function ScreenHeader({ title, subtitle, right }: { title: string; subtit
             {subtitle}
           </Text>
         ) : null}
-        <Text variant="title1">{title}</Text>
+        <Text variant={compact ? 'title2' : 'title1'}>{title}</Text>
       </View>
       {right}
     </View>

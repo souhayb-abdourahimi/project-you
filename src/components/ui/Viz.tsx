@@ -15,7 +15,10 @@ export function ProgressRing({
   label,
   children,
 }: {
-  /** 0 → 1; clamped. */
+  /**
+   * 0 → 1. Above 1 (a target met or passed) the ring is simply full: no other colour, no warning,
+   * and the real value stays in `label` and in the centre.
+   */
   value: number;
   size?: number;
   stroke?: number;
@@ -32,6 +35,7 @@ export function ProgressRing({
   const half = { width: size / 2, height: size, overflow: 'hidden' as const, position: 'absolute' as const, top: 0 };
   return (
     <View
+      accessible
       accessibilityRole="progressbar"
       accessibilityLabel={label}
       accessibilityValue={{ min: 0, max: 100, now: Math.round(p * 100), text: label }}

@@ -69,11 +69,15 @@ Une seule famille : **SF Symbols** sur iOS, **Material Symbols** sur Android et 
 | `Skeleton`, `LoadingScreen` | chargement en forme de l'écran à venir, pas de gros spinner |
 | `EmptyState` | explique, rassure, propose l'étape suivante |
 | `HeroMedia` | le visuel du héros : le média réel de la séance s'il existe (`uri`), sinon le visuel de la bibliothèque Project You (halo `gradients.heroGlow`, anneaux, pictogramme du type) ; jamais une photo prise au hasard ; décoratif, le héros reste lisible sans lui |
-| `ProgressRing` | UN anneau pour UNE valeur principale (Aujourd'hui : protéines des repas notés / cible) ; valeur dite en texte (`accessibilityValue.text`) ; jamais quatre anneaux |
+| `ProgressRing` | UN anneau pour UNE valeur principale (Aujourd'hui : protéines des repas notés / cible) ; valeur dite en texte (`accessibilityValue.text`) ; jamais quatre anneaux. Cible atteinte ou dépassée : l'anneau est plein (plafonné à 100 %), même couleur, ni rouge ni avertissement, le texte et le lecteur d'écran gardent la valeur réelle (112 / 109 g) |
 | `MiniBars` | petit graphique en barres d'une semaine, données réelles seulement : un jour sans donnée est un point, jamais une barre à zéro ; dessiné à partir de 3 jours connus, sinon la valeur seule ; décrit en une phrase |
 | `CoachNote` | le mot du coach : pastille, « Ton coach », un message court, une action au plus ; une note, pas un chat |
 
 Les cartes métier (séance, repas, progrès, coach) se composent de ces primitives dans `src/features/*` ; pas de quarante variantes presque identiques.
+
+## Petits écrans
+
+`useCompact()` (largeur < 380 ou hauteur < 700 : iPhone SE / mini, petits Android) resserre un peu la page : titre d'en-tête un cran plus bas (`title2`), écarts entre sections de 28 à 24, héros avec moins de marge et sans hauteur minimale. Les cibles tactiles (44 pt) ne changent pas ; iPhone 15, Android moyen et desktop ne bougent pas.
 
 ## Navigation
 

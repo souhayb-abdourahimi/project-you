@@ -206,4 +206,7 @@ export const PRESSED_SCALE = 0.98;
 export const MIN_TOUCH = 44;
 export const MAX_CONTENT_WIDTH = 640;
 export const WIDE_BREAKPOINT = 1024;
+/** Small phones (iPhone SE / mini, compact Android): a denser first screen, same touch targets. */
+export const COMPACT_WIDTH = 380;
+export const COMPACT_HEIGHT = 700;
 export const ANIMATION_MS = motion.base;

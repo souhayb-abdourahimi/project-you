@@ -10,6 +10,7 @@ import {
   radius,
   spacing,
   useColors,
+  useCompact,
   useScheme,
   type ColorToken,
 } from '@/theme';
@@ -93,8 +94,17 @@ export function HeroCard({
   tone?: 'inverse' | 'surface' | 'positive' | 'accent';
 }) {
   const dark = tone === 'inverse';
+  const compact = useCompact();
   return (
-    <Card tone={tone} raised={tone !== 'positive'} style={[styles.hero, media ? styles.heroMedia : null]}>
+    <Card
+      tone={tone}
+      raised={tone !== 'positive'}
+      style={[
+        styles.hero,
+        media ? styles.heroMedia : null,
+        compact && styles.heroCompact,
+        compact && media ? styles.heroMediaCompact : null,
+      ]}>
       {media}
       <View style={styles.heroTop}>
         {icon ? <Icon name={icon} size="sm" color={dark ? 'onInverseMuted' : 'primary'} /> : null}
@@ -106,7 +116,7 @@ export function HeroCard({
         {title}
       </Text>
       {meta ? <View style={styles.meta}>{meta}</View> : null}
-      {children ? <View style={styles.heroBody}>{children}</View> : null}
+      {children ? <View style={[styles.heroBody, compact && styles.heroBodyCompact]}>{children}</View> : null}
     </Card>
   );
 }
@@ -221,6 +231,9 @@ const styles = StyleSheet.create({
   dense: { padding: spacing.lg, borderRadius: radius.lg },
   hero: { gap: spacing.md, padding: spacing.xl },
   heroMedia: { overflow: 'hidden', minHeight: 300, justifyContent: 'flex-end', paddingTop: spacing['3xl'] },
+  heroCompact: { gap: spacing.sm, padding: spacing.lg + spacing.xs },
+  heroMediaCompact: { minHeight: 0, paddingTop: spacing.xl },
+  heroBodyCompact: { gap: spacing.sm, marginTop: 0 },
   heroTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   heroBody: { gap: spacing.md, marginTop: spacing.xs },
   meta: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
