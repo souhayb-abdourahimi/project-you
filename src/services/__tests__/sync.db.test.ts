@@ -6,6 +6,7 @@
  */
 import { Client, types } from 'pg';
 
+import { DEFAULT_NOTIFICATION_PREFERENCES } from '@/domain/notifications/types';
 import { CATEGORY_TABLES, EXPORT_ONLY_TABLES } from '@/domain/privacy/data';
 import { SCENARIOS, scenario } from '@/domain/scenarios';
 import { publishWeek } from '@/domain/scenarios/training';
@@ -43,6 +44,8 @@ const G = '00000000-0000-4000-8000-000000000071';
 const H = '00000000-0000-4000-8000-000000000081';
 /** W-5 structural decisions. */
 const I = '00000000-0000-4000-8000-000000000091';
+/** W-8 account settings (reminders, mass unit). */
+const J = '00000000-0000-4000-8000-0000000000a9';
 
 /** PostgREST-like client acting as `authenticated` with the user's JWT claims, so RLS applies. */
 function restAs(db: Client, userId: string): SyncClient {
@@ -157,13 +160,13 @@ describeDb('sync against the real schema (Postgres + RLS)', () => {
       `insert into auth.users (id, email) values ($1, 'sync-a@example.test'), ($2, 'sync-b@example.test'),
               ($3, 'sync-c@example.test'), ($4, 'sync-d@example.test'), ($5, 'sync-e@example.test'),
               ($6, 'sync-f@example.test'), ($7, 'sync-g@example.test'), ($8, 'sync-h@example.test'),
-              ($9, 'sync-i@example.test')
+              ($9, 'sync-i@example.test'), ($10, 'sync-j@example.test')
                     on conflict (id) do nothing`,
-      [A, B, C, D, E, F, G, H, I],
+      [A, B, C, D, E, F, G, H, I, J],
     );
   });
   afterAll(async () => {
-    await db.query('delete from auth.users where id = any($1::uuid[])', [[A, B, C, D, E, F, G, H, I]]);
+    await db.query('delete from auth.users where id = any($1::uuid[])', [[A, B, C, D, E, F, G, H, I, J]]);
     await db.end();
   });
 
@@ -224,6 +227,43 @@ describeDb('sync against the real schema (Postgres + RLS)', () => {
     const r = await syncOnce(restAs(db, B), intruder, B);
     expect(r.pulled).toBe(0);
     expect(intruder.state().snapshot).toBeNull();
+  });
+
+  it('W-8: reminder preferences and mass unit are the account\'s; untouched defaults never overwrite them', async () => {
+    const prefs = {
+      ...DEFAULT_NOTIFICATION_PREFERENCES,
+      enabled: true,
+      quietEnabled: false,
+      quietStart: '23:00',
+      maxPerDay: 2,
+      weighInDay: 3,
+      categories: { ...DEFAULT_NOTIFICATION_PREFERENCES.categories, meals: false, checkin: false },
+    };
+    const phone = memoryStore({
+      snapshot: { ...SCENARIOS.veganFatLoss, preferences: { ...SCENARIOS.veganFatLoss.preferences, weightUnit: 'lb' } },
+      notificationPrefs: prefs,
+    });
+    expect(await syncOnce(restAs(db, J), phone, J, { claim: true })).toMatchObject({ failed: 0, rejected: 0 });
+
+    // A second device that never opened the reminders screen (prefs not saved: null) takes the account's.
+    const laptop = memoryStore({ notificationPrefs: null });
+    expect((await syncOnce(restAs(db, J), laptop, J)).pushed).toBe(0);
+    expect(laptop.state().notificationPrefs).toEqual(prefs);
+    expect(laptop.state().snapshot?.preferences.weightUnit).toBe('lb');
+
+    // Offline edit on the laptop, sent at the next round, received by the phone.
+    laptop.write({ notificationPrefs: { ...prefs, quietEnabled: true, pausedUntil: '2026-10-20' } });
+    expect((await syncOnce(restAs(db, J), laptop, J)).pushed).toBe(1);
+    await syncOnce(restAs(db, J), phone, J);
+    expect(phone.state().notificationPrefs).toMatchObject({ quietEnabled: true, pausedUntil: '2026-10-20', maxPerDay: 2 });
+
+    // Back to kg on the phone: every stored weight stays in kg, only the unit changes on the laptop.
+    const snap = phone.state().snapshot!;
+    phone.write({ snapshot: { ...snap, preferences: { ...snap.preferences, weightUnit: 'kg' } } });
+    await syncOnce(restAs(db, J), phone, J);
+    await syncOnce(restAs(db, J), laptop, J);
+    expect(laptop.state().snapshot?.preferences.weightUnit).toBe('kg');
+    expect(laptop.state().snapshot?.user.weightKg).toBe(SCENARIOS.veganFatLoss.user.weightKg);
   });
 
   it('edits and deletions propagate between devices', async () => {
