@@ -8,14 +8,20 @@ import type { IsoDate } from '../shared/dates';
 
 export type { AnchorSlot, ComposedMessage, MessagePart, Trigger } from '../journey/voice/types';
 
+/**
+ * The switches the user sees, one per family of real triggers (W-8: no switch without a trigger).
+ * `calendar` (before W-8) had no trigger and is gone; `checkin` and `milestones` were part of
+ * `progress`.
+ */
 export const NOTIFICATION_CATEGORIES = [
   'training',
   'meals',
   'weigh_in',
-  'shopping',
+  'checkin',
   'progress',
+  'milestones',
   'motivation',
-  'calendar',
+  'shopping',
 ] as const;
 export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number];
 
@@ -26,9 +32,9 @@ export const TRIGGER_CATEGORY: Record<Trigger, NotificationCategory> = {
   weigh_in: 'weigh_in',
   shopping: 'shopping',
   weekly_progress: 'progress',
-  weekly_checkin: 'progress',
+  weekly_checkin: 'checkin',
   success_session: 'motivation',
-  success_streak: 'progress',
+  success_streak: 'milestones',
   absence_gentle: 'motivation',
   absence_comeback: 'motivation',
   absence_last: 'motivation',
@@ -40,7 +46,7 @@ export const TRIGGER_CATEGORY: Record<Trigger, NotificationCategory> = {
   safety_training_load: 'progress',
   safety_low_logging: 'progress',
   // Sent as notifications (D-028): a milestone is news about progress; keeping the thread is motivation.
-  milestone_reached: 'progress',
+  milestone_reached: 'milestones',
   encouragement_kept_going: 'motivation',
   progress_note: 'progress',
   // Screen-only messages of the Daily Coach (never planned as notifications).
@@ -51,6 +57,12 @@ export const TRIGGER_CATEGORY: Record<Trigger, NotificationCategory> = {
   daily_tip: 'motivation',
   daily_reflection: 'motivation',
 };
+
+/** Pause lengths offered (days). */
+export const PAUSE_DAYS = [3, 7, 14] as const;
+
+/** Bounds of the daily cap the user can choose (the server allows up to 6). */
+export const MAX_PER_DAY_CHOICES = [1, 2, 3, 4] as const;
 
 export interface PlannedNotification extends ComposedMessage {
   /** `${date}:${trigger}`: one message per trigger and day. */
@@ -87,7 +99,9 @@ export interface NotificationPreferences {
   /** Master switch; off by default until the user opts in (permission asked at that moment). */
   enabled: boolean;
   categories: Record<NotificationCategory, boolean>;
-  /** "22:00" → "07:30": nothing is scheduled inside. */
+  /** Quiet hours on (W-8). Off: reminders follow their own times only. */
+  quietEnabled: boolean;
+  /** "22:00" → "07:30" (local time, may cross midnight): nothing is scheduled inside. */
   quietStart: string;
   quietEnd: string;
   maxPerDay: number;
@@ -114,10 +128,12 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
     meals: false,
     weigh_in: true,
     shopping: true,
+    checkin: true,
     progress: true,
+    milestones: true,
     motivation: false,
-    calendar: false,
   },
+  quietEnabled: true,
   quietStart: '22:00',
   quietEnd: '07:30',
   maxPerDay: 3,
@@ -130,3 +146,25 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   celebrations: true,
   pausedUntil: null,
 };
+
+/**
+ * Preferences saved before W-8 (or pulled from an older row) in the current shape: a category that
+ * did not exist yet takes the value of the one it came from, unknown keys are dropped.
+ */
+export function normalizePreferences(
+  raw: Omit<Partial<NotificationPreferences>, 'categories'> & { categories?: Partial<Record<string, boolean>> },
+): NotificationPreferences {
+  const old: Partial<Record<string, boolean>> = raw.categories ?? {};
+  const progress = old.progress ?? DEFAULT_NOTIFICATION_PREFERENCES.categories.progress;
+  const inherited: Partial<Record<NotificationCategory, boolean>> = { checkin: progress, milestones: progress };
+  const categories = Object.fromEntries(
+    NOTIFICATION_CATEGORIES.map((c) => [
+      c,
+      old[c] ?? inherited[c] ?? DEFAULT_NOTIFICATION_PREFERENCES.categories[c],
+    ]),
+  ) as Record<NotificationCategory, boolean>;
+  const known = Object.fromEntries(
+    Object.entries(raw).filter(([k, v]) => k in DEFAULT_NOTIFICATION_PREFERENCES && v !== undefined),
+  ) as Partial<NotificationPreferences>;
+  return { ...DEFAULT_NOTIFICATION_PREFERENCES, ...known, categories };
+}

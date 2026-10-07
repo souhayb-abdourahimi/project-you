@@ -23,7 +23,7 @@ import { formatMoney, formatMonth } from '@/lib/format';
 import { spacing } from '@/theme';
 
 import { DietRecap } from './DietRecap';
-import { ListField, NumberField, toggle } from './fields';
+import { ListField, MassField, NumberField, toggle } from './fields';
 import { ScheduleEditor } from './ScheduleEditor';
 
 type Update = <K extends keyof OnboardingDraft>(section: K, patch: Partial<OnboardingDraft[K]>) => void;
@@ -38,10 +38,16 @@ export function StepContent({
   step,
   draft,
   update,
+  mode = 'onboarding',
 }: {
   step: OnboardingStepId;
   draft: OnboardingDraft;
   update: Update;
+  /**
+   * `settings`: the same fields, edited from Réglages (W-8, D-043). The body weight is then not a
+   * field: it comes from the weigh-ins (Mon évolution), never typed over the history.
+   */
+  mode?: 'onboarding' | 'settings';
 }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language === 'en' ? 'en' : 'fr';
@@ -81,11 +87,15 @@ export function StepContent({
               value={draft.user.heightCm}
               onChange={(heightCm) => update('user', { heightCm })}
             />
-            <NumberField
-              label={t('onboarding.profile.body.weight')}
-              value={draft.user.weightKg}
-              onChange={(weightKg) => update('user', { weightKg })}
-            />
+            {mode === 'onboarding' ? (
+              <MassField
+                label={(unit) => t('onboarding.profile.body.weight', { unit })}
+                valueKg={draft.user.weightKg}
+                onChange={(weightKg) => update('user', { weightKg })}
+              />
+            ) : (
+              <Text color="textMuted">{t('settings.profile.weightFromProgress')}</Text>
+            )}
           </>
         );
       case 'profile.sex':
@@ -119,9 +129,9 @@ export function StepContent({
         return (
           <>
             <Text color="textMuted">{t('onboarding.goal.target.hint')}</Text>
-            <NumberField
-              label={t('onboarding.goal.target.weight')}
-              value={draft.goal.targetWeightKg}
+            <MassField
+              label={(unit) => t('onboarding.goal.target.weight', { unit })}
+              valueKg={draft.goal.targetWeightKg}
               onChange={(targetWeightKg) => update('goal', { targetWeightKg })}
             />
             <TextField
@@ -398,7 +408,13 @@ export function StepContent({
 
   return (
     <View style={{ gap: spacing.lg }}>
-      <Text variant="title">{step === 'review' ? t('onboarding.review.title') : title}</Text>
+      <Text variant={mode === 'settings' ? 'heading' : 'title'}>
+        {step === 'review'
+          ? t('onboarding.review.title')
+          : mode === 'settings' && step === 'profile.body'
+            ? t('settings.profile.bodyTitle')
+            : title}
+      </Text>
       {body}
     </View>
   );

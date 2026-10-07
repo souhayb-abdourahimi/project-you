@@ -10,7 +10,13 @@ export function Screen({ children, scroll = true }: { children: ReactNode; scrol
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.root, { backgroundColor: colors.background }]}>
       {scroll ? (
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          // Forms (W-8): the focused field stays above the keyboard on iOS; typed values live in state,
+          // so closing the keyboard never loses them.
+          automaticallyAdjustKeyboardInsets
+          keyboardDismissMode="interactive">
           {content}
         </ScrollView>
       ) : (

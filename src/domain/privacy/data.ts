@@ -70,8 +70,8 @@ export const DELETABLE_CATEGORIES: PrivacyCategory[] = [
 /** Extra server tables included in the export (not synced by the app yet). */
 export const EXPORT_ONLY_TABLES = [
   'weekly_reviews',
+  // Legacy per-category switches (before W-8): the categories now live in notification_settings.
   'notification_preferences',
-  'notification_settings',
   'notification_history',
   'integration_connections',
   'coach_memory',

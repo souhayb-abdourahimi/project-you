@@ -169,8 +169,11 @@ export const ScheduleProfile = z.object({
 export type ScheduleProfile = z.infer<typeof ScheduleProfile>;
 
 export const PreferencesProfile = z.object({
+  /** Language of the account (informative: the screen language is a device setting, D-043). */
   locale: z.enum(['fr', 'en']),
   motivationStyle: z.enum(['gentle', 'direct']),
+  /** How masses are shown and typed (W-8); stored values stay in kg. Absent = kg. */
+  weightUnit: z.enum(['kg', 'lb']).optional(),
 });
 export type PreferencesProfile = z.infer<typeof PreferencesProfile>;
 
@@ -189,6 +192,11 @@ export const UserContextSnapshot = z.object({
   preferences: PreferencesProfile,
 });
 export type UserContextSnapshot = z.infer<typeof UserContextSnapshot>;
+
+/** The mass unit of a profile (kg when never chosen). */
+export function weightUnitOf(snapshot: { preferences: { weightUnit?: 'kg' | 'lb' } } | null): 'kg' | 'lb' {
+  return snapshot?.preferences.weightUnit ?? 'kg';
+}
 
 export function ageFromBirthYear(birthYear: number, referenceYear: number): number {
   return referenceYear - birthYear;

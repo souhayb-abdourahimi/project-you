@@ -3,9 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { Button, ChoiceGroup, NumberStepper, Text } from '@/components/ui';
+import { fromKg, stepIn, toKg } from '@/domain/settings/units';
 import { getExercise } from '@/domain/training/exercises';
 import type { LoggedSet } from '@/domain/training/progression';
 import { SET_FEELS, setFeel, type Prefill, type SessionExercise, type SetFeel } from '@/domain/training/session';
+import { useMassUnit } from '@/hooks/useMassUnit';
 import { formatNumber } from '@/lib/format';
 import { spacing } from '@/theme';
 
@@ -34,6 +36,7 @@ export function SetEntry({
   onCancel?: () => void;
 }) {
   const { t, i18n } = useTranslation();
+  const unit = useMassUnit();
   const seconds = exercise.unit === 'seconds';
   const loaded = (getExercise(exercise.exerciseId)?.loadIncrementKg ?? 0) > 0;
   const step = getExercise(exercise.exerciseId)?.loadIncrementKg || 2.5;
@@ -43,7 +46,7 @@ export function SetEntry({
   const [feel, setFeelValue] = useState<SetFeel | null>(from ? setFeel(from.rpe) : null);
   const [invalid, setInvalid] = useState<'value' | 'load' | null>(null);
   const valueLabel = seconds ? t('workout.seconds') : t('workout.reps');
-  const loadLabel = t('workout.load');
+  const loadLabel = t('workout.load', { unit });
 
   const submit = () => {
     // A load is never filled in for the user: an empty load on a loaded movement is asked for.
@@ -57,9 +60,10 @@ export function SetEntry({
         {loaded || (load ?? 0) > 0 ? (
           <NumberStepper
             label={loadLabel}
-            value={load}
-            onChange={setLoad}
-            step={step}
+            // Typed and shown in the user's unit, kept in kg (converted once each way, D-043).
+            value={load === null ? null : fromKg(load, unit)}
+            onChange={(v) => setLoad(v === null ? null : toKg(v, unit))}
+            step={stepIn(step, unit)}
             decrease={t('workout.decrease', {
               amount: t('workout.stepKg', { value: formatNumber(step, i18n.language) }),
             })}

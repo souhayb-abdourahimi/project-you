@@ -18,14 +18,24 @@ export function ConfirmButton({
   onConfirm,
   loading,
   variant = 'danger',
-}: Pick<ButtonProps, 'label' | 'loading' | 'variant'> & {
+  accessibilityLabel,
+}: Pick<ButtonProps, 'label' | 'loading' | 'variant' | 'accessibilityLabel'> & {
   message: string;
   confirmLabel?: string;
   onConfirm: () => void;
 }) {
   const { t } = useTranslation();
   const [asking, setAsking] = useState(false);
-  if (!asking) return <Button variant={variant} label={label} loading={loading} onPress={() => setAsking(true)} />;
+  if (!asking)
+    return (
+      <Button
+        variant={variant}
+        label={label}
+        accessibilityLabel={accessibilityLabel}
+        loading={loading}
+        onPress={() => setAsking(true)}
+      />
+    );
   return (
     <View style={{ gap: spacing.sm }} accessibilityLiveRegion="polite">
       <Text color="danger">{message}</Text>

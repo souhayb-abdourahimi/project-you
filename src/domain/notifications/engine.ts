@@ -40,9 +40,15 @@ export function isQuiet(time: string, quietStart: string, quietEnd: string): boo
   return s <= e ? t >= s && t < e : t >= s || t < e;
 }
 
-/** Moves a reminder out of quiet hours to the end of the quiet period, or drops it. */
-function outOfQuietHours(time: string, prefs: NotificationPreferences): string | null {
-  if (!isQuiet(time, prefs.quietStart, prefs.quietEnd)) return time;
+/**
+ * Moves a reminder out of quiet hours to the end of the quiet period, or drops it. Times are local
+ * wall-clock times ("HH:MM"), so a daylight saving change moves nothing: 22:00 stays 22:00.
+ */
+export function outOfQuietHours(
+  time: string,
+  prefs: Pick<NotificationPreferences, 'quietEnabled' | 'quietStart' | 'quietEnd'>,
+): string | null {
+  if (prefs.quietEnabled === false || !isQuiet(time, prefs.quietStart, prefs.quietEnd)) return time;
   // Before the quiet end on the same morning → move to the quiet end; late evening → drop.
   return parseTime(time) < parseTime(prefs.quietEnd) ? prefs.quietEnd : null;
 }

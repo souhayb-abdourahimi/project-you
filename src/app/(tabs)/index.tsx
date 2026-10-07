@@ -14,6 +14,7 @@ import { CoachQuestion } from '@/features/journey/CoachQuestion';
 import { DailyItemRow } from '@/features/journey/DailyItemRow';
 import { OffPlanOffer } from '@/features/journey/OffPlanOffer';
 import { SafetyNotice } from '@/features/journey/SafetyNotice';
+import { SyncNotice } from '@/features/settings/SyncNotice';
 import { DayEnergyWarning } from '@/features/nutrition/DayEnergyWarning';
 import { MealCard } from '@/features/nutrition/MealCard';
 import { PlanDiagnosisCard } from '@/features/nutrition/PlanDiagnosisCard';
@@ -73,7 +74,7 @@ export default function TodayScreen() {
       <Text variant="label" color="primary">
         {t(daily.headline.key, daily.headline.params)}
       </Text>
-      {!isSupabaseConfigured ? <Banner message={t('common.localMode')} /> : null}
+      {!isSupabaseConfigured ? <Banner message={t('common.localMode')} /> : <SyncNotice />}
       <SafetyNotice state={state} />
       {/* The coach of the day decides what leads (W-7): a celebration waits under safety, a
           comeback or a proposal; one proposal at most, never under safety (D-037 §37). */}

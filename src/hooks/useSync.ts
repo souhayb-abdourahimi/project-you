@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
 
-import { SYNC_TABLES, type SyncTable } from '@/domain/sync/projection';
+import { diff, project, SYNC_TABLES, type SyncTable } from '@/domain/sync/projection';
 import { useSession } from '@/services/auth';
 import { fetchAllPages } from '@/services/paging';
 import { supabase } from '@/services/supabase';
 import { syncOnce, type SyncClient, type SyncStore } from '@/services/sync';
 import { useDataStore } from '@/state/data';
+import { useNotificationStore } from '@/state/notifications';
 import { useProfileStore } from '@/state/profile';
 import { useSyncStatus } from '@/state/sync';
 
@@ -20,15 +21,51 @@ const INTERVAL_MS = 30_000;
  */
 function storeFor(userId: string, isActive: () => boolean): SyncStore {
   return {
-    read: () => ({ ...useDataStore.getState(), snapshot: useProfileStore.getState().snapshot }),
+    read: () => syncedState(),
     write: (patch) => {
       if (!isActive() || useDataStore.getState().ownerId !== userId) return;
-      if ('snapshot' in patch && patch.snapshot !== useProfileStore.getState().snapshot) {
-        useProfileStore.getState().setSnapshot(patch.snapshot ?? null);
-      }
-      useDataStore.getState().applySync(patch);
+      applySyncedPatch(patch);
     },
   };
+}
+
+/** Everything the sync reads: the data, the profile, and the reminder preferences once they are the user's. */
+export function syncedState() {
+  const notifications = useNotificationStore.getState();
+  return {
+    ...useDataStore.getState(),
+    snapshot: useProfileStore.getState().snapshot,
+    notificationPrefs: notifications.prefsSaved ? notifications.prefs : null,
+  };
+}
+
+/** Writes a merged patch back to the three stores (profile, reminder preferences, data). */
+export function applySyncedPatch(patch: Parameters<SyncStore['write']>[0]) {
+  if ('snapshot' in patch && patch.snapshot !== useProfileStore.getState().snapshot) {
+    useProfileStore.getState().setSnapshot(patch.snapshot ?? null);
+  }
+  const { notificationPrefs, ...data } = patch;
+  if (notificationPrefs && notificationPrefs !== useNotificationStore.getState().prefs) {
+    useNotificationStore.getState().adoptPrefs(notificationPrefs);
+  }
+  useDataStore.getState().applySync(data);
+}
+
+/**
+ * Local changes the account does not hold yet (rows to send or delete). 0 in local mode: there is
+ * nothing to send. Used to warn before a sign-out that would lose them.
+ */
+export function pendingChanges(): number {
+  const state = syncedState();
+  if (!state.ownerId) return 0;
+  const plan = diff(project(state, state.ownerId), state.synced);
+  return plan.upserts.length + plan.deletes.length;
+}
+
+/** Starts a round now (a "Réessayer" button); resolves when it ends. No-op when signed out. */
+let runNow: (() => Promise<void>) | null = null;
+export function syncNow(): Promise<void> {
+  return runNow ? runNow() : Promise.resolve();
 }
 
 export function hydrated(persisted: {
@@ -103,12 +140,13 @@ export function useSync() {
       }
     };
 
+    runNow = tick;
     let timer: ReturnType<typeof setInterval> | undefined;
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') void tick();
     });
     // Wait for the saved data to be loaded, otherwise its owner is unknown.
-    void Promise.all([hydrated(useDataStore), hydrated(useProfileStore)]).then(() => {
+    void Promise.all([hydrated(useDataStore), hydrated(useProfileStore), hydrated(useNotificationStore)]).then(() => {
       if (cancelled) return;
       // Attach the local data to this account, or clear data belonging to another one.
       const data = useDataStore.getState();
@@ -126,6 +164,7 @@ export function useSync() {
     });
     return () => {
       cancelled = true;
+      if (runNow === tick) runNow = null;
       if (timer) clearInterval(timer);
       sub.remove();
     };

@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useApplyDisplaySettings } from '@/hooks/useApplyDisplaySettings';
 import { hydrated, useSync } from '@/hooks/useSync';
 import { useDataStore } from '@/state/data';
 import { moveLegacyCheckins } from '@/state/legacy';
@@ -20,6 +21,7 @@ export default function RootLayout() {
   const colors = palette[scheme];
   const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
   useSync();
+  useApplyDisplaySettings();
   useEffect(() => {
     void SplashScreen.hideAsync();
     void Promise.all([hydrated(useDataStore), hydrated(useNotificationStore)]).then(moveLegacyCheckins);
@@ -46,7 +48,9 @@ export default function RootLayout() {
         <Stack.Screen name="workout/[date]" options={{ headerShown: true, title: t('workout.title') }} />
         <Stack.Screen name="inventory" options={{ headerShown: true, title: t('inventory.title') }} />
         <Stack.Screen name="shopping" options={{ headerShown: true, title: t('shopping.title') }} />
-        <Stack.Screen name="settings" options={{ headerShown: true, title: t('settings.title') }} />
+        <Stack.Screen name="settings/index" options={{ headerShown: true, title: t('settings.title') }} />
+        <Stack.Screen name="settings/[section]" options={{ headerShown: true, title: t('settings.title') }} />
+        <Stack.Screen name="measurements" options={{ headerShown: true, title: t('measurements.title') }} />
         <Stack.Screen name="review" options={{ headerShown: true, title: t('review.title') }} />
         <Stack.Screen name="history" options={{ headerShown: true, title: t('history.title') }} />
         <Stack.Screen name="checkin" options={{ headerShown: true, title: t('checkin.title') }} />

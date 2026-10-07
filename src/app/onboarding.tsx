@@ -14,6 +14,11 @@ import {
   visibleSteps,
 } from '@/domain/onboarding/steps';
 import { StepContent } from '@/features/onboarding/StepContent';
+import { ChangePreview } from '@/features/settings/ChangePreview';
+import { commitProfile } from '@/features/settings/useCommitProfile';
+import { editedSnapshot, profileImpact } from '@/domain/settings/impact';
+import { toIsoDate } from '@/domain/shared/dates';
+import { useDataStore } from '@/state/data';
 import { useSession } from '@/services/auth';
 import { isSupabaseConfigured } from '@/services/supabase';
 import type { Allergen } from '@/domain/profile/schemas';
@@ -23,6 +28,7 @@ import { spacing } from '@/theme';
 export default function OnboardingScreen() {
   const { t } = useTranslation();
   const { draft, currentStep, updateDraft, setStep, complete, localMode, snapshot } = useProfileStore();
+  const adjustments = useDataStore((s) => s.adjustments);
   const { session, loading } = useSession();
   // Allergies of the saved profile that the new answers drop: saved only after an explicit "yes" (B2).
   const [removing, setRemoving] = useState<Allergen[] | null>(null);
@@ -51,9 +57,27 @@ export default function OnboardingScreen() {
       return;
     }
     setRemoving(null);
-    complete(result.snapshot);
+    if (snapshot) {
+      // Questionnaire done again (D-043): same contract as Réglages. The start of the journey is kept,
+      // a new weight is a weigh-in of today (the history is never typed over), and the adaptations
+      // the new answers replace are ended in the journal.
+      const next = editedSnapshot(snapshot, result.snapshot);
+      if (result.snapshot.user.weightKg !== snapshot.user.weightKg) {
+        useDataStore.getState().logWeight(toIsoDate(new Date()), result.snapshot.user.weightKg);
+      }
+      commitProfile(next, profileImpact({ saved: snapshot, next, adjustments }));
+    } else {
+      complete(result.snapshot);
+    }
     router.replace('/');
   };
+
+  // What saving the questionnaire again will change, shown on the summary (D-043).
+  const built = step === 'review' && snapshot ? buildSnapshot(draft, new Date()) : null;
+  const impact =
+    built?.ok && snapshot
+      ? profileImpact({ saved: snapshot, next: editedSnapshot(snapshot, built.snapshot), adjustments })
+      : null;
 
   return (
     <Screen>
@@ -68,6 +92,7 @@ export default function OnboardingScreen() {
         />
       </View>
       <StepContent key={step} step={step} draft={draft} update={updateDraft} />
+      {impact ? <ChangePreview impact={impact} /> : null}
       {removing && step === 'review' ? (
         <Card>
           <View accessibilityRole="alert" accessibilityLiveRegion="assertive" style={{ gap: spacing.sm }}>

@@ -78,7 +78,7 @@ test('Mon évolution: since the start, measured body changes, loads that progres
   await expect(text(page, 'Ton projet a commencé il y a 58 jour(s).')).toBeVisible();
   await expect(text(page, '33 jour(s) actif(s) · 17 séance(s) faite(s)')).toBeVisible();
   await expect(text(page, 'Goblet squat : 18 kg × 8 → 32 kg × 8')).toBeVisible();
-  await expect(text(page, /−?-?2\.2 kg depuis ta première semaine de pesées/)).toBeVisible();
+  await expect(text(page, /−?-?2,2 kg depuis ta première semaine de pesées \(79,9 kg\)/)).toBeVisible();
   await expect(text(page, /-4 cm depuis ta première mesure/)).toBeVisible();
   await expect(text(page, 'Étape 2 · 10 séances faites')).toBeVisible();
   await expect(text(page, 'Ton plan cette semaine')).toBeVisible();
