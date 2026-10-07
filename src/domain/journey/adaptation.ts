@@ -11,6 +11,7 @@ import type { LoggedSet, ProgressionRecommendation } from '../training/progressi
 import { isStructural, STRUCTURE, type CycleOption } from '../training/structure';
 import type { Adherence } from './adherence';
 import {
+  byInstant,
   decidedRecommendation,
   effectiveDecisions,
   proposalKey,
@@ -314,7 +315,7 @@ export function plateau(input: AdaptationInput): Plateau {
 function lastCalorieDecision(adjustments: Adjustment[]): Adjustment | undefined {
   return [...effectiveDecisions(adjustments).values()]
     .filter((a) => a.changeKey === 'calories_per_day' && a.status !== 'reverted')
-    .sort((a, b) => a.decidedAt.localeCompare(b.decidedAt))
+    .sort(byInstant)
     .at(-1);
 }
 
@@ -482,7 +483,7 @@ export function adapt(input: AdaptationInput): Recommendation[] {
   // 10. Four weeks at 100 % after a reduction: offer to go back.
   const cut = input.adjustments
     .filter((a) => a.changeKey === 'sessions_per_week' && a.status === 'applied')
-    .sort((a, b) => a.decidedAt.localeCompare(b.decidedAt))
+    .sort(byInstant)
     .at(-1);
   if (
     cut &&

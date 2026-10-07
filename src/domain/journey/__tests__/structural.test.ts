@@ -486,7 +486,7 @@ describe('revert with a frozen clock', () => {
       today: TODAY,
       decidedAt: yes.decidedAt,
     });
-    expect(back.decidedAt > yes.decidedAt).toBe(true);
+    expect(back.revision).toBe((yes.revision ?? 0) + 1);
     expect(effectiveDecisions([back, yes]).get(r.id)?.status).toBe('reverted');
   });
 });

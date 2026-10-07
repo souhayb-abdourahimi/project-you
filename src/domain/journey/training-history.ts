@@ -9,7 +9,7 @@ import { compareWeek, type CompareFacts, type WeekComparison } from '../training
 import type { ProgramVersion } from '../training/program';
 import { isStructural, structureKey } from '../training/structure';
 import { activeProgram, type TrainingRecords } from '../training/week';
-import { effectiveDecisions, type Adjustment } from './adjustments';
+import { byInstant, effectiveDecisions, type Adjustment } from './adjustments';
 import type { AdaptationEffect } from './structural';
 
 /** A training decision as the history shows it. */
@@ -44,7 +44,7 @@ export function decisionJournal(
   const current = new Set([...effectiveDecisions(adjustments).values()].map((d) => d.id));
   return adjustments
     .filter((d) => d.status !== 'proposed' && isTrainingDecision(d))
-    .sort((a, b) => b.decidedAt.localeCompare(a.decidedAt) || b.id.localeCompare(a.id))
+    .sort((a, b) => byInstant(b, a))
     .map((d) => ({
       decision: d,
       change: structureKey(d) ?? d.changeKey,

@@ -3,7 +3,7 @@ import { View } from 'react-native';
 
 import { Button, Card, Text } from '@/components/ui';
 import { APPLICABLE_CHANGES, undecided, type Recommendation } from '@/domain/journey/adaptation';
-import { effectiveDecisions, type Adjustment } from '@/domain/journey/adjustments';
+import { byInstant, effectiveDecisions, type Adjustment } from '@/domain/journey/adjustments';
 import { explainPlanChange } from '@/domain/journey/explain';
 import type { AdaptationEffect } from '@/domain/journey/structural';
 import type { IsoDate } from '@/domain/shared/dates';
@@ -105,7 +105,7 @@ function PlanChange({
   const why = explainPlanChange([...effectiveDecisions(adjustments).values()]);
   const latest = [...effectiveDecisions(adjustments).values()]
     .filter((a) => a.status === 'applied' || a.status === 'reverted')
-    .sort((a, b) => a.decidedAt.localeCompare(b.decidedAt))
+    .sort(byInstant)
     .at(-1);
   if (!why || !latest) return null;
   const applied = latest.status === 'applied';

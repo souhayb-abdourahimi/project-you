@@ -46,6 +46,12 @@ export interface Adjustment {
   /** Last day covered (inclusive); null for a durable change. */
   effectiveTo?: IsoDate | null;
   sessionCount?: number | null;
+  /**
+   * Logical order of the answers on one proposal (D-040): 1 + the highest revision this device
+   * knew on the same proposal when the gesture was made. A gesture made after seeing another one
+   * always comes after it, whatever the clocks. Absent (0) on rows recorded before W-7.1.
+   */
+  revision?: number | null;
 }
 
 /** Identifies a recommendation across openings: one per change and week. */
@@ -69,7 +75,44 @@ export function decidedRecommendation(a: Adjustment): string {
   return a.proposalId ?? recommendationKey(a.kind, a.changeKey, startOfWeek(a.effectiveFrom));
 }
 
-const byDecision = (a: Adjustment, b: Adjustment) => a.decidedAt.localeCompare(b.decidedAt) || a.id.localeCompare(b.id);
+/**
+ * The instant of a gesture, whatever its ISO form (`Z`, `+00:00`, `+02:00`, with or without
+ * milliseconds): times are compared as instants, never as text (D-040).
+ */
+export function decisionInstant(a: Pick<Adjustment, 'decidedAt'>): number {
+  const t = Date.parse(a.decidedAt);
+  return Number.isNaN(t) ? 0 : t;
+}
+
+type Ordered = Pick<Adjustment, 'decidedAt' | 'id'> & { revision?: number | null };
+
+/** Oldest first, by the instant of the gesture, then id (several proposals: a timeline). */
+export const byInstant = (a: Ordered, b: Ordered) =>
+  decisionInstant(a) - decisionInstant(b) || a.id.localeCompare(b.id);
+
+/**
+ * Order of the answers on one proposal, the same on every device (D-040): revision first (a
+ * gesture made after seeing another wins), then the instant, then the id. Two answers given offline
+ * without seeing each other have the same revision: the later device clock wins, deterministically,
+ * but that is not a guarantee of the real order of the two gestures.
+ */
+export const byDecision = (a: Ordered, b: Ordered) => (a.revision ?? 0) - (b.revision ?? 0) || byInstant(a, b);
+
+/** 1 + the highest revision known on this decision's proposal (the journal of this device). */
+export function nextRevision(adjustments: readonly Adjustment[], a: Adjustment): number {
+  const key = decidedRecommendation(a);
+  return (
+    1 +
+    adjustments
+      .filter((x) => x.id !== a.id && decidedRecommendation(x) === key)
+      .reduce((max, x) => Math.max(max, x.revision ?? 0), 0)
+  );
+}
+
+/** A new gesture placed after everything this device knows on the same proposal (the write path). */
+export function sequenced(a: Adjustment, adjustments: readonly Adjustment[]): Adjustment {
+  return { ...a, revision: Math.max(a.revision ?? 0, nextRevision(adjustments, a)) };
+}
 
 /**
  * The decision in force for each proposal: the latest one (time of the gesture, then id), on every
@@ -94,7 +137,7 @@ export function overriddenDecisions(adjustments: readonly Adjustment[]): Adjustm
 
 /** Applied decisions still in force (not reverted, not overridden), oldest first. */
 export function appliedDecisions(adjustments: readonly Adjustment[]): Adjustment[] {
-  return [...effectiveDecisions(adjustments).values()].filter((a) => a.status === 'applied').sort(byDecision);
+  return [...effectiveDecisions(adjustments).values()].filter((a) => a.status === 'applied').sort(byInstant);
 }
 
 /**
@@ -180,11 +223,9 @@ export function revertDecision(
     id: input.id,
     status: 'reverted',
     effectiveFrom: input.today,
-    // A revert always comes after what it reverts, even with a coarse or frozen clock.
-    decidedAt:
-      Date.parse(input.decidedAt) > Date.parse(applied.decidedAt)
-        ? input.decidedAt
-        : new Date(Date.parse(applied.decidedAt) + 1).toISOString(),
+    decidedAt: input.decidedAt,
+    // A revert always comes after what it reverts, whatever the clocks (D-040).
+    revision: (applied.revision ?? 0) + 1,
     proposalId: decidedRecommendation(applied),
     scope: null,
     effectiveTo: null,

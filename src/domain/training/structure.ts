@@ -10,7 +10,7 @@
  *   rewritten (D-033).
  * - Relations between exercises come from the catalogue (`EASIER_VARIANTS`), never from a name.
  */
-import { appliedDecisions, effectiveDecisions, type Adjustment } from '../journey/adjustments';
+import { appliedDecisions, byInstant, effectiveDecisions, type Adjustment } from '../journey/adjustments';
 import type { Equipment } from '../profile/schemas';
 import { addDays, daysBetween, type IsoDate } from '../shared/dates';
 import { parseSessionKey, type SessionKey } from '../shared/ids';
@@ -461,7 +461,7 @@ export function versionDecisions(adjustments: readonly Adjustment[]): VersionDec
   const latest = (match: (a: Adjustment) => boolean) =>
     [...effectiveDecisions(adjustments).values()]
       .filter((a) => (a.status === 'applied' || a.status === 'reverted') && match(a))
-      .sort((a, b) => a.decidedAt.localeCompare(b.decidedAt) || a.id.localeCompare(b.id))
+      .sort(byInstant)
       .at(-1)?.id ?? null;
   return {
     frequency: latest((a) => a.changeKey === 'sessions_per_week'),

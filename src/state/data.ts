@@ -14,7 +14,7 @@ import {
   type SyncedHashes,
   type WaistEntry,
 } from '@/domain/sync/projection';
-import type { Adjustment } from '@/domain/journey/adjustments';
+import { sequenced, type Adjustment } from '@/domain/journey/adjustments';
 import type {
   DayLog,
   MealLogEntry,
@@ -345,8 +345,14 @@ export const useDataStore = create<DataState>()(
             ]),
           ),
         })),
+      // Every gesture is placed after what this device knows on the same proposal (D-040).
       saveAdjustment: (adjustment) =>
-        set((s) => ({ adjustments: [...s.adjustments.filter((a) => a.id !== adjustment.id), adjustment] })),
+        set((s) => ({
+          adjustments: [
+            ...s.adjustments.filter((a) => a.id !== adjustment.id),
+            sequenced(adjustment, s.adjustments),
+          ],
+        })),
       addExpense: (amountCents, spentOn) =>
         set((s) => {
           const expense = { id: newId(), amountCents, spentOn };

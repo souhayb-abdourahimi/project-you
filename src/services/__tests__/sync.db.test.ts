@@ -18,7 +18,7 @@ import {
   type SyncTable,
 } from '@/domain/sync/projection';
 import { sessionKey } from '@/domain/sync/projection';
-import { decisionFor, effectiveDecisions } from '@/domain/journey/adjustments';
+import { decisionFor, effectiveDecisions, sequenced } from '@/domain/journey/adjustments';
 import { durableTraining, structureFor, versionDecisions } from '@/domain/training/structure';
 import { activeProgram, ensureProgram, prescriptionFor, refreshWeek, rescheduleSession } from '@/domain/training/week';
 
@@ -849,6 +849,26 @@ describeDb('sync against the real schema (Postgres + RLS)', () => {
     const reduced = (await rowsOf('workout_sessions', I)).find((r) => r.adjustment_id === applied.id);
     expect(reduced).toBeDefined();
     for (const d of [a, b]) expect(effectiveDecisions(d.state().adjustments!).get(proposal.id)?.id).toBe(declined.id);
+
+    // D-040: A, whose clock is behind, answers again after seeing B's answer: its revision carries
+    // the order through the server (rows written before carry 0), and both devices agree that this
+    // later gesture is in force.
+    const again = sequenced(
+      decisionFor({
+        id: '00000000-0000-4000-8000-0000000009b2',
+        proposal,
+        status: 'postponed',
+        today: WEEK,
+        decidedAt: '2026-09-28T08:02:00.000Z',
+      }),
+      a.state().adjustments!,
+    );
+    expect(again.revision).toBe(1);
+    a.write({ adjustments: [...a.state().adjustments!, again] });
+    expect((await a.sync()).errors).toEqual([]);
+    expect((await b.sync()).errors).toEqual([]);
+    expect((await rowsOf('adjustments', I)).find((r) => r.id === again.id)?.revision).toBe(1);
+    for (const d of [a, b]) expect(effectiveDecisions(d.state().adjustments!).get(proposal.id)?.id).toBe(again.id);
 
     // The database refuses to rewrite a decision or the decision a prescription followed.
     const asUser = async (sql: string, params: unknown[]) => {

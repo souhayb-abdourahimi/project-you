@@ -14,6 +14,7 @@
 import { addDays, daysBetween, type IsoDate } from '../shared/dates';
 import {
   appliedDecisions,
+  byInstant,
   effectiveDecisions,
   type Adjustment,
   type AdjustmentScope,
@@ -74,7 +75,7 @@ export function allowedAgain(
 ): boolean {
   const latest = [...effectiveDecisions(adjustments).values()]
     .filter((a) => a.changeKey === changeKey && (target === undefined || targetsOf(a).includes(target)))
-    .sort((a, b) => a.decidedAt.localeCompare(b.decidedAt) || a.id.localeCompare(b.id))
+    .sort(byInstant)
     .at(-1);
   if (!latest) return true;
   const since = daysBetween(latest.effectiveFrom, today);
@@ -217,7 +218,7 @@ export function structuralDrafts(input: {
   const decided = (key: string, id: string) =>
     [...effectiveDecisions(adjustments).values()]
       .filter((a) => a.changeKey === key && targetsOf(a).includes(id))
-      .sort((a, b) => a.decidedAt.localeCompare(b.decidedAt))
+      .sort(byInstant)
       .at(-1) ?? null;
   const easier: { from: string; to: string; evidence: string }[] = [];
   for (const id of [...s.inProgram].sort()) {

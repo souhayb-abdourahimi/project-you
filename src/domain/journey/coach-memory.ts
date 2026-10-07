@@ -12,7 +12,7 @@
  * program. The `coach_memory` table stays unused (D-039).
  */
 import { addDays, daysBetween, startOfWeek, weekdayOf, type IsoDate, type Weekday } from '../shared/dates';
-import type { Adjustment } from './adjustments';
+import { byDecision, type Adjustment } from './adjustments';
 import type { DayLog, SessionOutcome } from './outcomes';
 import type { WeeklyCheckin } from './weekly-checkin';
 
@@ -59,7 +59,7 @@ export function coachEntries(adjustments: readonly Adjustment[]): Adjustment[] {
   const latest = new Map<string, Adjustment>();
   for (const a of [...adjustments]
     .filter(isCoachEntry)
-    .sort((x, y) => x.decidedAt.localeCompare(y.decidedAt) || x.id.localeCompare(y.id))) {
+    .sort(byDecision)) {
     latest.set(a.proposalId ?? a.id, a);
   }
   return [...latest.values()];

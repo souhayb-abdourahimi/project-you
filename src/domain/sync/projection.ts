@@ -240,6 +240,7 @@ const REMOTE_ROWS = {
     scope: z.enum(ADJUSTMENT_SCOPES).nullish(),
     effective_to: isoDate.nullish(),
     session_count: z.coerce.number().int().min(1).nullish(),
+    revision: z.coerce.number().int().min(0).nullish(),
   }),
 } satisfies Partial<Record<string, z.ZodType>>;
 
@@ -700,6 +701,8 @@ export function project(state: SyncableState, userId: string): Record<SyncTable,
       ...(a.scope ? { scope: a.scope } : {}),
       ...(a.effectiveTo ? { effective_to: a.effectiveTo } : {}),
       ...(a.sessionCount ? { session_count: a.sessionCount } : {}),
+      // W-7.1 column only when set: rows recorded before keep the same content (and hash).
+      ...(a.revision ? { revision: a.revision } : {}),
       deleted_at: null,
     });
   }
@@ -1388,6 +1391,7 @@ export function applyRemote(
         ...(str(r.scope) ? { scope: r.scope as Adjustment['scope'] } : {}),
         ...(str(r.effective_to) ? { effectiveTo: str(r.effective_to)! } : {}),
         ...(num(r.session_count) ? { sessionCount: num(r.session_count)! } : {}),
+        ...(num(r.revision) ? { revision: num(r.revision)! } : {}),
       },
     ];
   }

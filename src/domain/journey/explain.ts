@@ -4,7 +4,7 @@
  * objects (docs/AI_ARCHITECTURE.md): it never reads the raw history and decides nothing.
  */
 import type { PlannedExercise, ProgramVersion, TrainingPurpose } from '../training/program';
-import type { Adjustment } from './adjustments';
+import { byInstant, type Adjustment } from './adjustments';
 import type { DailyItem, DailyPlan } from './daily-plan';
 
 export interface Explanation {
@@ -62,7 +62,7 @@ export function explainDay(plan: DailyPlan): Explanation[] {
 export function explainPlanChange(adjustments: Adjustment[]): Explanation | null {
   const latest = adjustments
     .filter((a) => a.status === 'applied' || a.status === 'reverted')
-    .sort((a, b) => a.decidedAt.localeCompare(b.decidedAt))
+    .sort(byInstant)
     .at(-1);
   return latest ? explainDecision(latest) : null;
 }

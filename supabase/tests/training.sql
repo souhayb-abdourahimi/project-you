@@ -364,6 +364,22 @@ values ('00000000-0000-0000-0000-00000000000c', 'planning', 'coach.memory.short_
 select pg_temp.expect(
   (select count(*) from public.adjustments where change_key like 'coach.%') = 3,
   'coach answers and their revert are journal rows (owner only, synced, exported, deleted with the account)');
+
+-- W-7.1 (D-040): a logical revision per proposal, immutable like the rest of the decision.
+insert into public.adjustments (id, user_id, kind, change_key, reason_key, status, effective_from, proposal_id, revision)
+values ('00000000-0000-0000-0000-0000000004e1', '00000000-0000-0000-0000-00000000000c', 'training', 'light_week',
+        'adaptation.reason.fatigue_rest', 'applied', '2026-11-16', 'training:light_week:2026-11-16', 2);
+select pg_temp.expect(
+  (select revision from public.adjustments where id = '00000000-0000-0000-0000-0000000004e1') = 2
+    and (select count(*) from public.adjustments where revision = 0) >= 1,
+  'a revision is stored; rows recorded before keep 0');
+select pg_temp.expect_error($s$
+  update public.adjustments set revision = 3 where id = '00000000-0000-0000-0000-0000000004e1'
+$s$, '23514', 'a revision is immutable');
+select pg_temp.expect_error($s$
+  insert into public.adjustments (user_id, kind, change_key, reason_key, status, effective_from, revision)
+  values ('00000000-0000-0000-0000-00000000000c', 'training', 'light_week', 'adaptation.reason.fatigue_rest', 'applied', '2026-11-16', -1)
+$s$, '23514', 'a revision is never negative');
 commit;
 
 -- ---------------------------------------------------------------------------
