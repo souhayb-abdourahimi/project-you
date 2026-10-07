@@ -3,6 +3,7 @@
  * Pure: the service layer performs the network calls.
  */
 import type { SyncableState, SyncTable } from '../sync/projection';
+import type { WeeklyMealPlan } from '../meals/planner';
 
 export type PrivacyCategory =
   'profile' | 'motivation' | 'weights' | 'measurements' | 'inventory' | 'expenses' | 'workouts' | 'meals' | 'journey';
@@ -61,7 +62,7 @@ export const EXPORT_ONLY_TABLES = [
   'workout_plans',
 ] as const;
 
-export function countByCategory(state: SyncableState): Record<PrivacyCategory, number> {
+export function countByCategory(state: PrivacyState): Record<PrivacyCategory, number> {
   const m = state.snapshot?.motivation;
   return {
     profile: state.snapshot ? 1 : 0,
@@ -82,15 +83,40 @@ export function countByCategory(state: SyncableState): Record<PrivacyCategory, n
   };
 }
 
-/** Meals the user marked (eaten, skipped or replaced), in the current plan or kept in the journal. */
-function markedMeals(state: SyncableState): number {
-  const inPlan = (state.mealPlan?.days ?? []).flatMap((d) => d.meals).filter((m) => m.status !== 'planned');
-  const ids = new Set(inPlan.map((m) => m.id));
-  return inPlan.length + (state.mealLog ?? []).filter((m) => !ids.has(m.id)).length;
+/**
+ * Local state the Privacy Center reads: what is synced, plus the previous week's meal plan kept on
+ * this device for the weekly review (its marks are meal data too, W-7.1).
+ */
+export type PrivacyState = SyncableState & { previousMealPlan?: WeeklyMealPlan | null };
+
+/**
+ * Meals the user marked (eaten, skipped or replaced), in the current plan, in the previous week's
+ * plan or kept in the journal (each meal once).
+ */
+function markedMeals(state: PrivacyState): number {
+  const ids = new Set<string>();
+  for (const plan of [state.mealPlan, state.previousMealPlan])
+    for (const m of (plan?.days ?? []).flatMap((d) => d.meals)) if (m.status !== 'planned') ids.add(m.id);
+  for (const m of state.mealLog ?? []) ids.add(m.id);
+  return ids.size;
 }
 
-/** Local state with one category removed. Deleting meals keeps the plan but forgets what was marked. */
-export function clearCategory(state: SyncableState, category: PrivacyCategory): SyncableState {
+/** The plan kept, what was marked forgotten (status back to planned, no reason). */
+function unmarked(plan: WeeklyMealPlan): WeeklyMealPlan {
+  return {
+    ...plan,
+    days: plan.days.map((d) => ({
+      ...d,
+      meals: d.meals.map((m) => (m.status === 'planned' ? m : { ...m, status: 'planned' as const, reason: undefined })),
+    })),
+  };
+}
+
+/**
+ * Local state with one category removed. Deleting meals keeps the plans (current and previous week)
+ * but forgets what was marked.
+ */
+export function clearCategory<S extends PrivacyState>(state: S, category: PrivacyCategory): S {
   switch (category) {
     case 'profile':
       return { ...state, snapshot: null };
@@ -128,17 +154,8 @@ export function clearCategory(state: SyncableState, category: PrivacyCategory): 
       return {
         ...state,
         mealLog: [],
-        mealPlan: state.mealPlan
-          ? {
-              ...state.mealPlan,
-              days: state.mealPlan.days.map((d) => ({
-                ...d,
-                meals: d.meals.map((m) =>
-                  m.status === 'planned' ? m : { ...m, status: 'planned' as const, reason: undefined },
-                ),
-              })),
-            }
-          : null,
+        mealPlan: state.mealPlan ? unmarked(state.mealPlan) : null,
+        ...(state.previousMealPlan ? { previousMealPlan: unmarked(state.previousMealPlan) } : {}),
       };
     case 'journey':
       return { ...state, dayLogs: [], weeklyCheckins: [], milestones: {}, adjustments: [] };

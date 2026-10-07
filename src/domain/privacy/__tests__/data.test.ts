@@ -1,6 +1,7 @@
 import { SCENARIOS } from '../../scenarios';
 import { publishWeek } from '../../scenarios/training';
 import { project, SYNC_TABLE_ORDER, type SyncableState } from '../../sync/projection';
+import type { WeeklyMealPlan } from '../../meals/planner';
 import {
   buildExport,
   CATEGORY_TABLES,
@@ -61,6 +62,36 @@ describe('privacy data', () => {
       const others = DELETABLE_CATEGORIES.filter((c) => c !== category);
       for (const o of others) expect(countByCategory(next)[o]).toBe(countByCategory(state)[o]);
     }
+  });
+
+  it('deleting meals also forgets the marks of the previous week kept for the review (W-7.1)', () => {
+    const meal = (id: string, status: 'eaten' | 'skipped' | 'planned') => ({
+      id,
+      date: '2026-09-22',
+      slot: 'lunch',
+      recipeId: 'r',
+      servings: 1,
+      status,
+      ...(status === 'skipped' ? { reason: 'no_time' } : {}),
+      kcal: 500,
+    });
+    const previousMealPlan = {
+      weekStart: '2026-09-21',
+      days: [{ date: '2026-09-22', meals: [meal('p1', 'eaten'), meal('p2', 'skipped'), meal('p3', 'planned')] }],
+    } as unknown as WeeklyMealPlan;
+    const withPrevious = { ...state, mealLog: [], previousMealPlan };
+    // Counted as stored, so the Privacy Center says what it is about to delete.
+    expect(countByCategory(withPrevious).meals).toBe(2);
+    const next = clearCategory(withPrevious, 'meals');
+    expect(countByCategory(next).meals).toBe(0);
+    const left = next.previousMealPlan!.days.flatMap((d) => d.meals);
+    expect(left.map((m) => [m.id, m.status, m.reason])).toEqual([
+      ['p1', 'planned', undefined],
+      ['p2', 'planned', undefined],
+      ['p3', 'planned', undefined],
+    ]);
+    // Nothing else changes.
+    expect(clearCategory(withPrevious, 'weights').previousMealPlan).toBe(previousMealPlan);
   });
 
   it('deleting the journey category removes day logs, weekly check-ins, milestones and adjustments', () => {

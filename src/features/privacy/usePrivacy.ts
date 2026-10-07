@@ -75,6 +75,7 @@ export function usePrivacy() {
   const waist = useDataStore((s) => s.waist);
   const expenses = useDataStore((s) => s.expenses);
   const mealPlan = useDataStore((s) => s.mealPlan);
+  const previousMealPlan = useDataStore((s) => s.previousMealPlan);
   const completedSessions = useDataStore((s) => s.completedSessions);
   const setLogs = useDataStore((s) => s.setLogs);
   const sessionIds = useDataStore((s) => s.sessionIds);
@@ -93,6 +94,7 @@ export function usePrivacy() {
     waist,
     expenses,
     mealPlan,
+    previousMealPlan,
     completedSessions,
     setLogs,
     sessionIds,
