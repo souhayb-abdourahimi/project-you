@@ -2,11 +2,20 @@ import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { MAX_CONTENT_WIDTH, spacing, useColors } from '@/theme';
+import { MAX_CONTENT_WIDTH, layout, spacing, useColors } from '@/theme';
 
-export function Screen({ children, scroll = true }: { children: ReactNode; scroll?: boolean }) {
+export function Screen({
+  children,
+  scroll = true,
+  airy,
+}: {
+  children: ReactNode;
+  scroll?: boolean;
+  /** Main screens (W-9): more air between sections. */
+  airy?: boolean;
+}) {
   const colors = useColors();
-  const content = <View style={styles.content}>{children}</View>;
+  const content = <View style={[styles.content, airy && styles.airy]}>{children}</View>;
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.root, { backgroundColor: colors.background }]}>
       {scroll ? (
@@ -33,8 +42,9 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MAX_CONTENT_WIDTH,
     alignSelf: 'center',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: layout.screenPadding,
     paddingVertical: spacing.xl,
     gap: spacing.lg,
   },
+  airy: { gap: layout.sectionGap, paddingTop: spacing.lg, paddingBottom: spacing['3xl'] },
 });

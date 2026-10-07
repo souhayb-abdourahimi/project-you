@@ -10,7 +10,7 @@ export function ProgressBar({ value, label, color = 'primary' }: { value: number
       accessibilityRole="progressbar"
       accessibilityLabel={label}
       accessibilityValue={{ min: 0, max: 100, now: Math.round(clamped * 100) }}
-      style={[styles.track, { backgroundColor: colors.surfaceMuted }]}>
+      style={[styles.track, { backgroundColor: colors.surfaceSubtle }]}>
       <View style={[styles.fill, { width: `${clamped * 100}%`, backgroundColor: colors[color] }]} />
     </View>
   );

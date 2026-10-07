@@ -23,8 +23,8 @@ export function TextField({
           typography.body,
           {
             color: colors.text,
-            backgroundColor: colors.surfaceMuted,
-            borderColor: error ? colors.danger : colors.border,
+            backgroundColor: colors.surface,
+            borderColor: error ? colors.danger : colors.borderStrong,
           },
         ]}
         {...input}
@@ -45,5 +45,5 @@ export function TextField({
 
 const styles = StyleSheet.create({
   field: { gap: spacing.xs },
-  input: { minHeight: MIN_TOUCH, borderRadius: radius.md, borderWidth: 1, paddingHorizontal: spacing.md },
+  input: { minHeight: 50, borderRadius: radius.input, borderWidth: 1, paddingHorizontal: spacing.lg },
 });
