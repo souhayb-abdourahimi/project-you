@@ -2081,8 +2081,11 @@ const fr = {
       deleted: 'Données supprimées.',
       account_deleted: 'Ton compte et tes données ont été supprimés.',
       export_failed: 'L’export a échoué. Réessaie.',
-      delete_failed: 'La suppression du compte a échoué. Rien n’a été supprimé, réessaie plus tard.',
-      offline: 'Impossible de joindre le serveur : rien n’a été supprimé. Réessaie une fois connecté.',
+      delete_failed: 'La suppression du compte n’a pas pu se terminer : ton compte existe encore. Réessaie plus tard.',
+      delete_partial:
+        'La suppression n’est pas terminée : une partie de ces données est encore sur le serveur. Elles restent aussi sur cet appareil. Réessaie pour finir.',
+      offline:
+        'Le serveur n’a pas confirmé la suppression : tes données restent sur cet appareil. Réessaie une fois connecté.',
     },
   },
   settings: {

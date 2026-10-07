@@ -81,7 +81,7 @@ export default function PrivacyScreen() {
           label={signedIn ? t('privacy.deleteAccount') : t('privacy.deleteAccountLocal')}
           message={t('privacy.deleteAccountConfirm')}
           loading={busy === 'account'}
-          onConfirm={() => void deleteEverything().then(() => router.replace('/'))}
+          onConfirm={() => void deleteEverything().then((done) => done && router.replace('/'))}
         />
       </Card>
     </Screen>

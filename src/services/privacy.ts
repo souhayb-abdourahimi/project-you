@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { CATEGORY_TABLES, EXPORT_ONLY_TABLES, type PrivacyCategory } from '@/domain/privacy/data';
+import { CATEGORY_TABLES, EXPORT_ONLY_TABLES, type PrivacyCategory, type RemoteDeletion } from '@/domain/privacy/data';
 import { SYNC_TABLE_ORDER, SYNC_TABLES } from '@/domain/sync/projection';
 
 import { fetchAllPages } from './paging';
@@ -35,21 +35,29 @@ export async function fetchAccountData(
   return { account, unavailable };
 }
 
-/** Hard-deletes a category on the server (not a soft delete: the data must really be gone). */
+/**
+ * Hard-deletes a category on the server (not a soft delete: the data must really be gone), table by
+ * table, children first, and says how far it went (W-7.1): a failure midway is `partial`, never a
+ * success. A retry starts again from the first table: deleting what is already gone is a no-op.
+ */
 export async function deleteRemoteCategory(
   client: SupabaseClient,
   userId: string,
   category: PrivacyCategory,
-): Promise<boolean> {
-  for (const table of CATEGORY_TABLES[category]) {
+): Promise<RemoteDeletion> {
+  const tables = CATEGORY_TABLES[category];
+  for (const [i, table] of tables.entries()) {
+    let ok = false;
     try {
-      const { error } = await client.from(table).delete().eq('user_id', userId);
-      if (error) return false;
+      ok = !(await client.from(table).delete().eq('user_id', userId)).error;
     } catch {
-      return false;
+      ok = false;
     }
+    if (ok) continue;
+    const remaining = tables.slice(i);
+    return i === 0 ? { kind: 'failed', remaining } : { kind: 'partial', deleted: tables.slice(0, i), remaining };
   }
-  return true;
+  return { kind: 'complete' };
 }
 
 /** Deletes photos, then the auth user; every personal table cascades (Edge Function `delete-account`). */

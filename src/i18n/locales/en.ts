@@ -2044,8 +2044,10 @@ const en: LocaleShape = {
       deleted: 'Data deleted.',
       account_deleted: 'Your account and your data have been deleted.',
       export_failed: 'The export failed. Please try again.',
-      delete_failed: 'Account deletion failed. Nothing was deleted, please try again later.',
-      offline: 'Could not reach the server: nothing was deleted. Try again once online.',
+      delete_failed: 'Account deletion could not finish: your account still exists. Please try again later.',
+      delete_partial:
+        'The deletion is not finished: part of this data is still on the server. It also stays on this device. Try again to finish.',
+      offline: 'The server did not confirm the deletion: your data stays on this device. Try again once online.',
     },
   },
   settings: {

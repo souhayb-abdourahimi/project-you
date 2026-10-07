@@ -33,6 +33,28 @@ export const CATEGORY_TABLES: Record<PrivacyCategory, SyncTable[]> = {
   journey: ['daily_checkins', 'weekly_checkins', 'journey_milestones', 'adjustments'],
 };
 
+/**
+ * How far a server deletion went (W-7.1). `failed`: no table confirmed (offline, refused at the
+ * first one); `partial`: some tables deleted, the others still hold data.
+ */
+export type RemoteDeletion =
+  | { kind: 'complete' }
+  | { kind: 'partial'; deleted: SyncTable[]; remaining: SyncTable[] }
+  | { kind: 'failed'; remaining: SyncTable[] };
+
+/**
+ * What the Privacy Center does with a server deletion: only a complete one clears the device and
+ * says "deleted". Otherwise the device keeps the data (and what it knows was synced, so nothing is
+ * pushed again), and the message says the deletion is not finished; a retry is safe.
+ */
+export function deletionOutcome(r: RemoteDeletion): {
+  clearLocal: boolean;
+  message: 'deleted' | 'delete_partial' | 'offline';
+} {
+  if (r.kind === 'complete') return { clearLocal: true, message: 'deleted' };
+  return { clearLocal: false, message: r.kind === 'partial' ? 'delete_partial' : 'offline' };
+}
+
 /** Categories the user can delete one by one (the profile goes with the account). */
 export const DELETABLE_CATEGORIES: PrivacyCategory[] = [
   'motivation',
