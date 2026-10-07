@@ -15,6 +15,7 @@ export function WeekFacts({ totals, current }: { totals: HistoryWeekView['totals
   const reached = totals.done + totals.adapted;
   return (
     <View>
+      {totals.prescriptionUnknown ? <Text color="textMuted">{t('program.prescriptionUnknown')}</Text> : null}
       {totals.planned > 0 ? (
         <Text>
           {t(

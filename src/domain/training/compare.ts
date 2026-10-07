@@ -206,9 +206,24 @@ export function sessionKeysBetween(
   return [...keys].sort();
 }
 
+/**
+ * True when at least one session of the week has its prescription stored. A week without any
+ * (before W-2, or the app not opened that week) has no known plan: what was planned is never
+ * rebuilt from the current profile (W-7.1); screens say « Prescription d'origine indisponible ».
+ */
+export function weekPrescriptionKnown(records: Pick<TrainingRecords, 'prescriptions' | 'sessionIds'>, weekStart: IsoDate) {
+  const end = addDays(weekStart, 6);
+  return Object.entries(records.sessionIds).some(([key, id]) => {
+    const d = parseSessionKey(key).date;
+    return d >= weekStart && d <= end && records.prescriptions[id] !== undefined;
+  });
+}
+
 /** One week, planned vs done, in facts (the Progress Journey line and the history header). */
 export interface WeekComparison {
   weekStart: IsoDate;
+  /** Past days without any stored prescription: no denominator, nothing rebuilt (W-7.1). */
+  prescriptionUnknown: boolean;
   sessions: SessionComparison[];
   /** Sessions the program planned (a moved session counts once, on its new day). */
   planned: number;
@@ -241,6 +256,7 @@ export function compareWeek(input: {
   return {
     weekStart,
     sessions,
+    prescriptionUnknown: weekStart < today && !weekPrescriptionKnown(records, weekStart),
     planned: programmed.length,
     done: programmed.filter((s) => isDone(s.status)).length,
     adapted: programmed.filter((s) => s.status === 'replaced').length,

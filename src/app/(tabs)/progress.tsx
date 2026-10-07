@@ -110,6 +110,9 @@ function SinceStart({ progress }: { progress: ProgressJourney }) {
             )}
           </Text>
         ) : null}
+        {sessions && sessions.unknownDays > 0 ? (
+          <Text color="textMuted">{t('progress.since.prescriptionUnknown', { count: sessions.unknownDays })}</Text>
+        ) : null}
       </Card>
     </Section>
   );

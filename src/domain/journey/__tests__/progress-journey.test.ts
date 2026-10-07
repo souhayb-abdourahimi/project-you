@@ -352,7 +352,7 @@ describe('adherence', () => {
       meals: [],
     });
     // Today's session is not due yet: never counted as missed.
-    expect(a.sessions).toEqual({ planned: 3, done: 2, adapted: 1, skipped: 0, notLogged: 0, ratio: 1 });
+    expect(a.sessions).toEqual({ planned: 3, done: 2, adapted: 1, skipped: 0, notLogged: 0, ratio: 1, unknownDays: 0 });
     expect(a.mealLogging).toBeNull();
   });
 

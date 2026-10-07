@@ -26,6 +26,11 @@ export interface WeeklyReviewInput {
    * schedule's workout days are used (a week before W-2).
    */
   plannedSessionDates?: IsoDate[];
+  /**
+   * No prescription stored for the week (W-7.1 `weekPrescriptionKnown`): its plan is unknown. The
+   * sessions done are said, nothing is compared with a plan, nothing is rebuilt from the profile.
+   */
+  prescriptionUnknown?: boolean;
   completedSessions: { date: IsoDate; sessionIndex: number; variant: 'full' | 'short' | 'light' }[];
   setLogs: Record<string, Record<string, LoggedSet[]>>;
   mealPlan: WeeklyMealPlan | null;
@@ -45,7 +50,7 @@ export type ReviewPoint = { key: string; params?: Record<string, string | number
 
 export interface WeeklyReview {
   weekStart: IsoDate;
-  sessions: { planned: number; done: number; shortOrLight: number };
+  sessions: { planned: number; done: number; shortOrLight: number; prescriptionUnknown: boolean };
   meals: { planned: number; eaten: number; proteinDaysMet: number; daysPlanned: number } | null;
   weight: { averageKg: number | null; changeKg: number | null; entries: number };
   waistChangeCm: number | null;
@@ -81,9 +86,11 @@ const inWeek = (date: IsoDate, weekStart: IsoDate) => date >= weekStart && date 
 
 export function weeklyReview(input: WeeklyReviewInput): WeeklyReview {
   const { weekStart } = input;
-  const plannedDates =
-    input.plannedSessionDates?.filter((d) => inWeek(d, weekStart)) ??
-    input.schedule.days.filter((d) => d.items.some((i) => i.kind === 'workout')).map((d) => d.date);
+  const unknown = input.prescriptionUnknown === true;
+  const plannedDates = unknown
+    ? []
+    : (input.plannedSessionDates?.filter((d) => inWeek(d, weekStart)) ??
+      input.schedule.days.filter((d) => d.items.some((i) => i.kind === 'workout')).map((d) => d.date));
   const planned = plannedDates.length;
   const plannedSoFar = plannedDates.filter((d) => d <= input.today).length;
   const done = input.completedSessions.filter((c) => inWeek(c.date, weekStart));
@@ -187,13 +194,14 @@ export function weeklyReview(input: WeeklyReviewInput): WeeklyReview {
     adapt.push({ key: `review.adapt.problem.${problem}` });
   }
   if (input.checkin === null) missing.push({ key: 'review.missing.checkin' });
+  if (unknown) missing.push({ key: 'review.missing.prescription' });
 
-  nextWeek.push({ key: 'review.next.sessions', params: { count: Math.max(1, planned) } });
+  if (!unknown) nextWeek.push({ key: 'review.next.sessions', params: { count: Math.max(1, planned) } });
   if (adapt.length === 0) nextWeek.push({ key: 'review.next.keep_going' });
 
   return {
     weekStart,
-    sessions: { planned, done: done.length, shortOrLight },
+    sessions: { planned, done: done.length, shortOrLight, prescriptionUnknown: unknown },
     meals,
     weight: { averageKg: trend.currentAverageKg, changeKg: trend.weeklyChangeKg, entries: trend.entriesUsed },
     waistChangeCm,

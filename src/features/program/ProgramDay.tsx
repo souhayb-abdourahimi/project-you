@@ -22,7 +22,9 @@ export function ProgramDay({ day }: { day: ProgramDayView }) {
           ? t('program.todayDate', { date: formatDate(day.date, i18n.language) })
           : formatDate(day.date, i18n.language)}
       </Text>
-      {day.sessions.length === 0 ? <Text>{t('program.rest')}</Text> : null}
+      {/* A past day whose plan is unknown is never called a rest day (W-7.1). */}
+      {day.prescriptionUnknown ? <Text color="textMuted">{t('program.prescriptionUnknown')}</Text> : null}
+      {day.sessions.length === 0 && !day.prescriptionUnknown ? <Text>{t('program.rest')}</Text> : null}
       {day.sessions.map((s) => (
         <ProgramSession key={s.key} session={s} />
       ))}

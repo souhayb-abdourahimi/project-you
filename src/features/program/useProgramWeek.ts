@@ -33,6 +33,8 @@ export interface ProgramSessionView {
 export interface ProgramDayView {
   date: IsoDate;
   when: 'past' | 'today' | 'future';
+  /** A past day of a week without any stored prescription (W-7.1). */
+  prescriptionUnknown: boolean;
   sessions: ProgramSessionView[];
 }
 
@@ -84,7 +86,12 @@ export function useProgramWeek(plan: Plan | null): ProgramWeekView | null {
       schedule: plan.schedule.days,
       records: data,
       facts: data,
-    }).map((d) => ({ date: d.date, when: d.when, sessions: d.sessions.map((s) => view(s, d.when)) }));
+    }).map((d) => ({
+      date: d.date,
+      when: d.when,
+      prescriptionUnknown: d.prescriptionUnknown,
+      sessions: d.sessions.map((s) => view(s, d.when)),
+    }));
     const program = plan.program;
     return {
       version: program ? { ...explainVersion(program), version: program.version } : null,

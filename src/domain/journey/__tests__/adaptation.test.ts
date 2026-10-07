@@ -12,7 +12,7 @@ const START = '2026-08-01';
 
 const full = (ratio: number | null, meals: number | null = 1): Adherence => ({
   windowDays: 14,
-  sessions: { planned: 6, done: 6, adapted: 0, skipped: 0, notLogged: 0, ratio },
+  sessions: { planned: 6, done: 6, adapted: 0, skipped: 0, notLogged: 0, ratio, unknownDays: 0 },
   mealLogging: meals === null ? null : { planned: 28, logged: 28, ratio: meals },
 });
 

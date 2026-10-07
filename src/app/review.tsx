@@ -9,6 +9,7 @@ import { Recommendations } from '@/features/journey/Recommendations';
 import { useJourney } from '@/hooks/useJourney';
 import { scheduleOfWeek, usePlan } from '@/hooks/usePlan';
 import { addDays } from '@/domain/shared/dates';
+import { weekPrescriptionKnown } from '@/domain/training/compare';
 import { plannedSessionDates } from '@/domain/training/week-view';
 import { formatMoney } from '@/lib/format';
 import { useWeights } from '@/hooks/useWeights';
@@ -46,7 +47,9 @@ export default function ReviewScreen() {
     today: current ? plan.today : addDays(weekStart, 6),
     goal: plan.snapshot.goal.type,
     schedule,
-    // The past week as it was prescribed (W-6, D-038), not rebuilt from today's profile.
+    // The past week as it was prescribed (W-6, D-038), not rebuilt from today's profile; without
+    // any stored prescription its plan is unknown (W-7.1).
+    prescriptionUnknown: !current && !weekPrescriptionKnown(data, weekStart),
     plannedSessionDates: plannedSessionDates({
       records: data,
       facts: data,
@@ -74,7 +77,11 @@ export default function ReviewScreen() {
       <Row>
         <StatTile
           label={t('review.sessions')}
-          value={t('review.sessionsValue', { done: r.sessions.done, planned: r.sessions.planned })}
+          value={
+            r.sessions.prescriptionUnknown
+              ? t('review.sessionsDone', { done: r.sessions.done })
+              : t('review.sessionsValue', { done: r.sessions.done, planned: r.sessions.planned })
+          }
         />
         <StatTile
           label={t('review.meals')}

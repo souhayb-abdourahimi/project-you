@@ -48,7 +48,7 @@ import {
 } from '@/domain/training/structure';
 import { compareWeek, type WeekComparison } from '@/domain/training/compare';
 import { activeProgram, plannedVariantMinutes, progressionSignals, refreshWeek } from '@/domain/training/week';
-import { plannedSessionDates as plannedDates } from '@/domain/training/week-view';
+import { plannedSessionDates as plannedDates, unknownPrescriptionDates } from '@/domain/training/week-view';
 import { useCalendarStore } from '@/state/calendar';
 import { useDataStore } from '@/state/data';
 import { useNotificationStore } from '@/state/notifications';
@@ -144,7 +144,8 @@ export function useJourney(plan: Plan | null): Journey | null {
     });
 
     // Planned sessions of the last weeks and of this week (W-6): past days from the prescriptions
-    // stored for them; a week without any, and today onwards, from the schedule (after reschedules).
+    // stored for them; today onwards from the schedule (after reschedules). A past week without any
+    // prescription has an unknown plan: left out, never rebuilt from today's profile (W-7.1).
     const weeks = Array.from({ length: PAST_WEEKS }, (_, i) => addDays(plan.weekStart, -7 * (PAST_WEEKS - i)));
     const plannedSessionDates = plannedDates({
       records: data,
@@ -154,6 +155,11 @@ export function useJourney(plan: Plan | null): Journey | null {
         ...weeks.map((w) => ({ weekStart: w, schedule: scheduleOfWeek(snapshot, w, data.rescheduled).days })),
         { weekStart: plan.weekStart, schedule: plan.schedule.days },
       ],
+    });
+    const unknownDates = unknownPrescriptionDates({
+      records: data,
+      today,
+      weeks: [...weeks, plan.weekStart].map((weekStart) => ({ weekStart })),
     });
 
     const progressData: ProgressData = {
@@ -175,7 +181,7 @@ export function useJourney(plan: Plan | null): Journey | null {
       plannedSessionsPerWeek: plan.sessionsPerWeek,
       noPush: state.profile.noPush,
       data: progressData,
-      adherence: { plannedSessionDates, sessionOutcomes: data.sessionOutcomes },
+      adherence: { plannedSessionDates, unknownDates, sessionOutcomes: data.sessionOutcomes },
     });
 
     // A milestone whose notification was delivered counts as celebrated on this device too.
@@ -224,6 +230,7 @@ export function useJourney(plan: Plan | null): Journey | null {
     const adherenceInput = {
       today,
       plannedSessionDates,
+      unknownDates,
       completedSessions: data.completedSessions,
       sessionOutcomes: data.sessionOutcomes,
       meals,

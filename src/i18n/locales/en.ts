@@ -538,6 +538,7 @@ const en: LocaleShape = {
       home_fallback_used: 'Some sessions are planned at home because there is not enough time to reach the gym.',
     },
     rest: 'Rest',
+    prescriptionUnknown: 'Original prescription unavailable.',
     open: 'Open session',
     adapted: {
       light_week: 'Lighter week',
@@ -1038,6 +1039,8 @@ const en: LocaleShape = {
       summary: '{{activeDays}} active day(s) · {{sessions}} workout(s) done',
       streak: '{{count}} week(s) in a row with at least one workout',
       adherence: '{{done}} workout(s) done out of {{planned}} planned over the last 4 weeks',
+      prescriptionUnknown:
+        'Original prescription unavailable for {{count}} day(s) of this period: they are not counted.',
       adherenceAll: 'Every workout planned over the last 4 weeks done or adapted ({{done}} in total)',
       adherenceAdapted:
         '{{done}} workout(s) done out of {{planned}} planned over the last 4 weeks, {{adapted}} of them adapted',
@@ -1362,6 +1365,7 @@ const en: LocaleShape = {
     intro: 'Based only on what you logged. Numbers are estimates.',
     sessions: 'Workouts',
     sessionsValue: '{{done}} / {{planned}}',
+    sessionsDone: '{{done}} done',
     meals: 'Meals checked',
     weight: 'Average weight',
     budget: 'Budget',
@@ -1409,6 +1413,8 @@ const en: LocaleShape = {
       weight: 'No weigh-in this week: I cannot conclude anything about your weight.',
       meals: 'No meal logged this week: I cannot conclude anything about your eating.',
       checkin: 'No check-in this week: this review is based on your data only.',
+      prescription:
+        'Original prescription unavailable for this week: the sessions logged are counted, without comparing them to a plan.',
     },
     adapt: {
       start_small: 'Restart with a single short workout, at the easiest moment of your week.',

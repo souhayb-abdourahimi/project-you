@@ -58,6 +58,58 @@ describe('weeklyReview: the past week as it was prescribed (W-7 §38)', () => {
     expect(fromProfile.sessions.planned).toBe(4);
     expect(asPrescribed.sessions.planned).toBe(3);
   });
+
+  it('the whole review of the past week stays identical after a profile change (W-7.1)', () => {
+    const s = SCENARIOS.muscleGain;
+    const records = publishWeek(s, { today: WEEK, weekStart: WEEK, seed: 'local', at: `${WEEK}T07:00:00.000Z` });
+    const facts = {
+      setLogs: {},
+      completedSessions: [{ date: WEEK, sessionIndex: 0, variant: 'full' as const }],
+    };
+    const reviewWith = (profile: typeof s) => {
+      const schedule = planWeek({ weekStart: WEEK, schedule: profile.schedule, training: profile.training });
+      return weeklyReview(
+        input(profile, {
+          schedule,
+          today: '2026-10-04',
+          completedSessions: facts.completedSessions,
+          plannedSessionDates: plannedSessionDates({
+            records,
+            facts,
+            today: '2026-10-06',
+            weeks: [{ weekStart: WEEK, schedule: schedule.days }],
+          }),
+        }),
+      );
+    };
+    const before = reviewWith(s);
+    const after = reviewWith({
+      ...s,
+      training: { ...s.training, sessionsPerWeek: 5, sessionMinutes: 30 },
+      schedule: {
+        ...s.schedule,
+        availability: [1, 2, 3, 4, 5].map((day) => ({ day: day as 1 | 2 | 3 | 4 | 5, start: '07:00', end: '21:00' })),
+      },
+    });
+    expect(after).toEqual(before);
+    expect(before.sessions).toMatchObject({ planned: 3, done: 1, prescriptionUnknown: false });
+  });
+
+  it('a past week without any prescription: done sessions said, no plan compared, never rebuilt (W-7.1)', () => {
+    const s = SCENARIOS.muscleGain;
+    const r = weeklyReview(
+      input(s, {
+        today: '2026-10-04',
+        prescriptionUnknown: true,
+        plannedSessionDates: [],
+        completedSessions: [{ date: WEEK, sessionIndex: 0, variant: 'full' }],
+      }),
+    );
+    expect(r.sessions).toMatchObject({ planned: 0, done: 1, prescriptionUnknown: true });
+    expect(r.hard.map((p) => p.key)).not.toContain('review.hard.sessions');
+    expect(r.missing.map((p) => p.key)).toContain('review.missing.prescription');
+    expect(r.nextWeek.map((p) => p.key)).not.toContain('review.next.sessions');
+  });
 });
 
 describe('weeklyReview', () => {

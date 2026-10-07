@@ -5,7 +5,8 @@ import { addDays } from '../../shared/dates';
 import { sessionKey } from '../../shared/ids';
 import type { CompareFacts } from '../compare';
 import { activeProgram, prescriptionFor } from '../week';
-import { plannedSessionDates, programWeek } from '../week-view';
+import { adherence } from '../../journey/adherence';
+import { plannedSessionDates, programWeek, unknownPrescriptionDates } from '../week-view';
 
 /** W-6 (D-038): past days come from what was prescribed for them, never from today's schedule. */
 
@@ -93,15 +94,43 @@ describe('plannedSessionDates', () => {
     ]);
   });
 
-  it('a week without any prescription keeps the schedule rebuilt from the profile (before W-2)', () => {
+  it('a past week without any prescription: unknown, never rebuilt from the current profile (W-7.1)', () => {
     const earlier = addDays(WEEK, -7);
-    const dates = plannedSessionDates({
-      records: { prescriptions: {}, sessionIds: {} },
-      facts: NONE,
+    const records = { prescriptions: {}, sessionIds: {} };
+    const weeks = [{ weekStart: earlier, schedule: schedule(SNAP, earlier) }];
+    expect(plannedSessionDates({ records, facts: NONE, today: WEDNESDAY, weeks })).toEqual([]);
+    expect(unknownPrescriptionDates({ records, today: WEDNESDAY, weeks })).toEqual(
+      Array.from({ length: 7 }, (_, i) => addDays(earlier, i)),
+    );
+    // Its days say so on the Programme; the week's facts have no denominator.
+    const days = programWeek({
+      weekStart: earlier,
       today: WEDNESDAY,
-      weeks: [{ weekStart: earlier, schedule: schedule(SNAP, earlier) }],
+      schedule: weeks[0].schedule,
+      records,
+      facts: NONE,
     });
-    expect(dates).toEqual(workoutDays(schedule(SNAP, earlier)));
+    expect(days.every((d) => d.prescriptionUnknown && d.sessions.length === 0)).toBe(true);
+    // Adherence leaves those days out on both sides: a session done then is not counted against nothing.
+    const a = adherence(
+      {
+        today: WEDNESDAY,
+        plannedSessionDates: [],
+        unknownDates: unknownPrescriptionDates({ records, today: WEDNESDAY, weeks }),
+        completedSessions: [{ date: addDays(earlier, 2), sessionIndex: 1 }],
+        sessionOutcomes: {},
+        meals: [],
+      },
+      14,
+    );
+    expect(a.sessions).toMatchObject({ planned: 0, done: 0, ratio: null, unknownDays: 7 });
+  });
+
+  it('a week with its prescriptions stored is known, even on a rest day', () => {
+    const week = publishWeek(SNAP, { today: WEEK, weekStart: WEEK, seed: 'local', at: 'x' });
+    expect(unknownPrescriptionDates({ records: week, today: addDays(WEEK, 7), weeks: [{ weekStart: WEEK }] })).toEqual(
+      [],
+    );
   });
 
   it('a moved session counts on its new day only', () => {

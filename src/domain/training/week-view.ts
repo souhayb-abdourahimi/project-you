@@ -7,7 +7,13 @@
 import type { PlannedDay, SessionLocation } from '../planning/engine';
 import { addDays, type IsoDate } from '../shared/dates';
 import { parseSessionKey, sessionKey, type SessionKey } from '../shared/ids';
-import { compareSession, sessionKeysBetween, type CompareFacts, type SessionComparison } from './compare';
+import {
+  compareSession,
+  sessionKeysBetween,
+  weekPrescriptionKnown,
+  type CompareFacts,
+  type SessionComparison,
+} from './compare';
 import type { TrainingRecords } from './week';
 
 export interface ProgramSlot {
@@ -26,6 +32,8 @@ export interface ProgramSession extends SessionComparison {
 export interface ProgramDay {
   date: IsoDate;
   when: 'past' | 'today' | 'future';
+  /** A past day of a week without any stored prescription: its plan is unknown (W-7.1). */
+  prescriptionUnknown: boolean;
   sessions: ProgramSession[];
 }
 
@@ -52,6 +60,7 @@ export function programWeek(input: {
   facts: CompareFacts;
 }): ProgramDay[] {
   const { weekStart, today, schedule, records, facts } = input;
+  const known = weekPrescriptionKnown(records, weekStart);
   return Array.from({ length: 7 }, (_, i) => {
     const date = addDays(weekStart, i);
     const day = schedule.find((d) => d.date === date);
@@ -60,6 +69,7 @@ export function programWeek(input: {
     return {
       date,
       when: date < today ? 'past' : date === today ? 'today' : 'future',
+      prescriptionUnknown: date < today && !known,
       sessions: keys.map((key) => ({
         ...compareSession({ records, facts, key, today }),
         slot: slotOf(day, parseSessionKey(key).sessionIndex),
@@ -69,10 +79,11 @@ export function programWeek(input: {
 }
 
 /**
- * Days with a planned session over several weeks, for adherence (journey/adherence.ts). A week
- * whose past days hold stored prescriptions is read from them (a moved session counts on its new
- * day, an extra session not at all); a week without any (before W-2, or the app not opened that
- * week) keeps the schedule rebuilt from the profile, as before W-6. Today and ahead: the schedule.
+ * Days with a planned session over several weeks, for adherence (journey/adherence.ts). Past days
+ * are read from their stored prescriptions (a moved session counts on its new day, an extra
+ * session not at all). A week without any (before W-2, or the app not opened that week) gives no
+ * planned day for its past: its plan is unknown, never rebuilt from today's profile (W-7.1, see
+ * `unknownPrescriptionDates`). Today and ahead: the schedule.
  */
 export function plannedSessionDates(input: {
   records: Records;
@@ -99,9 +110,25 @@ export function plannedSessionDates(input: {
         : [];
     for (let i = 0; i < 7; i++) {
       const date = addDays(weekStart, i);
-      const fromRecords = date < today && recorded.length > 0;
-      if (fromRecords ? recorded.some((s) => s.date === date) : planned(date)) dates.add(date);
+      if (date < today ? recorded.some((s) => s.date === date) : planned(date)) dates.add(date);
     }
   }
   return [...dates].sort();
+}
+
+/**
+ * Past days whose plan is unknown: the days of weeks without any stored prescription (W-7.1).
+ * Adherence leaves them out on both sides (no invented denominator, no session counted against
+ * nothing); screens say « Prescription d'origine indisponible ».
+ */
+export function unknownPrescriptionDates(input: {
+  records: Records;
+  today: IsoDate;
+  weeks: readonly { weekStart: IsoDate }[];
+}): IsoDate[] {
+  return input.weeks
+    .filter((w) => !weekPrescriptionKnown(input.records, w.weekStart))
+    .flatMap((w) => Array.from({ length: 7 }, (_, i) => addDays(w.weekStart, i)))
+    .filter((d) => d < input.today)
+    .sort();
 }

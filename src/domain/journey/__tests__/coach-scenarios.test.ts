@@ -14,7 +14,7 @@ import { activeAdaptations, adaptationEffects, type StructuralSignals } from '..
 
 const full = (ratio: number | null): Adherence => ({
   windowDays: 14,
-  sessions: { planned: 6, done: 6, adapted: 0, skipped: 0, notLogged: 0, ratio },
+  sessions: { planned: 6, done: 6, adapted: 0, skipped: 0, notLogged: 0, ratio, unknownDays: 0 },
   mealLogging: { planned: 28, logged: 28, ratio: 1 },
 });
 

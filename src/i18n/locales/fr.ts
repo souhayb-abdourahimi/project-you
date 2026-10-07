@@ -550,6 +550,7 @@ const fr = {
       home_fallback_used: 'Certaines séances sont prévues à la maison faute de temps pour aller à la salle.',
     },
     rest: 'Repos',
+    prescriptionUnknown: 'Prescription d’origine indisponible.',
     open: 'Ouvrir la séance',
     adapted: {
       light_week: 'Semaine allégée',
@@ -1054,6 +1055,8 @@ const fr = {
       summary: '{{activeDays}} jour(s) actif(s) · {{sessions}} séance(s) faite(s)',
       streak: '{{count}} semaine(s) d’affilée avec au moins une séance',
       adherence: '{{done}} séance(s) faite(s) sur {{planned}} prévue(s) ces 4 dernières semaines',
+      prescriptionUnknown:
+        'Prescription d’origine indisponible pour {{count}} jour(s) de cette période : ils ne sont pas comptés.',
       adherenceAll: 'Toutes tes séances prévues ces 4 dernières semaines sont faites ou adaptées ({{done}} au total)',
       adherenceAdapted:
         '{{done}} séance(s) faite(s) sur {{planned}} prévue(s) ces 4 dernières semaines, dont {{adapted}} adaptée(s)',
@@ -1380,6 +1383,7 @@ const fr = {
     intro: 'Basé uniquement sur ce que tu as enregistré. Les chiffres sont des estimations.',
     sessions: 'Séances',
     sessionsValue: '{{done}} / {{planned}}',
+    sessionsDone: '{{done}} faite(s)',
     meals: 'Repas cochés',
     weight: 'Poids moyen',
     budget: 'Budget',
@@ -1427,6 +1431,8 @@ const fr = {
       weight: 'Pas de pesée cette semaine : je ne peux rien conclure sur ton poids.',
       meals: 'Aucun repas noté cette semaine : je ne peux rien conclure sur ton alimentation.',
       checkin: 'Pas de check-in cette semaine : ce bilan se base seulement sur tes données.',
+      prescription:
+        'Prescription d’origine indisponible pour cette semaine : les séances notées sont comptées, sans les comparer à un plan.',
     },
     adapt: {
       start_small: 'Reprendre avec une seule séance courte, au moment le plus simple de ta semaine.',
