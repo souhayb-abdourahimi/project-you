@@ -20,6 +20,7 @@ import type { SessionVariant } from './adapt';
 import type { SetUnit } from './engine';
 import { getExercise } from './exercises';
 import type { ReplacementReason } from './replacement';
+import { SESSION_CONTEXT, sessionContext, type SessionContext } from './session-context';
 
 export interface LoggedSet {
   /** Repetitions; 0 for a set held in time (then `seconds` is set). */
@@ -99,8 +100,11 @@ export interface Exposure {
   fatigueHigh: boolean;
   /** Session ended early, with its reason (no_time, tired, pain, other). */
   stopped: string | null;
-  /** Structural change the session was prescribed under (W-5): reduced volume is read apart. */
-  structure?: string | null;
+  /**
+   * What the session may say about the level (shared matrix, W-7.1): light, restart or reduced
+   * volume are read apart. Without it, the variant done decides.
+   */
+  context?: SessionContext;
 }
 
 /** A session where the exercise was planned but not done: declared not performed, or replaced. */
@@ -189,12 +193,15 @@ export function readExposure(e: Exposure, range: { sets: number; repsMin: number
   const hard = (difficulty ?? 0) >= PROGRESSION.hardDifficulty || work.some((s) => (s.rpe ?? 0) >= PROGRESSION.hardRpe);
   const top = work.length >= planned && values.length > 0 && values.every((v) => v >= max);
   const miss = values.some((v) => v < min);
+  const context = e.context ?? sessionContext({ variant: e.variant });
+  const level = SESSION_CONTEXT[context].level;
   let neutral: ExposureReading['neutral'] = null;
-  if (e.variant === 'light') neutral = 'light';
-  else if (e.structure === 'reduce_volume') neutral = 'adapted';
+  if (context === 'light') neutral = 'light';
+  // Restart or reduced volume: lighter on purpose, never a plateau or a decline.
+  else if (level === 'no') neutral = 'adapted';
   // Stopped for a movement that hurt: never read as a success; stopped for time: only what was done.
   else if (e.stopped === 'pain' || (e.stopped && !top)) neutral = 'stopped';
-  else if (e.variant === 'short' && !top) neutral = 'short';
+  else if (level === 'if_top' && !top) neutral = 'short';
   else if (e.fatigueHigh && !top) neutral = 'fatigue';
   return {
     date: e.date,

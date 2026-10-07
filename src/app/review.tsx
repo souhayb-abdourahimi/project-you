@@ -10,6 +10,7 @@ import { useJourney } from '@/hooks/useJourney';
 import { scheduleOfWeek, usePlan } from '@/hooks/usePlan';
 import { addDays } from '@/domain/shared/dates';
 import { weekPrescriptionKnown } from '@/domain/training/compare';
+import { sessionContexts } from '@/domain/training/session-context';
 import { plannedSessionDates } from '@/domain/training/week-view';
 import { formatMoney } from '@/lib/format';
 import { useWeights } from '@/hooks/useWeights';
@@ -62,7 +63,7 @@ export default function ReviewScreen() {
     checkin: checkin ?? (openWeek ? null : undefined),
     sessionOutcomes: data.sessionOutcomes,
     dayLogs: data.dayLogs,
-    records: personalRecords(data),
+    records: personalRecords({ ...data, sessionContexts: sessionContexts(data) }),
     weights,
     waist: data.waist,
     expenses: data.expenses,

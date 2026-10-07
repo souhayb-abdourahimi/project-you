@@ -15,6 +15,7 @@ import type { SessionVariant } from './adapt';
 import type { PrescribedSession } from './program';
 import { PROGRESSION, type Exposure, type LoggedSet, type NotDone } from './progression';
 import type { ReplacementReason } from './replacement';
+import { sessionContext } from './session-context';
 import type { ExerciseReport } from './session';
 
 /** The facts the history reads (the data store passes itself). */
@@ -95,9 +96,13 @@ export function exerciseHistory(input: {
         sessionDifficulty: facts.sessionDifficulty?.[key] ?? null,
         fatigueHigh: declaredFatigue(checkins, date) === 'high',
         stopped: completed?.stopped ?? null,
-        ...(prescription?.adjustmentId
-          ? { structure: facts.adjustments?.find((a) => a.id === prescription.adjustmentId)?.changeKey ?? null }
-          : {}),
+        // The shared matrix (W-7.1): the variant done and the structural change followed that day.
+        context: sessionContext({
+          variant,
+          structure: prescription?.adjustmentId
+            ? facts.adjustments?.find((a) => a.id === prescription.adjustmentId)
+            : null,
+        }),
       });
       continue;
     }

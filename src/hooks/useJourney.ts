@@ -38,6 +38,7 @@ import { buildShoppingList } from '@/domain/meals/shopping';
 import { addDays, weekdayOf, type IsoDate } from '@/domain/shared/dates';
 import { sessionKey } from '@/domain/sync/projection';
 import type { SessionVariant } from '@/domain/training/adapt';
+import { sessionContexts } from '@/domain/training/session-context';
 import { sessionGoal } from '@/domain/training/session';
 import {
   isStructural,
@@ -171,6 +172,7 @@ export function useJourney(plan: Plan | null): Journey | null {
       dayLogs: data.dayLogs,
       meals,
       weeklyCheckins: data.weeklyCheckins,
+      sessionContexts: sessionContexts(data),
     };
     const progress = buildProgressJourney({
       today,
