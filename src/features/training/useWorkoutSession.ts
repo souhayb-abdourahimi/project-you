@@ -11,6 +11,11 @@ import type { Plan } from '@/hooks/usePlan';
 import { useDataStore } from '@/state/data';
 
 export interface WorkoutRequest {
+  /**
+   * Which session of the day (its slot): a day can hold two real sessions, each link names its own
+   * (W-7.1). Absent: the planned session of the day, else session 0 (a session off plan).
+   */
+  sessionIndex?: number;
   /** Route params: what the user picked on Today or "Ta journée ne se passe pas comme prévu ?". */
   variant?: SessionVariant;
   minutes?: number;
@@ -49,9 +54,11 @@ export function useWorkoutSession(plan: Plan | null, date: string, request: Work
   const adjustments = useDataStore((s) => s.adjustments);
 
   const day = plan?.schedule.days.find((d) => d.date === date);
-  const item = day?.items.find((i) => i.kind === 'workout');
+  const item = day?.items.find(
+    (i) => i.kind === 'workout' && (request.sessionIndex === undefined || i.sessionIndex === request.sessionIndex),
+  );
   // A day without a planned session still gets session 0 when the user asked for a short/light version.
-  const sessionIndex = item?.kind === 'workout' ? item.sessionIndex : 0;
+  const sessionIndex = request.sessionIndex ?? (item?.kind === 'workout' ? item.sessionIndex : 0);
   const key = `${date}#${sessionIndex}`;
   const prescription = plan?.prescription(date, sessionIndex) ?? null;
   const program = plan?.program ?? null;

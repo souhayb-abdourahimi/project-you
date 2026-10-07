@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { Button, Card, ChoiceGroup, Row, Text } from '@/components/ui';
+import { parseSessionKey } from '@/domain/shared/ids';
 import { formatDate } from '@/lib/format';
 import { useDataStore } from '@/state/data';
 import { spacing } from '@/theme';
@@ -27,6 +28,12 @@ export function ProgramDay({ day }: { day: ProgramDayView }) {
       ))}
     </Card>
   );
+}
+
+/** The route of one session: its own key (date and slot), whatever the other sessions of the day. */
+function sessionParams(key: string) {
+  const { date, sessionIndex } = parseSessionKey(key);
+  return { date, index: String(sessionIndex) };
 }
 
 function ProgramSession({ session: s }: { session: ProgramSessionView }) {
@@ -54,7 +61,13 @@ function ProgramSession({ session: s }: { session: ProgramSessionView }) {
           <Button
             compact
             label={t(s.status === 'planned' || s.status === 'in_progress' ? 'program.open' : 'program.see')}
-            onPress={() => router.push(`/workout/${s.date}`)}
+            onPress={() =>
+              router.push({
+                pathname: '/workout/[date]',
+                // Each session opens itself (a day can hold two, W-7.1).
+                params: sessionParams(s.key),
+              })
+            }
           />
         ) : null}
         {s.moveTo.length > 0 ? (

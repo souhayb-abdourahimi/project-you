@@ -54,14 +54,17 @@ export default function AdaptScreen() {
           ? { mode: 'low_motivation' as const }
           : {}),
     });
-    if (option === 'full_session') return router.replace(`/workout/${plan.today}`);
+    // The session this screen is about (its slot), never the first one of the day by default.
+    const index = workout?.kind === 'workout' ? { index: String(workout.sessionIndex) } : {};
+    if (option === 'full_session')
+      return router.replace({ pathname: '/workout/[date]', params: { date: plan.today, ...index } });
     if (option === 'short_session')
       return router.replace({
         pathname: '/workout/[date]',
-        params: { date: plan.today, variant: 'short', minutes: String(shortFor) },
+        params: { date: plan.today, ...index, variant: 'short', minutes: String(shortFor) },
       });
     if (option === 'light_session')
-      return router.replace({ pathname: '/workout/[date]', params: { date: plan.today, variant: 'light' } });
+      return router.replace({ pathname: '/workout/[date]', params: { date: plan.today, ...index, variant: 'light' } });
     if (option === 'reschedule') {
       const input = { weekStart: plan.weekStart, schedule: plan.snapshot.schedule, training: plan.snapshot.training };
       const [first] = rescheduleOptions(plan.schedule, plan.today, input);

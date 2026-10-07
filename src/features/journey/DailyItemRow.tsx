@@ -55,6 +55,8 @@ export function useItemAction(item: DailyItem, today: string): { label: string; 
             // The duration announced here is the one the session is built for (D-034).
             params: {
               date: today,
+              // The session this item is about, never the first one of the day by default (W-7.1).
+              ...(p.sessionIndex !== undefined ? { index: String(p.sessionIndex) } : {}),
               ...(p.variant !== 'full' ? { variant: String(p.variant), minutes: String(p.minutes) } : {}),
             },
           }),
