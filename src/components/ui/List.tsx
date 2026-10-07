@@ -58,7 +58,7 @@ export function ListRow({
       onPress={onPress}
       style={({ pressed }) => [styles.row, pressed ? { backgroundColor: colors.surfaceSubtle } : null]}>
       {icon ? <Icon name={icon} size="md" color={iconColor} /> : null}
-      <Text variant="bodyMedium" style={styles.flex} numberOfLines={1}>
+      <Text variant="bodyMedium" style={value ? styles.title : styles.flex} numberOfLines={1}>
         {title}
       </Text>
       {value ? (
@@ -85,5 +85,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   flex: { flex: 1 },
-  value: { maxWidth: '50%' },
+  title: { flexShrink: 0, maxWidth: '60%' },
+  value: { flex: 1, textAlign: 'right' },
 });
