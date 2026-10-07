@@ -13,6 +13,7 @@
  */
 import { addDays, daysBetween, startOfWeek, weekdayOf, type IsoDate, type Weekday } from '../shared/dates';
 import { byDecision, type Adjustment } from './adjustments';
+import { EFFECT_COVERAGE } from './effect-coverage';
 import type { DayLog, SessionOutcome } from './outcomes';
 import type { WeeklyCheckin } from './weekly-checkin';
 
@@ -48,8 +49,8 @@ export const CADENCE = {
   habitRepeat: 2,
   /** Days after an adaptation ends during which its follow-up can be said (once). */
   followUpDays: 7,
-  /** Planned sessions needed after a change before anything is said about it. */
-  minHindsightSessions: 2,
+  /** Planned sessions needed after a change before anything is said about it (one value, D-041). */
+  minHindsightSessions: EFFECT_COVERAGE.minPlannedSessions,
   /** The weekly review (bilan) cadence. */
   reviewDays: 7,
 } as const;

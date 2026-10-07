@@ -245,26 +245,32 @@ function causeAnswer(cause: Blocker, sessionToday: boolean): { fact: Copy; actio
   }
 }
 
-/** Follow-up of a temporary change that just ended: observed facts, never a cause (§20–21). */
+/**
+ * Follow-up of a temporary change that just ended: observed facts, never a cause (§20–21). The
+ * readings come with their coverage (D-041): too few planned sessions or check-ins say so.
+ */
 function followUp(effects: readonly AdaptationEffect[], shown: CoachInput['shown'], today: IsoDate) {
   for (const e of effects) {
-    if (e.period.running) continue;
+    if (e.period.running || e.period.endedBy === 'answer') continue;
     const since = daysBetween(e.period.to, today);
     if (since < 1 || since > CADENCE.followUpDays) continue;
     const id = `followup:${e.decisionId}`;
     if (seenBefore(shown, id, today)) continue;
     const change = `coachDay.change.${e.changeKey}`;
-    const key =
-      e.after.planned < CADENCE.minHindsightSessions
-        ? 'coachDay.followup.not_enough'
-        : e.observations.includes('sessions_more_complete')
-          ? 'coachDay.followup.more_complete'
-          : e.observations.includes('sessions_less_complete')
-            ? 'coachDay.followup.less_complete'
-            : e.observations.includes('fatigue_lower')
-              ? 'coachDay.followup.fatigue_lower'
-              : 'coachDay.followup.same';
-    return { id, fact: copy(key, { change }) };
+    const sessions = {
+      higher: 'coachDay.followup.more_complete',
+      lower: 'coachDay.followup.less_complete',
+      same: 'coachDay.followup.same',
+      insufficient_data: 'coachDay.followup.not_enough',
+    }[e.completion];
+    const fatigue = e.observations.includes('fatigue_lower')
+      ? 'coachDay.followup.fatigue_lower'
+      : e.observations.includes('fatigue_higher')
+        ? 'coachDay.followup.fatigue_higher'
+        : e.observations.includes('fatigue_insufficient_data')
+          ? 'coachDay.followup.fatigue_unknown'
+          : null;
+    return { id, facts: [copy(sessions, { change }), ...(fatigue ? [copy(fatigue, { change })] : [])] };
   }
   return null;
 }
@@ -377,7 +383,7 @@ export function coachDay(input: CoachInput): CoachDay {
 
   const follow = safety ? null : followUp(input.effects, input.shown, today);
   if (follow) {
-    facts.push(follow.fact);
+    facts.push(...follow.facts);
     shownIds.push(follow.id);
   }
 

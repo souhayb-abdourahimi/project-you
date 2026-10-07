@@ -360,6 +360,8 @@ const fr = {
       more_complete: 'Après {{change}}, tu as complété davantage de séances.',
       less_complete: 'Après {{change}}, moins de séances ont été complétées qu’avant. On pourra en reparler au bilan.',
       fatigue_lower: 'Après {{change}}, tu as déclaré moins de jours de fatigue.',
+      fatigue_higher: 'Après {{change}}, tu as déclaré plus de jours de fatigue.',
+      fatigue_unknown: 'Pas assez de données pour évaluer la fatigue.',
       same: 'Après {{change}}, le rythme des séances est resté le même.',
     },
     nutrition: {
@@ -1209,6 +1211,8 @@ const fr = {
         'Après cette adaptation, tes séances ont été moins souvent complétées ({{days}} jours comparés aux {{days}} jours d’avant). Tu peux revenir en arrière si tu préfères.',
       fatigue_lower: 'Après cette adaptation, moins de jours de fatigue déclarée qu’avant.',
       fatigue_higher: 'Après cette adaptation, plus de jours de fatigue déclarée qu’avant.',
+      sessions_insufficient_data: 'Pas assez de séances prévues avant et après cette adaptation pour comparer.',
+      fatigue_insufficient_data: 'Pas assez de données pour évaluer la fatigue.',
     },
     revert: 'Revenir en arrière',
     lastChange: 'Pourquoi mon plan a changé ?',

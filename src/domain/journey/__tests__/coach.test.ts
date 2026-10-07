@@ -19,9 +19,11 @@ const effect = (patch: Partial<AdaptationEffect> = {}): AdaptationEffect => ({
   decisionId: 'd1',
   changeKey: 'light_week',
   cause: { reasonKey: 'adaptation.reason.light_week', evidence: {} },
-  period: { from: addDays(TODAY, -9), to: addDays(TODAY, -2), days: 7, running: false },
-  before: { planned: 3, done: 1, fatigueDays: 3 },
-  after: { planned: 3, done: 3, fatigueDays: 1 },
+  period: { from: addDays(TODAY, -9), to: addDays(TODAY, -2), days: 7, running: false, endedBy: 'scope' },
+  before: { days: 7, planned: 3, done: 1, checkinDays: 5, fatigueDays: 3 },
+  after: { days: 7, planned: 3, done: 3, checkinDays: 5, fatigueDays: 1 },
+  completion: 'higher',
+  fatigue: 'lower',
   observations: ['sessions_more_complete', 'fatigue_lower'],
   ...patch,
 });
@@ -284,9 +286,44 @@ describe('follow-up of an adaptation (§20–21)', () => {
   it('too few sessions since: « pas encore assez de recul »', () => {
     const c = coachCase({
       today: TODAY,
-      coach: { effects: [effect({ after: { planned: 1, done: 1, fatigueDays: 0 } })] },
+      coach: {
+        effects: [
+          effect({
+            after: { days: 7, planned: 1, done: 1, checkinDays: 5, fatigueDays: 0 },
+            completion: 'insufficient_data',
+            observations: ['sessions_insufficient_data', 'fatigue_lower'],
+          }),
+        ],
+      },
     });
     expect(c.supportingFacts.map((f) => f.key)).toContain('coachDay.followup.not_enough');
+  });
+
+  it('no check-in after the change: « Pas assez de données pour évaluer la fatigue », never "less fatigue" (D-041)', () => {
+    const c = coachCase({
+      today: TODAY,
+      coach: {
+        effects: [
+          effect({
+            after: { days: 7, planned: 3, done: 3, checkinDays: 0, fatigueDays: 0 },
+            fatigue: 'insufficient_data',
+            observations: ['sessions_more_complete', 'fatigue_insufficient_data'],
+          }),
+        ],
+      },
+    });
+    const keys = c.supportingFacts.map((f) => f.key);
+    expect(keys).toContain('coachDay.followup.fatigue_unknown');
+    expect(keys).not.toContain('coachDay.followup.fatigue_lower');
+    expect(rendered(c).join(' ')).toContain('Pas assez de données pour évaluer la fatigue.');
+  });
+
+  it('a change the user went back on: no follow-up in the coach (the history keeps the effect)', () => {
+    const c = coachCase({
+      today: TODAY,
+      coach: { effects: [effect({ period: { ...effect().period, endedBy: 'answer' } })] },
+    });
+    expect(c.supportingFacts.map((f) => f.key).filter((k) => k.startsWith('coachDay.followup'))).toEqual([]);
   });
 
   it('while it runs: one line on the session day (« Cette semaine reste allégée. »)', () => {
@@ -308,7 +345,10 @@ describe('stability, tone and explanations (§16, §31, §35, §42, §47)', () =
     reprise: { today: TODAY, state: { comeback: true }, coach: { proposal: proposalOf('restart') } },
     record: { today: TODAY, coach: { celebration: 'first_record', progression } },
     jour_difficile: { today: TODAY, day: { dayLog: { date: TODAY, mode: 'difficult' as const } } },
-    suivi: { today: TODAY, coach: { effects: [effect({ observations: ['sessions_less_complete'] })] } },
+    suivi: {
+      today: TODAY,
+      coach: { effects: [effect({ completion: 'lower', observations: ['sessions_less_complete'] })] },
+    },
     nutrition: {
       today: TODAY,
       day: { day: restDay(TODAY) },

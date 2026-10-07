@@ -10,7 +10,7 @@ import {
   type Recommendation,
 } from '@/domain/journey/adaptation';
 import { adherence } from '@/domain/journey/adherence';
-import { appliedCalorieOffset, appliedDecisions } from '@/domain/journey/adjustments';
+import { appliedCalorieOffset } from '@/domain/journey/adjustments';
 import { coachDay, progressionHighlight, type CoachDay } from '@/domain/journey/coach';
 import { blockerSignal, shortDayMemory } from '@/domain/journey/coach-memory';
 import { buildDailyPlan, type DailyPlan } from '@/domain/journey/daily-plan';
@@ -287,10 +287,12 @@ export function useJourney(plan: Plan | null): Journey | null {
     const recommendations = adapt(adaptationInput);
     const proposal = primaryProposal(recommendations, data.adjustments);
     const effects = adaptationEffects({
-      decisions: appliedDecisions(data.adjustments).filter((d) => isStructural(structureKey(d) ?? d.changeKey)),
+      // Every structural answer: an effect observed stays visible after a revert (D-041).
+      decisions: data.adjustments.filter((d) => isStructural(structureKey(d) ?? d.changeKey)),
       today,
       plannedDates: plannedSessionDates,
       doneDates: data.completedSessions.map((c) => c.date),
+      checkinDates: data.dayLogs.filter((d) => d.fatigue !== undefined).map((d) => d.date),
       fatigueDates,
     });
 

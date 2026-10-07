@@ -509,11 +509,14 @@ describe('effect: facts before / after, never a cause (§22–23)', () => {
         '2026-09-28',
       ],
       doneDates: ['2026-09-03', '2026-09-17', '2026-09-21', '2026-09-24', '2026-09-28'],
+      // A check-in every day of both windows: fatigue can be compared.
+      checkinDates: Array.from({ length: 28 }, (_, i) => addDays('2026-09-02', i)),
       fatigueDates: ['2026-09-05', '2026-09-08'],
     });
-    expect(effect.period).toEqual({ from: '2026-09-16', to: '2026-09-29', days: 14, running: false });
-    expect(effect.before).toEqual({ planned: 4, done: 1, fatigueDays: 2 });
-    expect(effect.after).toEqual({ planned: 4, done: 4, fatigueDays: 0 });
+    expect(effect.period).toEqual({ from: '2026-09-16', to: '2026-09-29', days: 14, running: false, endedBy: 'scope' });
+    expect(effect.before).toEqual({ days: 14, planned: 4, done: 1, checkinDays: 14, fatigueDays: 2 });
+    expect(effect.after).toEqual({ days: 14, planned: 4, done: 4, checkinDays: 14, fatigueDays: 0 });
+    expect([effect.completion, effect.fatigue]).toEqual(['higher', 'lower']);
     expect(effect.observations).toEqual(['sessions_more_complete', 'fatigue_lower']);
     expect(effect.cause.reasonKey).toBe('adaptation.reason.reduce_volume');
   });

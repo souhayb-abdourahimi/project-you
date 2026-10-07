@@ -352,6 +352,8 @@ const en: LocaleShape = {
       more_complete: 'After {{change}}, you completed more sessions.',
       less_complete: 'After {{change}}, fewer sessions were completed than before. We can talk about it in the review.',
       fatigue_lower: 'After {{change}}, you reported fewer tired days.',
+      fatigue_higher: 'After {{change}}, you reported more tired days.',
+      fatigue_unknown: 'Not enough data to assess fatigue.',
       same: 'After {{change}}, the pace of sessions stayed the same.',
     },
     nutrition: {
@@ -1191,6 +1193,8 @@ const en: LocaleShape = {
         'After this adaptation, your sessions were completed less often ({{days}} days compared with the {{days}} days before). You can undo it if you prefer.',
       fatigue_lower: 'After this adaptation, fewer days with declared fatigue than before.',
       fatigue_higher: 'After this adaptation, more days with declared fatigue than before.',
+      sessions_insufficient_data: 'Not enough planned sessions before and after this adaptation to compare.',
+      fatigue_insufficient_data: 'Not enough data to assess fatigue.',
     },
     revert: 'Undo this change',
     lastChange: 'Why did my plan change?',

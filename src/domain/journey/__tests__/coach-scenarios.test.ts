@@ -118,6 +118,7 @@ describe('scenario 1: normal → fatigue → light week proposed → accepted �
       today: d3,
       plannedDates: ['2026-09-15', '2026-09-17', '2026-09-19', '2026-09-24', '2026-09-26', '2026-09-28'],
       doneDates: ['2026-09-15', '2026-09-24', '2026-09-26', '2026-09-28'],
+      checkinDates: ['2026-09-21', '2026-09-22', '2026-09-23'],
       fatigueDates: ['2026-09-21', '2026-09-22', '2026-09-23'],
     });
     const day3 = coachCase({ today: d3, coach: { effects } });
