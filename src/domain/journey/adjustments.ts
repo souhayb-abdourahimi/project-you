@@ -115,9 +115,9 @@ export function sequenced(a: Adjustment, adjustments: readonly Adjustment[]): Ad
 }
 
 /**
- * The decision in force for each proposal: the latest one (time of the gesture, then id), on every
- * device the same. Two devices that answered differently offline both keep their row; the later
- * gesture wins, the other stays in the journal (never lost silently). The coach's own entries (a
+ * The decision in force for each proposal: the last one by `byDecision` (revision, then instant,
+ * then id, D-040), on every device the same. Two devices that answered differently offline both
+ * keep their row; one wins deterministically, the other stays in the journal (never lost silently). The coach's own entries (a
  * cause, a confirmed preference, W-7) are not adaptation decisions: `coachEntries` reads them.
  */
 export function effectiveDecisions(adjustments: readonly Adjustment[]): Map<string, Adjustment> {
