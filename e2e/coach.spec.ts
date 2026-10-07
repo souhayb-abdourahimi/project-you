@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { SCENARIOS } from '../src/domain/scenarios';
+import { publishWeek } from '../src/domain/scenarios/training';
 import { button, collectErrors, freezeClock, seedData, seedProfile, text } from './helpers';
 
 /**
@@ -30,11 +31,23 @@ const celebrated = (...ids: string[]) =>
   Object.fromEntries(ids.map((id) => [id, { reachedOn: '2026-09-16', celebratedAt: '2026-09-16T19:00:00.000Z' }]));
 /**
  * Started eleven days ago (still calibrating: no plan change proposed yet), one session, a walk
- * yesterday: the planned sessions since then have no record.
+ * yesterday. Last week was published when the app was opened that Monday: its planned sessions are
+ * known (a week without stored prescription is unknown and never counted, W-7.1), and none of them
+ * has a record.
  */
+const lastWeek = publishWeek(SNAP, {
+  today: '2026-09-21',
+  weekStart: '2026-09-21',
+  seed: 'local',
+  at: '2026-09-21T07:00:00.000Z',
+});
 const quietWeeks = {
   completedSessions: [session('2026-09-18', 2)],
   dayLogs: [{ date: '2026-09-28', activity: 'walk', activityMinutes: 20 }],
+  programs: lastWeek.programs,
+  prescriptions: lastWeek.prescriptions,
+  superseded: lastWeek.superseded,
+  sessionIds: lastWeek.sessionIds,
 };
 
 test('a rest day after sessions that did not happen: one question, a closed answer, an action', async ({ page }) => {
