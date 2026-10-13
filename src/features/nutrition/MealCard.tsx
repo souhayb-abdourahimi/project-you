@@ -18,6 +18,7 @@ import { getFood, hasMockFood } from '@/domain/meals/catalog';
 import { alternativesFor, type PlannedMeal, type ReplaceReason } from '@/domain/meals/planner';
 import { getRecipe } from '@/domain/meals/recipes';
 import { usePlan } from '@/hooks/usePlan';
+import { MealMedia } from '@/features/nutrition/MealMedia';
 import { useDataStore } from '@/state/data';
 import { radius, spacing, useColors } from '@/theme';
 
@@ -56,6 +57,8 @@ export function MealCard({ meal, compact }: { meal: PlannedMeal; compact?: boole
 
   return (
     <Card style={styles.card}>
+      <MealMedia uri={recipe.mediaUri} label={recipe.name[lang]} compact={compact} />
+
       <View style={styles.header}>
         <View style={[styles.slotIcon, { backgroundColor: statusTone.background }]}>
           <Icon name="meal" size="md" color={meal.status === 'eaten' ? 'success' : 'nutrition'} />
