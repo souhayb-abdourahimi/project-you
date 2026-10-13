@@ -22,6 +22,7 @@ import { DayEnergyWarning } from '@/features/nutrition/DayEnergyWarning';
 import { DayTargets } from '@/features/nutrition/DayTargets';
 import { ExclusionSummary } from '@/features/nutrition/ExclusionSummary';
 import { MealCard } from '@/features/nutrition/MealCard';
+import { MealMedia } from '@/features/nutrition/MealMedia';
 import { PlanDiagnosisCard } from '@/features/nutrition/PlanDiagnosisCard';
 import { dayIntake } from '@/features/nutrition/view';
 import { usePlan } from '@/hooks/usePlan';
@@ -205,19 +206,22 @@ export default function NutritionScreen() {
             <View style={styles.recipeGrid}>
               {recipes.map((recipe) => (
                 <Card key={recipe.id} dense style={styles.recipeCard}>
-                  <View style={[styles.recipeIcon, { backgroundColor: colors.successSubtle }]}>
-                    <Text variant="title3" color="nutrition">
-                      {recipe.minutes}
-                    </Text>
-                    <Text variant="micro" color="textMuted">
-                      min
-                    </Text>
-                  </View>
-                  <View style={styles.flex}>
+                  <MealMedia uri={recipe.mediaUri} label={recipe.name[lang]} compact />
+                  <View style={styles.recipeMeta}>
+                    <View style={[styles.recipeIcon, { backgroundColor: colors.successSubtle }]}>
+                      <Text variant="title3" color="nutrition">
+                        {recipe.minutes}
+                      </Text>
+                      <Text variant="micro" color="textMuted">
+                        min
+                      </Text>
+                    </View>
+                    <View style={styles.flex}>
                     <Text variant="headline">{recipe.name[lang]}</Text>
-                    <Text variant="caption" color="textMuted">
-                      {recipe.slots.map((slot) => t(`enums.slot.${slot}`)).join(' · ')}
-                    </Text>
+                      <Text variant="caption" color="textMuted">
+                        {recipe.slots.map((slot) => t(`enums.slot.${slot}`)).join(' · ')}
+                      </Text>
+                    </View>
                   </View>
                 </Card>
               ))}
@@ -270,7 +274,8 @@ const styles = StyleSheet.create({
   recipeGrid: {
     gap: spacing.md,
   },
-  recipeCard: {
+  recipeCard: { gap: spacing.md },
+  recipeMeta: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
