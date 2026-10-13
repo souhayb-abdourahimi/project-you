@@ -20,15 +20,17 @@ export function BodyProgress({
   progress,
   recomposition,
   today,
+  rangeWeeks,
 }: {
   progress: ProgressJourney;
   recomposition: boolean;
   today: string;
+  rangeWeeks?: number;
 }) {
   const { t } = useTranslation();
   const weights = useDataStore((s) => s.weights);
   const { weight, waist, others } = progress.body;
-  const trend = weight ? weightTrend(weights, today) : null;
+  const trend = weight ? weightTrend(weights, today, rangeWeeks) : null;
   const blocks: ReactNode[] = [];
   // Measures the user records but the goal does not put forward still show, after the others.
   const order = [
