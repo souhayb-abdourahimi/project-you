@@ -78,7 +78,7 @@ export function DayTargets({ targets, intake }: { targets: NutritionTargets; int
         </View>
       </View>
 
-      <View style={styles.divider} />
+      <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
       <View style={styles.macros}>
         {macros.map((macro) => {
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   energyCopy: { flex: 1, gap: spacing.xs },
-  divider: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(93, 102, 118, 0.18)' },
+  divider: { height: StyleSheet.hairlineWidth },
   macros: { gap: spacing.md },
   macro: { gap: spacing.xs },
   macroTop: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm },
