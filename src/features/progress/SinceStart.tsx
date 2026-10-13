@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
-import { Badge, Card, Icon, Section, Text } from '@/components/ui';
+import { Badge, Card, Icon, ProgressRing, Section, Text } from '@/components/ui';
 import type { ProgressJourney } from '@/domain/journey/progress-journey';
 import { spacing } from '@/theme';
 
@@ -10,6 +10,8 @@ export function SinceStart({ progress }: { progress: ProgressJourney }) {
   const { t } = useTranslation();
   const s = progress.sinceStart;
   const sessions = s.adherence?.sessions;
+  const adherence =
+    sessions && sessions.planned > 0 ? Math.min(1, (sessions.done + sessions.adapted) / sessions.planned) : null;
   return (
     <Section title={t('progress.since.title')}>
       <Card raised style={styles.card}>
@@ -28,17 +30,34 @@ export function SinceStart({ progress }: { progress: ProgressJourney }) {
             />
           </View>
         ) : null}
-        {sessions && sessions.planned > 0 ? (
-          <Text color="textSecondary">
-            {t(
-              sessions.done + sessions.adapted >= sessions.planned
-                ? 'progress.since.adherenceAll'
-                : sessions.adapted > 0
-                  ? 'progress.since.adherenceAdapted'
-                  : 'progress.since.adherence',
-              { done: sessions.done + sessions.adapted, planned: sessions.planned, adapted: sessions.adapted },
-            )}
-          </Text>
+        {sessions && sessions.planned > 0 && adherence !== null ? (
+          <View style={styles.adherence}>
+            <ProgressRing
+              size={92}
+              stroke={8}
+              value={adherence}
+              color="progress"
+              label={t(
+                sessions.done + sessions.adapted >= sessions.planned
+                  ? 'progress.since.adherenceAll'
+                  : sessions.adapted > 0
+                    ? 'progress.since.adherenceAdapted'
+                    : 'progress.since.adherence',
+                { done: sessions.done + sessions.adapted, planned: sessions.planned, adapted: sessions.adapted },
+              )}>
+              <Text variant="headline">{Math.round(adherence * 100)}%</Text>
+            </ProgressRing>
+            <Text color="textSecondary" style={styles.flex}>
+              {t(
+                sessions.done + sessions.adapted >= sessions.planned
+                  ? 'progress.since.adherenceAll'
+                  : sessions.adapted > 0
+                    ? 'progress.since.adherenceAdapted'
+                    : 'progress.since.adherence',
+                { done: sessions.done + sessions.adapted, planned: sessions.planned, adapted: sessions.adapted },
+              )}
+            </Text>
+          </View>
         ) : null}
         {sessions && sessions.unknownDays > 0 ? (
           <Text variant="caption" color="textMuted">
@@ -80,6 +99,7 @@ export function Habits({ progress }: { progress: ProgressJourney }) {
 const styles = StyleSheet.create({
   card: { gap: spacing.sm },
   badge: { flexDirection: 'row' },
+  adherence: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
   line: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   flex: { flex: 1 },
 });

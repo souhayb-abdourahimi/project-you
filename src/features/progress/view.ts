@@ -1,14 +1,20 @@
 /**
- * View model of the Progress screen (W-9 §7): the weight trend as the domain already measures it
- * (`weightAverageAt`: 7-day averages with at least two weigh-ins). Nothing is smoothed, projected
- * or estimated: a week without two weigh-ins is a gap.
+ * View model of the Progress screen (W-9 §7): weight trends use the domain's real weekly
+ * averages. Nothing is smoothed, projected or filled: a week without enough weigh-ins is a gap.
  */
 import { weightAverageAt, type ProgressData } from '@/domain/journey/progress-facts';
 import { addDays, type IsoDate } from '@/domain/shared/dates';
 
-/** Weeks drawn on the trend, and the weeks with a value needed before it is drawn at all. */
-export const TREND_WEEKS = 8;
 export const MIN_TREND_POINTS = 2;
+
+export type ProgressRange = '4w' | '12w' | '6m' | '1y';
+
+export const RANGE_WEEKS: Record<ProgressRange, number> = {
+  '4w': 4,
+  '12w': 12,
+  '6m': 26,
+  '1y': 52,
+};
 
 export interface WeightTrend {
   /** Oldest first; the last one is the week ending today. */
@@ -16,11 +22,15 @@ export interface WeightTrend {
   points: number;
 }
 
-export function weightTrend(weights: ProgressData['weights'], today: IsoDate): WeightTrend | null {
-  const weeks = Array.from({ length: TREND_WEEKS }, (_, i) => {
-    const end = addDays(today, -7 * (TREND_WEEKS - 1 - i));
+export function weightTrend(
+  weights: ProgressData['weights'],
+  today: IsoDate,
+  weeksCount = RANGE_WEEKS['12w'],
+): WeightTrend | null {
+  const weeks = Array.from({ length: weeksCount }, (_, i) => {
+    const end = addDays(today, -7 * (weeksCount - 1 - i));
     return { end, kg: weightAverageAt(weights, end) };
   });
-  const points = weeks.filter((w) => w.kg !== null).length;
+  const points = weeks.filter((week) => week.kg !== null).length;
   return points >= MIN_TREND_POINTS ? { weeks, points } : null;
 }
