@@ -151,6 +151,8 @@ export default function NutritionScreen() {
             <View style={styles.weekStack}>
               {days.map((day) => {
                 const daily = dayIntake(day.meals);
+                const markedMeals = day.meals.filter((meal) => meal.status !== 'planned').length;
+                const hasKnownIntake = daily.eaten > 0;
                 const kcalRatio = targets.calories > 0 ? daily.kcal / targets.calories : 0;
                 const proteinRatio = targets.proteinG > 0 ? daily.proteinG / targets.proteinG : 0;
                 return (
@@ -167,29 +169,56 @@ export default function NutritionScreen() {
                       </Text>
                     </View>
 
-                    <View style={styles.weekMetric}>
-                      <View style={styles.weekMetricTop}>
-                        <Text variant="captionStrong" color="textSecondary">
-                          {t('nutrition.energy')}
-                        </Text>
-                        <Text variant="caption" color="textMuted">
-                          {Math.round(Math.min(1, kcalRatio) * 100)}%
-                        </Text>
-                      </View>
-                      <ProgressBar value={kcalRatio} label={t('nutrition.energy')} color="nutrition" />
-                    </View>
+                    {hasKnownIntake ? (
+                      <>
+                        <View style={styles.weekMetric}>
+                          <View style={styles.weekMetricTop}>
+                            <Text variant="captionStrong" color="textSecondary">
+                              {t('nutrition.energy')}
+                            </Text>
+                            <Text variant="caption" color="textMuted">
+                              {Math.round(Math.min(1, kcalRatio) * 100)}%
+                            </Text>
+                          </View>
+                          <ProgressBar value={kcalRatio} label={t('nutrition.energy')} color="nutrition" />
+                        </View>
 
-                    <View style={styles.weekMetric}>
-                      <View style={styles.weekMetricTop}>
+                        <View style={styles.weekMetric}>
+                          <View style={styles.weekMetricTop}>
+                            <Text variant="captionStrong" color="textSecondary">
+                              {t('nutrition.protein')}
+                            </Text>
+                            <Text variant="caption" color="textMuted">
+                              {Math.round(daily.proteinG)} / {Math.round(targets.proteinG)} g
+                            </Text>
+                          </View>
+                          <ProgressBar value={proteinRatio} label={t('nutrition.protein')} color="primary" />
+                        </View>
+
+                        <Text variant="caption" color="textMuted">
+                          {lang === 'fr'
+                            ? 'Repas marqués mangés uniquement · estimation'
+                            : 'Meals marked eaten only · estimate'}
+                        </Text>
+                      </>
+                    ) : (
+                      <View style={[styles.noWeekData, { backgroundColor: colors.surfaceSubtle }]}>
                         <Text variant="captionStrong" color="textSecondary">
-                          {t('nutrition.protein')}
+                          {lang === 'fr'
+                            ? markedMeals > 0
+                              ? 'Repas notés, mais apport nutritionnel inconnu'
+                              : 'Aucun repas noté'
+                            : markedMeals > 0
+                              ? 'Meals logged, but nutrition intake is unknown'
+                              : 'No meals logged'}
                         </Text>
                         <Text variant="caption" color="textMuted">
-                          {Math.round(daily.proteinG)} / {Math.round(targets.proteinG)} g
+                          {lang === 'fr'
+                            ? 'Aucune valeur n’est remplacée par zéro.'
+                            : 'Missing values are never replaced with zero.'}
                         </Text>
                       </View>
-                      <ProgressBar value={proteinRatio} label={t('nutrition.protein')} color="primary" />
-                    </View>
+                    )}
                   </Card>
                 );
               })}
@@ -265,6 +294,11 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   weekMetric: { gap: spacing.xs },
+  noWeekData: {
+    borderRadius: radius.md,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
   weekMetricTop: {
     flexDirection: 'row',
     alignItems: 'center',
