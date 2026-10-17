@@ -1,62 +1,81 @@
 import { Image } from 'expo-image';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
-import { motion, radius, spacing, useColors, useReducedMotion } from '@/theme';
+import { Icon, type IconName } from '@/components/ui/Icon';
+import type { MealSlot } from '@/domain/meals/recipes';
+import { focusPosition, heroFit } from '@/features/media/registry';
+import { motion, radius, useColors, useReducedMotion, useTileGlow } from '@/theme';
 
-import { Icon } from '@/components/ui/Icon';
-import { Text } from '@/components/ui/Text';
+import { recipeMedia } from './recipeMedia';
+
+const SLOT_ICON: Record<MealSlot, IconName> = {
+  breakfast: 'breakfast',
+  lunch: 'meal',
+  dinner: 'meal',
+  snack: 'snack',
+};
 
 /**
- * A recipe image surface.
+ * The picture of a recipe: its validated photo (`recipe.id -> media`, recipeMedia.ts), else a calm
+ * drawn tile (the meal's moment as a glyph on the nutrition tint). Never a generic food photo that
+ * could show another dish. Named for screen readers only when it is a real photo.
  *
- * Only an explicitly mapped Project You media URI is rendered as a photo. Missing or failed media
- * falls back to a neutral branded artwork; we never substitute a random image that could depict
- * the wrong meal.
+ * - `thumb`: square, at the start of a meal row (1:1 crop around the photo's focal point).
+ * - `banner`: wide picture (16:10) for a recipe detail — only from a large landscape master
+ *   (`heroFit`); a small photo is never upscaled into a banner, the artwork stays.
  */
 export function MealMedia({
-  uri,
+  recipeId,
+  slot,
   label,
-  compact,
+  variant = 'thumb',
+  size = 64,
 }: {
-  uri?: string | null;
+  recipeId: string;
+  slot?: MealSlot;
   label: string;
-  compact?: boolean;
+  variant?: 'thumb' | 'banner';
+  size?: number;
 }) {
   const colors = useColors();
+  const tileGlow = useTileGlow();
+  const { i18n } = useTranslation();
   const reducedMotion = useReducedMotion();
   const [failed, setFailed] = useState(false);
-  const photo = uri && !failed ? uri : null;
-
+  const media = recipeMedia(recipeId);
+  const thumb = variant === 'thumb';
+  const photo = media && !failed && (thumb || heroFit(media) === 'cover') ? media : null;
+  const description = photo ? photo.alt[i18n.language === 'en' ? 'en' : 'fr'] || label : undefined;
   return (
     <View
       accessibilityRole={photo ? 'image' : undefined}
-      accessibilityLabel={photo ? label : undefined}
+      accessibilityLabel={description}
       accessibilityElementsHidden={!photo}
       importantForAccessibility={photo ? 'auto' : 'no-hide-descendants'}
       style={[
-        styles.root,
-        compact && styles.compact,
-        { backgroundColor: colors.inverse },
+        thumb ? [styles.thumb, { width: size, height: size }] : styles.banner,
+        { backgroundColor: colors.successSubtle },
       ]}>
       {photo ? (
         <Image
-          source={{ uri: photo }}
+          source={photo.source}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
+          contentPosition={focusPosition(photo)}
           transition={reducedMotion ? 0 : motion.slow}
           onError={() => setFailed(true)}
         />
       ) : (
         <>
-          <View style={[styles.glow, { backgroundColor: colors.nutrition }]} />
-          <View style={[styles.circle, styles.circleLarge, { borderColor: colors.inverseFill }]} />
-          <View style={[styles.circle, styles.circleSmall, { borderColor: colors.inverseFill }]} />
-          <View style={styles.fallback}>
-            <Icon name="meal" size={compact ? 28 : 38} color="onInverse" />
-            <Text variant="captionStrong" color="onInverseMuted">
-              PROJECT YOU
-            </Text>
+          <View style={[StyleSheet.absoluteFill, tileGlow]} />
+          <View style={styles.centre}>
+            <Icon
+              name={slot ? SLOT_ICON[slot] : 'meal'}
+              size={thumb ? Math.round(size * 0.38) : 34}
+              color="nutrition"
+            />
           </View>
         </>
       )}
@@ -65,34 +84,7 @@ export function MealMedia({
 }
 
 const styles = StyleSheet.create({
-  root: {
-    height: 154,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  compact: { height: 104 },
-  glow: {
-    position: 'absolute',
-    width: 190,
-    height: 190,
-    borderRadius: radius.pill,
-    right: -45,
-    top: -75,
-    opacity: 0.25,
-  },
-  circle: {
-    position: 'absolute',
-    borderWidth: 1,
-    borderRadius: radius.pill,
-  },
-  circleLarge: { width: 170, height: 170, right: -42, top: -56 },
-  circleSmall: { width: 112, height: 112, right: -12, top: -26 },
-  fallback: {
-    flex: 1,
-    alignItems: 'flex-start',
-    justifyContent: 'flex-end',
-    padding: spacing.lg,
-    gap: spacing.xs,
-  },
+  thumb: { borderRadius: radius.md + 2, overflow: 'hidden' },
+  banner: { aspectRatio: 16 / 10, borderRadius: radius.lg, overflow: 'hidden' },
+  centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });

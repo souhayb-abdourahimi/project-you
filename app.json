@@ -78,6 +78,14 @@
             "minSdkVersion": 26
           }
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Project You ouvre la photo de repas que tu choisis, seulement quand tu le demandes, pour estimer ce qu'il contient. La photo n'est pas enregistrée.",
+          "cameraPermission": "Project You utilise l'appareil photo, seulement quand tu le demandes, pour photographier ton repas et estimer ce qu'il contient. La photo n'est pas enregistrée.",
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {

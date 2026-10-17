@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 
 import type { FoodExpense } from '@/domain/meals/budget';
 import { consume, type InventoryItem } from '@/domain/meals/inventory';
+import type { LoggedMeal } from '@/domain/meals/photo-analysis';
 import { replaceMealInPlan, type PlannedMeal, type WeeklyMealPlan } from '@/domain/meals/planner';
 import type { WeightEntry } from '@/domain/progress/weight';
 import type { IsoDate } from '@/domain/shared/dates';
@@ -59,6 +60,8 @@ interface DataState {
   dayLogs: DayLog[];
   /** Meals marked in past weeks (the plan itself only holds the current week). */
   mealLog: MealLogEntry[];
+  /** Meals added outside the plan after the user's confirmation (W-10), synced. */
+  loggedMeals: LoggedMeal[];
   /** Measurements other than the waist. */
   measurements: MeasurementEntry[];
   weeklyCheckins: WeeklyCheckin[];
@@ -103,6 +106,10 @@ interface DataState {
   markMealReplaced: (mealId: string, reason?: MealReason) => void;
   /** Back to "not marked" (a mistaken tap). */
   unmarkMeal: (mealId: string) => void;
+  /** Saves a confirmed meal (photo estimate or composed by hand); never called before confirmation. */
+  addLoggedMeal: (meal: LoggedMeal) => void;
+  /** Removes an added meal (synced as a deletion). */
+  removeLoggedMeal: (id: string) => void;
   setSessionOutcome: (session: SessionKey, outcome: Omit<SessionOutcome, 'at'> | null) => void;
   /** Merges a patch into the day's row (check-in answers, mode, light activity). */
   logDay: (date: IsoDate, patch: Omit<DayLog, 'date'>) => void;
@@ -166,6 +173,7 @@ const initial = {
   swapReasons: {},
   dayLogs: [],
   mealLog: [],
+  loggedMeals: [],
   measurements: [],
   weeklyCheckins: [],
   milestones: {},
@@ -357,10 +365,7 @@ export const useDataStore = create<DataState>()(
       // Every gesture is placed after what this device knows on the same proposal (D-040).
       saveAdjustment: (adjustment) =>
         set((s) => ({
-          adjustments: [
-            ...s.adjustments.filter((a) => a.id !== adjustment.id),
-            sequenced(adjustment, s.adjustments),
-          ],
+          adjustments: [...s.adjustments.filter((a) => a.id !== adjustment.id), sequenced(adjustment, s.adjustments)],
         })),
       addExpense: (amountCents, spentOn) =>
         set((s) => {
@@ -384,6 +389,8 @@ export const useDataStore = create<DataState>()(
       deleteWeight: (id) => set((s) => ({ weights: s.weights.filter((w) => w.id !== id) })),
       correctWaist: (id, cm) => set((s) => ({ waist: s.waist.map((w) => (w.id === id ? { ...w, cm } : w)) })),
       deleteWaist: (id) => set((s) => ({ waist: s.waist.filter((w) => w.id !== id) })),
+      addLoggedMeal: (meal) => set((s) => ({ loggedMeals: [...s.loggedMeals.filter((m) => m.id !== meal.id), meal] })),
+      removeLoggedMeal: (id) => set((s) => ({ loggedMeals: s.loggedMeals.filter((m) => m.id !== id) })),
       deleteMeasurement: (id) => set((s) => ({ measurements: s.measurements.filter((m) => m.id !== id) })),
       logSet: (session, exerciseId, loggedSet) =>
         set((s) => ({

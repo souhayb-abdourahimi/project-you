@@ -8,6 +8,7 @@ import type { BodyBlock } from '@/domain/journey/progress-journey';
 import type { PlannedMeal } from '@/domain/meals/planner';
 import { addDays, startOfWeek, type IsoDate } from '@/domain/shared/dates';
 import { isDone, type WeekComparison } from '@/domain/training/compare';
+import type { LoggedMeal } from '@/domain/meals/photo-analysis';
 import { dayIntake } from '@/features/nutrition/view';
 
 /** The few lines under the hero's title: planned facts only. */
@@ -54,6 +55,8 @@ export interface TodayGlance {
 }
 
 export interface GlanceInput {
+  /** Meals added outside the plan today (W-10, confirmed estimates). */
+  added?: readonly Pick<LoggedMeal, 'nutrition'>[];
   today: IsoDate;
   week: WeekComparison;
   /** Today's planned meals; null without a meal plan. */
@@ -70,7 +73,7 @@ export interface GlanceInput {
 /** Days with data needed before the steps chart is drawn (otherwise: the value alone). */
 export const MIN_STEP_DAYS = 3;
 
-function weekStrip(week: WeekComparison, today: IsoDate): TodayGlance['week'] {
+export function weekStrip(week: WeekComparison, today: IsoDate): TodayGlance['week'] {
   // A week whose prescriptions are unknown has no honest denominator (W-7.1).
   if (week.planned === 0 || week.prescriptionUnknown) return null;
   const monday = startOfWeek(today);
@@ -93,7 +96,7 @@ export function todayGlance(input: GlanceInput): TodayGlance {
   let nutrition: TodayGlance['nutrition'] = null;
   if (meals && meals.length > 0 && input.proteinTargetG > 0) {
     // Meals the user marked as eaten, with their planned values: the same sum as Nutrition.
-    const intake = dayIntake(meals);
+    const intake = dayIntake(meals, input.added ?? []);
     nutrition = {
       proteinG: intake.proteinG,
       proteinTargetG: Math.round(input.proteinTargetG),

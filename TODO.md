@@ -4,9 +4,24 @@ Tâches importantes à ne pas perdre entre deux sessions. Référence des IDs : 
 
 ## En cours / prochaine étape
 
+- [ ] **W-10 référence visuelle + analyse photo (D-045)**, branche `claude/w9-checkin-premium`, rien de fusionné :
+  - [x] Tokens densité / bleu, primitives `Tabs` `Segmented` `RadioList` `FeelingScale` ; Nutrition, Aujourd'hui, Programme, Séance, Remplacement, Résumé, Progrès, Bilan de la semaine, Profil repris.
+  - [x] Registre `exercise.id → média validé` (vide) + `ExerciseMedia` ; spécification `docs/MEDIA.md`.
+  - [x] Analyse photo : domaine (vision → ids + grammes, calcul Ciqual), Edge Function `analyze-meal`, provider, écran, composition à la main, table `logged_meals` synchronisée.
+  - [ ] **Validation humaine** : choisir le fournisseur de vision (+ contrat de traitement des données), poser les secrets `MEAL_VISION_PROVIDER` / `ANTHROPIC_API_KEY` / `MEAL_VISION_MODEL`, déployer `analyze-meal`, appliquer `20261017000001_logged_meals.sql` avant la version de l'app qui l'utilise.
+  - [x] Lot média 01 intégré : 9 exercices + `chicken_rice_broccoli` ; 5 photos de recettes disponibles mais non liées (plats absents du catalogue), `docs/MEDIA.md`.
+  - [ ] Produire et relire les 27 médias d'exercice et les 22 photos de recettes restants (liste exacte dans `docs/MEDIA.md`).
+  - [ ] Avant publication : remplacer les 8 recadrages d'exercice ~280 × 500 px par des originaux haute définition (paysage ≥ 1600 × 1200) ; confirmer la photo de `chicken_rice_broccoli` (filet entier vs « poulet émincé » de la recette).
+  - [ ] Décider produit : créer (ou non) les recettes des photos non liées (smoothie bowl, pennes boulettes, œufs brouillés épinards, pancakes, saumon quinoa) — recette d'abord, photo ensuite.
+  - [ ] Quota partagé pour `analyze-meal` avant lancement public (aujourd'hui par instance).
+  - [ ] Élargir le catalogue Ciqual (36 aliments) : beaucoup de plats photographiés resteront « non reconnus ».
+  - [ ] Tester caméra / galerie / redimensionnement sur iPhone et Android réels (testé sur le web et en Jest seulement) ; mentions caméra et photothèque App Store / Play.
+  - [x] Mode sombre relu écran par écran (2026-10-17) : vignettes dessinées, boutons désactivés ; captures sombres iPhone 15 / SE.
+  - [x] Validation release (2026-10-17) : course corrigée dans l'E2E « première visite », `analyze-meal` non déployée (404) traitée comme indisponible → composition à la main, procédure de déploiement dans `docs/MEAL_PHOTO_ANALYSIS.md`, checklist **`docs/RELEASE_CHECKLIST.md`** (migrations, fonctions, secrets, médias/licences, iOS/Android réels, VoiceOver/TalkBack).
+  - [ ] Archiver la preuve écrite des droits des lots médias 01 (le `credit` dit « validé par Souhayb », pas une licence).
 - [ ] **W-9 premium UI (D-044)** : passes 1–3, 3.1, 3.2 (Aujourd'hui validé) et 4–9 faites (Séance, Programme, Nutrition, Progrès, Bilan, Historique, Profil / Réglages / Confidentialité). Reste : états (chargement / vide / erreur / hors ligne) écran par écran, motion et accessibilité, web / Android, puis revue-w9-premium-ui.md (22 points). Pas de fusion sans son accord.
-- [ ] W-9 : relire le mode sombre écran par écran (tokens prêts, contraste testé) ; haptique légère quand une infrastructure existe ; l'onglet Explorer et ses chaînes ont été retirés (les lieux restent dans Réglages).
-- [ ] W-9 : brancher de vrais médias d'exercice dans `HeroMedia` (`uri`) quand la bibliothèque Project You en aura ; aujourd'hui le catalogue n'en a aucun, le visuel dessiné s'affiche.
+- [ ] W-9 : haptique légère quand une infrastructure existe ; l'onglet Explorer et ses chaînes ont été retirés (les lieux restent dans Réglages).
+- [x] W-9 : brancher de vrais médias d'exercice (lot 01, registre `src/features/training/exerciseMedia.ts`). Le héros d'Aujourd'hui garde son visuel dessiné : il représente la séance, pas un exercice (D-045, addendum lot 01).
 
 - [ ] **M-01 / M-19** : relancer `npm run test:live` (corrigé pour Jest) pour valider RLS et sync sur le projet réel. Migrations appliquées, `delete-account` déployée, connexion validée par curl (2026-10-01).
 - [ ] Tester la suppression de compte sur le projet réel (fonction déployée le 2026-10-01).

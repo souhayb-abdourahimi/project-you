@@ -28,7 +28,7 @@ export default function HealthScreen() {
       <Screen>
         <Banner message={t('health.webUnsupported')} />
         <Text color="textMuted">{t('health.manualStillWorks')}</Text>
-        <Button variant="secondary" label={t('health.logManually')} onPress={() => router.push('/progress')} />
+        <Button variant="secondary" label={t('health.logManually')} onPress={() => router.push('/progress?entry=1')} />
       </Screen>
     );
   }

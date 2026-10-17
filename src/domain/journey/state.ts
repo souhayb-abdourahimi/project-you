@@ -92,6 +92,8 @@ export interface JourneyInput {
   mealPlan: WeeklyMealPlan | null;
   /** Last week's plan, so the safety rule still sees the days before Monday. */
   previousMealPlan?: WeeklyMealPlan | null;
+  /** Meals added outside the plan (W-10): their energy counts for their day. */
+  addedMeals?: readonly { date: IsoDate; nutrition: { kcal: number } }[];
   mealName: (recipeId: string) => string | null;
   /** Age in years this year (as the nutrition engine computes it); null when unknown. */
   age: number | null;
@@ -101,6 +103,22 @@ export interface JourneyInput {
 }
 
 const MAIN_SLOTS: MealSlot[] = ['lunch', 'dinner', 'breakfast', 'snack'];
+
+/**
+ * Meals the user added outside the plan (W-10, confirmed photo estimates or meals composed by hand)
+ * add their energy to their day, so a day eaten "off plan" never looks like a low-intake day. They
+ * never make a day complete on their own: the planned meals still have to be marked.
+ */
+export function withAddedMeals(
+  days: LoggedDay[],
+  added: readonly { date: IsoDate; nutrition: { kcal: number } }[] | undefined,
+): LoggedDay[] {
+  if (!added || added.length === 0) return days;
+  return days.map((d) => {
+    const extra = added.filter((m) => m.date === d.date).reduce((sum, m) => sum + m.nutrition.kcal, 0);
+    return extra > 0 ? { ...d, kcal: d.kcal + extra } : d;
+  });
+}
 
 /** How the user logged each day of the meal plans (only what was marked; nothing guessed). */
 export function loggedDays(...mealPlans: (WeeklyMealPlan | null | undefined)[]): LoggedDay[] {
@@ -219,7 +237,7 @@ export function deriveJourneyState(input: JourneyInput): JourneyState {
     profile: journeyProfile(input),
     safety: evaluateSafety({
       today,
-      loggedDays: loggedDays(input.mealPlan, input.previousMealPlan),
+      loggedDays: withAddedMeals(loggedDays(input.mealPlan, input.previousMealPlan), input.addedMeals),
       floorKcal: input.floorKcal,
       weights: input.weights,
       sessionDates: input.sessionDates,

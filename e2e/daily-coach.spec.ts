@@ -75,11 +75,19 @@ test('Mon évolution: since the start, measured body changes, loads that progres
   await seedData(page, history({ from: '2026-08-03', to: '2026-09-29' }));
   await page.goto('/progress');
   await expect(text(page, 'Mon évolution')).toBeVisible();
-  await expect(text(page, 'Ton projet a commencé il y a 58 jour(s).')).toBeVisible();
-  await expect(text(page, '33 jour(s) actif(s) · 17 séance(s) faite(s)')).toBeVisible();
-  await expect(text(page, 'Goblet squat : 18 kg × 8 → 32 kg × 8')).toBeVisible();
+  // Counted facts as figures, each read as one phrase.
+  const label = (l: string) => page.getByLabel(l, { exact: true }).filter({ visible: true }).first();
+  await expect(label('58 jour(s) de projet')).toBeVisible();
+  await expect(label('33 jour(s) actif(s)')).toBeVisible();
+  await expect(label('17 séance(s) faite(s)')).toBeVisible();
+  await expect(label('Goblet squat : 18 kg × 8 → 32 kg × 8')).toBeVisible();
+  // The adherence sentence is one tap away (its figure is the tile at the top).
+  await page.getByRole('button', { name: 'Détail de l’adhérence' }).filter({ visible: true }).first().click();
+  await expect(text(page, /ces 4 dernières semaines/)).toBeVisible();
   await expect(text(page, /−?-?2,2 kg depuis ta première semaine de pesées \(79,9 kg\)/)).toBeVisible();
   await expect(text(page, /-4 cm depuis ta première mesure/)).toBeVisible();
+  await expect(text(page, 'Étape 5 sur 5')).toBeVisible();
+  await page.getByRole('button', { name: 'Voir toutes les étapes' }).filter({ visible: true }).first().click();
   await expect(text(page, 'Étape 2 · 10 séances faites')).toBeVisible();
   await expect(text(page, 'Ton plan cette semaine')).toBeVisible();
   // Rule 7: nothing the app cannot measure.
@@ -94,7 +102,7 @@ test('recomposition: the waist comes before the scale', async ({ page }) => {
   await page.goto('/progress');
   const waist = page.getByText('Tour de taille', { exact: true }).filter({ visible: true }).first();
   const weight = page
-    .getByText(/^Poids \(moyenne/)
+    .getByText(/^Poids · moyenne/)
     .filter({ visible: true })
     .first();
   const [w, p] = [await waist.boundingBox(), await weight.boundingBox()];
@@ -124,7 +132,8 @@ test('weekly check-in: answers in under a minute, then the review says what it i
   await page.goto('/review');
   await button(page, 'Répondre au check-in de la semaine').click();
   await expect(text(page, 'Comment s’est passée ta semaine ?')).toBeVisible();
-  await page.getByRole('checkbox', { name: '4', exact: true }).filter({ visible: true }).first().click();
+  // The week rating is a five-step feeling scale since W-10: « Bien » = 4.
+  await page.getByRole('radio', { name: 'Bien', exact: true }).filter({ visible: true }).first().click();
   await button(page, 'Voir mon bilan').click();
   await expect(text(page, 'Check-in de la semaine : merci, tes réponses sont prises en compte.')).toBeVisible();
   await expect(text(page, 'Ce qui a fonctionné')).toBeVisible();

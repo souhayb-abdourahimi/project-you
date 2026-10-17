@@ -17,6 +17,7 @@ export function Rationale({ data, label }: { data: RationaleData; label?: string
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
+        aria-expanded={open}
         onPress={() => setOpen(!open)}
         style={{ minHeight: MIN_TOUCH, justifyContent: 'center' }}>
         <Text variant="label" color="primary">

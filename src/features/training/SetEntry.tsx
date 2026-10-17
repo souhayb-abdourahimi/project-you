@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
-import { Button, ChoiceGroup, NumberStepper, Text } from '@/components/ui';
+import { Button, ChoiceGroup, Icon, NumberStepper, Text } from '@/components/ui';
 import { fromKg, stepIn, toKg } from '@/domain/settings/units';
 import { getExercise } from '@/domain/training/exercises';
 import type { LoggedSet } from '@/domain/training/progression';
 import { SET_FEELS, setFeel, type Prefill, type SessionExercise, type SetFeel } from '@/domain/training/session';
 import { useMassUnit } from '@/hooks/useMassUnit';
 import { formatNumber } from '@/lib/format';
-import { spacing } from '@/theme';
+import { MIN_TOUCH, radius, spacing, useColors } from '@/theme';
 
 import type { SetInput } from './useSessionController';
 
@@ -37,6 +37,7 @@ export function SetEntry({
 }) {
   const { t, i18n } = useTranslation();
   const unit = useMassUnit();
+  const colors = useColors();
   const seconds = exercise.unit === 'seconds';
   const loaded = (getExercise(exercise.exerciseId)?.loadIncrementKg ?? 0) > 0;
   const step = getExercise(exercise.exerciseId)?.loadIncrementKg || 2.5;
@@ -59,6 +60,8 @@ export function SetEntry({
       <View style={styles.fields}>
         {loaded || (load ?? 0) > 0 ? (
           <NumberStepper
+            compact
+            unit={unit}
             label={loadLabel}
             // Typed and shown in the user's unit, kept in kg (converted once each way, D-043).
             value={load === null ? null : fromKg(load, unit)}
@@ -72,11 +75,15 @@ export function SetEntry({
             })}
           />
         ) : (
-          <Text variant="label" color="textMuted" style={styles.bodyweight}>
-            {t('workout.bodyweight')}
-          </Text>
+          <View style={[styles.bodyweight, { backgroundColor: colors.surfaceSubtle }]}>
+            <Icon name="patternCore" size="sm" color="textMuted" />
+            <Text variant="captionStrong" color="textSecondary">
+              {t('workout.bodyweight')}
+            </Text>
+          </View>
         )}
         <NumberStepper
+          compact
           label={valueLabel}
           value={value}
           onChange={setValue}
@@ -113,8 +120,16 @@ export function SetEntry({
 }
 
 const styles = StyleSheet.create({
-  root: { gap: spacing.md },
-  fields: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg },
-  bodyweight: { alignSelf: 'center', minWidth: 120 },
+  root: { gap: spacing.sm + spacing.xxs },
+  fields: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, alignItems: 'flex-end' },
+  bodyweight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    alignSelf: 'flex-end',
+    minHeight: MIN_TOUCH + spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+  },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
 });

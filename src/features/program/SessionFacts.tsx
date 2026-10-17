@@ -28,6 +28,7 @@ export function SessionFacts({ session: s }: { session: SessionComparison }) {
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
+        aria-expanded={open}
         accessibilityLabel={title}
         disabled={s.exercises.length === 0}
         onPress={() => setOpen(!open)}

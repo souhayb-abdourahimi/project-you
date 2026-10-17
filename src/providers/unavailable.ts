@@ -2,6 +2,7 @@ import type {
   CalendarProvider,
   GymProvider,
   MapsProvider,
+  MealPhotoProvider,
   PlacesProvider,
   PriceProvider,
   ProductProvider,
@@ -29,6 +30,7 @@ export const providers = {
   maps: { open: notConfigured } satisfies MapsProvider,
   gym: { nearby: notConfigured } satisfies GymProvider,
   sports: { activities: notConfigured } satisfies SportsProvider,
+  mealPhoto: { analyze: notConfigured } satisfies MealPhotoProvider,
   calendar: {
     requestAccess: notConfigured,
     busyEvents: notConfigured,

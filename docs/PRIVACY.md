@@ -9,6 +9,7 @@ Project You est un outil de fitness et bien-être ; il ne remplace pas un profes
 - Données santé (HealthKit / Health Connect) lues seulement si utiles et autorisées, catégorie par catégorie.
 - Réponses de motivation : privées, utilisées pour les messages de motivation uniquement.
 - Photos : facultatives, bucket privé, jamais envoyées à un modèle externe sans action explicite.
+- **Photo de repas** (W-10, `docs/MEAL_PHOTO_ANALYSIS.md`) : prise ou choisie par l'utilisateur, redimensionnée sur l'appareil, envoyée au service d'analyse seulement après « Analyser » (la phrase « elle n'est pas enregistrée » est affichée avant), traitée pour cette seule demande, jamais stockée ni journalisée. Seuls les aliments confirmés (ids et grammes) et leur estimation sont enregistrés (`logged_meals`), exportés et supprimés avec « Repas ». Refus de la caméra : la galerie et la composition à la main restent disponibles.
 
 ## Privacy Center (M-20, écran `/privacy`)
 

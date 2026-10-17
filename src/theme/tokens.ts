@@ -7,7 +7,7 @@
  */
 const light = {
   // Base
-  background: '#F4F5F7',
+  background: '#F5F6F8',
   surface: '#FFFFFF',
   surfaceRaised: '#FFFFFF',
   surfaceSubtle: '#EDF0F4',
@@ -26,9 +26,10 @@ const light = {
   border: '#E3E7ED',
   borderStrong: '#C9D0DA',
 
-  primary: '#1D4ED8',
-  primaryPressed: '#1A43BA',
-  primarySubtle: '#EBF0FD',
+  /** A vivid iOS blue (W-10 reference), still ≥ 5:1 with white text. */
+  primary: '#1A5CF5',
+  primaryPressed: '#154BD0',
+  primarySubtle: '#EEF3FF',
   onPrimary: '#FFFFFF',
 
   // Semantic
@@ -42,10 +43,18 @@ const light = {
   infoSubtle: '#E7F2F5',
 
   // Domains: used sparingly (a small icon, a thin accent), never as large fills.
-  training: '#1D4ED8',
+  training: '#1A5CF5',
   nutrition: '#0F766E',
   progress: '#5B45D6',
   recovery: '#2C6E85',
+
+  /**
+   * Macro series (rings and bars only, never text): protein, carbs, fat. Each bar always has its
+   * value written next to it, so colour never carries the information alone.
+   */
+  macroProtein: '#12A150',
+  macroCarbs: '#1A5CF5',
+  macroFat: '#E7820E',
 
   /** Mandatory marker on demo data (docs/DATA_SOURCES.md). */
   mock: '#6B4FA0',
@@ -94,6 +103,10 @@ const dark: Colors = {
   progress: '#B5A8FF',
   recovery: '#8CCBDD',
 
+  macroProtein: '#5FD39A',
+  macroCarbs: '#86A8FF',
+  macroFat: '#F5B05A',
+
   mock: '#C9B6F0',
 
   text: '#F2F4F8',
@@ -109,25 +122,25 @@ export const spacing = { xxs: 2, xs: 4, sm: 8, md: 12, lg: 16, xl: 24, '2xl': 32
 
 /** Layout rhythm of the premium screens (W-9). */
 export const layout = {
-  /** Side gutter of a screen. */
-  screenPadding: 20,
+  /** Side gutter of a screen (W-10: 16 pt, the reference density). */
+  screenPadding: 16,
   /** Inner padding of a card. */
-  cardPadding: 20,
+  cardPadding: 16,
   /** Between two sections of a screen. */
-  sectionGap: 28,
+  sectionGap: 22,
   /** Between two cards of the same section. */
-  stackGap: 12,
+  stackGap: 10,
 } as const;
 
 /** Soft but adult: large cards, firm buttons, pills only for chips. */
 export const radius = {
   sm: 8,
   md: 12,
-  input: 14,
-  button: 16,
-  lg: 20,
-  card: 22,
-  sheet: 28,
+  input: 12,
+  button: 14,
+  lg: 16,
+  card: 18,
+  sheet: 24,
   pill: 999,
 } as const;
 
@@ -148,25 +161,25 @@ export const elevation = {
  * stay for the screens not redesigned yet.
  */
 export const typography = {
-  display: { fontSize: 34, lineHeight: 40, fontWeight: '700', letterSpacing: -0.6 },
-  title1: { fontSize: 28, lineHeight: 34, fontWeight: '700', letterSpacing: -0.5 },
-  title2: { fontSize: 22, lineHeight: 28, fontWeight: '700', letterSpacing: -0.3 },
-  title3: { fontSize: 20, lineHeight: 25, fontWeight: '600', letterSpacing: -0.2 },
-  headline: { fontSize: 17, lineHeight: 22, fontWeight: '600', letterSpacing: -0.2 },
-  body: { fontSize: 16, lineHeight: 23, fontWeight: '400' },
-  bodyMedium: { fontSize: 16, lineHeight: 23, fontWeight: '500' },
-  caption: { fontSize: 13, lineHeight: 18, fontWeight: '400' },
-  captionStrong: { fontSize: 13, lineHeight: 18, fontWeight: '600' },
+  display: { fontSize: 30, lineHeight: 36, fontWeight: '700', letterSpacing: -0.6 },
+  title1: { fontSize: 26, lineHeight: 32, fontWeight: '700', letterSpacing: -0.5 },
+  title2: { fontSize: 21, lineHeight: 26, fontWeight: '700', letterSpacing: -0.3 },
+  title3: { fontSize: 18, lineHeight: 23, fontWeight: '600', letterSpacing: -0.2 },
+  headline: { fontSize: 16, lineHeight: 21, fontWeight: '600', letterSpacing: -0.2 },
+  body: { fontSize: 15, lineHeight: 21, fontWeight: '400' },
+  bodyMedium: { fontSize: 15, lineHeight: 21, fontWeight: '500' },
+  caption: { fontSize: 13, lineHeight: 17, fontWeight: '400' },
+  captionStrong: { fontSize: 13, lineHeight: 17, fontWeight: '600' },
   /** Small capitals above a title ("ENTRAÎNEMENT"). */
-  overline: { fontSize: 12, lineHeight: 16, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase' },
-  /** Tab bar labels. */
+  overline: { fontSize: 11, lineHeight: 15, fontWeight: '600', letterSpacing: 0.7, textTransform: 'uppercase' },
+  /** Tab bar labels, chart axes. */
   micro: { fontSize: 11, lineHeight: 14, fontWeight: '500' },
-  metric: { fontSize: 26, lineHeight: 30, fontWeight: '600', letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
-  metricLarge: { fontSize: 44, lineHeight: 48, fontWeight: '700', letterSpacing: -1, fontVariant: ['tabular-nums'] },
+  metric: { fontSize: 24, lineHeight: 28, fontWeight: '700', letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
+  metricLarge: { fontSize: 38, lineHeight: 42, fontWeight: '700', letterSpacing: -1, fontVariant: ['tabular-nums'] },
   // Legacy
-  title: { fontSize: 22, lineHeight: 28, fontWeight: '700', letterSpacing: -0.3 },
-  heading: { fontSize: 18, lineHeight: 24, fontWeight: '600', letterSpacing: -0.2 },
-  label: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
+  title: { fontSize: 21, lineHeight: 26, fontWeight: '700', letterSpacing: -0.3 },
+  heading: { fontSize: 17, lineHeight: 22, fontWeight: '600', letterSpacing: -0.2 },
+  label: { fontSize: 14, lineHeight: 19, fontWeight: '600' },
 } as const;
 
 export type TypographyVariant = keyof typeof typography;
@@ -188,6 +201,10 @@ export const HEADING_VARIANTS: readonly TypographyVariant[] = [
 export const gradients = {
   heroGlow:
     'radial-gradient(circle at 85% 20%, rgba(70, 116, 255, 0.55) 0%, rgba(29, 78, 216, 0.18) 38%, rgba(18, 23, 34, 0) 70%)',
+  /** Soft light on a drawn tile (recipe or exercise artwork): depth without a fake photo. */
+  tileGlow: 'radial-gradient(circle at 28% 22%, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 62%)',
+  /** The same light in dark mode: a white glare at 0.7 reads as a grey smear on a dark tint. */
+  tileGlowDark: 'radial-gradient(circle at 28% 22%, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0) 62%)',
   heroScrim:
     'linear-gradient(180deg, rgba(10, 13, 20, 0.10) 0%, rgba(10, 13, 20, 0.55) 55%, rgba(10, 13, 20, 0.92) 100%)',
 } as const;

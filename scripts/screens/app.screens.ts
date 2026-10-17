@@ -47,11 +47,92 @@ test('workout: a set to log, then the rest', async ({ page }) => {
   await shot(page, 'workout-summary', false);
 });
 
+test('workout: replace an exercise', async ({ page }) => {
+  await start(page);
+  await page.goto('/workout/2026-09-30');
+  await page.getByRole('button', { name: 'Remplacer' }).filter({ visible: true }).first().click();
+  await page.getByRole('radio', { name: 'Machine prise' }).filter({ visible: true }).first().click();
+  await page.getByTestId('alternatives').first().waitFor();
+  await shot(page, 'workout-replace');
+});
+
+test('workout: exercise photos in the hero', async ({ page }) => {
+  await start(page);
+  await page.goto('/workout/2026-09-30');
+  // A portrait file (shown whole on the right of the hero)…
+  await page
+    .getByRole('button', { name: /^Développé épaules haltères,/ })
+    .filter({ visible: true })
+    .first()
+    .click();
+  const inset = page.getByRole('heading', { name: 'Développé épaules haltères' }).first();
+  await inset.waitFor();
+  await inset.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  await page.waitForTimeout(500);
+  await shot(page, 'workout-photo-inset', false);
+  // …and a landscape master (fills the hero), via a replacement.
+  await page
+    .getByRole('button', { name: /^Pont fessier,/ })
+    .filter({ visible: true })
+    .first()
+    .click();
+  await page.getByRole('button', { name: 'Remplacer' }).filter({ visible: true }).first().click();
+  await page.getByRole('radio', { name: 'Machine prise' }).filter({ visible: true }).first().click();
+  await page
+    .getByRole('button', { name: /^Squat au poids du corps,/ })
+    .filter({ visible: true })
+    .first()
+    .click();
+  const cover = page.getByRole('heading', { name: 'Squat au poids du corps' }).first();
+  await cover.waitFor();
+  await cover.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  await page.waitForTimeout(500);
+  await shot(page, 'workout-photo-cover', false);
+});
+
+test('weekly check-in', async ({ page }) => {
+  await start(page, FRIDAY, '2026-10-01');
+  await page.goto('/checkin');
+  await page.waitForTimeout(800);
+  await shot(page, 'checkin', false);
+  await shot(page, 'checkin-full');
+});
+
+test('meal analysis: composed by hand (no analysis service in local mode)', async ({ page }) => {
+  await start(page);
+  await page.goto('/meal-analysis?date=2026-09-30');
+  await page.waitForTimeout(800);
+  await shot(page, 'meal-analysis', false);
+  await page.getByRole('button', { name: 'Composer mon repas à la main' }).filter({ visible: true }).first().click();
+  for (const food of ['Saumon', 'Riz blanc']) {
+    await page.getByRole('button', { name: 'Ajouter un aliment' }).filter({ visible: true }).first().click();
+    await page.getByLabel('Rechercher un aliment').filter({ visible: true }).first().fill(food);
+    await page
+      .getByRole('button', { name: new RegExp(`^${food}`) })
+      .filter({ visible: true })
+      .first()
+      .click();
+  }
+  await shot(page, 'meal-analysis-incomplete');
+  const portions = page.getByLabel('Portion (g)').filter({ visible: true });
+  await portions.nth(0).fill('120');
+  await portions.nth(1).fill('80');
+  await page.getByRole('radio', { name: 'Dîner' }).filter({ visible: true }).first().click();
+  await shot(page, 'meal-analysis-complete');
+  await page.getByRole('button', { name: 'Confirmer et ajouter' }).filter({ visible: true }).first().click();
+  await page.goto('/nutrition');
+  await page.waitForTimeout(800);
+  await shot(page, 'nutrition-added');
+});
+
 test('programme tab', async ({ page }) => {
   await start(page);
   await page.goto('/');
   await openTab(page, 'Programme');
-  await page.getByText(/^Programme v1 · depuis le/).first().waitFor();
+  await page
+    .getByText(/^Programme v1 · depuis le/)
+    .first()
+    .waitFor();
   await shot(page, 'program', false);
   await shot(page, 'program-full');
 });
@@ -64,6 +145,11 @@ test('nutrition tab', async ({ page }) => {
   await page.getByRole('button', { name: 'Je l’ai mangé' }).first().click();
   await shot(page, 'nutrition', false);
   await shot(page, 'nutrition-full');
+  await page.getByRole('tab', { name: 'Recettes' }).filter({ visible: true }).first().click();
+  await page.getByText('Poulet, riz et brocoli').filter({ visible: true }).first().waitFor();
+  await page.waitForTimeout(500);
+  await shot(page, 'nutrition-recipes', false);
+  await shot(page, 'nutrition-recipes-full');
 });
 
 test('progress tab', async ({ page }) => {

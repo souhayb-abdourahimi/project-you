@@ -1,6 +1,6 @@
 import i18n, { setMassUnit } from '@/i18n';
 
-import { formatMass, parseLocalized } from '../format';
+import { formatMass, formatWeekRange, parseLocalized } from '../format';
 
 describe('parseLocalized', () => {
   it('reads French and English decimals, never multiplies by ten', () => {
@@ -33,5 +33,12 @@ describe('mass formatter of the texts', () => {
     setMassUnit('lb');
     expect(i18n.t('{{v, mass}}' as never, { v: value })).toMatch(/176,4\s?lb/);
     expect(value).toBe(80);
+  });
+});
+
+describe('formatWeekRange', () => {
+  it('says a week from its Monday, across months', () => {
+    expect(formatWeekRange('2026-09-28', 'fr')).toBe('28 sept. – 4 oct.');
+    expect(formatWeekRange('2026-10-05', 'en')).toBe('5 Oct – 11 Oct');
   });
 });
