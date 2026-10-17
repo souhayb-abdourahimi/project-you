@@ -47,6 +47,30 @@ test('workout: a set to log, then the rest', async ({ page }) => {
   await shot(page, 'workout-summary', false);
 });
 
+test('workout: replace an exercise', async ({ page }) => {
+  await start(page);
+  await page.goto('/workout/2026-09-30');
+  await page.getByRole('button', { name: 'Remplacer' }).filter({ visible: true }).first().click();
+  await page.getByRole('radio', { name: 'Machine prise' }).filter({ visible: true }).first().click();
+  await page.getByTestId('alternatives').first().waitFor();
+  await shot(page, 'workout-replace');
+});
+
+test('weekly check-in', async ({ page }) => {
+  await start(page, FRIDAY, '2026-10-01');
+  await page.goto('/checkin');
+  await page.waitForTimeout(800);
+  await shot(page, 'checkin', false);
+  await shot(page, 'checkin-full');
+});
+
+test('meal analysis', async ({ page }) => {
+  await start(page);
+  await page.goto('/meal-analysis');
+  await page.waitForTimeout(800);
+  await shot(page, 'meal-analysis', false);
+});
+
 test('programme tab', async ({ page }) => {
   await start(page);
   await page.goto('/');
