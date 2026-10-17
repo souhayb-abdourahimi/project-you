@@ -1,6 +1,6 @@
-jest.mock('@/services/supabase', () => ({ supabase: null, isSupabaseConfigured: false }));
-
 import { edgeMealPhotoProvider, type InvokeAnalyzeMeal } from '../meal-photo';
+
+jest.mock('@/services/supabase', () => ({ supabase: null, isSupabaseConfigured: false }));
 
 const photo = { base64: 'aGVsbG8=', mediaType: 'image/jpeg' as const };
 const catalog = [{ id: 'broccoli', name: 'Brocoli' }];

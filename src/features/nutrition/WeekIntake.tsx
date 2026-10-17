@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { Card, EmptyState, MiniBars, ProgressBar, Text } from '@/components/ui';
+import type { LoggedMeal } from '@/domain/meals/photo-analysis';
 import type { DailyMealPlan } from '@/domain/meals/planner';
 import type { NutritionTargets } from '@/domain/nutrition/engine';
 import { formatDate, formatNumber } from '@/lib/format';
@@ -13,14 +14,28 @@ import { dayIntake } from './view';
  * The week of meals (Nutrition › Semaine): only meals explicitly marked eaten count. A day without
  * any eaten meal is unknown, never a zero bar (docs/W9_NUTRITION_PREMIUM_HANDOFF.md).
  */
-export function WeekIntake({ days, targets }: { days: readonly DailyMealPlan[]; targets: NutritionTargets }) {
+export function WeekIntake({
+  days,
+  targets,
+  added,
+}: {
+  days: readonly DailyMealPlan[];
+  targets: NutritionTargets;
+  added: readonly LoggedMeal[];
+}) {
   const { t, i18n } = useTranslation();
   const colors = useColors();
   const num = (v: number) => formatNumber(Math.round(v), i18n.language);
   if (days.length === 0) return <EmptyState icon="meal" message={t('common.loading')} />;
 
-  const intakes = days.map((day) => ({ day, intake: dayIntake(day.meals) }));
-  const known = intakes.map(({ intake }) => (intake.eaten > 0 ? intake.kcal : null));
+  const intakes = days.map((day) => ({
+    day,
+    intake: dayIntake(
+      day.meals,
+      added.filter((m) => m.date === day.date),
+    ),
+  }));
+  const known = intakes.map(({ intake }) => (intake.eaten + intake.added > 0 ? intake.kcal : null));
   const knownDays = known.filter((v) => v !== null).length;
   const summary = t('nutrition.weekSummary', { days: knownDays, total: days.length });
 
@@ -49,14 +64,14 @@ export function WeekIntake({ days, targets }: { days: readonly DailyMealPlan[]; 
                   {t('nutrition.mealsEaten', { eaten: intake.eaten, meals: intake.meals })}
                 </Text>
               </View>
-              {intake.eaten > 0 ? (
+              {intake.eaten + intake.added > 0 ? (
                 <Text variant="captionStrong">
                   {num(intake.kcal)} / {t('common.kcal', { value: num(targets.calories) })}
                 </Text>
               ) : null}
             </View>
 
-            {intake.eaten > 0 ? (
+            {intake.eaten + intake.added > 0 ? (
               <>
                 <Metric
                   label={t('nutrition.energy')}

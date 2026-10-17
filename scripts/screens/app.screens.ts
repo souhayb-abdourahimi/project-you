@@ -64,11 +64,27 @@ test('weekly check-in', async ({ page }) => {
   await shot(page, 'checkin-full');
 });
 
-test('meal analysis', async ({ page }) => {
+test('meal analysis: composed by hand (no analysis service in local mode)', async ({ page }) => {
   await start(page);
-  await page.goto('/meal-analysis');
+  await page.goto('/meal-analysis?date=2026-09-30');
   await page.waitForTimeout(800);
   await shot(page, 'meal-analysis', false);
+  await page.getByRole('button', { name: 'Composer mon repas à la main' }).filter({ visible: true }).first().click();
+  for (const food of ['Saumon', 'Riz blanc']) {
+    await page.getByRole('button', { name: 'Ajouter un aliment' }).filter({ visible: true }).first().click();
+    await page.getByLabel('Rechercher un aliment').filter({ visible: true }).first().fill(food);
+    await page.getByRole('button', { name: new RegExp(`^${food}`) }).filter({ visible: true }).first().click();
+  }
+  await shot(page, 'meal-analysis-incomplete');
+  const portions = page.getByLabel('Portion (g)').filter({ visible: true });
+  await portions.nth(0).fill('120');
+  await portions.nth(1).fill('80');
+  await page.getByRole('radio', { name: 'Dîner' }).filter({ visible: true }).first().click();
+  await shot(page, 'meal-analysis-complete');
+  await page.getByRole('button', { name: 'Confirmer et ajouter' }).filter({ visible: true }).first().click();
+  await page.goto('/nutrition');
+  await page.waitForTimeout(800);
+  await shot(page, 'nutrition-added');
 });
 
 test('programme tab', async ({ page }) => {

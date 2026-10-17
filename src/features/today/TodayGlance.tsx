@@ -8,6 +8,7 @@ import type { Journey } from '@/hooks/useJourney';
 import { useMassUnit } from '@/hooks/useMassUnit';
 import type { Plan } from '@/hooks/usePlan';
 import { formatNumber } from '@/lib/format';
+import { useDataStore } from '@/state/data';
 import { useHealthStore } from '@/state/health';
 import { PRESSED_SCALE, borderWidth, radius, spacing, useColors } from '@/theme';
 
@@ -20,10 +21,12 @@ import { todayGlance, type TodayGlance as Glance, type WeekDayState } from './vi
 export function TodayGlance({ plan, journey }: { plan: Plan; journey: Journey }) {
   const sharing = useHealthStore((s) => s.connected && s.wanted.includes('steps'));
   const steps = useHealthStore((s) => s.data.steps);
+  const loggedMeals = useDataStore((s) => s.loggedMeals);
   const glance = todayGlance({
     today: plan.today,
     week: journey.trainingWeek,
     meals: plan.mealPlan?.days.find((d) => d.date === plan.today)?.meals ?? null,
+    added: loggedMeals.filter((m) => m.date === plan.today),
     proteinTargetG: plan.targets.proteinG,
     kcalTarget: plan.targets.calories,
     steps: sharing ? steps : null,

@@ -12,14 +12,27 @@ const meal = (status: PlannedMeal['status'], kcal: number, proteinG: number): Pl
 describe('dayIntake', () => {
   it('adds only the meals marked eaten, rounded', () => {
     const r = dayIntake([meal('eaten', 500.4, 30.2), meal('eaten', 700.4, 40.4), meal('planned', 900, 50)]);
-    expect(r).toEqual({ kcal: 1201, proteinG: 71, carbsG: 21, fatG: 10, eaten: 2, meals: 3 });
+    expect(r).toEqual({ kcal: 1201, proteinG: 71, carbsG: 21, fatG: 10, eaten: 2, meals: 3, added: 0 });
   });
 
   it('a skipped or replaced meal adds nothing (its content is unknown)', () => {
     expect(dayIntake([meal('skipped', 500, 30), meal('replaced', 600, 20)])).toMatchObject({ kcal: 0, eaten: 0 });
   });
 
+  it('a confirmed added meal counts in the totals, not as a planned meal', () => {
+    const added = [{ nutrition: { kcal: 525, proteinG: 45, carbsG: 35, fatG: 14 } }];
+    expect(dayIntake([meal('eaten', 500, 30), meal('planned', 600, 20)], added)).toEqual({
+      kcal: 1025,
+      proteinG: 75,
+      carbsG: 45,
+      fatG: 19,
+      eaten: 1,
+      meals: 2,
+      added: 1,
+    });
+  });
+
   it('no meal plan: zeros, never an invented value', () => {
-    expect(dayIntake(null)).toEqual({ kcal: 0, proteinG: 0, carbsG: 0, fatG: 0, eaten: 0, meals: 0 });
+    expect(dayIntake(null)).toEqual({ kcal: 0, proteinG: 0, carbsG: 0, fatG: 0, eaten: 0, meals: 0, added: 0 });
   });
 });

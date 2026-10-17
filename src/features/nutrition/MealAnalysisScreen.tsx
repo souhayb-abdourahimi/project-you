@@ -1,110 +1,147 @@
 import { Image } from 'expo-image';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
-import { Button, Card, EmptyState, Icon, ScreenHeader, Skeleton, Text } from '@/components/ui';
+import { Button, Card, Icon, Notice, Screen, ScreenHeader, Skeleton, Text } from '@/components/ui';
+import { toIsoDate } from '@/domain/shared/dates';
 import { radius, spacing, useColors } from '@/theme';
 
-import { MealAnalysisResultCard } from './MealAnalysisResultCard';
-import { isUsableMealAnalysis, type MealAnalysisResult, type MealAnalysisStatus } from './mealAnalysis';
+import { MealDraftEditor } from './MealDraftEditor';
+import { useMealAnalysis, type AnalysisIssue } from './useMealAnalysis';
 
-export function MealAnalysisScreen({
-  status,
-  imageUri,
-  result,
-  onChoosePhoto,
-  onRetry,
-  onConfirm,
-  confirming,
-}: {
-  status: MealAnalysisStatus;
-  imageUri?: string | null;
-  result?: MealAnalysisResult | null;
-  onChoosePhoto: () => void;
-  onRetry: () => void;
-  onConfirm: () => void;
-  confirming?: boolean;
-}) {
+const ISSUE_KEY: Record<AnalysisIssue, string> = {
+  denied: 'nutrition.analysis.issue.denied',
+  too_large: 'nutrition.analysis.issue.tooLarge',
+  pick_failed: 'nutrition.analysis.issue.pickFailed',
+  timeout: 'nutrition.analysis.issue.timeout',
+  network: 'nutrition.analysis.issue.network',
+  rate_limited: 'nutrition.analysis.issue.rateLimited',
+  auth: 'nutrition.analysis.issue.auth',
+  unknown: 'nutrition.analysis.issue.unknown',
+};
+
+/** Route params are user input: only a well-formed date is used, today otherwise. */
+const readDate = (value: unknown) =>
+  typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : toIsoDate(new Date());
+
+/**
+ * "Analyser le repas" (W-10): a photo, chosen by the user, analysed only after "Analyser"; the
+ * estimate is checked and corrected, then added only on confirmation. Without an analysis service
+ * the same screen composes the meal by hand from the Ciqual catalogue.
+ */
+export function MealAnalysisScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
+  const params = useLocalSearchParams<{ date?: string }>();
+  const analysis = useMealAnalysis(readDate(params.date));
+  const { phase, issue, uri } = analysis;
+  const back = () => (router.canGoBack() ? router.back() : router.replace('/nutrition'));
 
   return (
-    <View style={styles.root}>
-      <ScreenHeader title="Analyser le repas" subtitle="Photo du repas" />
+    <Screen airy>
+      <ScreenHeader title={t('nutrition.analysis.title')} subtitle={t('nutrition.analysis.subtitle')} />
 
-      {status === 'idle' ? (
-        <EmptyState
-          icon="meal"
-          title="Ajoute une photo de ton repas"
-          message="L’analyse ne démarre qu’après ton choix de photo. Aucune valeur nutritionnelle n’est devinée avant l’analyse."
-          action={<Button block label="Choisir une photo" onPress={onChoosePhoto} />}
-        />
+      {uri && phase !== 'start' ? (
+        <View style={[styles.photo, { backgroundColor: colors.inverse }]}>
+          <Image
+            source={{ uri }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            accessibilityLabel={t('nutrition.analysis.photoA11y')}
+          />
+        </View>
       ) : null}
 
-      {status === 'analyzing' ? (
-        <Card raised style={styles.loadingCard} accessibilityLabel="Analyse du repas en cours">
-          {imageUri ? (
-            <View style={[styles.photo, { backgroundColor: colors.inverse }]}>
-              <Image source={{ uri: imageUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
-            </View>
-          ) : (
-            <Skeleton height={240} />
-          )}
-          <View style={styles.loadingTitle}>
-            <View style={[styles.iconWell, { backgroundColor: colors.primarySubtle }]}>
-              <Icon name="meal" size="md" color="nutrition" />
-            </View>
-            <View style={styles.flex}>
-              <Text variant="title3">Analyse en cours</Text>
-              <Text variant="caption" color="textMuted">
-                Identification des aliments et estimation des portions.
-              </Text>
-            </View>
-          </View>
-          <Skeleton height={18} width="85%" />
-          <Skeleton height={18} width="65%" />
-          <Skeleton height={72} />
+      {issue && (phase === 'start' || phase === 'preview') ? (
+        <Notice tone="info" message={t(ISSUE_KEY[issue])} />
+      ) : null}
+
+      {phase === 'start' && !analysis.photoAvailable ? (
+        <Card style={styles.card}>
+          <Notice
+            tone="neutral"
+            title={t('nutrition.analysis.unavailableTitle')}
+            message={t('nutrition.analysis.unavailableBody')}
+          />
+          <Button block label={t('nutrition.analysis.compose')} onPress={analysis.composeManually} />
         </Card>
       ) : null}
 
-      {status === 'ready' && isUsableMealAnalysis(result) ? (
-        <MealAnalysisResultCard result={result} onConfirm={onConfirm} confirming={confirming} />
+      {phase === 'start' && analysis.photoAvailable ? (
+        <Card raised style={styles.card}>
+          <View style={[styles.mark, { backgroundColor: colors.primarySubtle }]}>
+            <Icon name="camera" size="lg" color="primary" />
+          </View>
+          <Text variant="title3">{t('nutrition.analysis.startTitle')}</Text>
+          <Text color="textSecondary">{t('nutrition.analysis.startBody')}</Text>
+          <Button
+            block
+            icon="camera"
+            label={t('nutrition.analysis.takePhoto')}
+            onPress={() => analysis.choose('camera')}
+          />
+          <Button
+            block
+            variant="secondary"
+            label={t('nutrition.analysis.pickPhoto')}
+            onPress={() => analysis.choose('library')}
+          />
+          <Button variant="ghost" label={t('nutrition.analysis.compose')} onPress={analysis.composeManually} />
+        </Card>
       ) : null}
 
-      {status === 'ready' && !isUsableMealAnalysis(result) ? (
-        <EmptyState
-          icon="info"
-          title="Analyse incomplète"
-          message="Le résultat reçu ne contient pas assez d’informations fiables pour calculer ce repas. Rien n’a été ajouté."
-          action={<Button block variant="secondary" label="Réessayer" onPress={onRetry} />}
-        />
+      {phase === 'preview' ? (
+        <Card style={styles.card}>
+          <Text variant="caption" color="textSecondary">
+            {t('nutrition.analysis.consent')}
+          </Text>
+          <Button block label={t('nutrition.analysis.analyze')} onPress={analysis.analyze} />
+          <Button variant="ghost" label={t('nutrition.analysis.changePhoto')} onPress={analysis.restart} />
+        </Card>
       ) : null}
 
-      {status === 'error' ? (
-        <EmptyState
-          icon="info"
-          title="Analyse indisponible"
-          message="La photo n’a pas pu être analysée. Aucun aliment, calorie ou macro n’a été enregistré."
-          action={<Button block variant="secondary" label="Réessayer" onPress={onRetry} />}
-        />
+      {phase === 'analyzing' ? (
+        <Card style={styles.card} accessibilityLabel={t('nutrition.analysis.analyzing')}>
+          <Text variant="headline" accessibilityLiveRegion="polite">
+            {t('nutrition.analysis.analyzing')}
+          </Text>
+          <Text variant="caption" color="textMuted">
+            {t('nutrition.analysis.analyzingHint')}
+          </Text>
+          <Skeleton height={18} width="80%" />
+          <Skeleton height={18} width="60%" />
+          <Skeleton height={56} />
+          <Button variant="secondary" label={t('common.cancel')} onPress={analysis.cancel} />
+        </Card>
       ) : null}
-    </View>
+
+      {phase === 'unavailable' ? (
+        <Card style={styles.card}>
+          <Notice
+            tone="neutral"
+            title={t('nutrition.analysis.unavailableTitle')}
+            message={t('nutrition.analysis.unavailableBody')}
+          />
+          <Button block label={t('nutrition.analysis.compose')} onPress={analysis.composeManually} />
+        </Card>
+      ) : null}
+
+      {phase === 'error' ? (
+        <Card style={styles.card}>
+          <Notice tone="info" title={t('nutrition.analysis.errorTitle')} message={t(ISSUE_KEY[issue ?? 'unknown'])} />
+          <Button block label={t('common.retry')} onPress={analysis.analyze} />
+          <Button variant="ghost" label={t('nutrition.analysis.compose')} onPress={analysis.composeManually} />
+        </Card>
+      ) : null}
+
+      {phase === 'review' ? <MealDraftEditor analysis={analysis} onSaved={back} /> : null}
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { gap: spacing.xl },
-  loadingCard: { gap: spacing.lg },
-  loadingTitle: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  photo: {
-    height: 240,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-  },
-  iconWell: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  flex: { flex: 1 },
+  photo: { height: 220, borderRadius: radius.card, overflow: 'hidden' },
+  card: { gap: spacing.md },
+  mark: { width: 52, height: 52, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
 });

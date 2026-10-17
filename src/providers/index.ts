@@ -10,6 +10,10 @@ import { supabaseMealPhotoProvider } from './meal-photo';
 import { providers as unavailable } from './unavailable';
 import { isSupabaseConfigured } from '@/services/supabase';
 
+import type { MealPhotoProvider } from './types';
+
+const mealPhoto: MealPhotoProvider = isSupabaseConfigured ? supabaseMealPhotoProvider : unavailable.mealPhoto;
+
 export const providers = {
   ...unavailable,
   calendar: deviceCalendarProvider,
@@ -20,5 +24,5 @@ export const providers = {
   location: deviceLocationProvider,
   health: deviceHealthProvider,
   // Answers `unavailable` without a Supabase project or without vision secrets on the server.
-  mealPhoto: isSupabaseConfigured ? supabaseMealPhotoProvider : unavailable.mealPhoto,
+  mealPhoto: mealPhoto,
 };

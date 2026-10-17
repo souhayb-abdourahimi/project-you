@@ -48,6 +48,7 @@ export default function RootLayout() {
         <Stack.Screen name="workout/[date]" options={{ headerShown: true, title: t('workout.title') }} />
         <Stack.Screen name="inventory" options={{ headerShown: true, title: t('inventory.title') }} />
         <Stack.Screen name="shopping" options={{ headerShown: true, title: t('shopping.title') }} />
+        <Stack.Screen name="meal-analysis" options={{ headerShown: true, title: t('nutrition.title') }} />
         <Stack.Screen name="settings/index" options={{ headerShown: true, title: t('settings.title') }} />
         <Stack.Screen name="settings/[section]" options={{ headerShown: true, title: t('settings.title') }} />
         <Stack.Screen name="measurements" options={{ headerShown: true, title: t('measurements.title') }} />

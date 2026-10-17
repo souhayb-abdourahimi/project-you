@@ -17,6 +17,7 @@ import {
   Text,
 } from '@/components/ui';
 import { getRecipe } from '@/domain/meals/recipes';
+import { AddedMealCard } from '@/features/nutrition/AddedMealCard';
 import { BudgetCard } from '@/features/nutrition/BudgetCard';
 import { DayEnergyWarning } from '@/features/nutrition/DayEnergyWarning';
 import { DayNavigator } from '@/features/nutrition/DayNavigator';
@@ -28,6 +29,7 @@ import { RecipeLibrary } from '@/features/nutrition/RecipeLibrary';
 import { WeekIntake } from '@/features/nutrition/WeekIntake';
 import { dayIntake } from '@/features/nutrition/view';
 import { usePlan } from '@/hooks/usePlan';
+import { useDataStore } from '@/state/data';
 import { spacing } from '@/theme';
 
 type NutritionView = 'day' | 'week' | 'recipes';
@@ -41,6 +43,7 @@ export default function NutritionScreen() {
   const plan = usePlan();
   const [view, setView] = useState<NutritionView>('day');
   const [picked, setPicked] = useState<string | null>(null);
+  const loggedMeals = useDataStore((s) => s.loggedMeals);
 
   if (!plan) return <LoadingScreen />;
 
@@ -49,7 +52,8 @@ export default function NutritionScreen() {
   const dates = days.map((day) => day.date);
   const date = picked && dates.includes(picked) ? picked : plan.today;
   const day = days.find((d) => d.date === date);
-  const intake = dayIntake(day?.meals);
+  const added = loggedMeals.filter((m) => m.date === date);
+  const intake = dayIntake(day?.meals, added);
   const recipes = [...new Set(days.flatMap((d) => d.meals.map((meal) => meal.recipeId)))].flatMap((id) => {
     const recipe = getRecipe(id);
     return recipe ? [recipe] : [];
@@ -104,12 +108,15 @@ export default function NutritionScreen() {
             ) : (
               <Text color="textMuted">{t('common.loading')}</Text>
             )}
+            {added.map((meal) => (
+              <AddedMealCard key={meal.id} meal={meal} />
+            ))}
             <Button
               block
               icon="camera"
               label={t('nutrition.addMeal')}
               accessibilityHint={t('nutrition.addMealHint')}
-              onPress={() => router.push('/meal-analysis')}
+              onPress={() => router.push({ pathname: '/meal-analysis', params: { date } })}
             />
             <Text variant="caption" color="textMuted">
               {t('nutrition.source')}
@@ -146,7 +153,7 @@ export default function NutritionScreen() {
 
       {view === 'week' ? (
         <Section title={t('nutrition.tabs.week')}>
-          <WeekIntake days={days} targets={targets} />
+          <WeekIntake days={days} targets={targets} added={loggedMeals} />
         </Section>
       ) : null}
 
