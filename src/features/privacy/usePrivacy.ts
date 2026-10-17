@@ -83,6 +83,7 @@ export function usePrivacy() {
   const sessionIds = useDataStore((s) => s.sessionIds);
   const sessionOutcomes = useDataStore((s) => s.sessionOutcomes);
   const mealLog = useDataStore((s) => s.mealLog);
+  const loggedMeals = useDataStore((s) => s.loggedMeals);
   const measurements = useDataStore((s) => s.measurements);
   const dayLogs = useDataStore((s) => s.dayLogs);
   const weeklyCheckins = useDataStore((s) => s.weeklyCheckins);
@@ -102,6 +103,7 @@ export function usePrivacy() {
     sessionIds,
     sessionOutcomes,
     mealLog,
+    loggedMeals,
     measurements,
     dayLogs,
     weeklyCheckins,

@@ -28,7 +28,7 @@ export const CATEGORY_TABLES: Record<PrivacyCategory, SyncTable[]> = {
     'workout_sessions',
     'training_programs',
   ],
-  meals: ['meal_plan_items'],
+  meals: ['meal_plan_items', 'logged_meals'],
   // Day check-ins, weekly check-ins, milestones and adaptation decisions (D-028).
   journey: ['daily_checkins', 'weekly_checkins', 'journey_milestones', 'adjustments'],
 };
@@ -113,13 +113,14 @@ export type PrivacyState = SyncableState & { previousMealPlan?: WeeklyMealPlan |
 
 /**
  * Meals the user marked (eaten, skipped or replaced), in the current plan, in the previous week's
- * plan or kept in the journal (each meal once).
+ * plan or kept in the journal, and meals added outside the plan (each meal once).
  */
 function markedMeals(state: PrivacyState): number {
   const ids = new Set<string>();
   for (const plan of [state.mealPlan, state.previousMealPlan])
     for (const m of (plan?.days ?? []).flatMap((d) => d.meals)) if (m.status !== 'planned') ids.add(m.id);
   for (const m of state.mealLog ?? []) ids.add(m.id);
+  for (const m of state.loggedMeals ?? []) ids.add(m.id);
   return ids.size;
 }
 
@@ -176,6 +177,7 @@ export function clearCategory<S extends PrivacyState>(state: S, category: Privac
       return {
         ...state,
         mealLog: [],
+        loggedMeals: [],
         mealPlan: state.mealPlan ? unmarked(state.mealPlan) : null,
         ...(state.previousMealPlan ? { previousMealPlan: unmarked(state.previousMealPlan) } : {}),
       };

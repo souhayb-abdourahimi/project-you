@@ -52,9 +52,7 @@ describe('meal draft from a detection', () => {
     const chicken = nutrientsFor(getFood('chicken_breast')!, 150);
     expect(draft.status).toBe('complete');
     expect(draft.items[0].nutrition?.kcal).toBe(Math.round(chicken.kcal));
-    expect(draft.totals?.kcal).toBe(
-      Math.round(chicken.kcal + nutrientsFor(getFood('broccoli')!, 100).kcal),
-    );
+    expect(draft.totals?.kcal).toBe(Math.round(chicken.kcal + nutrientsFor(getFood('broccoli')!, 100).kcal));
   });
 
   it('an unknown portion or an unmatched food: incomplete, no total (never a partial sum)', () => {

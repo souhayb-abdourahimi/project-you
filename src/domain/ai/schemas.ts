@@ -98,9 +98,7 @@ export const MealPhotoDetection = z
   .strict();
 export type MealPhotoDetection = z.infer<typeof MealPhotoDetection>;
 
-export function parseMealPhotoDetection(
-  raw: unknown,
-): { ok: true; detection: MealPhotoDetection } | { ok: false } {
+export function parseMealPhotoDetection(raw: unknown): { ok: true; detection: MealPhotoDetection } | { ok: false } {
   const parsed = MealPhotoDetection.safeParse(raw);
   return parsed.success ? { ok: true, detection: parsed.data } : { ok: false };
 }

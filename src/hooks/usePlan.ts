@@ -7,7 +7,7 @@ import { assessGoalFeasibility, computeNutritionTargets, noDeficitProfile } from
 import { planWeek as planSchedule, type PlannedDay, type WeeklyPlan } from '@/domain/planning/engine';
 import { appliedCalorieOffset, appliedSessionsPerWeek } from '@/domain/journey/adjustments';
 import { evaluateSafety } from '@/domain/journey/safety';
-import { journeyStart, loggedDays } from '@/domain/journey/state';
+import { journeyStart, loggedDays, withAddedMeals } from '@/domain/journey/state';
 import { weightBasis, withCalorieOffset } from '@/domain/journey/weight-basis';
 import { startOfWeek, toIsoDate } from '@/domain/shared/dates';
 import { sessionKey } from '@/domain/shared/ids';
@@ -78,6 +78,7 @@ export function usePlan() {
   const calendarBusy = useCalendarStore((s) => (s.connected && s.readBusy ? s.busy : null));
   const adjustments = useDataStore((s) => s.adjustments);
   const previousMealPlan = useDataStore((s) => s.previousMealPlan);
+  const addedMeals = useDataStore((s) => s.loggedMeals);
   const completedSessions = useDataStore((s) => s.completedSessions);
   const programs = useDataStore((s) => s.programs);
   const prescriptions = useDataStore((s) => s.prescriptions);
@@ -100,7 +101,7 @@ export function usePlan() {
     const base = computeNutritionTargets(snapshot, year);
     const { flags } = evaluateSafety({
       today,
-      loggedDays: loggedDays(previousMealPlan, mealPlan),
+      loggedDays: withAddedMeals(loggedDays(previousMealPlan, mealPlan), addedMeals),
       floorKcal: base.floorKcal,
       weights,
       sessionDates: [],
@@ -108,7 +109,7 @@ export function usePlan() {
       checkins: [],
     });
     return flags.includes('fast_weight_loss') || flags.includes('low_intake');
-  }, [snapshot, year, today, previousMealPlan, mealPlan, weights]);
+  }, [snapshot, year, today, previousMealPlan, mealPlan, weights, addedMeals]);
 
   const startedOn = useMemo(
     () =>

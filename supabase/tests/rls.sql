@@ -128,6 +128,8 @@ insert into public.exercise_substitutions (user_id, session_id, from_exercise_id
 insert into public.exercise_reports (user_id, session_id, exercise_id, not_performed, not_performed_reason) values ('00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-0000000000e2', 'goblet_squat', true, 'discomfort');
 insert into public.journey_milestones (user_id, milestone_id, reached_on) values ('00000000-0000-0000-0000-00000000000a', 'first_session', '2026-09-30');
 insert into public.adjustments (user_id, kind, change_key, reason_key, status, effective_from) values ('00000000-0000-0000-0000-00000000000a', 'training', 'sessions_per_week', 'adapt.reason.missed_two_weeks', 'proposed', '2026-10-05');
+-- Meals added outside the plan (W-10).
+insert into public.logged_meals (user_id, eaten_on, slot, source, items, kcal, protein_g, carbs_g, fat_g) values ('00000000-0000-0000-0000-00000000000a', '2026-09-30', 'lunch', 'photo_estimate', '[{"food_id":"rice","grams":80}]', 280, 6, 62, 0.8);
 
 do $$
 declare

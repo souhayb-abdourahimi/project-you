@@ -122,7 +122,10 @@ export function useJourney(plan: Plan | null): Journey | null {
     ];
 
     const lightActivityDates = data.dayLogs.filter((d) => d.activity === 'walk' || d.activity === 'mobility');
-    const markedMealDates = meals.filter((m) => m.status !== 'planned').map((m) => m.date);
+    const markedMealDates = [
+      ...meals.filter((m) => m.status !== 'planned').map((m) => m.date),
+      ...data.loggedMeals.map((m) => m.date),
+    ];
     const state = deriveJourneyState({
       today,
       startedOn: plan.startedOn,
@@ -137,6 +140,7 @@ export function useJourney(plan: Plan | null): Journey | null {
       checkins: checkinSignals(data.dayLogs),
       mealPlan: plan.mealPlan,
       previousMealPlan: data.previousMealPlan,
+      addedMeals: data.loggedMeals,
       mealName: (id) => getRecipe(id)?.name[locale] ?? null,
       // Same age as the nutrition engine (reference year of today), so both layers agree on "minor".
       age: Number(today.slice(0, 4)) - snapshot.user.birthYear,
