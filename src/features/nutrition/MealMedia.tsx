@@ -1,10 +1,11 @@
 import { Image } from 'expo-image';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/ui/Icon';
 import type { MealSlot } from '@/domain/meals/recipes';
-import { focusPosition } from '@/features/media/registry';
+import { focusPosition, heroFit } from '@/features/media/registry';
 import { gradients, gradientStyle, motion, radius, useColors, useReducedMotion } from '@/theme';
 
 import { recipeMedia } from './recipeMedia';
@@ -22,7 +23,8 @@ const SLOT_ICON: Record<MealSlot, IconName> = {
  * could show another dish. Named for screen readers only when it is a real photo.
  *
  * - `thumb`: square, at the start of a meal row (1:1 crop around the photo's focal point).
- * - `banner`: wide picture (16:10) for a recipe detail.
+ * - `banner`: wide picture (16:10) for a recipe detail — only from a large landscape master
+ *   (`heroFit`); a small photo is never upscaled into a banner, the artwork stays.
  */
 export function MealMedia({
   recipeId,
@@ -38,15 +40,17 @@ export function MealMedia({
   size?: number;
 }) {
   const colors = useColors();
+  const { i18n } = useTranslation();
   const reducedMotion = useReducedMotion();
   const [failed, setFailed] = useState(false);
   const media = recipeMedia(recipeId);
-  const photo = media && !failed ? media : null;
   const thumb = variant === 'thumb';
+  const photo = media && !failed && (thumb || heroFit(media) === 'cover') ? media : null;
+  const description = photo ? photo.alt[i18n.language === 'en' ? 'en' : 'fr'] || label : undefined;
   return (
     <View
       accessibilityRole={photo ? 'image' : undefined}
-      accessibilityLabel={photo ? label : undefined}
+      accessibilityLabel={description}
       accessibilityElementsHidden={!photo}
       importantForAccessibility={photo ? 'auto' : 'no-hide-descendants'}
       style={[

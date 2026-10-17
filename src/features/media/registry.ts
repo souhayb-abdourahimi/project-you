@@ -18,6 +18,11 @@ export interface ValidatedMedia {
    * square thumbnail. Defaults to the centre.
    */
   focus?: { x: number; y: number };
+  /**
+   * Pixel size of the delivered file. A picture is never stretched past what it holds: a small
+   * or portrait file is shown whole beside the hero text (`heroFit`), not cropped and upscaled.
+   */
+  size: { width: number; height: number };
   /** What the picture shows, for screen readers. */
   alt: { fr: string; en: string };
 }
@@ -37,6 +42,19 @@ export function focusPosition(media: ValidatedMedia): { left: string; top: strin
   return { left: pct(x), top: pct(y) };
 }
 
+/** Smallest width (px) of a landscape picture filling a full-width hero (~360 pt at 3x). */
+export const HERO_MASTER_WIDTH = 1080;
+
+/**
+ * How a picture fills a wide hero: `cover` when the file is a landscape master large enough for
+ * the crop; `inset` otherwise — shown whole, at about its own size, on the side of the hero, so a
+ * small or portrait picture is never blown up into a blurry banner.
+ */
+export function heroFit(media: ValidatedMedia): 'cover' | 'inset' {
+  const { width, height } = media.size;
+  return width >= HERO_MASTER_WIDTH && width / height >= 1.2 ? 'cover' : 'inset';
+}
+
 /** Problems of a registry against the known ids (tests and the media review). */
 export function registryProblems(registry: MediaRegistry, ids: readonly string[]): string[] {
   const known = new Set(ids);
@@ -50,6 +68,7 @@ export function registryProblems(registry: MediaRegistry, ids: readonly string[]
     if (!entry.alt.fr.trim() || !entry.alt.en.trim()) problems.push(`${id}: missing alt text`);
     if (entry.focus && [entry.focus.x, entry.focus.y].some((v) => v < 0 || v > 1))
       problems.push(`${id}: focus outside the picture`);
+    if (!(entry.size?.width > 0 && entry.size?.height > 0)) problems.push(`${id}: missing pixel size`);
   }
   return problems;
 }

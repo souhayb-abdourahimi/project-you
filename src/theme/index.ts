@@ -40,3 +40,11 @@ export function useReducedMotion(): boolean {
 export function gradientStyle(css: string): ViewStyle {
   return (Platform.OS === 'web' ? { backgroundImage: css } : { experimental_backgroundImage: css }) as ViewStyle;
 }
+
+/**
+ * The left edge of a picture set on the side of a hero melts into the hero colour (a `#rrggbb`
+ * token), so the photo reads as part of the card rather than a pasted rectangle.
+ */
+export function sideFade(color: string): string {
+  return `linear-gradient(90deg, ${color} 0%, ${color}00 55%)`;
+}

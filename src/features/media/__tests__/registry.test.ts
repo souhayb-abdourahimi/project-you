@@ -1,9 +1,12 @@
+import { readdirSync } from 'fs';
+import { join } from 'path';
+
 import { EXERCISES } from '@/domain/training/exercises';
 import { RECIPES } from '@/domain/meals/recipes';
 
 import { EXERCISE_MEDIA, exerciseMedia } from '../../training/exerciseMedia';
 import { RECIPE_MEDIA, recipeMedia } from '../../nutrition/recipeMedia';
-import { focusPosition, registryProblems, type ValidatedMedia } from '../registry';
+import { focusPosition, heroFit, registryProblems, type ValidatedMedia } from '../registry';
 
 /** The 36 ids of the exercise media manifest (poster references, docs/MEDIA.md). */
 const MANIFEST = [
@@ -50,6 +53,7 @@ const media = (over: Partial<ValidatedMedia> = {}): ValidatedMedia => ({
   status: 'validated',
   credit: 'Project You',
   reviewedOn: '2026-10-17',
+  size: { width: 1600, height: 900 },
   alt: { fr: 'Développé couché', en: 'Bench press' },
   ...over,
 });
@@ -79,7 +83,13 @@ describe('media registries', () => {
     const problems = registryProblems(
       {
         pizza: media(),
-        bench_press: media({ credit: ' ', reviewedOn: '', alt: { fr: '', en: 'x' }, focus: { x: 2, y: 0 } }),
+        bench_press: media({
+          credit: ' ',
+          reviewedOn: '',
+          alt: { fr: '', en: 'x' },
+          focus: { x: 2, y: 0 },
+          size: { width: 0, height: 300 },
+        }),
       },
       ['bench_press'],
     );
@@ -89,6 +99,7 @@ describe('media registries', () => {
       'bench_press: missing review date',
       'bench_press: missing alt text',
       'bench_press: focus outside the picture',
+      'bench_press: missing pixel size',
     ]);
   });
 
@@ -103,5 +114,63 @@ describe('media registries', () => {
   it('crop focus becomes an image position, centred by default', () => {
     expect(focusPosition(media())).toEqual({ left: '50%', top: '50%' });
     expect(focusPosition(media({ focus: { x: 0.3, y: 0.25 } }))).toEqual({ left: '30%', top: '25%' });
+  });
+
+  it('a hero is filled only by a large landscape master; small or portrait files are shown whole', () => {
+    expect(heroFit(media({ size: { width: 1448, height: 1086 } }))).toBe('cover');
+    expect(heroFit(media({ size: { width: 1920, height: 1080 } }))).toBe('cover');
+    expect(heroFit(media({ size: { width: 287, height: 509 } }))).toBe('inset');
+    expect(heroFit(media({ size: { width: 800, height: 450 } }))).toBe('inset');
+    expect(heroFit(media({ size: { width: 1200, height: 1600 } }))).toBe('inset');
+  });
+});
+
+const ASSETS = join(__dirname, '../../../../assets/media');
+const files = (dir: string) =>
+  readdirSync(join(ASSETS, dir), { withFileTypes: true })
+    .filter((f) => f.isFile())
+    .map((f) => f.name);
+
+describe('media batch 01 (2026-10-17)', () => {
+  it('maps exactly the 9 validated exercise files, each to its own exercise id', () => {
+    const ids = Object.keys(EXERCISE_MEDIA).sort();
+    expect(ids).toEqual([
+      'bodyweight_squat',
+      'db_bench_press',
+      'db_row',
+      'db_shoulder_press',
+      'deadlift',
+      'lat_pulldown',
+      'plank',
+      'pull_up',
+      'push_up',
+    ]);
+    // One bundled file per registered id, named after it: no duplicate or alternate crop shipped.
+    expect(files('exercises').sort()).toEqual(ids.map((id) => `${id}.webp`));
+  });
+
+  it('only the exercise with a landscape master fills the hero', () => {
+    const cover = Object.entries(EXERCISE_MEDIA)
+      .filter(([, m]) => m && heroFit(m) === 'cover')
+      .map(([id]) => id);
+    expect(cover).toEqual(['bodyweight_squat']);
+  });
+
+  it('links a recipe photo only to the exact dish; the other photos stay unlinked', () => {
+    expect(Object.keys(RECIPE_MEDIA)).toEqual(['chicken_rice_broccoli']);
+    expect(files('recipes')).toEqual(['chicken_rice_broccoli.jpg']);
+    const unlinked = files('recipes/unlinked').map((f) => f.replace(/\.jpg$/, ''));
+    expect(unlinked.sort()).toEqual([
+      'banana_berry_pancakes',
+      'berry_banana_smoothie_bowl',
+      'penne_meatballs_tomato',
+      'salmon_quinoa_vegetables',
+      'scrambled_eggs_spinach',
+    ]);
+    const recipeIds = new Set(RECIPES.map((r) => r.id));
+    for (const id of unlinked) {
+      expect(recipeIds.has(id)).toBe(false);
+      expect(recipeMedia(id)).toBeNull();
+    }
   });
 });

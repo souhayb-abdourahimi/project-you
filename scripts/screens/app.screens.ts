@@ -56,6 +56,28 @@ test('workout: replace an exercise', async ({ page }) => {
   await shot(page, 'workout-replace');
 });
 
+test('workout: exercise photos in the hero', async ({ page }) => {
+  await start(page);
+  await page.goto('/workout/2026-09-30');
+  // A portrait file (shown whole on the right of the hero)…
+  await page.getByRole('button', { name: /^Développé épaules haltères,/ }).filter({ visible: true }).first().click();
+  const inset = page.getByRole('heading', { name: 'Développé épaules haltères' }).first();
+  await inset.waitFor();
+  await inset.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  await page.waitForTimeout(500);
+  await shot(page, 'workout-photo-inset', false);
+  // …and a landscape master (fills the hero), via a replacement.
+  await page.getByRole('button', { name: /^Pont fessier,/ }).filter({ visible: true }).first().click();
+  await page.getByRole('button', { name: 'Remplacer' }).filter({ visible: true }).first().click();
+  await page.getByRole('radio', { name: 'Machine prise' }).filter({ visible: true }).first().click();
+  await page.getByRole('button', { name: /^Squat au poids du corps,/ }).filter({ visible: true }).first().click();
+  const cover = page.getByRole('heading', { name: 'Squat au poids du corps' }).first();
+  await cover.waitFor();
+  await cover.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  await page.waitForTimeout(500);
+  await shot(page, 'workout-photo-cover', false);
+});
+
 test('weekly check-in', async ({ page }) => {
   await start(page, FRIDAY, '2026-10-01');
   await page.goto('/checkin');
@@ -111,6 +133,11 @@ test('nutrition tab', async ({ page }) => {
   await page.getByRole('button', { name: 'Je l’ai mangé' }).first().click();
   await shot(page, 'nutrition', false);
   await shot(page, 'nutrition-full');
+  await page.getByRole('tab', { name: 'Recettes' }).filter({ visible: true }).first().click();
+  await page.getByText('Poulet, riz et brocoli').filter({ visible: true }).first().waitFor();
+  await page.waitForTimeout(500);
+  await shot(page, 'nutrition-recipes', false);
+  await shot(page, 'nutrition-recipes-full');
 });
 
 test('progress tab', async ({ page }) => {
