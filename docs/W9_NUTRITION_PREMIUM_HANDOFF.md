@@ -60,7 +60,7 @@ Recipes lists recipes actually used by the generated weekly plan.
 `src/domain/meals/recipes.ts`
 `src/features/nutrition/MealMedia.tsx`
 
-`Recipe.mediaUri?: string | null` is the only image entry point.
+Superseded in W-10 (D-045): `RECIPE_MEDIA` (`recipe.id -> ValidatedMedia`, `src/features/nutrition/recipeMedia.ts`) is the only image entry point; `Recipe.mediaUri` was removed.
 
 Rule:
 
@@ -120,7 +120,7 @@ These require broader product/backend decisions and should not be silently impro
    - move them into `src/i18n/locales/fr.ts` and `en.ts`.
 
 5. Approved food photography
-   - map only validated assets to `Recipe.mediaUri`;
+   - map only validated assets in `RECIPE_MEDIA` (see `docs/MEDIA.md`);
    - no nutrition value should be inferred from those editorial images.
 
 ## Next implementation contract for Claude
