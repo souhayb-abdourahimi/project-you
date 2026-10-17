@@ -50,6 +50,8 @@ export function MealDraftEditor({ analysis, onSaved }: { analysis: MealAnalysis;
             // A row: the stepper grows sideways (its flex basis is a width).
             <View style={styles.stepper}>
               <NumberStepper
+                compact
+                unit="g"
                 label={t('nutrition.analysis.portion')}
                 value={item.grams}
                 onChange={(grams) => edit.portion(item.key, grams)}
@@ -228,6 +230,6 @@ const styles = StyleSheet.create({
   },
   macro: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xxs },
   slot: { gap: spacing.xs },
-  stepper: { flexDirection: 'row' },
+  stepper: { flexDirection: 'row', paddingLeft: 48 + spacing.md, maxWidth: 360 },
   flex: { flex: 1, gap: 2 },
 });

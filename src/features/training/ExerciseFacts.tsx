@@ -39,14 +39,16 @@ export function ExerciseFacts({
   return (
     <View style={styles.root}>
       {/* The prescription as three facts (W-10 reference); read as one sentence. */}
-      <View accessible accessibilityLabel={target} style={[styles.strip, { borderColor: colors.border }]}>
+      <View accessible accessibilityLabel={target} style={[styles.strip, { backgroundColor: colors.surfaceSubtle }]}>
         <Fact label={t('workout.facts.sets')} value={String(exercise.sets)} />
+        <View style={[styles.sep, { backgroundColor: colors.border }]} />
         <Fact
           label={exercise.unit === 'seconds' ? t('workout.facts.seconds') : t('workout.facts.reps')}
           value={
             exercise.repsMin === exercise.repsMax ? `${exercise.repsMin}` : `${exercise.repsMin}–${exercise.repsMax}`
           }
         />
+        <View style={[styles.sep, { backgroundColor: colors.border }]} />
         <Fact label={t('workout.facts.rest')} value={restLabel(exercise.restSeconds, t)} />
       </View>
       <View style={styles.tiles}>
@@ -97,7 +99,7 @@ function Fact({ label, value }: { label: string; value: string }) {
 function Tile({ label, children }: { label: string; children: ReactNode }) {
   const colors = useColors();
   return (
-    <View style={[styles.tile, { backgroundColor: colors.surfaceSubtle }]}>
+    <View style={[styles.tile, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <Text variant="caption" color="textMuted">
         {label}
       </Text>
@@ -212,15 +214,18 @@ function Why({ exercise }: { exercise: SessionExercise }) {
 
 const styles = StyleSheet.create({
   root: { gap: spacing.sm },
-  strip: {
-    flexDirection: 'row',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    paddingVertical: spacing.sm,
-  },
-  fact: { flex: 1, gap: 2 },
+  strip: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.md, paddingVertical: spacing.sm },
+  sep: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch' },
+  fact: { flex: 1, gap: 2, alignItems: 'center' },
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  tile: { flex: 1, minWidth: 140, borderRadius: radius.md, padding: spacing.md, gap: 2 },
+  tile: {
+    flex: 1,
+    minWidth: 140,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    gap: 2,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
   toggle: { minHeight: MIN_TOUCH, justifyContent: 'center', alignSelf: 'flex-start' },
   why: { gap: spacing.xs },
 });

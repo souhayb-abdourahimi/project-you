@@ -5,6 +5,7 @@ import { View } from 'react-native';
 import { Banner, Button } from '@/components/ui';
 import type { Journey } from '@/hooks/useJourney';
 import type { TrainingProfile } from '@/domain/profile/schemas';
+import { exerciseStatus } from '@/domain/training/session';
 import { useDataStore } from '@/state/data';
 import { useStorageHealth } from '@/state/storage';
 import { useSyncStatus } from '@/state/sync';
@@ -64,7 +65,12 @@ export function WorkoutSession({
   const started = progress.setsDone > 0 || progress.exercisesSettled > 0;
   return (
     <View style={{ gap: spacing.lg }}>
-      <SessionHeader view={view} progress={progress} />
+      <SessionHeader
+        view={view}
+        progress={progress}
+        statuses={view.exercises.map((e) => exerciseStatus(e, sets[e.exerciseId] ?? [], reports[e.prescribedId]))}
+        current={exercise?.index ?? 0}
+      />
       {banners}
       <RestTimer session={view.key} />
       {exercise ? (

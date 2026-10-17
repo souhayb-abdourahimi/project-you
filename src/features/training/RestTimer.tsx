@@ -35,11 +35,11 @@ export function RestTimer({ session }: { session: string }) {
       <View style={styles.row}>
         <ProgressRing
           value={rest.totalMs > 0 ? (left * 1000) / rest.totalMs : 0}
-          size={68}
-          stroke={6}
+          size={84}
+          stroke={7}
           track="surface"
           label={t('workout.rest.label', { seconds: left })}>
-          <Text variant="headline" style={styles.clock}>
+          <Text variant="metric" color="primary" style={styles.clock}>
             {clock(left)}
           </Text>
         </ProgressRing>
@@ -48,6 +48,9 @@ export function RestTimer({ session }: { session: string }) {
             <Icon name="timer" size="sm" color="primary" />
             <Text variant="headline">{t('workout.rest.title')}</Text>
           </View>
+          <Text variant="caption" color="textSecondary">
+            {t('workout.rest.hint')}
+          </Text>
           {left === 0 ? (
             <Text color="success" accessibilityLiveRegion="polite">
               {t('workout.rest.over')}

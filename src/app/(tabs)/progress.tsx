@@ -7,6 +7,7 @@ import type { ProgressSection } from '@/domain/journey/progress-journey';
 import { Recommendations } from '@/features/journey/Recommendations';
 import { TrainingWeekCard } from '@/features/program/TrainingWeekCard';
 import { BodyProgress as Body } from '@/features/progress/BodyProgress';
+import { ProgressOverview } from '@/features/progress/Overview';
 import { Path } from '@/features/progress/Path';
 import { Performance } from '@/features/progress/Performance';
 import { RANGE_WEEKS, type ProgressRange } from '@/features/progress/view';
@@ -70,6 +71,7 @@ export default function ProgressScreen() {
             .map((a) => (
               <Banner key={a.decision.id} tone="primary" message={t(`progress.adapted.${a.key}`)} />
             ))}
+          <ProgressOverview progress={progress} today={plan.today} rangeWeeks={RANGE_WEEKS[range]} />
           <TrainingWeekCard week={journey.trainingWeek} />
           {progress.order.map((s) => sections[s])}
           <Section title={t('progress.path.title')}>

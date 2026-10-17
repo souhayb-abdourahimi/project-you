@@ -7,7 +7,9 @@ import { getExercise } from '@/domain/training/exercises';
 import { DIFFICULTY_LEVELS, difficultyLevel } from '@/domain/training/program';
 import type { SessionResult, SessionSummary as Summary } from '@/domain/training/session';
 import { formatNumber } from '@/lib/format';
-import { spacing } from '@/theme';
+import { fromKg } from '@/domain/settings/units';
+import { useMassUnit } from '@/hooks/useMassUnit';
+import { radius, spacing, useColors } from '@/theme';
 
 import { ExerciseMedia } from './ExerciseMedia';
 import type { SessionController } from './useSessionController';
@@ -28,6 +30,8 @@ export function SessionSummary({
   preference: ReturnType<typeof usePreferenceQuestion>;
 }) {
   const { t, i18n } = useTranslation();
+  const colors = useColors();
+  const unit = useMassUnit();
   const lang = i18n.language === 'en' ? 'en' : 'fr';
   const name = (id: string) => getExercise(id)?.name[lang] ?? id;
   const outcome = result === 'stopped' || result === 'partial' ? result : 'completed';
@@ -54,18 +58,48 @@ export function SessionSummary({
           }
         />
         <MetricCard
-          icon="workout"
-          iconColor="training"
+          icon="done"
+          iconColor="success"
           label={t('workout.summary.exercises')}
           value={t('workout.summary.ratio', { done: summary.exercisesDone, total: summary.exercisesTotal })}
         />
+      </View>
+      <View style={styles.tiles}>
         <MetricCard
           icon="sessions"
           iconColor="training"
           label={t('workout.summary.sets')}
           value={String(summary.sets)}
         />
+        {summary.volumeKg !== null ? (
+          <MetricCard
+            icon="workout"
+            iconColor="training"
+            label={t('workout.summary.volume')}
+            value={formatNumber(Math.round(fromKg(summary.volumeKg, unit)), lang)}
+            unit={unit}
+            caption={t('workout.summary.volumeHint')}
+          />
+        ) : null}
       </View>
+      <Card dense style={styles.outcome}>
+        <View style={[styles.check, { backgroundColor: colors.success }]}>
+          <Icon name="check" size="sm" color="surface" />
+        </View>
+        <Text variant="bodyMedium" style={styles.flex}>
+          {[
+            t('workout.summary.outcomeDone', { count: summary.exercisesDone }),
+            summary.replacements.length > 0
+              ? t('workout.summary.outcomeReplaced', { count: summary.replacements.length })
+              : null,
+            summary.notPerformed.length > 0
+              ? t('workout.summary.outcomeSkipped', { count: summary.notPerformed.length })
+              : null,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </Text>
+      </Card>
       {summary.replacements.length > 0 ? (
         <Card tone="subtle">
           <View style={styles.inline}>
@@ -158,6 +192,8 @@ const styles = StyleSheet.create({
   root: { gap: spacing.md },
   hero: { gap: spacing.xs, paddingVertical: spacing.sm },
   record: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  outcome: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  check: { width: 32, height: 32, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   inline: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   flex: { flex: 1 },
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },

@@ -54,7 +54,7 @@ export default function RootLayout() {
         <Stack.Screen name="measurements" options={{ headerShown: true, title: t('measurements.title') }} />
         <Stack.Screen name="review" options={{ headerShown: true, title: t('review.title') }} />
         <Stack.Screen name="history" options={{ headerShown: true, title: t('history.title') }} />
-        <Stack.Screen name="checkin" options={{ headerShown: true, title: t('checkin.title') }} />
+        <Stack.Screen name="checkin" options={{ headerShown: true, title: t('review.title') }} />
         <Stack.Screen name="privacy" options={{ headerShown: true, title: t('privacy.title') }} />
         <Stack.Screen name="notifications" options={{ headerShown: true, title: t('notifications.title') }} />
         <Stack.Screen name="calendar" options={{ headerShown: true, title: t('calendar.title') }} />

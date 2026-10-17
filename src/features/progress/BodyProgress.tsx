@@ -75,6 +75,12 @@ export function BodyProgress({
                 values={trend.weeks.map((w) => w.kg)}
                 color="primary"
                 height={88}
+                axis={{
+                  max: t('common.mass', { value: Math.max(...known.map((w) => w.kg!)) }),
+                  min: t('common.mass', { value: Math.min(...known.map((w) => w.kg!)) }),
+                  start: t('progress.body.weeksAgo', { count: trend.weeks.length - 1 }),
+                  end: t('progress.body.thisWeek'),
+                }}
                 label={t('progress.body.trendA11y', {
                   count: known.length,
                   first: t('common.mass', { value: known[0].kg }),
@@ -85,6 +91,10 @@ export function BodyProgress({
                 {t('progress.body.trendCaption', { count: trend.weeks.length })}
               </Text>
             </View>
+          ) : !recomposition && weight.entries > 0 ? (
+            <Text variant="caption" color="textMuted">
+              {t('progress.body.notEnoughTrend')}
+            </Text>
           ) : null}
         </View>,
       );

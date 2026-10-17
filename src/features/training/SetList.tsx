@@ -47,7 +47,7 @@ export function SetList({
                 divider,
                 { backgroundColor: selected ? colors.primarySubtle : pressed ? colors.surfaceSubtle : 'transparent' },
               ]}>
-              <Text style={styles.value} variant="bodyMedium">
+              <Text style={styles.value} variant="headline">
                 {done}
               </Text>
               <Text variant="caption" color="primary">
@@ -61,7 +61,7 @@ export function SetList({
         }
         const current = i === sets.length;
         return (
-          <View key={i} style={[styles.row, divider]}>
+          <View key={i} style={[styles.row, divider, current && { backgroundColor: colors.primarySubtle }]}>
             <Text
               style={styles.value}
               color={current ? 'primary' : 'textMuted'}
@@ -70,7 +70,15 @@ export function SetList({
                 ? t('workout.facts.setCurrent', { index: i + 1 })
                 : t('workout.facts.setPending', { index: i + 1 })}
             </Text>
-            <View style={[styles.pending, { borderColor: current ? colors.primary : colors.borderStrong }]} />
+            <View
+              style={[
+                styles.pending,
+                {
+                  borderColor: current ? colors.primary : colors.borderStrong,
+                  borderStyle: current ? 'solid' : 'dashed',
+                },
+              ]}
+            />
           </View>
         );
       })}
@@ -79,15 +87,16 @@ export function SetList({
 }
 
 const styles = StyleSheet.create({
-  root: { borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.md, overflow: 'hidden' },
+  root: { borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.lg, overflow: 'hidden' },
   row: {
-    minHeight: MIN_TOUCH,
+    minHeight: MIN_TOUCH + spacing.xs,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
   },
   value: { flex: 1 },
+
   check: { width: 22, height: 22, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   pending: { width: 22, height: 22, borderRadius: radius.pill, borderWidth: 1.5 },
 });

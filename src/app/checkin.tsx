@@ -31,6 +31,7 @@ import { WeekGlance } from '@/features/today/TodayGlance';
 import { weekStrip } from '@/features/today/view';
 import { useJourney } from '@/hooks/useJourney';
 import { usePlan } from '@/hooks/usePlan';
+import { formatWeekRange } from '@/lib/format';
 import { useWeights } from '@/hooks/useWeights';
 import { useDataStore } from '@/state/data';
 import { radius, spacing, useColors } from '@/theme';
@@ -45,7 +46,7 @@ type Question = (typeof QUESTIONS)[number];
  * is required, body measures are asked only when relevant, and optional answers stay optional.
  */
 export default function CheckinScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const colors = useColors();
   const plan = usePlan();
   const journey = useJourney(plan);
@@ -106,7 +107,7 @@ export default function CheckinScreen() {
   return (
     <Screen airy>
       <View style={styles.intro}>
-        <ScreenHeader title={t('checkin.title')} />
+        <ScreenHeader title={t('checkin.title')} subtitle={formatWeekRange(week, i18n.language)} />
         <Text variant="caption" color="textSecondary">
           {t('checkin.intro')}
         </Text>

@@ -76,12 +76,12 @@ function Nutrition({ n }: { n: NonNullable<Glance['nutrition']> }) {
               </Text>
             </ProgressRing>
           </View>
-          <Text variant="captionStrong" numberOfLines={2}>
-            {t('today.glance.protein')} ·{' '}
+          <View>
+            <Text variant="captionStrong">{t('today.glance.protein')}</Text>
             <Text variant="caption" color="textMuted">
               {t('nutrition.estimate')}
             </Text>
-          </Text>
+          </View>
           <Text variant="caption" color="textSecondary" numberOfLines={2}>
             {t('today.glance.energy', { eaten: num(n.kcal), target: num(n.kcalTarget) })}
           </Text>

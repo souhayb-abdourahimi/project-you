@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Button, Card, Icon, RadioList, Text } from '@/components/ui';
+import { Badge, Button, Card, Icon, IconButton, RadioList, Text } from '@/components/ui';
 import type { TrainingProfile } from '@/domain/profile/schemas';
-import { getExercise } from '@/domain/training/exercises';
+import { getExercise, type Exercise } from '@/domain/training/exercises';
 import { findReplacements, type ReplacementReason } from '@/domain/training/replacement';
 import { replacementAdvice, SHOWN_REPLACEMENT_REASONS, type SessionExercise } from '@/domain/training/session';
 import { MIN_TOUCH, radius, spacing, useColors } from '@/theme';
@@ -43,7 +43,16 @@ export function ReplacePanel({
   const info = getExercise(exercise.exerciseId);
   return (
     <Card tone="subtle" style={styles.panel}>
-      <Text variant="headline">1. {t('workout.replaceTitle')}</Text>
+      <View style={styles.current}>
+        <ExerciseMedia exerciseId={exercise.exerciseId} label={info?.name[lang] ?? ''} size={44} />
+        <Text variant="headline" style={styles.flex}>
+          {t('workout.replaceFor', { name: info?.name[lang] ?? exercise.exerciseId })}
+        </Text>
+        <IconButton icon="close" tone="plain" label={t('workout.cancel')} onPress={onClose} />
+      </View>
+      <Text variant="captionStrong" color="textSecondary">
+        1. {t('workout.replaceTitle')}
+      </Text>
       <RadioList
         label={t('workout.replaceTitle')}
         options={SHOWN_REPLACEMENT_REASONS.map((r) => ({ value: r, label: t(`workout.replaceReasons.${r}`) }))}
@@ -62,17 +71,11 @@ export function ReplacePanel({
       ) : null}
       {reason ? (
         <View style={styles.list} testID="alternatives">
-          <Text variant="headline">
+          <Text variant="captionStrong" color="textSecondary">
             {options.length > 0 ? `2. ${t('workout.alternatives')}` : t('workout.noReplacement')}
           </Text>
-          {options.map((o) => (
-            <Alternative
-              key={o.id}
-              id={o.id}
-              name={o.name[lang]}
-              muscles={o.primary.map((m) => t(`workout.targets.${m}`)).join(', ')}
-              onPress={() => onReplace(o.id, reason)}
-            />
+          {options.map((o, i) => (
+            <Alternative key={o.id} exercise={o} recommended={i === 0} onPress={() => onReplace(o.id, reason)} />
           ))}
         </View>
       ) : null}
@@ -82,40 +85,57 @@ export function ReplacePanel({
           <Button compact variant="secondary" label={t('workout.endHere')} onPress={onEndSession} />
         </View>
       ) : null}
-      <Button compact variant="ghost" label={t('workout.cancel')} onPress={onClose} />
     </Card>
   );
 }
 
-/** One alternative: its picture (validated media or artwork), its name and the muscles it works. */
+/**
+ * One alternative: its picture (validated media or artwork), its name, the muscles it works, its
+ * level and equipment (catalogue facts). The first one is the replacement engine's best match.
+ */
 function Alternative({
-  id,
-  name,
-  muscles,
+  exercise,
+  recommended,
   onPress,
 }: {
-  id: string;
-  name: string;
-  muscles: string;
+  exercise: Exercise;
+  recommended: boolean;
   onPress: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const colors = useColors();
+  const lang = i18n.language === 'en' ? 'en' : 'fr';
+  const name = exercise.name[lang];
+  const muscles = exercise.primary.map((m) => t(`workout.targets.${m}`)).join(', ');
+  const facts = [
+    t(`workout.level.${exercise.level}`),
+    ...exercise.equipment.map((e) => t(`enums.equipment.${e}`)),
+  ].join(' · ');
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={name}
+      accessibilityLabel={[name, recommended ? t('workout.recommended') : null, muscles, facts]
+        .filter(Boolean)
+        .join(', ')}
       accessibilityHint={t('workout.choose', { name })}
       onPress={onPress}
       style={({ pressed }) => [
         styles.alternative,
-        { backgroundColor: pressed ? colors.surfaceSubtle : colors.surface, borderColor: colors.border },
+        {
+          backgroundColor: pressed ? colors.surfaceSubtle : colors.surface,
+          borderColor: recommended ? colors.primary : colors.border,
+          borderWidth: recommended ? 1.5 : StyleSheet.hairlineWidth,
+        },
       ]}>
-      <ExerciseMedia exerciseId={id} label={name} size={48} />
+      <ExerciseMedia exerciseId={exercise.id} label={name} size={56} />
       <View style={styles.flex}>
+        {recommended ? <Badge tone="primary" label={t('workout.recommended')} /> : null}
         <Text variant="bodyMedium">{name}</Text>
-        <Text variant="caption" color="textMuted" numberOfLines={1}>
+        <Text variant="caption" color="textSecondary" numberOfLines={1}>
           {muscles}
+        </Text>
+        <Text variant="caption" color="textMuted" numberOfLines={1}>
+          {facts}
         </Text>
       </View>
       <Icon name="chevron" size="sm" color="textMuted" />
@@ -157,15 +177,15 @@ export function NotPerformedPanel({
 
 const styles = StyleSheet.create({
   panel: { gap: spacing.md },
+  current: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   list: { gap: spacing.sm },
   alternative: {
     minHeight: MIN_TOUCH,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    padding: spacing.sm,
-    borderRadius: radius.md,
-    borderWidth: StyleSheet.hairlineWidth,
+    padding: spacing.sm + spacing.xxs,
+    borderRadius: radius.lg,
   },
   flex: { flex: 1, gap: 2 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
