@@ -46,8 +46,8 @@ Le modèle ne renvoie **jamais** de calories ni de macros : le schéma `MealPhot
 
 Depuis un poste connecté au projet (`supabase login` puis `supabase link --project-ref krcqdrrfnvfpvczxwrmt`) :
 
-1. Appliquer la migration : `supabase db push` (crée `logged_meals`, RLS propriétaire).
-2. Définir les secrets de la fonction (valeurs saisies sur le poste, jamais commitées) : `supabase secrets set MEAL_VISION_PROVIDER=anthropic ANTHROPIC_API_KEY=… MEAL_VISION_MODEL=…`.
+1. Appliquer la migration `20261017000001_logged_meals.sql` dans l'éditeur SQL (pas `supabase db push`, voir `docs/RELEASE_RUNBOOK.md`).
+2. Définir les secrets de la fonction (valeurs saisies sur le poste, jamais commitées) : `supabase secrets set --env-file <fichier hors du dépôt>` avec `MEAL_VISION_PROVIDER=anthropic`, `ANTHROPIC_API_KEY`, `MEAL_VISION_MODEL`, puis supprimer le fichier.
 3. Déployer : `supabase functions deploy analyze-meal`, avec la vérification JWT par défaut (ne pas passer `--no-verify-jwt`).
 4. Vérifier : la fonction est ACTIVE ; un appel sans JWT répond 401 ; dans l'app connectée, « Analyser » renvoie un brouillon.
 

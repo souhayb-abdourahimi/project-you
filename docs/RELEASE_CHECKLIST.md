@@ -1,5 +1,7 @@
 # Checklist release
 
+Commandes et actions manuelles, dans l'ordre : `docs/RELEASE_RUNBOOK.md`.
+
 À cocher avant chaque mise en production (bêta publique, puis v1). Une case non cochée = pas de release. Les valeurs secrètes ne s'écrivent jamais ici, ni dans le dépôt, ni dans le chat : seulement leurs **noms**.
 
 Projet Supabase : `krcqdrrfnvfpvczxwrmt`. Les threads cloud n'atteignent pas ce projet : les étapes Supabase se font depuis un poste de confiance (CLI connectée) ou le tableau de bord.
@@ -8,7 +10,7 @@ Projet Supabase : `krcqdrrfnvfpvczxwrmt`. Les threads cloud n'atteignent pas ce 
 
 - [ ] Toutes les migrations de `supabase/migrations/` sont appliquées, dans l'ordre des noms. Déjà vérifié jusqu'à `20261007000002_settings_contract.sql` inclus.
 - [ ] **À appliquer** : `20261017000001_logged_meals.sql` (table `logged_meals`, RLS propriétaire, index de sync, trigger `set_updated_at`, aucun droit `anon`).
-  - Commande : `supabase db push` (ou coller le fichier dans l'éditeur SQL).
+  - Dans l'éditeur SQL (pas `supabase db push` : l'historique de la CLI ne connaît pas les migrations déjà collées, elle les rejouerait). Étapes exactes : `docs/RELEASE_RUNBOOK.md`.
   - Contrôle après coup : la table existe, `relrowsecurity = true`, les 4 policies `logged_meals_*_own` sont présentes, et `npm run test:db` est vert en local (couvert par `supabase/tests/rls.sql`).
 - [ ] Advisors Supabase relus après application : sécurité et performance. Un index signalé « inutilisé » ne se supprime pas tant que la base est peu chargée.
 
@@ -33,7 +35,7 @@ Projet Supabase : `krcqdrrfnvfpvczxwrmt`. Les threads cloud n'atteignent pas ce 
 | Edge Function `analyze-meal` | `MEAL_VISION_MODEL` | identifiant du modèle de vision |
 | Edge Functions (fournis par Supabase) | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | injectés automatiquement, rien à définir |
 
-- [ ] Commande : `supabase secrets set MEAL_VISION_PROVIDER=… ANTHROPIC_API_KEY=… MEAL_VISION_MODEL=…` (valeurs saisies sur le poste, jamais collées dans un fichier suivi).
+- [ ] Posés avec `supabase secrets set --env-file <fichier hors du dépôt, supprimé ensuite>` (la clé ne passe pas par l'historique du shell) ; détail dans `docs/RELEASE_RUNBOOK.md`.
 - [ ] Aucune autre clé dans le bundle : `npm run build:web`, puis `grep -rE 'sb_secret_[A-Za-z0-9]|sk-ant-[A-Za-z0-9]|eyJ[^"]*service_role' dist/` (aucun résultat attendu ; supabase-js contient le mot `sb_secret_` seul, pour refuser ces clés côté client).
 - [ ] Auth : **Leaked Password Protection** activée (Authentication → Policies). Elle est désactivée aujourd'hui.
 
