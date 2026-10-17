@@ -32,22 +32,22 @@ export function TodayGlance({ plan, journey }: { plan: Plan; journey: Journey })
   });
   const side = glance.steps ? <Steps steps={glance.steps} /> : glance.weight ? <Weight weight={glance.weight} /> : null;
   if (!glance.nutrition && !glance.week && !side) return null;
+  // W-10 reference: two tiles side by side (nutrition ring, steps or weight), then the week strip.
   return (
     <View style={styles.glance}>
-      {glance.nutrition ? <Nutrition n={glance.nutrition} /> : null}
-      {glance.week || side ? (
+      {glance.nutrition || side ? (
         <View style={styles.row}>
-          {glance.week ? <Week week={glance.week} /> : null}
+          {glance.nutrition ? <Nutrition n={glance.nutrition} /> : null}
           {side}
         </View>
       ) : null}
+      {glance.week ? <Week week={glance.week} /> : null}
     </View>
   );
 }
 
 function Nutrition({ n }: { n: NonNullable<Glance['nutrition']> }) {
   const { t, i18n } = useTranslation();
-  const colors = useColors();
   const num = (v: number) => formatNumber(v, i18n.language);
   const label = t('today.glance.proteinA11y', { eaten: n.proteinG, target: n.proteinTargetG });
   return (
@@ -56,27 +56,27 @@ function Nutrition({ n }: { n: NonNullable<Glance['nutrition']> }) {
       accessibilityLabel={`${label}. ${t('today.glance.energyA11y', { eaten: n.kcal, target: n.kcalTarget })}`}
       accessibilityHint={t('today.glance.openNutrition')}
       onPress={() => router.push('/nutrition')}
-      style={({ pressed }) => [styles.pressable, { transform: [{ scale: pressed ? PRESSED_SCALE : 1 }] }]}>
-      <Card style={styles.nutrition}>
-        <ProgressRing value={n.proteinG / n.proteinTargetG} color="nutrition" label={label} size={104} stroke={10}>
-          <Text variant="metric">{num(n.proteinG)}</Text>
-          <Text variant="caption" color="textMuted">
-            / {num(n.proteinTargetG)} g
-          </Text>
-        </ProgressRing>
-        <View style={styles.flex} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      style={({ pressed }) => [styles.pressable, styles.half, { transform: [{ scale: pressed ? PRESSED_SCALE : 1 }] }]}>
+      <Card dense style={styles.fill}>
+        <View style={styles.halfBody} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           <View style={styles.inline}>
             <Icon name="nutrition" size="sm" color="nutrition" />
             <Text variant="captionStrong" color="textSecondary">
               {t('today.glance.nutrition')}
             </Text>
           </View>
-          <Text variant="title3">{t('today.glance.protein')}</Text>
-          <Text variant="caption" color="textMuted">
-            {t('today.glance.proteinCaption')}
-          </Text>
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-          <Text variant="caption" color="textSecondary">
+          <View style={styles.ringRow}>
+            <ProgressRing value={n.proteinG / n.proteinTargetG} color="nutrition" label={label} size={64} stroke={7}>
+              <Icon name="protein" size="sm" color="nutrition" />
+            </ProgressRing>
+            <View style={styles.flex}>
+              <Text variant="headline">{num(n.proteinG)} g</Text>
+              <Text variant="caption" color="textMuted" numberOfLines={2}>
+                {t('today.glance.proteinOf', { target: num(n.proteinTargetG) })}
+              </Text>
+            </View>
+          </View>
+          <Text variant="caption" color="textSecondary" numberOfLines={2}>
             {t('today.glance.energy', { eaten: num(n.kcal), target: num(n.kcalTarget) })}
           </Text>
         </View>
@@ -93,16 +93,14 @@ function Week({ week }: { week: NonNullable<Glance['week']> }) {
     .map((d) => `${formatDay(d.date, i18n.language)} : ${t(`today.glance.day.${d.state}`)}`)
     .join(', ');
   return (
-    <Card dense style={styles.half} accessibilityLabel={`${t('today.glance.weekA11y', week)}. ${describe}`}>
+    <Card dense accessibilityLabel={`${t('today.glance.weekA11y', week)}. ${describe}`}>
       <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.halfBody}>
         <View style={styles.inline}>
           <Icon name="sessions" size="sm" color="training" />
-          <Text variant="captionStrong" color="textSecondary">
+          <Text variant="captionStrong" color="textSecondary" style={styles.flex}>
             {t('today.glance.week')}
           </Text>
-        </View>
-        <View style={styles.value}>
-          <Text variant="metric">{week.done}</Text>
+          <Text variant="headline">{week.done}</Text>
           <Text variant="captionStrong" color="textMuted">
             / {week.planned} {t('today.glance.sessions')}
           </Text>
@@ -224,10 +222,10 @@ const styles = StyleSheet.create({
   glance: { gap: spacing.sm },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   pressable: { borderRadius: radius.card },
-  nutrition: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  fill: { flex: 1 },
+  ringRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   flex: { flex: 1, gap: spacing.xxs },
   inline: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  divider: { height: StyleSheet.hairlineWidth, marginVertical: spacing.sm },
   half: { flex: 1, minWidth: 150 },
   halfBody: { gap: spacing.sm },
   value: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs },

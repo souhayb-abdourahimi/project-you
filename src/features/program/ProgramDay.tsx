@@ -1,75 +1,94 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Badge, Button, Card, ChoiceGroup, Row, Text } from '@/components/ui';
+import { Badge, Button, Card, ChoiceGroup, Icon, Row, Text } from '@/components/ui';
 import { parseSessionKey } from '@/domain/shared/ids';
 import { formatDate } from '@/lib/format';
 import { useDataStore } from '@/state/data';
-import { radius, spacing, useColors } from '@/theme';
+import { MIN_TOUCH, radius, spacing, useColors } from '@/theme';
 
 import type { ProgramDayView, ProgramSessionView } from './useProgramWeek';
 import { SessionStatusLine } from './SessionStatusLine';
 
 /**
- * One day of the Programme screen (W-9 §5), as a timeline: the date on the left, then a rest line
- * or the day's sessions as planned and lived. Today stands out by its date mark, not by colour alone.
+ * The selected day of the Programme screen (W-10): its date, then a rest line or the day's sessions
+ * as planned and lived, with their actions. Today is said in words, not by colour alone.
  */
-export function ProgramDay({ day }: { day: ProgramDayView }) {
+export function ProgramDayCard({ day }: { day: ProgramDayView }) {
   const { t, i18n } = useTranslation();
   const date =
     day.when === 'today'
       ? t('program.todayDate', { date: formatDate(day.date, i18n.language) })
       : formatDate(day.date, i18n.language);
-  if (day.sessions.length === 0)
-    return (
-      <View style={styles.day} accessible accessibilityLabel={`${date}, ${dayRest(day, t)}`}>
-        <DateMark date={day.date} today={day.when === 'today'} lang={i18n.language} />
-        {/* A past day whose plan is unknown is never called a rest day (W-7.1). */}
-        <Text color="textMuted" style={styles.restLine}>
-          {dayRest(day, t)}
-        </Text>
-      </View>
-    );
   return (
-    <View style={styles.day}>
-      <DateMark date={day.date} today={day.when === 'today'} lang={i18n.language} />
-      <Card raised={day.when === 'today'} style={styles.card}>
-        <Text variant="captionStrong" color={day.when === 'today' ? 'primary' : 'textMuted'}>
-          {date}
+    <Card raised style={styles.card}>
+      <Text variant="captionStrong" color={day.when === 'today' ? 'primary' : 'textMuted'}>
+        {date}
+      </Text>
+      {day.sessions.length === 0 ? (
+        // A past day whose plan is unknown is never called a rest day (W-7.1).
+        <View style={styles.restRow}>
+          <Icon name="rest" size="md" color="textMuted" />
+          <Text color="textSecondary">{dayRest(day, t)}</Text>
+        </View>
+      ) : (
+        <>
+          {day.prescriptionUnknown ? <Text color="textMuted">{t('program.prescriptionUnknown')}</Text> : null}
+          {day.sessions.map((s) => (
+            <ProgramSession key={s.key} session={s} />
+          ))}
+        </>
+      )}
+    </Card>
+  );
+}
+
+const DONE = ['completed', 'partial', 'stopped'];
+
+/**
+ * One day with sessions in the week list: a status mark, the weekday, the focus and where it
+ * stands (the same fact line as the card), a chevron. Selecting it shows the day above.
+ */
+export function WeekDayRow({ day, selected, onPress }: { day: ProgramDayView; selected: boolean; onPress: () => void }) {
+  const { t, i18n } = useTranslation();
+  const colors = useColors();
+  const first = day.sessions[0];
+  const done = day.sessions.some((s) => DONE.includes(s.status));
+  const weekday = formatDate(day.date, i18n.language).split(' ')[0];
+  const focus = day.sessions
+    .map((s) => (s.focus ? t(`enums.focus.${s.focus}`) : t('program.offPlanSession')))
+    .join(' · ');
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`${formatDate(day.date, i18n.language)}, ${focus}`}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.weekRow,
+        { backgroundColor: selected ? colors.primarySubtle : pressed ? colors.surfaceSubtle : 'transparent' },
+      ]}>
+      <View style={[styles.status, { backgroundColor: done ? colors.success : colors.surfaceSubtle }]}>
+        <Icon name={done ? 'check' : 'workout'} size="sm" color={done ? 'surface' : 'training'} />
+      </View>
+      <View style={styles.flex}>
+        <Text variant="bodyMedium">{weekday.charAt(0).toUpperCase() + weekday.slice(1)}</Text>
+        <Text variant="caption" color="textSecondary" numberOfLines={1}>
+          {focus}
         </Text>
-        {day.prescriptionUnknown ? <Text color="textMuted">{t('program.prescriptionUnknown')}</Text> : null}
-        {day.sessions.map((s) => (
-          <ProgramSession key={s.key} session={s} />
-        ))}
-      </Card>
-    </View>
+        {first && first.status !== 'planned' ? (
+          <SessionStatusLine status={first.status} movedTo={first.movedTo} replacedBy={first.replacedBy} compact />
+        ) : null}
+      </View>
+      <Icon name="chevron" size="sm" color="textMuted" />
+    </Pressable>
   );
 }
 
 const dayRest = (day: ProgramDayView, t: (key: string) => string) =>
   day.prescriptionUnknown ? t('program.prescriptionUnknown') : t('program.rest');
-
-/** Short weekday over the day's number; today in a filled pill. Decorative: the row says the date. */
-function DateMark({ date, today, lang }: { date: string; today: boolean; lang: string }) {
-  const colors = useColors();
-  const at = new Date(`${date}T12:00:00`);
-  const locale = lang === 'en' ? 'en-GB' : 'fr-FR';
-  return (
-    <View
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      style={[styles.mark, today && { backgroundColor: colors.primary }]}>
-      <Text variant="micro" color={today ? 'onPrimary' : 'textMuted'}>
-        {new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(at)}
-      </Text>
-      <Text variant="headline" color={today ? 'onPrimary' : 'textPrimary'}>
-        {at.getDate()}
-      </Text>
-    </View>
-  );
-}
 
 /** The route of one session: its own key (date and slot), whatever the other sessions of the day. */
 function sessionParams(key: string) {
@@ -89,7 +108,7 @@ function ProgramSession({ session: s }: { session: ProgramSessionView }) {
   ].filter((d): d is string => !!d);
   return (
     <View style={styles.session}>
-      <Text variant="title3">
+      <Text variant="title2">
         {s.focus ? t(`enums.focus.${s.focus}`) : t('program.offPlanSession')}
         {s.slot?.variant === 'short' ? ` · ${t('workout.short')}` : ''}
       </Text>
@@ -144,16 +163,18 @@ function ProgramSession({ session: s }: { session: ProgramSessionView }) {
 }
 
 const styles = StyleSheet.create({
-  day: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
-  mark: {
-    width: 48,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
+  card: { gap: spacing.sm + spacing.xxs },
+  restRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xs },
+  weekRow: {
+    minHeight: MIN_TOUCH + spacing.sm,
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
-  restLine: { flex: 1, paddingVertical: spacing.md + spacing.xxs },
-  card: { flex: 1 },
+  status: { width: 32, height: 32, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
+  flex: { flex: 1, gap: 2 },
   session: { gap: spacing.sm },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
 });

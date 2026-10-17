@@ -15,10 +15,13 @@ export function SessionStatusLine({
   status,
   movedTo,
   replacedBy,
+  compact,
 }: {
   status: SessionStatus;
   movedTo: string | null;
   replacedBy: string | null;
+  /** One small line (the week list). */
+  compact?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   if (status === 'planned') return null;
@@ -33,10 +36,10 @@ export function SessionStatusLine({
     <View style={styles.row}>
       <Icon
         name={done ? 'done' : status === 'moved' ? 'arrow' : 'info'}
-        size="sm"
+        size={compact ? 12 : 'sm'}
         color={done ? 'success' : 'textMuted'}
       />
-      <Text color={done ? 'success' : 'textMuted'} style={styles.text}>
+      <Text variant={compact ? 'caption' : 'body'} color={done ? 'success' : 'textMuted'} style={styles.text}>
         {text}
       </Text>
     </View>
