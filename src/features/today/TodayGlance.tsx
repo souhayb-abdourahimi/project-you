@@ -69,16 +69,19 @@ function Nutrition({ n }: { n: NonNullable<Glance['nutrition']> }) {
             </Text>
           </View>
           <View style={styles.ringRow}>
-            <ProgressRing value={n.proteinG / n.proteinTargetG} color="nutrition" label={label} size={64} stroke={7}>
-              <Icon name="protein" size="sm" color="nutrition" />
-            </ProgressRing>
-            <View style={styles.flex}>
-              <Text variant="headline">{num(n.proteinG)} g</Text>
-              <Text variant="caption" color="textMuted" numberOfLines={2}>
-                {t('today.glance.proteinOf', { target: num(n.proteinTargetG) })}
+            <ProgressRing value={n.proteinG / n.proteinTargetG} color="nutrition" label={label} size={72} stroke={7}>
+              <Text variant="headline">{num(n.proteinG)}</Text>
+              <Text variant="micro" color="textMuted">
+                / {num(n.proteinTargetG)} g
               </Text>
-            </View>
+            </ProgressRing>
           </View>
+          <Text variant="captionStrong" numberOfLines={2}>
+            {t('today.glance.protein')} ·{' '}
+            <Text variant="caption" color="textMuted">
+              {t('nutrition.estimate')}
+            </Text>
+          </Text>
           <Text variant="caption" color="textSecondary" numberOfLines={2}>
             {t('today.glance.energy', { eaten: num(n.kcal), target: num(n.kcalTarget) })}
           </Text>

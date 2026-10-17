@@ -265,7 +265,6 @@ const en: LocaleShape = {
       nutrition: 'Nutrition',
       protein: 'Protein',
       proteinCaption: 'logged meals · estimate',
-      proteinOf: 'protein of {{target}} g · estimate',
       proteinA11y: '{{eaten}} g of protein logged out of {{target}} g, estimate',
       energy: 'Energy {{eaten}} / {{target}} kcal',
       energyA11y: 'Energy {{eaten}} of {{target}} kcal, estimate',

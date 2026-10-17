@@ -273,7 +273,6 @@ const fr = {
       nutrition: 'Nutrition',
       protein: 'Protéines',
       proteinCaption: 'repas notés · estimation',
-      proteinOf: 'protéines sur {{target}} g · estimation',
       proteinA11y: '{{eaten}} g de protéines notées sur {{target}} g, estimation',
       energy: 'Énergie {{eaten}} / {{target}} kcal',
       energyA11y: 'Énergie {{eaten}} sur {{target}} kcal, estimation',
