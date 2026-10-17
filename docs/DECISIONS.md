@@ -711,3 +711,13 @@ Souhayb a validé Aujourd'hui (passe 3.1) et demandé deux micro-corrections (3.
 - **Résumé de séance** : volume = Σ charge × répétitions des séries saisies avec une charge (`sessionVolume`, testé) ; aucun volume pour une séance au poids du corps ou en secondes (pas de zéro). Pas de comparaison « +12 % vs dernière fois » : deux séances ne sont comparables que si leurs exercices et leurs variantes le sont, règle non définie. Pas de note libre (règle `PRIVACY.md` : aucun texte libre dans le suivi).
 - **Remplacement** : « Recommandé » = premier résultat du moteur `findReplacements` (même groupe musculaire, même schéma, niveau et matériel), rien de plus.
 - **Progrès** : tuiles poids (ou tour de taille en recomposition, selon l'ordre de l'objectif) et adhérence en tête ; courbe de poids avec ses vraies bornes et repères de temps ; états « pas assez de données » explicites.
+
+### D-045 addendum (lot média 01, 2026-10-17)
+
+- **Intégré** : 9 photos d'exercices (`exercise.id` exact, lot validé par Souhayb) et 1 photo de recette (`chicken_rice_broccoli`). Liste, raisons et ids restants : `docs/MEDIA.md`.
+- **Taille réelle obligatoire** (`ValidatedMedia.size`) et **`heroFit`** : un héros n'est rempli que par un original paysage ≥ 1080 px ; une petite ou une portrait est montrée entière sur le côté, bord fondu (`sideFade`), jamais agrandie en bannière. Raison : 8 des 9 fichiers font ~280 × 500 px ; recadrés en 16:9 ils seraient agrandis ~3,5× et flous. Même règle pour la bannière de recette.
+- **Photos de recettes non liées** : 5 photos montrent des plats absents du catalogue ; elles restent dans `assets/media/recipes/unlinked/`, hors bundle. Le catalogue n'est pas modifié pour une image : une recette se crée pour elle-même (aliments Ciqual, tests), la photo suit.
+- **Aujourd'hui** : le héros garde son visuel dessiné. Il représente la séance (« Full body B »), pas un exercice ; y mettre la photo du premier exercice dirait autre chose que le titre.
+- **Progrès** : moins de phrases, mêmes données. « Depuis le début » et « Habitudes » deviennent des chiffres (`Figure`), la phrase d'adhérence et la note « prescription indisponible » passent derrière « Détail de l'adhérence » (le chiffre est déjà dans la tuile du haut) ; « Performance » sépare le nom, l'avant → après et le record ; « Ton parcours » montre l'étape en cours sur une barre d'étapes, la frise complète et tous les jalons à un geste. Rien n'est affiché à zéro : un fait absent n'a pas de chiffre.
+- **Date** : 2026-10-17
+
