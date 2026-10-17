@@ -11,8 +11,6 @@ export interface Ingredient {
 export interface Recipe {
   id: string;
   name: { fr: string; en: string };
-  /** Optional approved Project You photo. Never substitute unrelated imagery when absent. */
-  mediaUri?: string | null;
   slots: MealSlot[];
   ingredients: Ingredient[];
   minutes: number;

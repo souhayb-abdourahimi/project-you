@@ -20,7 +20,7 @@ export function RecipeLibrary({ recipes }: { recipes: readonly Recipe[] }) {
           dense
           style={styles.row}
           accessibilityLabel={`${recipe.name[lang]}, ${t('common.minutes', { count: recipe.minutes })}`}>
-          <MealMedia uri={recipe.mediaUri} label={recipe.name[lang]} size={56} />
+          <MealMedia recipeId={recipe.id} slot={recipe.slots[0]} label={recipe.name[lang]} size={56} />
           <View style={styles.text}>
             <Text variant="headline" numberOfLines={2}>
               {recipe.name[lang]}

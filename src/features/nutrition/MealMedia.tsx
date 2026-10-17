@@ -2,38 +2,47 @@ import { Image } from 'expo-image';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { motion, radius, spacing, useColors, useReducedMotion } from '@/theme';
+import { Icon, type IconName } from '@/components/ui/Icon';
+import type { MealSlot } from '@/domain/meals/recipes';
+import { focusPosition } from '@/features/media/registry';
+import { gradients, gradientStyle, motion, radius, useColors, useReducedMotion } from '@/theme';
 
-import { Icon } from '@/components/ui/Icon';
+import { recipeMedia } from './recipeMedia';
+
+const SLOT_ICON: Record<MealSlot, IconName> = {
+  breakfast: 'breakfast',
+  lunch: 'meal',
+  dinner: 'meal',
+  snack: 'snack',
+};
 
 /**
- * A recipe image surface.
+ * The picture of a recipe: its validated photo (`recipe.id -> media`, recipeMedia.ts), else a calm
+ * drawn tile (the meal's moment as a glyph on the nutrition tint). Never a generic food photo that
+ * could show another dish. Named for screen readers only when it is a real photo.
  *
- * Only an explicitly mapped Project You media URI is rendered as a photo (`recipe.id -> validated
- * media`). Missing or failed media falls back to a quiet branded tile; we never substitute a random
- * image that could depict the wrong meal.
- *
- * - `thumb` (W-10 default): the square thumbnail at the start of a meal row.
- * - `banner`: a wide picture (recipe library, meal detail).
+ * - `thumb`: square, at the start of a meal row (1:1 crop around the photo's focal point).
+ * - `banner`: wide picture (16:10) for a recipe detail.
  */
 export function MealMedia({
-  uri,
+  recipeId,
+  slot,
   label,
   variant = 'thumb',
   size = 64,
 }: {
-  uri?: string | null;
+  recipeId: string;
+  slot?: MealSlot;
   label: string;
   variant?: 'thumb' | 'banner';
-  /** Side of the thumbnail. */
   size?: number;
 }) {
   const colors = useColors();
   const reducedMotion = useReducedMotion();
   const [failed, setFailed] = useState(false);
-  const photo = uri && !failed ? uri : null;
+  const media = recipeMedia(recipeId);
+  const photo = media && !failed ? media : null;
   const thumb = variant === 'thumb';
-
   return (
     <View
       accessibilityRole={photo ? 'image' : undefined}
@@ -42,31 +51,35 @@ export function MealMedia({
       importantForAccessibility={photo ? 'auto' : 'no-hide-descendants'}
       style={[
         thumb ? [styles.thumb, { width: size, height: size }] : styles.banner,
-        { backgroundColor: colors.surfaceSubtle },
+        { backgroundColor: colors.successSubtle },
       ]}>
       {photo ? (
         <Image
-          source={{ uri: photo }}
+          source={photo.source}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
+          contentPosition={focusPosition(photo)}
           transition={reducedMotion ? 0 : motion.slow}
           onError={() => setFailed(true)}
         />
       ) : (
-        <View style={styles.fallback}>
-          <View style={[styles.mark, thumb && styles.markThumb, { backgroundColor: colors.surface }]}>
-            <Icon name="meal" size={thumb ? 20 : 26} color="nutrition" />
+        <>
+          <View style={[StyleSheet.absoluteFill, gradientStyle(gradients.tileGlow)]} />
+          <View style={styles.centre}>
+            <Icon
+              name={slot ? SLOT_ICON[slot] : 'meal'}
+              size={thumb ? Math.round(size * 0.38) : 34}
+              color="nutrition"
+            />
           </View>
-        </View>
+        </>
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  thumb: { borderRadius: radius.md + 2, overflow: 'hidden', position: 'relative' },
-  banner: { height: 132, borderRadius: radius.lg, overflow: 'hidden', position: 'relative' },
-  fallback: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.sm },
-  mark: { width: 52, height: 52, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
-  markThumb: { width: 36, height: 36 },
+  thumb: { borderRadius: radius.md + 2, overflow: 'hidden' },
+  banner: { aspectRatio: 16 / 10, borderRadius: radius.lg, overflow: 'hidden' },
+  centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });

@@ -59,6 +59,15 @@ export const ICONS = {
   sliders: { sf: 'slider.horizontal.3', md: 'tune' },
   play: { sf: 'play.fill', md: 'play_arrow' },
   skip: { sf: 'forward.end', md: 'skip_next' },
+  // Movement families (drawn exercise artwork when no validated photo exists).
+  patternSquat: { sf: 'figure.strengthtraining.functional', md: 'sports_gymnastics' },
+  patternHinge: { sf: 'figure.cross.training', md: 'fitness_center' },
+  patternPush: { sf: 'dumbbell', md: 'exercise' },
+  patternPull: { sf: 'figure.rower', md: 'rowing' },
+  patternCore: { sf: 'figure.core.training', md: 'self_improvement' },
+  breakfast: { sf: 'sunrise', md: 'wb_twilight' },
+  snack: { sf: 'carrot', md: 'nutrition' },
+  record: { sf: 'trophy.fill', md: 'emoji_events' },
   // A 5-step feeling scale, from the lightest to the hardest (never a red or alarming glyph).
   mood1: { sf: 'face.smiling.inverse', md: 'sentiment_very_satisfied' },
   mood2: { sf: 'face.smiling', md: 'sentiment_satisfied' },

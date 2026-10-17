@@ -201,6 +201,8 @@ export const HEADING_VARIANTS: readonly TypographyVariant[] = [
 export const gradients = {
   heroGlow:
     'radial-gradient(circle at 85% 20%, rgba(70, 116, 255, 0.55) 0%, rgba(29, 78, 216, 0.18) 38%, rgba(18, 23, 34, 0) 70%)',
+  /** Soft light on a drawn tile (recipe or exercise artwork): depth without a fake photo. */
+  tileGlow: 'radial-gradient(circle at 28% 22%, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 62%)',
   heroScrim:
     'linear-gradient(180deg, rgba(10, 13, 20, 0.10) 0%, rgba(10, 13, 20, 0.55) 55%, rgba(10, 13, 20, 0.92) 100%)',
 } as const;
