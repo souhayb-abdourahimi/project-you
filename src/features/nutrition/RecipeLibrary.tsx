@@ -1,17 +1,21 @@
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
-import { Card, EmptyState, Text } from '@/components/ui';
+import { Badge, Card, EmptyState, Text } from '@/components/ui';
 import type { Recipe } from '@/domain/meals/recipes';
 import { spacing } from '@/theme';
 
 import { MealMedia } from './MealMedia';
 
-/** The recipes actually used by this week's plan, as compact rows (thumbnail, name, slots, time). */
+/**
+ * The recipes actually used by this week's plan, as rows of one shape whether a validated photo
+ * exists or not (same 64 pt tile: the photo, else the meal's moment drawn on the nutrition tint),
+ * so a recipe without a photo never looks unfinished. Name, moments, time.
+ */
 export function RecipeLibrary({ recipes }: { recipes: readonly Recipe[] }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language === 'en' ? 'en' : 'fr';
-  if (recipes.length === 0) return <EmptyState icon="meal" message={t('common.loading')} />;
+  if (recipes.length === 0) return <EmptyState icon="meal" message={t('nutrition.recipesEmpty')} />;
   return (
     <View style={styles.stack}>
       {recipes.map((recipe) => (
@@ -19,8 +23,12 @@ export function RecipeLibrary({ recipes }: { recipes: readonly Recipe[] }) {
           key={recipe.id}
           dense
           style={styles.row}
-          accessibilityLabel={`${recipe.name[lang]}, ${t('common.minutes', { count: recipe.minutes })}`}>
-          <MealMedia recipeId={recipe.id} slot={recipe.slots[0]} label={recipe.name[lang]} size={56} />
+          accessibilityLabel={t('nutrition.recipeA11y', {
+            name: recipe.name[lang],
+            slots: recipe.slots.map((slot) => t(`enums.slot.${slot}`)).join(', '),
+            minutes: recipe.minutes,
+          })}>
+          <MealMedia recipeId={recipe.id} slot={recipe.slots[0]} label={recipe.name[lang]} size={64} />
           <View style={styles.text}>
             <Text variant="headline" numberOfLines={2}>
               {recipe.name[lang]}
@@ -29,9 +37,7 @@ export function RecipeLibrary({ recipes }: { recipes: readonly Recipe[] }) {
               {recipe.slots.map((slot) => t(`enums.slot.${slot}`)).join(' · ')}
             </Text>
           </View>
-          <Text variant="captionStrong" color="nutrition">
-            {recipe.minutes} {t('nutrition.minutesShort')}
-          </Text>
+          <Badge icon="time" label={`${recipe.minutes} ${t('nutrition.minutesShort')}`} />
         </Card>
       ))}
     </View>

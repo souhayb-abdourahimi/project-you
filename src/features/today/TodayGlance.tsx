@@ -2,8 +2,9 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Card, Icon, MiniBars, ProgressRing, Text } from '@/components/ui';
+import { Card, Icon, MiniBars, ProgressRing, Text, TrendLine } from '@/components/ui';
 import { fromKg } from '@/domain/settings/units';
+import { weightTrend } from '@/features/progress/view';
 import type { Journey } from '@/hooks/useJourney';
 import { useMassUnit } from '@/hooks/useMassUnit';
 import type { Plan } from '@/hooks/usePlan';
@@ -33,7 +34,11 @@ export function TodayGlance({ plan, journey }: { plan: Plan; journey: Journey })
     weight: journey.progress.body.weight,
     bodyOrder: journey.progress.bodyOrder,
   });
-  const side = glance.steps ? <Steps steps={glance.steps} /> : glance.weight ? <Weight weight={glance.weight} /> : null;
+  const side = glance.steps ? (
+    <Steps steps={glance.steps} />
+  ) : glance.weight ? (
+    <Weight weight={glance.weight} today={plan.today} />
+  ) : null;
   if (!glance.nutrition && !glance.week && !side) return null;
   // W-10 reference: two tiles side by side (nutrition ring, steps or weight), then the week strip.
   return (
@@ -69,18 +74,18 @@ function Nutrition({ n }: { n: NonNullable<Glance['nutrition']> }) {
             </Text>
           </View>
           <View style={styles.ringRow}>
-            <ProgressRing value={n.proteinG / n.proteinTargetG} color="nutrition" label={label} size={72} stroke={7}>
+            <ProgressRing value={n.proteinG / n.proteinTargetG} color="nutrition" label={label} size={64} stroke={6}>
               <Text variant="headline">{num(n.proteinG)}</Text>
               <Text variant="micro" color="textMuted">
                 / {num(n.proteinTargetG)} g
               </Text>
             </ProgressRing>
-          </View>
-          <View>
-            <Text variant="captionStrong">{t('today.glance.protein')}</Text>
-            <Text variant="caption" color="textMuted">
-              {t('nutrition.estimate')}
-            </Text>
+            <View style={styles.flex}>
+              <Text variant="captionStrong">{t('today.glance.protein')}</Text>
+              <Text variant="caption" color="textMuted">
+                {t('nutrition.estimate')}
+              </Text>
+            </View>
           </View>
           <Text variant="caption" color="textSecondary" numberOfLines={2}>
             {t('today.glance.energy', { eaten: num(n.kcal), target: num(n.kcalTarget) })}
@@ -178,9 +183,20 @@ function Steps({ steps }: { steps: NonNullable<Glance['steps']> }) {
   );
 }
 
-function Weight({ weight }: { weight: NonNullable<Glance['weight']> }) {
+function Weight({ weight, today }: { weight: NonNullable<Glance['weight']>; today: string }) {
   const { t, i18n } = useTranslation();
   const unit = useMassUnit();
+  const weights = useDataStore((s) => s.weights);
+  const trend = weightTrend(weights, today, TREND_WEEKS);
+  const known = trend?.weeks.filter((w) => w.kg !== null) ?? [];
+  const trendLabel =
+    known.length >= 2
+      ? t('progress.body.trendA11y', {
+          count: known.length,
+          first: t('common.mass', { value: known[0].kg }),
+          last: t('common.mass', { value: known[known.length - 1].kg }),
+        })
+      : '';
   const num = (kg: number) => formatNumber(fromKg(kg, unit), i18n.language);
   const change =
     weight.changeKg === null
@@ -193,6 +209,7 @@ function Weight({ weight }: { weight: NonNullable<Glance['weight']> }) {
       accessibilityLabel={[
         `${t('today.glance.weight')}, ${num(weight.kg)} ${unit}, ${t('today.glance.weightCaption')}`,
         change ? t('today.glance.sinceStart', { change }) : null,
+        trendLabel || null,
       ]
         .filter(Boolean)
         .join('. ')}>
@@ -217,10 +234,17 @@ function Weight({ weight }: { weight: NonNullable<Glance['weight']> }) {
             {t('today.glance.sinceStart', { change })}
           </Text>
         ) : null}
+        {/* The weekly averages of the real weigh-ins, as on Progress; nothing drawn under two weeks. */}
+        {known.length >= 2 ? (
+          <TrendLine values={trend!.weeks.map((w) => w.kg)} color="primary" height={30} label={trendLabel} />
+        ) : null}
       </View>
     </Card>
   );
 }
+
+/** Weeks of weigh-in averages drawn on the Today tile (the Progress screen chooses its own range). */
+const TREND_WEEKS = 8;
 
 const formatDay = (date: string, lang: string) =>
   new Intl.DateTimeFormat(lang === 'en' ? 'en-GB' : 'fr-FR', { weekday: 'long' }).format(new Date(`${date}T12:00:00`));

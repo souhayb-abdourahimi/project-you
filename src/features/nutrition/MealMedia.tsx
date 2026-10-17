@@ -6,7 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import type { MealSlot } from '@/domain/meals/recipes';
 import { focusPosition, heroFit } from '@/features/media/registry';
-import { gradients, gradientStyle, motion, radius, useColors, useReducedMotion } from '@/theme';
+import { motion, radius, useColors, useReducedMotion, useTileGlow } from '@/theme';
 
 import { recipeMedia } from './recipeMedia';
 
@@ -40,6 +40,7 @@ export function MealMedia({
   size?: number;
 }) {
   const colors = useColors();
+  const tileGlow = useTileGlow();
   const { i18n } = useTranslation();
   const reducedMotion = useReducedMotion();
   const [failed, setFailed] = useState(false);
@@ -68,7 +69,7 @@ export function MealMedia({
         />
       ) : (
         <>
-          <View style={[StyleSheet.absoluteFill, gradientStyle(gradients.tileGlow)]} />
+          <View style={[StyleSheet.absoluteFill, tileGlow]} />
           <View style={styles.centre}>
             <Icon
               name={slot ? SLOT_ICON[slot] : 'meal'}

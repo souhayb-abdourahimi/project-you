@@ -665,6 +665,11 @@ const fr = {
       sets: '{{done}} série(s) sur {{planned}} prévues dans les séances faites',
       extra: '+ {{count}} séance(s) hors programme',
       ahead: '{{count}} séance(s) encore à venir',
+      chipSets: '{{done}} / {{planned}} séries',
+      chipAhead: '{{count}} à venir',
+      chipExtra: '+ {{count}} hors programme',
+      details: 'Détail de la semaine',
+      detailsHide: 'Masquer le détail',
     },
     session: {
       sets: '{{done}} série(s) sur {{planned}}',
@@ -1032,6 +1037,8 @@ const fr = {
     weekNeverZero: 'Aucune valeur n’est remplacée par zéro.',
     weekSummary: '{{days}} jour(s) avec des repas notés sur {{total}}',
     minutesShort: 'min',
+    recipesEmpty: 'Les recettes de ton plan apparaîtront ici dès que la semaine sera planifiée.',
+    recipeA11y: '{{name}}, {{slots}}, {{minutes}} min',
     replaced: 'Remplacé par autre chose',
     reasonQuestion: 'Pourquoi ? (facultatif)',
     undo: 'Annuler',
@@ -1181,6 +1188,8 @@ const fr = {
   },
   progress: {
     quickEntry: 'Noter une mesure',
+    quickEntryHint: 'Poids ou tour de taille',
+    quickEntryClose: 'Fermer la saisie',
     range: { label: 'Période affichée', '4w': '4 sem.', '12w': '12 sem.', '6m': '6 mois', '1y': '1 an' },
     overview: {
       weight: 'Poids (moy. 7 j)',

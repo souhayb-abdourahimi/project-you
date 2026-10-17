@@ -170,6 +170,7 @@ function Why({ exercise }: { exercise: SessionExercise }) {
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
+        aria-expanded={open}
         onPress={() => setOpen(!open)}
         style={styles.toggle}>
         <Text variant="label" color="primary">

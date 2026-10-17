@@ -652,6 +652,11 @@ const en: LocaleShape = {
       sets: '{{done}} of {{planned}} planned set(s) in the sessions done',
       extra: '+ {{count}} off-plan session(s)',
       ahead: '{{count}} session(s) still ahead',
+      chipSets: '{{done}} / {{planned}} sets',
+      chipAhead: '{{count}} ahead',
+      chipExtra: '+ {{count}} off-plan',
+      details: 'Week details',
+      detailsHide: 'Hide details',
     },
     session: {
       sets: '{{done}} of {{planned}} set(s)',
@@ -1018,6 +1023,8 @@ const en: LocaleShape = {
     weekNeverZero: 'Missing values are never replaced with zero.',
     weekSummary: '{{days}} of {{total}} day(s) with logged meals',
     minutesShort: 'min',
+    recipesEmpty: 'The recipes of your plan will show up here once the week is planned.',
+    recipeA11y: '{{name}}, {{slots}}, {{minutes}} min',
     replaced: 'Replaced by something else',
     reasonQuestion: 'Why? (optional)',
     undo: 'Undo',
@@ -1164,6 +1171,8 @@ const en: LocaleShape = {
   },
   progress: {
     quickEntry: 'Log a measurement',
+    quickEntryHint: 'Weight or waist',
+    quickEntryClose: 'Close the entry',
     range: { label: 'Displayed period', '4w': '4 wk', '12w': '12 wk', '6m': '6 mo', '1y': '1 yr' },
     overview: {
       weight: 'Weight (7-day avg)',

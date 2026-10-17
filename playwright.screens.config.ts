@@ -23,6 +23,27 @@ export default defineConfig({
       name: 'iphoneSE',
       use: { viewport: { width: 375, height: 667 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
     },
+    // The same two iPhones in dark mode (the app follows the system appearance).
+    {
+      name: 'iphone15-dark',
+      use: {
+        viewport: { width: 393, height: 852 },
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true,
+        colorScheme: 'dark',
+      },
+    },
+    {
+      name: 'iphoneSE-dark',
+      use: {
+        viewport: { width: 375, height: 667 },
+        deviceScaleFactor: 2,
+        isMobile: true,
+        hasTouch: true,
+        colorScheme: 'dark',
+      },
+    },
     {
       name: 'android',
       use: { viewport: { width: 412, height: 915 }, deviceScaleFactor: 2.625, isMobile: true, hasTouch: true },

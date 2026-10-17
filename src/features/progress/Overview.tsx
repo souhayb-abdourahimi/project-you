@@ -132,16 +132,15 @@ function AdherenceTile({ progress }: { progress: ProgressJourney }) {
       icon="sessions"
       title={t('progress.overview.adherence')}
       a11y={`${t('progress.overview.adherence')}, ${Math.round(ratio * 100)} %, ${full}`}>
-      <View style={styles.ringRow}>
-        <ProgressRing value={ratio} size={56} stroke={6} color="primary" label={full}>
-          <Text variant="captionStrong">{Math.round(ratio * 100)}%</Text>
-        </ProgressRing>
-        <View style={styles.flex}>
-          <Text variant="captionStrong">{caption}</Text>
-          <Text variant="caption" color="textMuted">
-            {t('progress.overview.window')}
-          </Text>
-        </View>
+      {/* Ring above its caption: side by side, the caption wrapped word by word on an iPhone SE. */}
+      <ProgressRing value={ratio} size={56} stroke={6} color="primary" label={full}>
+        <Text variant="captionStrong">{Math.round(ratio * 100)}%</Text>
+      </ProgressRing>
+      <View>
+        <Text variant="captionStrong">{caption}</Text>
+        <Text variant="caption" color="textMuted">
+          {t('progress.overview.window')}
+        </Text>
       </View>
     </Tile>
   );
@@ -178,6 +177,5 @@ const styles = StyleSheet.create({
   tile: { flex: 1, minWidth: 150, gap: spacing.sm },
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   body: { gap: spacing.xs },
-  ringRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   flex: { flex: 1 },
 });

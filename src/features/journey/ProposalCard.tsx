@@ -82,6 +82,7 @@ export function ProposalCard({ recommendation: r, today }: { recommendation: Rec
             compact
             variant="ghost"
             label={t(why ? 'adaptation.whyHide' : 'adaptation.why')}
+            expanded={why}
             onPress={() => setWhy((w) => !w)}
           />
         </Row>

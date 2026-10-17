@@ -107,6 +107,7 @@ test('first visit: onboarding → today → meals → inventory → workout → 
 
   // Progress: weigh-in, then weekly review.
   await page.goto('/progress');
+  await button(page, 'Noter une mesure').click();
   await field(page, 'Poids (kg)').fill('79.5');
   await button(page, 'Noter mon poids').click();
   await button(page, 'Voir le bilan de la semaine').click();

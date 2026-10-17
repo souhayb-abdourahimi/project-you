@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -21,6 +21,8 @@ export default function ProgressScreen() {
   const { t, i18n } = useTranslation();
   const plan = usePlan();
   const [range, setRange] = useState<ProgressRange>('12w');
+  // `?entry=1` (Santé → « Saisir à la main »): the quick entry opens unfolded.
+  const { entry } = useLocalSearchParams<{ entry?: string }>();
   const journey = useJourney(plan);
   if (!plan || !journey) return <LoadingScreen />;
   const { progress } = journey;
@@ -36,6 +38,7 @@ export default function ProgressScreen() {
         recomposition={goal === 'recomposition'}
         today={plan.today}
         rangeWeeks={RANGE_WEEKS[range]}
+        entryOpen={entry === '1'}
       />
     ),
     performance: <Performance key="performance" progress={progress} />,
@@ -88,6 +91,7 @@ export default function ProgressScreen() {
           recomposition={goal === 'recomposition'}
           today={plan.today}
           rangeWeeks={RANGE_WEEKS[range]}
+          entryOpen
         />
       ) : null}
       <Button variant="secondary" label={t('review.open')} onPress={() => router.push('/review')} />

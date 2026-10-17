@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AccessibilityInfo, Platform, useColorScheme, useWindowDimensions, type ViewStyle } from 'react-native';
 
-import { COMPACT_HEIGHT, COMPACT_WIDTH, palette, type ColorScheme, type Colors } from './tokens';
+import { COMPACT_HEIGHT, COMPACT_WIDTH, gradients, palette, type ColorScheme, type Colors } from './tokens';
 
 export * from './tokens';
 
@@ -11,6 +11,11 @@ export function useScheme(): ColorScheme {
 
 export function useColors(): Colors {
   return palette[useScheme()];
+}
+
+/** The soft light of a drawn tile, for the current appearance. */
+export function useTileGlow(): ViewStyle {
+  return gradientStyle(useScheme() === 'dark' ? gradients.tileGlowDark : gradients.tileGlow);
 }
 
 /** True on a small phone: spacing tightens a little there, never the touch targets nor the desktop. */
