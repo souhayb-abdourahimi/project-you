@@ -62,8 +62,13 @@ export function SetList({
         const current = i === sets.length;
         return (
           <View key={i} style={[styles.row, divider]}>
-            <Text style={styles.value} color={current ? 'primary' : 'textMuted'} variant={current ? 'bodyMedium' : 'body'}>
-              {current ? t('workout.facts.setCurrent', { index: i + 1 }) : t('workout.facts.setPending', { index: i + 1 })}
+            <Text
+              style={styles.value}
+              color={current ? 'primary' : 'textMuted'}
+              variant={current ? 'bodyMedium' : 'body'}>
+              {current
+                ? t('workout.facts.setCurrent', { index: i + 1 })
+                : t('workout.facts.setPending', { index: i + 1 })}
             </Text>
             <View style={[styles.pending, { borderColor: current ? colors.primary : colors.borderStrong }]} />
           </View>

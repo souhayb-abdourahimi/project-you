@@ -32,3 +32,4 @@ export { MiniBars, ProgressRing, TrendLine } from './Viz';
 export { Tabs } from './Tabs';
 export { RadioList } from './RadioList';
 export { FeelingScale, type FeelingStep } from './FeelingScale';
+export { Segmented } from './Segmented';

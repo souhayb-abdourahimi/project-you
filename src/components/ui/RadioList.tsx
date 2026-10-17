@@ -60,8 +60,21 @@ export function RadioList<T extends string>({
 const styles = StyleSheet.create({
   group: { borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.md, overflow: 'hidden' },
   separator: { height: StyleSheet.hairlineWidth, marginLeft: spacing['2xl'] + spacing.sm },
-  row: { minHeight: MIN_TOUCH, flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.md },
-  mark: { width: 20, height: 20, borderRadius: radius.pill, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  row: {
+    minHeight: MIN_TOUCH,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+  },
+  mark: {
+    width: 20,
+    height: 20,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   dot: { width: 10, height: 10, borderRadius: radius.pill },
   flex: { flex: 1 },
 });

@@ -73,7 +73,8 @@ export function BodyProgress({
             <View style={styles.trend}>
               <TrendLine
                 values={trend.weeks.map((w) => w.kg)}
-                color="progress"
+                color="primary"
+                height={88}
                 label={t('progress.body.trendA11y', {
                   count: known.length,
                   first: t('common.mass', { value: known[0].kg }),
@@ -122,38 +123,50 @@ function QuickEntry({ today }: { today: string }) {
         <Icon name="weight" size="sm" color="progress" />
         <Text variant="headline">{t('progress.quickEntry')}</Text>
       </View>
-      <MassField
-        key={`w${formKey}`}
-        label={(unit) => t('onboarding.profile.body.weight', { unit })}
-        valueKg={weight}
-        onChange={setWeight}
-      />
-      <Button
-        label={t('progress.logWeight')}
-        disabled={!weight || weight < 25 || weight > 400}
-        onPress={() => {
-          if (weight) logWeight(today, weight);
-          setWeight(undefined);
-          setFormKey((k) => k + 1);
-        }}
-      />
-      <NumberField key={`c${formKey}`} label={t('progress.waist')} value={waistCm} onChange={setWaistCm} />
-      <Button
-        variant="secondary"
-        label={t('progress.logWaist')}
-        disabled={!waistCm || waistCm < 10 || waistCm > 300}
-        onPress={() => {
-          if (waistCm) logWaist(today, waistCm);
-          setWaistCm(undefined);
-          setFormKey((k) => k + 1);
-        }}
-      />
+      <View style={styles.entry}>
+        <View style={styles.field}>
+          <MassField
+            key={`w${formKey}`}
+            label={(unit) => t('onboarding.profile.body.weight', { unit })}
+            valueKg={weight}
+            onChange={setWeight}
+          />
+        </View>
+        <Button
+          compact
+          label={t('progress.logWeight')}
+          disabled={!weight || weight < 25 || weight > 400}
+          onPress={() => {
+            if (weight) logWeight(today, weight);
+            setWeight(undefined);
+            setFormKey((k) => k + 1);
+          }}
+        />
+      </View>
+      <View style={styles.entry}>
+        <View style={styles.field}>
+          <NumberField key={`c${formKey}`} label={t('progress.waist')} value={waistCm} onChange={setWaistCm} />
+        </View>
+        <Button
+          compact
+          variant="secondary"
+          label={t('progress.logWaist')}
+          disabled={!waistCm || waistCm < 10 || waistCm > 300}
+          onPress={() => {
+            if (waistCm) logWaist(today, waistCm);
+            setWaistCm(undefined);
+            setFormKey((k) => k + 1);
+          }}
+        />
+      </View>
     </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { gap: spacing.lg },
+  card: { gap: spacing.md },
+  entry: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, flexWrap: 'wrap' },
+  field: { flex: 1, minWidth: 150 },
   block: { gap: spacing.xxs },
   trend: { gap: spacing.xs, marginTop: spacing.md },
   title: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },

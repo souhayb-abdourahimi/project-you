@@ -52,5 +52,10 @@ export function Tabs<T extends string>({
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth },
   tab: { flex: 1, minHeight: MIN_TOUCH, alignItems: 'center', justifyContent: 'flex-end', gap: spacing.sm },
-  bar: { height: borderWidth.strong * 2, alignSelf: 'stretch', marginHorizontal: spacing.md, borderRadius: radius.pill },
+  bar: {
+    height: borderWidth.strong * 2,
+    alignSelf: 'stretch',
+    marginHorizontal: spacing.md,
+    borderRadius: radius.pill,
+  },
 });

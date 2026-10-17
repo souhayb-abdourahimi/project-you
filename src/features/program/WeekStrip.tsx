@@ -58,10 +58,7 @@ export function WeekStrip({
               </Text>
             </View>
             <View
-              style={[
-                styles.dot,
-                { backgroundColor: has ? (done ? colors.success : colors.primary) : 'transparent' },
-              ]}
+              style={[styles.dot, { backgroundColor: has ? (done ? colors.success : colors.primary) : 'transparent' }]}
             />
           </Pressable>
         );

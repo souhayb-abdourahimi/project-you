@@ -145,11 +145,27 @@ export function MealCard({ meal, compact }: { meal: PlannedMeal; compact?: boole
           <Button compact icon="check" label={t('nutrition.markEaten')} onPress={() => markEaten(meal.id)} />
           {other ? (
             <>
-              <Button compact variant="secondary" label={t('nutrition.markSkipped')} onPress={() => markSkipped(meal.id)} />
-              <Button compact variant="secondary" label={t('nutrition.markReplaced')} onPress={() => markReplaced(meal.id)} />
+              <Button
+                compact
+                variant="secondary"
+                label={t('nutrition.markSkipped')}
+                onPress={() => markSkipped(meal.id)}
+              />
+              <Button
+                compact
+                variant="secondary"
+                label={t('nutrition.markReplaced')}
+                onPress={() => markReplaced(meal.id)}
+              />
             </>
           ) : (
-            <Button compact variant="tertiary" label={t('nutrition.notAsPlanned')} expanded={false} onPress={() => setOther(true)} />
+            <Button
+              compact
+              variant="tertiary"
+              label={t('nutrition.notAsPlanned')}
+              expanded={false}
+              onPress={() => setOther(true)}
+            />
           )}
         </View>
       )}
@@ -165,7 +181,15 @@ const macros = (meal: PlannedMeal) => ({
   fat: Math.round(meal.nutrition.fatG),
 });
 
-function Macro({ letter, value, color }: { letter: string; value: string; color: 'nutrition' | 'primary' | 'warning' }) {
+function Macro({
+  letter,
+  value,
+  color,
+}: {
+  letter: string;
+  value: string;
+  color: 'nutrition' | 'primary' | 'warning';
+}) {
   return (
     <View style={styles.inline} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       <Text variant="captionStrong" color={color}>

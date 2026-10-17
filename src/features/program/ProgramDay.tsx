@@ -51,7 +51,15 @@ const DONE = ['completed', 'partial', 'stopped'];
  * One day with sessions in the week list: a status mark, the weekday, the focus and where it
  * stands (the same fact line as the card), a chevron. Selecting it shows the day above.
  */
-export function WeekDayRow({ day, selected, onPress }: { day: ProgramDayView; selected: boolean; onPress: () => void }) {
+export function WeekDayRow({
+  day,
+  selected,
+  onPress,
+}: {
+  day: ProgramDayView;
+  selected: boolean;
+  onPress: () => void;
+}) {
   const { t, i18n } = useTranslation();
   const colors = useColors();
   const first = day.sessions[0];

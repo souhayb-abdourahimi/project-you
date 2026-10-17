@@ -88,7 +88,17 @@ export function ReplacePanel({
 }
 
 /** One alternative: its picture (validated media or artwork), its name and the muscles it works. */
-function Alternative({ id, name, muscles, onPress }: { id: string; name: string; muscles: string; onPress: () => void }) {
+function Alternative({
+  id,
+  name,
+  muscles,
+  onPress,
+}: {
+  id: string;
+  name: string;
+  muscles: string;
+  onPress: () => void;
+}) {
   const { t } = useTranslation();
   const colors = useColors();
   return (

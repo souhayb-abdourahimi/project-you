@@ -51,11 +51,7 @@ export function FeelingScale<T extends string | number>({
               ]}>
               <Icon name={ICON[option.step]} size="lg" color={selected ? 'onPrimary' : 'textSecondary'} />
             </View>
-            <Text
-              variant="micro"
-              color={selected ? 'primary' : 'textMuted'}
-              numberOfLines={2}
-              style={styles.label}>
+            <Text variant="micro" color={selected ? 'primary' : 'textMuted'} numberOfLines={2} style={styles.label}>
               {option.label}
             </Text>
           </Pressable>

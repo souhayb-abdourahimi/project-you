@@ -21,12 +21,20 @@ describe('weightTrend', () => {
   });
 
   it('follows the selected range', () => {
-    const weights = [weigh('2026-09-22', 80), weigh('2026-09-23', 80.2), weigh('2026-09-29', 79.6), weigh('2026-09-30', 79.8)];
+    const weights = [
+      weigh('2026-09-22', 80),
+      weigh('2026-09-23', 80.2),
+      weigh('2026-09-29', 79.6),
+      weigh('2026-09-30', 79.8),
+    ];
     expect(weightTrend(weights, '2026-09-30', 4)?.weeks).toHaveLength(4);
   });
 
   it('a week with a single weigh-in is a gap, never a guess', () => {
-    const trend = weightTrend([weigh('2026-09-30', 79), weigh('2026-09-29', 79.2), weigh('2026-09-22', 80)], '2026-09-30');
+    const trend = weightTrend(
+      [weigh('2026-09-30', 79), weigh('2026-09-29', 79.2), weigh('2026-09-22', 80)],
+      '2026-09-30',
+    );
     expect(trend).toBeNull();
   });
 

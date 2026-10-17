@@ -1,10 +1,11 @@
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
-import { Card, Icon, Section, Text } from '@/components/ui';
+import { Card, Section, Text } from '@/components/ui';
 import type { ProgressJourney } from '@/domain/journey/progress-journey';
 import { getExercise } from '@/domain/training/exercises';
 import { formatDate } from '@/lib/format';
+import { ExerciseMedia } from '@/features/training/ExerciseMedia';
 import { spacing } from '@/theme';
 
 const exerciseName = (id: string, lang: string) => getExercise(id)?.name[lang === 'en' ? 'en' : 'fr'] ?? id;
@@ -30,9 +31,7 @@ export function Performance({ progress }: { progress: ProgressJourney }) {
         {records.length === 0 && up.length === 0 ? <Text color="textMuted">{t('progress.perf.none')}</Text> : null}
         {up.map((e) => (
           <View key={e.exerciseId} style={styles.line}>
-            <View style={styles.well}>
-              <Icon name="progress" size="sm" color="progress" />
-            </View>
+            <ExerciseMedia exerciseId={e.exerciseId} label={exerciseName(e.exerciseId, i18n.language)} size={40} />
             <Text variant="bodyMedium" style={styles.flex}>
               {t('progress.perf.trend', {
                 name: exerciseName(e.exerciseId, i18n.language),
@@ -44,9 +43,7 @@ export function Performance({ progress }: { progress: ProgressJourney }) {
         ))}
         {latestRecords.map((r) => (
           <View key={`${r.exerciseId}${r.date}`} style={styles.line}>
-            <View style={styles.well}>
-              <Icon name="celebrate" size="sm" color="success" />
-            </View>
+            <ExerciseMedia exerciseId={r.exerciseId} label={exerciseName(r.exerciseId, i18n.language)} size={40} />
             <Text color="textSecondary" style={styles.flex}>
               {t(`progress.perf.${{ load: 'recordLoad', reps: 'recordReps', time: 'recordTime' }[r.kind]}`, {
                 name: exerciseName(r.exerciseId, i18n.language),
@@ -63,7 +60,6 @@ export function Performance({ progress }: { progress: ProgressJourney }) {
 
 const styles = StyleSheet.create({
   card: { gap: spacing.md },
-  line: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
-  well: { paddingTop: spacing.xxs },
+  line: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   flex: { flex: 1 },
 });

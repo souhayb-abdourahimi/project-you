@@ -59,7 +59,12 @@ export function SessionSummary({
           label={t('workout.summary.exercises')}
           value={t('workout.summary.ratio', { done: summary.exercisesDone, total: summary.exercisesTotal })}
         />
-        <MetricCard icon="sessions" iconColor="training" label={t('workout.summary.sets')} value={String(summary.sets)} />
+        <MetricCard
+          icon="sessions"
+          iconColor="training"
+          label={t('workout.summary.sets')}
+          value={String(summary.sets)}
+        />
       </View>
       {summary.replacements.length > 0 ? (
         <Card tone="subtle">

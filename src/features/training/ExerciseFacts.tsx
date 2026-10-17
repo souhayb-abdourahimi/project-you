@@ -43,7 +43,9 @@ export function ExerciseFacts({
         <Fact label={t('workout.facts.sets')} value={String(exercise.sets)} />
         <Fact
           label={exercise.unit === 'seconds' ? t('workout.facts.seconds') : t('workout.facts.reps')}
-          value={exercise.repsMin === exercise.repsMax ? `${exercise.repsMin}` : `${exercise.repsMin}–${exercise.repsMax}`}
+          value={
+            exercise.repsMin === exercise.repsMax ? `${exercise.repsMin}` : `${exercise.repsMin}–${exercise.repsMax}`
+          }
         />
         <Fact label={t('workout.facts.rest')} value={restLabel(exercise.restSeconds, t)} />
       </View>

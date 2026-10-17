@@ -117,8 +117,18 @@ export default function NutritionScreen() {
           </View>
 
           <ListGroup>
-            <ListRow icon="meal" iconColor="nutrition" title={t('nutrition.inventory')} onPress={() => router.push('/inventory')} />
-            <ListRow icon="shopping" iconColor="nutrition" title={t('nutrition.shopping')} onPress={() => router.push('/shopping')} />
+            <ListRow
+              icon="meal"
+              iconColor="nutrition"
+              title={t('nutrition.inventory')}
+              onPress={() => router.push('/inventory')}
+            />
+            <ListRow
+              icon="shopping"
+              iconColor="nutrition"
+              title={t('nutrition.shopping')}
+              onPress={() => router.push('/shopping')}
+            />
           </ListGroup>
 
           {excluded ? (

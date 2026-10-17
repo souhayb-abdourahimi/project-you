@@ -1089,6 +1089,7 @@ const en: LocaleShape = {
   },
   progress: {
     quickEntry: 'Log a measurement',
+    range: { label: 'Displayed period', '4w': '4 wk', '12w': '12 wk', '6m': '6 mo', '1y': '1 yr' },
     note: {
       no_weight: 'No weigh-in yet: log your weight a few mornings a week to see your trend.',
       no_waist: 'No waist measurement yet: one every two weeks is enough to follow what changes.',
@@ -1390,6 +1391,9 @@ const en: LocaleShape = {
     already: 'You already answered for this week: your new answers will replace the previous ones.',
     weekRating: 'How was your week?',
     scale: '1 = hard · 5 = very good',
+    details: 'Going further (optional)',
+    mood: { 5: 'Very good', 4: 'Good', 3: 'Okay', 2: 'Hard', 1: 'Very hard' },
+    overview: { sessions: 'Workouts', meals: 'Meals logged' },
     question: {
       energy: 'Energy',
       motivation: 'Motivation',

@@ -70,7 +70,7 @@ export interface GlanceInput {
 /** Days with data needed before the steps chart is drawn (otherwise: the value alone). */
 export const MIN_STEP_DAYS = 3;
 
-function weekStrip(week: WeekComparison, today: IsoDate): TodayGlance['week'] {
+export function weekStrip(week: WeekComparison, today: IsoDate): TodayGlance['week'] {
   // A week whose prescriptions are unknown has no honest denominator (W-7.1).
   if (week.planned === 0 || week.prescriptionUnknown) return null;
   const monday = startOfWeek(today);

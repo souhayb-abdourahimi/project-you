@@ -1106,6 +1106,7 @@ const fr = {
   },
   progress: {
     quickEntry: 'Noter une mesure',
+    range: { label: 'Période affichée', '4w': '4 sem.', '12w': '12 sem.', '6m': '6 mois', '1y': '1 an' },
     note: {
       no_weight: 'Pas encore de pesée : note ton poids quelques matins par semaine pour voir ta tendance.',
       no_waist: 'Pas encore de tour de taille : une mesure tous les quinze jours suffit pour suivre ce qui change.',
@@ -1409,6 +1410,9 @@ const fr = {
     already: 'Tu as déjà répondu pour cette semaine : tes nouvelles réponses remplaceront les précédentes.',
     weekRating: 'Comment s’est passée ta semaine ?',
     scale: '1 = difficile · 5 = très bien',
+    details: 'Pour aller plus loin (facultatif)',
+    mood: { 5: 'Très bien', 4: 'Bien', 3: 'Correcte', 2: 'Difficile', 1: 'Très difficile' },
+    overview: { sessions: 'Entraînements', meals: 'Repas notés' },
     question: {
       energy: 'Énergie',
       motivation: 'Motivation',

@@ -41,7 +41,7 @@ export function TodayGlance({ plan, journey }: { plan: Plan; journey: Journey })
           {side}
         </View>
       ) : null}
-      {glance.week ? <Week week={glance.week} /> : null}
+      {glance.week ? <WeekGlance week={glance.week} /> : null}
     </View>
   );
 }
@@ -85,7 +85,8 @@ function Nutrition({ n }: { n: NonNullable<Glance['nutrition']> }) {
   );
 }
 
-function Week({ week }: { week: NonNullable<Glance['week']> }) {
+/** The week as a strip of days (Today, weekly check-in): done, adapted, planned, not done, rest. */
+export function WeekGlance({ week }: { week: NonNullable<Glance['week']> }) {
   const { t, i18n } = useTranslation();
   const letter = new Intl.DateTimeFormat(i18n.language === 'en' ? 'en-GB' : 'fr-FR', { weekday: 'narrow' });
   const describe = week.days

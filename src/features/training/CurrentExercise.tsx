@@ -58,7 +58,12 @@ export function CurrentExercise({
         </View>
       ) : null}
       <ExerciseFacts exercise={ex} last={ex.last} hint={ex.hint} />
-      <SetList sets={ex.today} planned={ex.sets} editing={editing} onEdit={(i) => setEditing(editing === i ? null : i)} />
+      <SetList
+        sets={ex.today}
+        planned={ex.sets}
+        editing={editing}
+        onEdit={(i) => setEditing(editing === i ? null : i)}
+      />
 
       {/* One thing at a time: the replace / skip panel takes the place of the set entry. */}
       {panel !== null ? null : ex.status === 'not_performed' ? (
