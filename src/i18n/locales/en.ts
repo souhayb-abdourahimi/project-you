@@ -1224,10 +1224,9 @@ const en: LocaleShape = {
     },
     body: {
       trendA11y: 'Weekly averages of your weigh-ins: {{count}} weeks known, from {{first}} to {{last}}.',
-      trendCaption: 'Average of your weigh-ins, week by week (last {{count}} weeks)',
       title: 'Body',
       waist: 'Waist',
-      weight: 'Weight (7-day average of your weigh-ins)',
+      weight: 'Weight · 7-day average',
       cm: '{{value}} cm',
       sinceStartCm: '{{change}} cm since your first measurement ({{start}} cm)',
       sinceStartKg: '{{change, mass}} since your first week of weigh-ins ({{start, mass}})',

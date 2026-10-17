@@ -92,7 +92,10 @@ export function Button({
   const muted = !!disabled && !loading && scheme === 'dark' && !onDark && variant !== 'ghost' && variant !== 'danger';
   const l: Look = muted
     ? { background: 'surfaceSubtle', pressed: 'surfaceSubtle', foreground: 'textMuted', border: 'border' }
-    : look(variant, onDark);
+    : scheme === 'dark' && onDark && variant === 'primary'
+      ? // On the graphite hero in dark mode the bright primary glares: one step deeper, same text (6:1).
+        { background: 'primaryPressed', pressed: 'primaryPressed', foreground: 'onPrimary' }
+      : look(variant, onDark);
   const flat = variant === 'ghost' || variant === 'danger';
   return (
     <Pressable

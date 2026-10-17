@@ -108,8 +108,9 @@ test('first visit: onboarding → today → meals → inventory → workout → 
   // Progress: weigh-in, then weekly review.
   await page.goto('/progress');
   // The measure entry is folded once something is measured, open on a first visit.
-  if ((await page.getByLabel('Poids (kg)').filter({ visible: true }).count()) === 0)
-    await button(page, 'Noter une mesure').click();
+  const entry = button(page, 'Noter une mesure');
+  await expect(entry).toBeVisible();
+  if ((await entry.getAttribute('aria-expanded')) !== 'true') await entry.click();
   await field(page, 'Poids (kg)').fill('79.5');
   await button(page, 'Noter mon poids').click();
   await button(page, 'Voir le bilan de la semaine').click();

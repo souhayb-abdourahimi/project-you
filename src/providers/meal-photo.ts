@@ -66,7 +66,8 @@ async function once(
         },
       };
     }
-    if (status === 503) return { status: 'unavailable', reason: 'not_configured' };
+    // 503: no vision secrets; 404: the function is not deployed. Both fall back to the composition by hand.
+    if (status === 503 || status === 404) return { status: 'unavailable', reason: 'not_configured' };
     if (status === 401) return { status: 'error', error: 'auth', retryable: false };
     if (status === 429) return { status: 'error', error: 'rate_limited', retryable: false };
     if (status === 504) return { status: 'error', error: 'timeout', retryable: true };

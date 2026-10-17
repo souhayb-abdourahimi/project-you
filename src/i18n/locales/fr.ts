@@ -1241,10 +1241,9 @@ const fr = {
     },
     body: {
       trendA11y: 'Moyennes hebdomadaires de tes pesées : {{count}} semaines connues, de {{first}} à {{last}}.',
-      trendCaption: 'Moyenne de tes pesées, semaine par semaine ({{count}} dernières semaines)',
       title: 'Corps',
       waist: 'Tour de taille',
-      weight: 'Poids (moyenne de tes pesées sur 7 jours)',
+      weight: 'Poids · moyenne 7 jours',
       cm: '{{value}} cm',
       sinceStartCm: '{{change}} cm depuis ta première mesure ({{start}} cm)',
       sinceStartKg: '{{change, mass}} depuis ta première semaine de pesées ({{start, mass}})',

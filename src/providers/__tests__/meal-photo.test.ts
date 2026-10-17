@@ -34,6 +34,8 @@ describe('edgeMealPhotoProvider', () => {
   it('maps the function answers: not configured, auth, quota', async () => {
     const answer = (status: number) => edgeMealPhotoProvider(async () => ({ status, data: null }), { retries: 0 });
     expect(await answer(503).analyze(photo, catalog)).toEqual({ status: 'unavailable', reason: 'not_configured' });
+    // Function not deployed yet: same as not configured, the app offers the composition by hand.
+    expect(await answer(404).analyze(photo, catalog)).toEqual({ status: 'unavailable', reason: 'not_configured' });
     expect(await answer(401).analyze(photo, catalog)).toMatchObject({ error: 'auth', retryable: false });
     expect(await answer(429).analyze(photo, catalog)).toMatchObject({ error: 'rate_limited', retryable: false });
     expect(await answer(400).analyze(photo, catalog)).toMatchObject({ error: 'unknown', retryable: false });

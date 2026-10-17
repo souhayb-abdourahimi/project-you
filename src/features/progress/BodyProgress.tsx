@@ -99,9 +99,6 @@ export function BodyProgress({
                   last: t('common.mass', { value: known[known.length - 1].kg }),
                 })}
               />
-              <Text variant="caption" color="textMuted">
-                {t('progress.body.trendCaption', { count: trend.weeks.length })}
-              </Text>
             </View>
           ) : !recomposition && weight.entries > 0 ? (
             <Text variant="caption" color="textMuted">

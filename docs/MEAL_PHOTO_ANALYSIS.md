@@ -26,7 +26,7 @@ Le modèle ne renvoie **jamais** de calories ni de macros : le schéma `MealPhot
 
 ## États de l'écran
 
-`start` (photo ou composition à la main) → `preview` (rien n'est envoyé avant « Analyser ») → `analyzing` (annulable) → `review` (brouillon) ; `unavailable` (pas de service : mode local ou secrets absents) ; `error` (délai, réseau, quota, connexion, résultat inexploitable — la photo est gardée, rien n'est ajouté). Composition à la main : même brouillon, même calcul, sans photo ni service.
+`start` (photo ou composition à la main) → `preview` (rien n'est envoyé avant « Analyser ») → `analyzing` (annulable) → `review` (brouillon) ; `unavailable` (pas de service : mode local, secrets absents ou fonction non déployée) ; `error` (délai, réseau, quota, connexion, résultat inexploitable — la photo est gardée, rien n'est ajouté). Composition à la main : même brouillon, même calcul, sans photo ni service.
 
 ## Règles
 
@@ -41,6 +41,17 @@ Le modèle ne renvoie **jamais** de calories ni de macros : le schéma `MealPhot
 - Appel authentifié (JWT de l'utilisateur) ; quota par utilisateur (30 / heure, par instance) ; corps validé (base64 ≤ ~1,5 Mo, jpeg/png/webp, catalogue ≤ 200 ids) ; erreurs du fournisseur jamais renvoyées telles quelles ; rien n'est journalisé ni stocké côté serveur.
 - La photo part seulement après un geste explicite, avec la phrase « elle n'est pas enregistrée ».
 - Export et suppression : catégorie « Repas » du Privacy Center (`meal_plan_items`, `logged_meals`).
+
+## Déploiement
+
+Depuis un poste connecté au projet (`supabase login` puis `supabase link --project-ref krcqdrrfnvfpvczxwrmt`) :
+
+1. Appliquer la migration : `supabase db push` (crée `logged_meals`, RLS propriétaire).
+2. Définir les secrets de la fonction (valeurs saisies sur le poste, jamais commitées) : `supabase secrets set MEAL_VISION_PROVIDER=anthropic ANTHROPIC_API_KEY=… MEAL_VISION_MODEL=…`.
+3. Déployer : `supabase functions deploy analyze-meal`, avec la vérification JWT par défaut (ne pas passer `--no-verify-jwt`).
+4. Vérifier : la fonction est ACTIVE ; un appel sans JWT répond 401 ; dans l'app connectée, « Analyser » renvoie un brouillon.
+
+Repli : tant que la fonction n'est pas déployée (404) ou que ses secrets manquent (503), l'app passe à l'état `unavailable` et propose « Composer mon repas à la main ». Une erreur réseau, de délai ou de quota garde aussi ce bouton. Checklist complète : `docs/RELEASE_CHECKLIST.md`.
 
 ## À décider (validation humaine)
 

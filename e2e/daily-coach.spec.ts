@@ -102,7 +102,7 @@ test('recomposition: the waist comes before the scale', async ({ page }) => {
   await page.goto('/progress');
   const waist = page.getByText('Tour de taille', { exact: true }).filter({ visible: true }).first();
   const weight = page
-    .getByText(/^Poids \(moyenne/)
+    .getByText(/^Poids · moyenne/)
     .filter({ visible: true })
     .first();
   const [w, p] = [await waist.boundingBox(), await weight.boundingBox()];
