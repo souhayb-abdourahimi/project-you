@@ -45,6 +45,20 @@ export const ICONS = {
   history: { sf: 'clock.arrow.circlepath', md: 'history' },
   shopping: { sf: 'cart', md: 'shopping_cart' },
   celebrate: { sf: 'star', md: 'auto_awesome' },
+  back: { sf: 'chevron.left', md: 'chevron_left' },
+  camera: { sf: 'camera', md: 'photo_camera' },
+  plus: { sf: 'plus', md: 'add' },
+  trophy: { sf: 'trophy', md: 'emoji_events' },
+  close: { sf: 'xmark', md: 'close' },
+  target: { sf: 'target', md: 'target' },
+  bell: { sf: 'bell', md: 'notifications' },
+  lock: { sf: 'lock', md: 'lock' },
+  devices: { sf: 'applewatch', md: 'watch' },
+  export: { sf: 'square.and.arrow.up', md: 'ios_share' },
+  trash: { sf: 'trash', md: 'delete' },
+  sliders: { sf: 'slider.horizontal.3', md: 'tune' },
+  play: { sf: 'play.fill', md: 'play_arrow' },
+  skip: { sf: 'forward.end', md: 'skip_next' },
 } as const satisfies Record<string, { sf: SFSymbol; md: string }>;
 
 export type IconName = keyof typeof ICONS;

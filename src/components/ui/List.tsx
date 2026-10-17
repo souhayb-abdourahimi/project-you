@@ -73,8 +73,8 @@ export function ListRow({
 
 const styles = StyleSheet.create({
   group: { gap: spacing.sm },
-  title: { paddingHorizontal: spacing.lg },
-  card: { borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
+  title: { paddingHorizontal: spacing.xs },
+  card: { borderRadius: radius.card, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   separator: { height: StyleSheet.hairlineWidth, marginLeft: spacing.lg },
   row: {
     minHeight: MIN_TOUCH + spacing.sm,

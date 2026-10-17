@@ -29,3 +29,4 @@ export { LinkRow } from './LinkRow';
 export { ListGroup, ListRow } from './List';
 export { HeroMedia } from './HeroMedia';
 export { MiniBars, ProgressRing, TrendLine } from './Viz';
+export { Tabs } from './Tabs';

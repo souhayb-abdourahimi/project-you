@@ -228,9 +228,9 @@ export function ActionCard({
 
 const styles = StyleSheet.create({
   card: { borderRadius: radius.card, padding: layout.cardPadding, gap: spacing.sm },
-  dense: { padding: spacing.lg, borderRadius: radius.lg },
-  hero: { gap: spacing.md, padding: spacing.xl },
-  heroMedia: { overflow: 'hidden', minHeight: 300, justifyContent: 'flex-end', paddingTop: spacing['3xl'] },
+  dense: { padding: spacing.md + spacing.xxs, borderRadius: radius.lg },
+  hero: { gap: spacing.sm + spacing.xxs, padding: spacing.lg + spacing.xxs },
+  heroMedia: { overflow: 'hidden', minHeight: 196, justifyContent: 'flex-end', paddingTop: spacing['2xl'] },
   heroCompact: { gap: spacing.sm, padding: spacing.lg + spacing.xs },
   heroMediaCompact: { minHeight: 0, paddingTop: spacing.xl },
   heroBodyCompact: { gap: spacing.sm, marginTop: 0 },
