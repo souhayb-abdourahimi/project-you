@@ -16,9 +16,9 @@ Tâches importantes à ne pas perdre entre deux sessions. Référence des IDs : 
   - [ ] Quota partagé pour `analyze-meal` avant lancement public (aujourd'hui par instance).
   - [ ] Élargir le catalogue Ciqual (36 aliments) : beaucoup de plats photographiés resteront « non reconnus ».
   - [ ] Tester caméra / galerie / redimensionnement sur iPhone et Android réels (testé sur le web et en Jest seulement) ; mentions caméra et photothèque App Store / Play.
-  - [ ] Mode sombre à relire écran par écran après la passe W-10.
+  - [x] Mode sombre relu écran par écran (2026-10-17) : vignettes dessinées, boutons désactivés ; captures sombres iPhone 15 / SE.
 - [ ] **W-9 premium UI (D-044)** : passes 1–3, 3.1, 3.2 (Aujourd'hui validé) et 4–9 faites (Séance, Programme, Nutrition, Progrès, Bilan, Historique, Profil / Réglages / Confidentialité). Reste : états (chargement / vide / erreur / hors ligne) écran par écran, motion et accessibilité, web / Android, puis revue-w9-premium-ui.md (22 points). Pas de fusion sans son accord.
-- [ ] W-9 : relire le mode sombre écran par écran (tokens prêts, contraste testé) ; haptique légère quand une infrastructure existe ; l'onglet Explorer et ses chaînes ont été retirés (les lieux restent dans Réglages).
+- [ ] W-9 : haptique légère quand une infrastructure existe ; l'onglet Explorer et ses chaînes ont été retirés (les lieux restent dans Réglages).
 - [x] W-9 : brancher de vrais médias d'exercice (lot 01, registre `src/features/training/exerciseMedia.ts`). Le héros d'Aujourd'hui garde son visuel dessiné : il représente la séance, pas un exercice (D-045, addendum lot 01).
 
 - [ ] **M-01 / M-19** : relancer `npm run test:live` (corrigé pour Jest) pour valider RLS et sync sur le projet réel. Migrations appliquées, `delete-account` déployée, connexion validée par curl (2026-10-01).

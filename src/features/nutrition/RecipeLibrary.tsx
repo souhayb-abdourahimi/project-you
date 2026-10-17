@@ -33,11 +33,14 @@ export function RecipeLibrary({ recipes }: { recipes: readonly Recipe[] }) {
             <Text variant="headline" numberOfLines={2}>
               {recipe.name[lang]}
             </Text>
-            <Text variant="caption" color="textMuted" numberOfLines={1}>
-              {recipe.slots.map((slot) => t(`enums.slot.${slot}`)).join(' · ')}
-            </Text>
+            {/* Time and moments under the name: the name keeps the full width on an iPhone SE. */}
+            <View style={styles.meta}>
+              <Badge icon="time" label={`${recipe.minutes} ${t('nutrition.minutesShort')}`} />
+              <Text variant="caption" color="textMuted" numberOfLines={1} style={styles.flex}>
+                {recipe.slots.map((slot) => t(`enums.slot.${slot}`)).join(' · ')}
+              </Text>
+            </View>
           </View>
-          <Badge icon="time" label={`${recipe.minutes} ${t('nutrition.minutesShort')}`} />
         </Card>
       ))}
     </View>
@@ -47,5 +50,7 @@ export function RecipeLibrary({ recipes }: { recipes: readonly Recipe[] }) {
 const styles = StyleSheet.create({
   stack: { gap: spacing.sm },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  text: { flex: 1, gap: 2 },
+  text: { flex: 1, gap: spacing.xs },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  flex: { flex: 1 },
 });

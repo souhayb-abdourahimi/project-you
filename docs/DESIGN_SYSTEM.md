@@ -28,7 +28,7 @@ Anciens noms gardés comme alias (`text`, `surfaceMuted`) pour les écrans pas e
 
 **No-guilt design** : une séance manquée est grise (`neutral`), jamais rouge. Le rouge est réservé à une vraie erreur ou à une action destructive. La sécurité a sa surface dédiée (`Notice tone="caution"`) : identifiable, jamais alarmiste.
 
-**Mode sombre** : la palette sombre porte les mêmes noms et suit le système ; elle passe le test de contraste mais n'est pas encore relue écran par écran. Le thème clair est prioritaire.
+**Mode sombre** : la palette sombre porte les mêmes noms et suit le système ; elle passe le test de contraste et a été relue écran par écran le 2026-10-17 (captures `iphone15-dark`, `iphoneSE-dark` de `npm run screens`). Deux règles propres au sombre : la lumière des vignettes dessinées est réduite (`tileGlowDark`, via `useTileGlow`) et un bouton plein désactivé devient un puits neutre à texte atténué, sans transparence (une opacité de 40 % donnait un texte sombre sur gris-bleu illisible). Les photos ne sont jamais filtrées : leur fond sombre se fond dans le héros graphite.
 
 ## Typographie
 

@@ -721,3 +721,12 @@ Souhayb a validé Aujourd'hui (passe 3.1) et demandé deux micro-corrections (3.
 - **Progrès** : moins de phrases, mêmes données. « Depuis le début » et « Habitudes » deviennent des chiffres (`Figure`), la phrase d'adhérence et la note « prescription indisponible » passent derrière « Détail de l'adhérence » (le chiffre est déjà dans la tuile du haut) ; « Performance » sépare le nom, l'avant → après et le record ; « Ton parcours » montre l'étape en cours sur une barre d'étapes, la frise complète et tous les jalons à un geste. Rien n'est affiché à zéro : un fait absent n'a pas de chiffre.
 - **Date** : 2026-10-17
 
+### D-045 addendum (QA finale W-10, 2026-10-17)
+
+- **Progrès** : la carte « Cette semaine » devient chiffre + barre + pastilles (séries, à venir, hors programme), les phrases derrière « Détail de la semaine » ; les mesures du corps en ligne « libellé — valeur » ; la saisie d'une mesure se replie en une ligne, ouverte d'office quand rien n'est mesuré ou en venant de Santé → « Saisir à la main » (`/progress?entry=1`). Aucune donnée retirée, aucun indice composé.
+- **Séance** : sur une photo plein cadre, la pastille « Exercice X sur Y » descend avec le titre, sur le voile, pour ne plus couvrir le visage.
+- **Recettes** : une seule forme de vignette (64 pt) avec ou sans photo ; durée en pastille sous le nom ; état vide réel (au lieu d'un « chargement »).
+- **Aujourd'hui** : la tuile poids reçoit la courbe des moyennes hebdomadaires (8 semaines, mêmes données que Progrès, rien sous deux semaines connues).
+- **Accessibilité** : `aria-expanded` sur chaque zone dépliable (web) en plus de `accessibilityState.expanded` ; aucune commande sans nom accessible sur les 11 écrans principaux (contrôle Playwright ponctuel).
+- **Date** : 2026-10-17
+

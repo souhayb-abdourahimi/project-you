@@ -8,6 +8,7 @@ import {
   radius,
   spacing,
   useColors,
+  useScheme,
   type ColorToken,
   type Colors,
 } from '@/theme';
@@ -84,8 +85,14 @@ export function Button({
   expanded,
 }: ButtonProps) {
   const colors = useColors();
-  const l = look(variant, onDark);
+  const scheme = useScheme();
   const inactive = disabled || loading;
+  // In dark mode a filled button at 40 % opacity turns muddy (dark text on grey-blue): a disabled
+  // filled button is drawn as a quiet well with muted text instead, at full opacity.
+  const muted = !!disabled && !loading && scheme === 'dark' && !onDark && variant !== 'ghost' && variant !== 'danger';
+  const l: Look = muted
+    ? { background: 'surfaceSubtle', pressed: 'surfaceSubtle', foreground: 'textMuted', border: 'border' }
+    : look(variant, onDark);
   const flat = variant === 'ghost' || variant === 'danger';
   return (
     <Pressable
@@ -103,7 +110,7 @@ export function Button({
         block && styles.block,
         {
           backgroundColor: fill(colors, pressed ? l.pressed : l.background),
-          opacity: inactive ? opacity.disabled : pressed && flat ? opacity.subtle : 1,
+          opacity: muted ? 1 : inactive ? opacity.disabled : pressed && flat ? opacity.subtle : 1,
           transform: [{ scale: pressed && !inactive && !flat ? PRESSED_SCALE : 1 }],
         },
         l.border ? { borderColor: colors[l.border], borderWidth: borderWidth.thin } : null,

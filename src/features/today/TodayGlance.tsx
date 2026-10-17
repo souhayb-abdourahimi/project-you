@@ -73,19 +73,18 @@ function Nutrition({ n }: { n: NonNullable<Glance['nutrition']> }) {
               {t('today.glance.nutrition')}
             </Text>
           </View>
-          <View style={styles.ringRow}>
-            <ProgressRing value={n.proteinG / n.proteinTargetG} color="nutrition" label={label} size={64} stroke={6}>
-              <Text variant="headline">{num(n.proteinG)}</Text>
-              <Text variant="micro" color="textMuted">
-                / {num(n.proteinTargetG)} g
-              </Text>
-            </ProgressRing>
-            <View style={styles.flex}>
-              <Text variant="captionStrong">{t('today.glance.protein')}</Text>
-              <Text variant="caption" color="textMuted">
-                {t('nutrition.estimate')}
-              </Text>
-            </View>
+          {/* Ring, then its label: side by side, "Protéines" breaks mid-word on an iPhone SE. */}
+          <ProgressRing value={n.proteinG / n.proteinTargetG} color="nutrition" label={label} size={64} stroke={6}>
+            <Text variant="headline">{num(n.proteinG)}</Text>
+            <Text variant="micro" color="textMuted">
+              / {num(n.proteinTargetG)} g
+            </Text>
+          </ProgressRing>
+          <View>
+            <Text variant="captionStrong">{t('today.glance.protein')}</Text>
+            <Text variant="caption" color="textMuted">
+              {t('nutrition.estimate')}
+            </Text>
           </View>
           <Text variant="caption" color="textSecondary" numberOfLines={2}>
             {t('today.glance.energy', { eaten: num(n.kcal), target: num(n.kcalTarget) })}
@@ -254,7 +253,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   pressable: { borderRadius: radius.card },
   fill: { flex: 1 },
-  ringRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   flex: { flex: 1, gap: spacing.xxs },
   inline: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   half: { flex: 1, minWidth: 150 },
