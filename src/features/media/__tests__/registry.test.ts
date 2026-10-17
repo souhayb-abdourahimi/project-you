@@ -5,7 +5,7 @@ import { EXERCISE_MEDIA, exerciseMedia } from '../../training/exerciseMedia';
 import { RECIPE_MEDIA, recipeMedia } from '../../nutrition/recipeMedia';
 import { focusPosition, registryProblems, type ValidatedMedia } from '../registry';
 
-/** The 36 ids of the exercise media manifest (poster references, docs/EXERCISE_MEDIA.md). */
+/** The 36 ids of the exercise media manifest (poster references, docs/MEDIA.md). */
 const MANIFEST = [
   'goblet_squat',
   'bodyweight_squat',

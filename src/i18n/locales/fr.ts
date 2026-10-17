@@ -924,6 +924,7 @@ const fr = {
       record_reps: '{{name}} : {{reps}} reps à {{load, mass}}, ton meilleur nombre de répétitions',
       volume: 'Volume soulevé',
       volumeHint: 'charge × répétitions',
+      outcomeSets: '{{count}} série(s) faite(s) : ce que tu as fait compte',
       outcomeDone: '{{count}} exercice(s) terminé(s)',
       outcomeReplaced: '{{count}} remplacé(s)',
       outcomeSkipped: '{{count}} non réalisé(s)',

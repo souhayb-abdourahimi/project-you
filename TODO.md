@@ -6,10 +6,10 @@ Tâches importantes à ne pas perdre entre deux sessions. Référence des IDs : 
 
 - [ ] **W-10 référence visuelle + analyse photo (D-045)**, branche `claude/w9-checkin-premium`, rien de fusionné :
   - [x] Tokens densité / bleu, primitives `Tabs` `Segmented` `RadioList` `FeelingScale` ; Nutrition, Aujourd'hui, Programme, Séance, Remplacement, Résumé, Progrès, Bilan de la semaine, Profil repris.
-  - [x] Registre `exercise.id → média validé` (vide) + `ExerciseMedia` ; spécification `docs/EXERCISE_MEDIA.md`.
+  - [x] Registre `exercise.id → média validé` (vide) + `ExerciseMedia` ; spécification `docs/MEDIA.md`.
   - [x] Analyse photo : domaine (vision → ids + grammes, calcul Ciqual), Edge Function `analyze-meal`, provider, écran, composition à la main, table `logged_meals` synchronisée.
   - [ ] **Validation humaine** : choisir le fournisseur de vision (+ contrat de traitement des données), poser les secrets `MEAL_VISION_PROVIDER` / `ANTHROPIC_API_KEY` / `MEAL_VISION_MODEL`, déployer `analyze-meal`, appliquer `20261017000001_logged_meals.sql` avant la version de l'app qui l'utilise.
-  - [ ] Produire et relire les 36 médias d'exercice (spécification `docs/EXERCISE_MEDIA.md`) et des photos de recettes validées (`Recipe.mediaUri`) ; aujourd'hui les visuels dessinés s'affichent.
+  - [ ] Produire et relire les 36 médias d'exercice (spécification `docs/MEDIA.md`) et les 23 photos de recettes (`RECIPE_MEDIA`, liste exacte dans `docs/MEDIA.md`) ; aujourd'hui les visuels dessinés s'affichent.
   - [ ] Quota partagé pour `analyze-meal` avant lancement public (aujourd'hui par instance).
   - [ ] Élargir le catalogue Ciqual (36 aliments) : beaucoup de plats photographiés resteront « non reconnus ».
   - [ ] Tester caméra / galerie / redimensionnement sur iPhone et Android réels (testé sur le web et en Jest seulement) ; mentions caméra et photothèque App Store / Play.

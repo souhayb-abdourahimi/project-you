@@ -63,14 +63,9 @@ export function SessionSummary({
           label={t('workout.summary.exercises')}
           value={t('workout.summary.ratio', { done: summary.exercisesDone, total: summary.exercisesTotal })}
         />
-      </View>
-      <View style={styles.tiles}>
-        <MetricCard
-          icon="sessions"
-          iconColor="training"
-          label={t('workout.summary.sets')}
-          value={String(summary.sets)}
-        />
+        {/* Three tiles share a row; with the volume they make a 2 × 2 grid. */}
+        {summary.volumeKg !== null ? <View style={styles.break} /> : null}
+        <MetricCard icon="sessions" iconColor="training" label={t('workout.summary.sets')} value={String(summary.sets)} />
         {summary.volumeKg !== null ? (
           <MetricCard
             icon="workout"
@@ -88,7 +83,9 @@ export function SessionSummary({
         </View>
         <Text variant="bodyMedium" style={styles.flex}>
           {[
-            t('workout.summary.outcomeDone', { count: summary.exercisesDone }),
+            summary.exercisesDone > 0
+              ? t('workout.summary.outcomeDone', { count: summary.exercisesDone })
+              : t('workout.summary.outcomeSets', { count: summary.sets }),
             summary.replacements.length > 0
               ? t('workout.summary.outcomeReplaced', { count: summary.replacements.length })
               : null,
@@ -197,5 +194,6 @@ const styles = StyleSheet.create({
   inline: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   flex: { flex: 1 },
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  break: { flexBasis: '100%', height: 0 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
 });

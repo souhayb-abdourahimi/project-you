@@ -910,6 +910,7 @@ const en: LocaleShape = {
       record_reps: '{{name}}: {{reps}} reps at {{load, mass}}, your most reps',
       volume: 'Volume lifted',
       volumeHint: 'load × reps',
+      outcomeSets: '{{count}} set(s) done: what you did counts',
       outcomeDone: '{{count}} exercise(s) completed',
       outcomeReplaced: '{{count}} replaced',
       outcomeSkipped: '{{count}} not done',

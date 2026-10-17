@@ -6,7 +6,7 @@ import { validatedMedia, type MediaRegistry, type ValidatedMedia } from '@/featu
  * Status (2026-10-17): no production asset is validated yet. The 36 crops of the "guide ultime des
  * exercices en salle" poster are temporary visual references (baked-in labels and numbers, 163×248
  * px) and are deliberately NOT bundled. Expected files, format and review checklist:
- * docs/EXERCISE_MEDIA.md. Adding one:
+ * docs/MEDIA.md. Adding one:
  *
  *   bench_press: {
  *     source: require('@/assets/media/exercises/bench_press.webp'),
