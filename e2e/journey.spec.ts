@@ -83,7 +83,8 @@ test('first visit: onboarding → today → meals → inventory → workout → 
   await expect(page.getByText(/Blanc de poulet|Thon|Saumon|Skyr/).filter({ visible: true })).toHaveCount(0);
 
   // Inventory.
-  await button(page, 'Ce que j’ai chez moi').click();
+  // A row that opens a screen is a link (W-10 grouped list).
+  await page.getByRole('link', { name: 'Ce que j’ai chez moi' }).filter({ visible: true }).first().click();
   await expect(page.getByText(/inventaire est vide/)).toBeVisible();
   await page.goBack();
 
@@ -127,7 +128,7 @@ test('every tab is reachable from the navigation', async ({ page }) => {
   await page.goto('/');
   for (const [tab, heading] of [
     ['Programme', 'Ton programme'],
-    ['Nutrition', 'Tes repères du jour'],
+    ['Nutrition', 'Repas du jour'],
     ['Progrès', 'Voir le bilan de la semaine'],
     ['Profil', 'Mon profil'],
     ['Aujourd’hui', 'J’ai 15 minutes'],

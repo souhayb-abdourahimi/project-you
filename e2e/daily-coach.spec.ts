@@ -124,7 +124,8 @@ test('weekly check-in: answers in under a minute, then the review says what it i
   await page.goto('/review');
   await button(page, 'Répondre au check-in de la semaine').click();
   await expect(text(page, 'Comment s’est passée ta semaine ?')).toBeVisible();
-  await page.getByRole('checkbox', { name: '4', exact: true }).filter({ visible: true }).first().click();
+  // The week rating is a five-step feeling scale since W-10: « Bien » = 4.
+  await page.getByRole('radio', { name: 'Bien', exact: true }).filter({ visible: true }).first().click();
   await button(page, 'Voir mon bilan').click();
   await expect(text(page, 'Check-in de la semaine : merci, tes réponses sont prises en compte.')).toBeVisible();
   await expect(text(page, 'Ce qui a fonctionné')).toBeVisible();

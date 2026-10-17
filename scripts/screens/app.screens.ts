@@ -73,7 +73,11 @@ test('meal analysis: composed by hand (no analysis service in local mode)', asyn
   for (const food of ['Saumon', 'Riz blanc']) {
     await page.getByRole('button', { name: 'Ajouter un aliment' }).filter({ visible: true }).first().click();
     await page.getByLabel('Rechercher un aliment').filter({ visible: true }).first().fill(food);
-    await page.getByRole('button', { name: new RegExp(`^${food}`) }).filter({ visible: true }).first().click();
+    await page
+      .getByRole('button', { name: new RegExp(`^${food}`) })
+      .filter({ visible: true })
+      .first()
+      .click();
   }
   await shot(page, 'meal-analysis-incomplete');
   const portions = page.getByLabel('Portion (g)').filter({ visible: true });
@@ -91,7 +95,10 @@ test('programme tab', async ({ page }) => {
   await start(page);
   await page.goto('/');
   await openTab(page, 'Programme');
-  await page.getByText(/^Programme v1 · depuis le/).first().waitFor();
+  await page
+    .getByText(/^Programme v1 · depuis le/)
+    .first()
+    .waitFor();
   await shot(page, 'program', false);
   await shot(page, 'program-full');
 });
