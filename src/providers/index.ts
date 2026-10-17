@@ -6,7 +6,9 @@ import { deviceCalendarProvider } from './calendar';
 import { deviceLocationProvider } from './location';
 import { osmGymProvider, osmMapsProvider, osmPlacesProvider, osmStoreProvider } from './osm';
 import { deviceHealthProvider } from './health';
+import { supabaseMealPhotoProvider } from './meal-photo';
 import { providers as unavailable } from './unavailable';
+import { isSupabaseConfigured } from '@/services/supabase';
 
 export const providers = {
   ...unavailable,
@@ -17,4 +19,6 @@ export const providers = {
   store: osmStoreProvider,
   location: deviceLocationProvider,
   health: deviceHealthProvider,
+  // Answers `unavailable` without a Supabase project or without vision secrets on the server.
+  mealPhoto: isSupabaseConfigured ? supabaseMealPhotoProvider : unavailable.mealPhoto,
 };
