@@ -30,16 +30,16 @@ export function RestTimer({ session }: { session: string }) {
   const left = Math.min(restRemaining(rest, now), Math.ceil(rest.totalMs / 1000));
   const ui = useWorkoutUi.getState();
   return (
-    <Card tone="accent">
+    <Card tone="accent" dense>
       {/* The ring empties as the rest runs: a real timer, its seconds said in words. */}
       <View style={styles.row}>
         <ProgressRing
           value={rest.totalMs > 0 ? (left * 1000) / rest.totalMs : 0}
-          size={88}
-          stroke={8}
+          size={68}
+          stroke={6}
           track="surface"
           label={t('workout.rest.label', { seconds: left })}>
-          <Text variant="metric" style={styles.clock}>
+          <Text variant="headline" style={styles.clock}>
             {clock(left)}
           </Text>
         </ProgressRing>
@@ -78,7 +78,7 @@ export function RestTimer({ session }: { session: string }) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   text: { flex: 1, gap: spacing.xs },
   title: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   clock: { fontVariant: ['tabular-nums'] },

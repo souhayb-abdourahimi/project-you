@@ -59,6 +59,12 @@ export const ICONS = {
   sliders: { sf: 'slider.horizontal.3', md: 'tune' },
   play: { sf: 'play.fill', md: 'play_arrow' },
   skip: { sf: 'forward.end', md: 'skip_next' },
+  // A 5-step feeling scale, from the lightest to the hardest (never a red or alarming glyph).
+  mood1: { sf: 'face.smiling.inverse', md: 'sentiment_very_satisfied' },
+  mood2: { sf: 'face.smiling', md: 'sentiment_satisfied' },
+  mood3: { sf: 'face.dashed', md: 'sentiment_neutral' },
+  mood4: { sf: 'cloud', md: 'sentiment_dissatisfied' },
+  mood5: { sf: 'cloud.rain', md: 'sentiment_very_dissatisfied' },
 } as const satisfies Record<string, { sf: SFSymbol; md: string }>;
 
 export type IconName = keyof typeof ICONS;

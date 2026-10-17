@@ -9,6 +9,7 @@ import { DIFFICULTY_LEVELS, difficultyLevel } from '@/domain/training/program';
 import { spacing } from '@/theme';
 
 import { ExerciseFacts } from './ExerciseFacts';
+import { ExerciseMedia } from './ExerciseMedia';
 import { NotPerformedPanel, ReplacePanel } from './ReplacePanel';
 import { SetEntry } from './SetEntry';
 import { SetList } from './SetList';
@@ -39,10 +40,13 @@ export function CurrentExercise({
 
   return (
     <Card raised style={styles.card}>
-      <Text variant="overline" color="primary">
-        {t('workout.header.exerciseOf', { index: ex.index + 1, total })}
-      </Text>
-      <Text variant="title2">{name}</Text>
+      <ExerciseMedia exerciseId={ex.exerciseId} label={name} variant="hero" />
+      <View style={styles.title}>
+        <Text variant="overline" color="primary">
+          {t('workout.header.exerciseOf', { index: ex.index + 1, total })}
+        </Text>
+        <Text variant="title2">{name}</Text>
+      </View>
       {ex.replaced ? (
         <View style={styles.row}>
           <Text variant="caption" color="textMuted">
@@ -54,7 +58,7 @@ export function CurrentExercise({
         </View>
       ) : null}
       <ExerciseFacts exercise={ex} last={ex.last} hint={ex.hint} />
-      <SetList sets={ex.today} editing={editing} onEdit={(i) => setEditing(editing === i ? null : i)} />
+      <SetList sets={ex.today} planned={ex.sets} editing={editing} onEdit={(i) => setEditing(editing === i ? null : i)} />
 
       {/* One thing at a time: the replace / skip panel takes the place of the set entry. */}
       {panel !== null ? null : ex.status === 'not_performed' ? (
@@ -149,6 +153,7 @@ export function CurrentExercise({
 
 const styles = StyleSheet.create({
   card: { gap: spacing.md },
+  title: { gap: spacing.xxs },
   row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
   block: { gap: spacing.sm },
 });

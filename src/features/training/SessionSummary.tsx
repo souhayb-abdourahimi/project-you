@@ -2,13 +2,14 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
-import { Button, Card, ChoiceGroup, Icon, MetricCard, Text } from '@/components/ui';
+import { Button, Card, FeelingScale, Icon, MetricCard, Text, type FeelingStep } from '@/components/ui';
 import { getExercise } from '@/domain/training/exercises';
 import { DIFFICULTY_LEVELS, difficultyLevel } from '@/domain/training/program';
 import type { SessionResult, SessionSummary as Summary } from '@/domain/training/session';
 import { formatNumber } from '@/lib/format';
 import { spacing } from '@/theme';
 
+import { ExerciseMedia } from './ExerciseMedia';
 import type { SessionController } from './useSessionController';
 import type { usePreferenceQuestion } from './usePreferenceQuestion';
 
@@ -33,15 +34,15 @@ export function SessionSummary({
   return (
     <View style={styles.root}>
       {/* A calm, positive close: what was done, never what was not (no-guilt design). */}
-      <Card tone="positive" style={styles.hero}>
+      <View style={styles.hero}>
         <View style={styles.inline}>
-          <Icon name="done" size="lg" color="success" />
-          <Text variant="title2" accessibilityLiveRegion="polite" style={styles.flex}>
+          <Icon name="done" size="xl" color="success" />
+          <Text variant="title1" accessibilityLiveRegion="polite" style={styles.flex}>
             {t('workout.summary.title')}
           </Text>
         </View>
         <Text color="textSecondary">{t(`workout.summary.result.${outcome}`)}</Text>
-      </Card>
+      </View>
       <View style={styles.tiles}>
         <MetricCard
           icon="time"
@@ -79,30 +80,34 @@ export function SessionSummary({
       {summary.records.length > 0 ? (
         <Card>
           <View style={styles.inline}>
-            <Icon name="celebrate" size="sm" color="success" />
-            <Text variant="headline" color="success">
-              {t('workout.summary.records')}
-            </Text>
+            <Icon name="trophy" size="md" color="warning" />
+            <Text variant="headline">{t('workout.summary.records')}</Text>
           </View>
           {summary.records.map((r) => (
-            <Text key={r.exerciseId}>
-              {t(`workout.summary.record_${r.kind}`, {
-                name: name(r.exerciseId),
-                load: formatNumber(r.loadKg, lang),
-                reps: r.reps,
-              })}
-            </Text>
+            <View key={r.exerciseId} style={styles.record}>
+              <ExerciseMedia exerciseId={r.exerciseId} label={name(r.exerciseId)} size={40} />
+              <Text style={styles.flex}>
+                {t(`workout.summary.record_${r.kind}`, {
+                  name: name(r.exerciseId),
+                  load: formatNumber(r.loadKg, lang),
+                  reps: r.reps,
+                })}
+              </Text>
+            </View>
           ))}
         </Card>
       ) : null}
       <Card>
-        <Text variant="title3">{t('workout.sessionDifficulty')}</Text>
-        <ChoiceGroup
-          single
+        <Text variant="headline">{t('workout.sessionDifficulty')}</Text>
+        <FeelingScale
           label={t('workout.sessionDifficulty')}
-          options={DIFFICULTY_LEVELS.map((l) => ({ value: l, label: t(`workout.difficulty.${l}`) }))}
-          selected={difficulty ? [difficultyLevel(difficulty)!] : []}
-          onToggle={onRate}
+          options={DIFFICULTY_LEVELS.map((l, i) => ({
+            value: l,
+            label: t(`workout.difficulty.${l}`),
+            step: (i + 1) as FeelingStep,
+          }))}
+          value={difficulty ? difficultyLevel(difficulty) : null}
+          onChange={onRate}
         />
         {difficulty ? (
           <Text variant="caption" color="success" accessibilityLiveRegion="polite">
@@ -145,8 +150,9 @@ export function SessionSummary({
 }
 
 const styles = StyleSheet.create({
-  root: { gap: spacing.lg },
-  hero: { gap: spacing.sm },
+  root: { gap: spacing.md },
+  hero: { gap: spacing.xs, paddingVertical: spacing.sm },
+  record: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   inline: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   flex: { flex: 1 },
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },

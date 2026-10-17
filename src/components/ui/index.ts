@@ -30,3 +30,5 @@ export { ListGroup, ListRow } from './List';
 export { HeroMedia } from './HeroMedia';
 export { MiniBars, ProgressRing, TrendLine } from './Viz';
 export { Tabs } from './Tabs';
+export { RadioList } from './RadioList';
+export { FeelingScale, type FeelingStep } from './FeelingScale';

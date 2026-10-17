@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Button, Card, ChoiceGroup, Text } from '@/components/ui';
+import { Button, Card, Icon, RadioList, Text } from '@/components/ui';
 import type { TrainingProfile } from '@/domain/profile/schemas';
 import { getExercise } from '@/domain/training/exercises';
 import { findReplacements, type ReplacementReason } from '@/domain/training/replacement';
 import { replacementAdvice, SHOWN_REPLACEMENT_REASONS, type SessionExercise } from '@/domain/training/session';
-import { spacing } from '@/theme';
+import { MIN_TOUCH, radius, spacing, useColors } from '@/theme';
+
+import { ExerciseMedia } from './ExerciseMedia';
 
 /**
  * Replace flow (D-034): the reason first (it shapes the alternatives and what is said), then the
@@ -40,14 +42,13 @@ export function ReplacePanel({
     : [];
   const info = getExercise(exercise.exerciseId);
   return (
-    <Card>
-      <Text variant="title3">{t('workout.replaceTitle')}</Text>
-      <ChoiceGroup
-        single
+    <Card tone="subtle" style={styles.panel}>
+      <Text variant="headline">1. {t('workout.replaceTitle')}</Text>
+      <RadioList
         label={t('workout.replaceTitle')}
         options={SHOWN_REPLACEMENT_REASONS.map((r) => ({ value: r, label: t(`workout.replaceReasons.${r}`) }))}
-        selected={reason ? [reason] : []}
-        onToggle={setReason}
+        value={reason}
+        onChange={setReason}
       />
       {advice?.note ? (
         <Text color={advice.note === 'discomfort' ? 'warning' : 'textMuted'} accessibilityLiveRegion="polite">
@@ -61,13 +62,15 @@ export function ReplacePanel({
       ) : null}
       {reason ? (
         <View style={styles.list} testID="alternatives">
-          <Text variant="label">{options.length > 0 ? t('workout.alternatives') : t('workout.noReplacement')}</Text>
+          <Text variant="headline">
+            {options.length > 0 ? `2. ${t('workout.alternatives')}` : t('workout.noReplacement')}
+          </Text>
           {options.map((o) => (
-            <Button
+            <Alternative
               key={o.id}
-              variant="secondary"
-              label={o.name[lang]}
-              accessibilityHint={t('workout.choose', { name: o.name[lang] })}
+              id={o.id}
+              name={o.name[lang]}
+              muscles={o.primary.map((m) => t(`workout.targets.${m}`)).join(', ')}
               onPress={() => onReplace(o.id, reason)}
             />
           ))}
@@ -84,6 +87,32 @@ export function ReplacePanel({
   );
 }
 
+/** One alternative: its picture (validated media or artwork), its name and the muscles it works. */
+function Alternative({ id, name, muscles, onPress }: { id: string; name: string; muscles: string; onPress: () => void }) {
+  const { t } = useTranslation();
+  const colors = useColors();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={name}
+      accessibilityHint={t('workout.choose', { name })}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.alternative,
+        { backgroundColor: pressed ? colors.surfaceSubtle : colors.surface, borderColor: colors.border },
+      ]}>
+      <ExerciseMedia exerciseId={id} label={name} size={48} />
+      <View style={styles.flex}>
+        <Text variant="bodyMedium">{name}</Text>
+        <Text variant="caption" color="textMuted" numberOfLines={1}>
+          {muscles}
+        </Text>
+      </View>
+      <Icon name="chevron" size="sm" color="textMuted" />
+    </Pressable>
+  );
+}
+
 /** "Je ne fais pas cet exercice": an explicit status, with an optional reason. */
 export function NotPerformedPanel({
   onConfirm,
@@ -95,14 +124,13 @@ export function NotPerformedPanel({
   const { t } = useTranslation();
   const [reason, setReason] = useState<ReplacementReason | null>(null);
   return (
-    <Card>
-      <Text variant="title3">{t('workout.notPerformedTitle')}</Text>
-      <ChoiceGroup
-        single
+    <Card tone="subtle" style={styles.panel}>
+      <Text variant="headline">{t('workout.notPerformedTitle')}</Text>
+      <RadioList
         label={t('workout.notPerformedTitle')}
         options={SHOWN_REPLACEMENT_REASONS.map((r) => ({ value: r, label: t(`workout.replaceReasons.${r}`) }))}
-        selected={reason ? [reason] : []}
-        onToggle={(r) => setReason(reason === r ? null : r)}
+        value={reason}
+        onChange={(r) => setReason(reason === r ? null : r)}
       />
       {reason === 'discomfort' ? (
         <Text color="warning" accessibilityLiveRegion="polite">
@@ -118,6 +146,17 @@ export function NotPerformedPanel({
 }
 
 const styles = StyleSheet.create({
+  panel: { gap: spacing.md },
   list: { gap: spacing.sm },
+  alternative: {
+    minHeight: MIN_TOUCH,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  flex: { flex: 1, gap: 2 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
 });
