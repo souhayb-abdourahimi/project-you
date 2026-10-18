@@ -22,6 +22,8 @@ Projet Supabase : `krcqdrrfnvfpvczxwrmt`. Les threads cloud n'atteignent pas ce 
 | `analyze-meal` | `supabase functions deploy analyze-meal` | requis (défaut, ne pas passer `--no-verify-jwt`) | voir `docs/MEAL_PHOTO_ANALYSIS.md` § Déploiement |
 
 - [ ] `analyze-meal` déployée **après** ses secrets (sinon elle répond 503 et l'app propose la composition à la main, ce qui est sans risque).
+- [ ] Premier appel réel validé avec le fournisseur choisi (OpenAI `gpt-6-luna` ou Anthropic) : brouillon affiché, calories venant du catalogue Ciqual. Jamais testé contre l'API réelle depuis le développement.
+- [ ] Clé refusée, modèle inconnu, délai : erreur avec « Réessayer » et « Composer mon repas à la main » (couvert par `mealAnalysisFallback.test.tsx`, à revoir une fois sur appareil).
 - [ ] Sans la fonction (404) ou sans secrets (503), l'écran « Ajouter un repas » affiche « Analyse photo pas encore disponible » et « Composer mon repas à la main ». Rien ne casse.
 
 ## 3. Secrets (noms seulement)
@@ -30,13 +32,15 @@ Projet Supabase : `krcqdrrfnvfpvczxwrmt`. Les threads cloud n'atteignent pas ce 
 |---|---|---|
 | App (`.env.local`, jamais commité) | `EXPO_PUBLIC_SUPABASE_URL` | URL du projet |
 | App | `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (repli : `EXPO_PUBLIC_SUPABASE_ANON_KEY`) | clé publique, protégée par Auth + RLS |
-| Edge Function `analyze-meal` | `MEAL_VISION_PROVIDER` | `anthropic` ; absent = service indisponible |
-| Edge Function `analyze-meal` | `ANTHROPIC_API_KEY` | clé du fournisseur de vision |
-| Edge Function `analyze-meal` | `MEAL_VISION_MODEL` | identifiant du modèle de vision |
+| Edge Function `analyze-meal` | `MEAL_VISION_PROVIDER` | `openai` ou `anthropic` ; absent ou autre valeur = service indisponible |
+| Edge Function `analyze-meal` | `MEAL_VISION_MODEL` | identifiant du modèle de vision (OpenAI : `gpt-6-luna` recommandé) |
+| Edge Function `analyze-meal` | `OPENAI_API_KEY` | clé OpenAI, si `MEAL_VISION_PROVIDER=openai` |
+| Edge Function `analyze-meal` | `ANTHROPIC_API_KEY` | clé Anthropic, si `MEAL_VISION_PROVIDER=anthropic` |
 | Edge Functions (fournis par Supabase) | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | injectés automatiquement, rien à définir |
 
 - [ ] Posés avec `supabase secrets set --env-file <fichier hors du dépôt, supprimé ensuite>` (la clé ne passe pas par l'historique du shell) ; détail dans `docs/RELEASE_RUNBOOK.md`.
-- [ ] Aucune autre clé dans le bundle : `npm run build:web`, puis `grep -rE 'sb_secret_[A-Za-z0-9]|sk-ant-[A-Za-z0-9]|eyJ[^"]*service_role' dist/` (aucun résultat attendu ; supabase-js contient le mot `sb_secret_` seul, pour refuser ces clés côté client).
+- [ ] Aucune autre clé dans le bundle : `npm run build:web`, puis `grep -rE 'sb_secret_[A-Za-z0-9]|sk-ant-[A-Za-z0-9]|sk-proj-[A-Za-z0-9]|sk-[A-Za-z0-9]{20}|eyJ[^"]*service_role' dist/` (aucun résultat attendu ; supabase-js contient le mot `sb_secret_` seul, pour refuser ces clés côté client).
+- [ ] OpenAI : clé de projet dédiée, limite de dépense mensuelle posée côté OpenAI.
 - [ ] Auth : **Leaked Password Protection** activée (Authentication → Policies). Elle est désactivée aujourd'hui.
 
 ## 4. Médias et licences
@@ -45,7 +49,7 @@ Projet Supabase : `krcqdrrfnvfpvczxwrmt`. Les threads cloud n'atteignent pas ce 
 - [ ] Lot exercices 01 (9 fichiers) et lot recettes 01 (1 fichier) : preuve écrite des droits (production propre ou licence commerciale) archivée hors dépôt. Le `credit` actuel dit « validé par Souhayb », ce qui n'est pas une licence.
 - [ ] Les médias manquants (27 exercices, 22 recettes) gardent le visuel dessiné. Aucune photo web aléatoire.
 - [ ] Données Ciqual 2025 : mention de la source (ANSES) visible dans l'app (`docs/DATA_SOURCES.md`).
-- [ ] Fournisseur de vision : contrat de traitement des données signé (les photos de repas sont des données personnelles).
+- [ ] Fournisseur de vision : contrat de traitement des données signé (les photos de repas sont des données personnelles). OpenAI : `store: false` est envoyé, mais les journaux anti-abus restent jusqu'à 30 jours sans accord ZDR ; la politique de confidentialité de l'app doit nommer le fournisseur réellement utilisé.
 
 ## 5. Test iOS réel (build de développement ou TestFlight)
 

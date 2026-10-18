@@ -1,8 +1,10 @@
 /**
  * Vision model adapters for `analyze-meal`. The provider is a product decision (cost, latency,
- * data processing terms): it is chosen with the `MEAL_VISION_PROVIDER` secret and isolated behind
- * `VisionModel`, so changing it never touches the app. Without the secrets the function answers
- * `not_configured` and the app keeps its manual composition.
+ * data processing terms): it is chosen with the `MEAL_VISION_PROVIDER` secret (`anthropic` or
+ * `openai`) and isolated behind `VisionModel`, so changing it never touches the app. Every adapter
+ * sends the same prompt and returns the same raw shape (foods, grams, confidence; never a nutrient),
+ * checked by the handler. Without the secrets the function answers `not_configured` and the app
+ * keeps its manual composition.
  */
 import type { CatalogEntry, VisionInput, VisionModel } from './handler.ts';
 
@@ -68,13 +70,103 @@ export function anthropicVision(apiKey: string, model: string, fetchImpl: typeof
   };
 }
 
-/** The model chosen by the secrets, or null (not configured). */
+/**
+ * The JSON schema OpenAI must follow (strict Structured Outputs: every field required, nullable
+ * through `null`, no other key). Same fields as the prompt, and nothing nutritional: no kcal, no
+ * macro can even be expressed. Catalogue ids are checked by the handler, not by an enum.
+ */
+export const MEAL_DETECTION_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['items'],
+  properties: {
+    items: {
+      type: 'array',
+      maxItems: 12, // = MAX_ITEMS of the handler (a test keeps them equal)
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['label', 'foodId', 'grams', 'confidence'],
+        properties: {
+          label: { type: 'string' },
+          foodId: { type: ['string', 'null'] },
+          grams: { type: ['number', 'null'] },
+          confidence: { type: ['number', 'null'] },
+        },
+      },
+    },
+  },
+} as const;
+
+/** Room for the low reasoning effort plus at most 12 short items. */
+const OPENAI_MAX_OUTPUT_TOKENS = 4096;
+
+interface OpenAIResponse {
+  status?: string;
+  output?: { type?: string; content?: { type?: string; text?: string }[] }[];
+}
+
+/**
+ * OpenAI Responses API (vision). Secrets: OPENAI_API_KEY, MEAL_VISION_MODEL.
+ * - `store: false`: the response (and so the photo) is not kept as application state.
+ * - `reasoning.effort: 'low'`: the lowest effort every current vision model accepts; no
+ *   `temperature` (refused by reasoning models).
+ * - Only a `completed` answer is read; an incomplete one (token cap, content filter) is a failure,
+ *   a refusal is an unusable answer. Neither is ever patched.
+ */
+export function openaiVision(apiKey: string, model: string, fetchImpl: typeof fetch = fetch): VisionModel {
+  return {
+    name: model,
+    async detect({ imageBase64, mediaType, catalog, signal }: VisionInput) {
+      const response = await fetchImpl('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        signal,
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model,
+          instructions: visionPrompt(catalog),
+          input: [
+            {
+              role: 'user',
+              content: [
+                { type: 'input_image', image_url: `data:${mediaType};base64,${imageBase64}` },
+                { type: 'input_text', text: 'List the foods of this meal as JSON.' },
+              ],
+            },
+          ],
+          text: { format: { type: 'json_schema', name: 'meal_foods', strict: true, schema: MEAL_DETECTION_SCHEMA } },
+          reasoning: { effort: 'low' },
+          max_output_tokens: OPENAI_MAX_OUTPUT_TOKENS,
+          store: false,
+        }),
+      });
+      if (!response.ok) throw new Error(`vision ${response.status}`);
+      const json = (await response.json()) as OpenAIResponse;
+      if (json.status !== 'completed') throw new Error(`vision ${json.status ?? 'unknown'}`);
+      const parts = (json.output ?? []).filter((o) => o.type === 'message').flatMap((o) => o.content ?? []);
+      // A refusal is not "no food": the answer is unusable (the handler says invalid_output).
+      if (parts.some((p) => p.type === 'refusal')) return null;
+      const text = parts
+        .filter((p) => p.type === 'output_text')
+        .map((p) => p.text ?? '')
+        .join('');
+      return extractJson(text);
+    },
+  };
+}
+
+/** The model chosen by the secrets, or null (not configured: the app offers composing by hand). */
 export function visionFromEnv(env: (key: string) => string | undefined, fetchImpl?: typeof fetch): VisionModel | null {
-  const provider = env('MEAL_VISION_PROVIDER');
+  const provider = env('MEAL_VISION_PROVIDER')?.trim().toLowerCase();
+  const model = env('MEAL_VISION_MODEL')?.trim();
+  if (!model) return null;
   if (provider === 'anthropic') {
-    const key = env('ANTHROPIC_API_KEY');
-    const model = env('MEAL_VISION_MODEL');
-    return key && model ? anthropicVision(key, model, fetchImpl) : null;
+    const key = env('ANTHROPIC_API_KEY')?.trim();
+    return key ? anthropicVision(key, model, fetchImpl) : null;
+  }
+  if (provider === 'openai') {
+    const key = env('OPENAI_API_KEY')?.trim();
+    return key ? openaiVision(key, model, fetchImpl) : null;
   }
   return null;
 }

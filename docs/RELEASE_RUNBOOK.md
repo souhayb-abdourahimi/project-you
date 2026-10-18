@@ -47,7 +47,17 @@ npx supabase@latest login
 npx supabase@latest link --project-ref krcqdrrfnvfpvczxwrmt
 ```
 
-Créer un fichier **hors du dépôt** (par exemple `~/projectyou-fn.env`) :
+Créer un fichier **hors du dépôt** (par exemple `~/projectyou-fn.env`) avec **un** des deux fournisseurs.
+
+OpenAI (recommandé : `gpt-6-luna`, voir les modèles compatibles dans `docs/MEAL_PHOTO_ANALYSIS.md`) :
+
+```
+MEAL_VISION_PROVIDER=openai
+MEAL_VISION_MODEL=gpt-6-luna
+OPENAI_API_KEY=<ta clé de projet OpenAI>
+```
+
+ou Anthropic :
 
 ```
 MEAL_VISION_PROVIDER=anthropic
@@ -55,11 +65,15 @@ MEAL_VISION_MODEL=<identifiant du modèle de vision choisi>
 ANTHROPIC_API_KEY=<ta clé>
 ```
 
+Côté OpenAI : une clé de **projet** dédiée à Project You, avec une limite de dépense mensuelle dans le tableau de bord OpenAI (Limits). Aucun en-tête d'organisation n'est nécessaire.
+
 ```bash
 npx supabase@latest secrets set --env-file ~/projectyou-fn.env
 rm ~/projectyou-fn.env
 npx supabase@latest secrets list   # les 3 noms apparaissent, jamais les valeurs
 ```
+
+Pour changer de fournisseur plus tard : reposer ces 3 secrets, retirer l'ancienne clé (`npx supabase@latest secrets unset ANTHROPIC_API_KEY` ou `OPENAI_API_KEY`), puis relancer le déploiement de l'étape 3 : le fournisseur est lu au démarrage de la fonction, et un redéploiement garantit que toutes les instances lisent les nouveaux secrets. Aucune nouvelle version de l'app.
 
 `SUPABASE_URL`, `SUPABASE_ANON_KEY` et `SUPABASE_SERVICE_ROLE_KEY` sont injectés par Supabase : rien à poser.
 
@@ -76,7 +90,12 @@ Ne passe pas `--no-verify-jwt`. Contrôle : un appel sans connexion doit être r
 curl -s -o /dev/null -w "%{http_code}\n" -X POST https://krcqdrrfnvfpvczxwrmt.supabase.co/functions/v1/analyze-meal
 ```
 
-Puis, dans l'app connectée : Nutrition → ajouter un repas → photo → « Analyser » renvoie un brouillon. Si la fonction répond 503 (secrets incomplets), l'app propose « Composer mon repas à la main » : c'est le repli prévu, pas une panne.
+Puis, dans l'app connectée : Nutrition → ajouter un repas → photo → « Analyser » renvoie un brouillon. C'est le premier appel réel au fournisseur : il n'a pas pu être fait depuis l'environnement de développement.
+
+- Brouillon affiché : vérifier que chaque aliment a ses grammes et que les calories affichées sont celles du catalogue (étiquette « estimation »), pas un chiffre du modèle.
+- « Analyse photo pas encore disponible » (503) : un des 3 secrets manque ou `MEAL_VISION_PROVIDER` est mal écrit.
+- Erreur avec « Réessayer » (502) : clé refusée, modèle inconnu ou incompatible, quota épuisé. Vérifier la clé et `MEAL_VISION_MODEL` ; les journaux de la fonction ne contiennent ni la photo ni la réponse.
+- Dans tous ces cas, « Composer mon repas à la main » fonctionne : c'est le repli prévu, pas une panne.
 
 ## 4. Sécurité Auth (tableau de bord)
 

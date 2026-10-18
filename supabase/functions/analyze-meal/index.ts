@@ -1,6 +1,7 @@
 // Supabase Edge Function (Deno). Deploy: `supabase functions deploy analyze-meal`.
-// Secrets (server only, never in the app): MEAL_VISION_PROVIDER=anthropic, ANTHROPIC_API_KEY,
-// MEAL_VISION_MODEL. Without them the function answers 503 not_configured.
+// Secrets (server only, never in the app): MEAL_VISION_PROVIDER (`anthropic` or `openai`),
+// MEAL_VISION_MODEL, and the chosen provider's key: ANTHROPIC_API_KEY or OPENAI_API_KEY.
+// Without them the function answers 503 not_configured.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 import { handleAnalyzeMeal } from './handler.ts';

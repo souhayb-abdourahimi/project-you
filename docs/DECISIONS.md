@@ -730,3 +730,12 @@ Souhayb a validé Aujourd'hui (passe 3.1) et demandé deux micro-corrections (3.
 - **Accessibilité** : `aria-expanded` sur chaque zone dépliable (web) en plus de `accessibilityState.expanded` ; aucune commande sans nom accessible sur les 11 écrans principaux (contrôle Playwright ponctuel).
 - **Date** : 2026-10-17
 
+### D-045 addendum (fournisseur OpenAI, 2026-10-18)
+
+- **Décision** : second adaptateur de vision `openaiVision` dans `analyze-meal`, à côté d'Anthropic, choisi par `MEAL_VISION_PROVIDER=openai` avec `OPENAI_API_KEY` et `MEAL_VISION_MODEL`. Même prompt, même contrat de sortie (aliment du catalogue ou `null`, grammes, confiance), même contrôle par `sanitizeDetection` ; aucune valeur nutritionnelle ne vient du modèle, tout est recalculé depuis Ciqual.
+- **API** : Responses (`POST /v1/responses`), recommandée par OpenAI pour les nouveaux projets ; sortie structurée stricte sans aucun champ nutritionnel ; `store: false` (sinon conservation 30 jours) ; `reasoning.effort: low`, seul effort accepté par tous les modèles vision actuels ; pas de `temperature` (refusée par les modèles à raisonnement). Seule une réponse `completed` est lue ; refus, réponse incomplète ou erreur → échec, jamais réparé.
+- **Modèle conseillé** : `gpt-6-luna` (le moins cher, prévu pour les tâches ciblées à fort volume). Liste des modèles compatibles et non compatibles dans `docs/MEAL_PHOTO_ANALYSIS.md`, relevée sur la doc OpenAI le 2026-10-18.
+- **Repli** : fournisseur absent, inconnu ou incomplet → 503 → « indisponible » ; erreur OpenAI → 502 ; délai → 504 ; dans tous les cas « Composer mon repas à la main » (test de bout en bout `mealAnalysisFallback.test.tsx`).
+- **Reste à valider** : premier appel réel après déploiement (aucune clé ni réseau vers OpenAI en développement), contrat de traitement des données du fournisseur retenu.
+- **Date** : 2026-10-18
+
