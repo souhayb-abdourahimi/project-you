@@ -17,6 +17,7 @@ import {
   sessionProgress,
   sessionResult,
   sessionSummary,
+  sessionVolume,
   setFeel,
   SET_FEELS,
   SHOWN_REPLACEMENT_REASONS,
@@ -323,7 +324,15 @@ describe('sessionSummary: real facts only', () => {
       notPerformed: ['squat'],
       // push_up has no earlier set: a first time is not a record.
       records: [{ exerciseId: 'bench_press', loadKg: 70, reps: 8, kind: 'load' }],
+      // 70 × 8 × 2; the bodyweight push-ups carry no load and add nothing.
+      volumeKg: 1120,
     });
+  });
+
+  it('volume: only sets entered with a load; bodyweight or timed only is no volume, never zero', () => {
+    expect(sessionVolume({ push_up: [{ reps: 12, loadKg: 0 }], plank: [{ reps: 0, loadKg: 0, seconds: 40 }] })).toBeNull();
+    expect(sessionVolume({})).toBeNull();
+    expect(sessionVolume({ goblet_squat: [{ reps: 10, loadKg: 16.25 }, { reps: 9, loadKg: 16.25 }] })).toBe(309);
   });
 
   it('more reps at the same load is a record; no opening means no duration', () => {

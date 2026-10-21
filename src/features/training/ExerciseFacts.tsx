@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -7,7 +7,7 @@ import { explainExercise, explainLoad } from '@/domain/journey/explain';
 import { getExercise } from '@/domain/training/exercises';
 import type { CoachHint, Performance, SessionExercise } from '@/domain/training/session';
 import { formatNumber } from '@/lib/format';
-import { MIN_TOUCH, spacing } from '@/theme';
+import { MIN_TOUCH, radius, spacing, useColors } from '@/theme';
 
 import { setValue } from './format';
 
@@ -28,19 +28,41 @@ export function ExerciseFacts({
   const lang = i18n.language === 'en' ? 'en' : 'fr';
   const unit = exercise.unit === 'seconds' ? t('workout.unitSeconds') : t('workout.unitReps');
   const plan = planKey(exercise);
+  const colors = useColors();
+  const target = t('workout.target', {
+    sets: exercise.sets,
+    min: exercise.repsMin,
+    max: exercise.repsMax,
+    unit,
+    rest: exercise.restSeconds,
+  });
   return (
     <View style={styles.root}>
-      <Text variant="title3" accessibilityRole="text">
-        {t('workout.target', {
-          sets: exercise.sets,
-          min: exercise.repsMin,
-          max: exercise.repsMax,
-          unit,
-          rest: exercise.restSeconds,
-        })}
-      </Text>
-      <Proposed exercise={exercise} unit={unit} />
-      {last ? <Text>{t('workout.lastTime', { value: setValue(t, lang, last) })}</Text> : null}
+      {/* The prescription as three facts (W-10 reference); read as one sentence. */}
+      <View accessible accessibilityLabel={target} style={[styles.strip, { backgroundColor: colors.surfaceSubtle }]}>
+        <Fact label={t('workout.facts.sets')} value={String(exercise.sets)} />
+        <View style={[styles.sep, { backgroundColor: colors.border }]} />
+        <Fact
+          label={exercise.unit === 'seconds' ? t('workout.facts.seconds') : t('workout.facts.reps')}
+          value={
+            exercise.repsMin === exercise.repsMax ? `${exercise.repsMin}` : `${exercise.repsMin}–${exercise.repsMax}`
+          }
+        />
+        <View style={[styles.sep, { backgroundColor: colors.border }]} />
+        <Fact label={t('workout.facts.rest')} value={restLabel(exercise.restSeconds, t)} />
+      </View>
+      <View style={styles.tiles}>
+        {hasProposal(exercise) ? (
+          <Tile label={t('workout.facts.proposed')}>
+            <Proposed exercise={exercise} unit={unit} />
+          </Tile>
+        ) : null}
+        {last ? (
+          <Tile label={t('workout.facts.last')}>
+            <Text variant="headline">{setValue(t, lang, last)}</Text>
+          </Tile>
+        ) : null}
+      </View>
       {/* The stored decision in one line (W-4); a hold of the day (fatigue, safety) says it instead. */}
       {plan && hint.key !== 'keep_load' ? (
         <Text variant="caption" color="textMuted">
@@ -54,6 +76,34 @@ export function ExerciseFacts({
         </Text>
       ) : null}
       <Why exercise={exercise} />
+    </View>
+  );
+}
+
+const restLabel = (seconds: number, t: (key: string, params?: Record<string, unknown>) => string) =>
+  seconds >= 60 && seconds % 60 === 0
+    ? t('workout.facts.restMinutes', { count: seconds / 60 })
+    : t('workout.facts.restSeconds', { count: seconds });
+
+function Fact({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.fact} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <Text variant="caption" color="textMuted">
+        {label}
+      </Text>
+      <Text variant="headline">{value}</Text>
+    </View>
+  );
+}
+
+function Tile({ label, children }: { label: string; children: ReactNode }) {
+  const colors = useColors();
+  return (
+    <View style={[styles.tile, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <Text variant="caption" color="textMuted">
+        {label}
+      </Text>
+      {children}
     </View>
   );
 }
@@ -79,6 +129,9 @@ function planKey(ex: SessionExercise): string | null {
   }
 }
 
+const hasProposal = (exercise: SessionExercise) =>
+  exercise.targetReps !== null || (exercise.proposedLoadKg !== null && exercise.proposedLoadKg > 0);
+
 /** What the prescription proposes: the load and the goal per set (W-4), or the range before W-4. */
 function Proposed({ exercise, unit }: { exercise: SessionExercise; unit: string }) {
   const { t, i18n } = useTranslation();
@@ -86,7 +139,7 @@ function Proposed({ exercise, unit }: { exercise: SessionExercise; unit: string 
   const load = exercise.proposedLoadKg !== null && exercise.proposedLoadKg > 0 ? exercise.proposedLoadKg : null;
   if (exercise.targetReps !== null) {
     return (
-      <Text>
+      <Text variant="headline">
         {load !== null
           ? t('workout.goalLoad', { load: formatNumber(load, lang), target: exercise.targetReps, unit })
           : t('workout.goal', { target: exercise.targetReps, unit })}
@@ -95,7 +148,7 @@ function Proposed({ exercise, unit }: { exercise: SessionExercise; unit: string 
   }
   if (load === null) return null;
   return (
-    <Text>
+    <Text variant="headline">
       {t('workout.proposed', { load: formatNumber(load, lang), min: exercise.repsMin, max: exercise.repsMax })}
     </Text>
   );
@@ -117,6 +170,7 @@ function Why({ exercise }: { exercise: SessionExercise }) {
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
+        aria-expanded={open}
         onPress={() => setOpen(!open)}
         style={styles.toggle}>
         <Text variant="label" color="primary">
@@ -160,7 +214,19 @@ function Why({ exercise }: { exercise: SessionExercise }) {
 }
 
 const styles = StyleSheet.create({
-  root: { gap: spacing.xs },
+  root: { gap: spacing.sm },
+  strip: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.md, paddingVertical: spacing.sm },
+  sep: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch' },
+  fact: { flex: 1, gap: 2, alignItems: 'center' },
+  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  tile: {
+    flex: 1,
+    minWidth: 140,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    gap: 2,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
   toggle: { minHeight: MIN_TOUCH, justifyContent: 'center', alignSelf: 'flex-start' },
   why: { gap: spacing.xs },
 });

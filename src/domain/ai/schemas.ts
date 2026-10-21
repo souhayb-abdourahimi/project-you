@@ -69,3 +69,36 @@ export function parseCoachAction(raw: unknown): { ok: true; action: CoachAction 
   const parsed = CoachAction.safeParse(raw);
   return parsed.success ? { ok: true, action: parsed.data } : { ok: false };
 }
+
+/**
+ * What the meal-photo vision service may return (W-10, docs/MEAL_PHOTO_ANALYSIS.md): food candidates
+ * only, each optionally matched to a catalogue food id with an optional portion in grams. It never
+ * carries calories or macros: nutrition is computed by `domain/meals/photo-analysis.ts` from Ciqual.
+ * Anything else (extra keys, totals, more than 12 items) is rejected, never repaired.
+ */
+export const MealPhotoDetection = z
+  .object({
+    items: z
+      .array(
+        z
+          .object({
+            label: z.string().trim().min(1).max(80),
+            foodId: z
+              .string()
+              .regex(/^[a-z0-9_]{1,64}$/)
+              .nullable(),
+            grams: z.number().positive().max(1500).nullable(),
+            confidence: z.number().min(0).max(1).nullable(),
+          })
+          .strict(),
+      )
+      .max(12),
+    model: z.string().trim().min(1).max(80),
+  })
+  .strict();
+export type MealPhotoDetection = z.infer<typeof MealPhotoDetection>;
+
+export function parseMealPhotoDetection(raw: unknown): { ok: true; detection: MealPhotoDetection } | { ok: false } {
+  const parsed = MealPhotoDetection.safeParse(raw);
+  return parsed.success ? { ok: true, detection: parsed.data } : { ok: false };
+}

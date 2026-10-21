@@ -7,6 +7,8 @@ import type { LoggedSet } from '@/domain/training/progression';
 import { exerciseStatus, type ExerciseReport, type SessionExercise } from '@/domain/training/session';
 import { MIN_TOUCH, radius, spacing, useColors, type ColorToken } from '@/theme';
 
+import { ExerciseMedia } from './ExerciseMedia';
+
 const MARK: Record<string, { icon: IconName; color: ColorToken }> = {
   pending: { icon: 'todo', color: 'textMuted' },
   in_progress: { icon: 'partial', color: 'primary' },
@@ -33,7 +35,9 @@ export function ExerciseList({
   const colors = useColors();
   return (
     <View style={styles.root}>
-      <Text variant="title3">{t('workout.list')}</Text>
+      <Text variant="title3" accessibilityRole="header">
+        {t('workout.list')}
+      </Text>
       <View style={[styles.group, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         {exercises.map((e, i) => {
           const done = sets[e.exerciseId] ?? [];
@@ -59,18 +63,18 @@ export function ExerciseList({
                     i === current ? colors.primarySubtle : pressed ? colors.surfaceSubtle : 'transparent',
                 },
               ]}>
-              <Text variant="captionStrong" color={i === current ? 'primary' : 'textMuted'} style={styles.index}>
-                {i + 1}
-              </Text>
-              <Text
-                style={styles.name}
-                variant={i === current ? 'bodyMedium' : 'body'}
-                color={status === 'not_performed' ? 'textMuted' : 'textPrimary'}>
-                {name}
-              </Text>
-              <Text variant="caption" color="textMuted">
-                {label}
-              </Text>
+              <ExerciseMedia exerciseId={e.exerciseId} label={name} size={40} />
+              <View style={styles.name}>
+                <Text
+                  variant={i === current ? 'bodyMedium' : 'body'}
+                  color={status === 'not_performed' ? 'textMuted' : 'textPrimary'}
+                  numberOfLines={1}>
+                  {name}
+                </Text>
+                <Text variant="caption" color="textMuted">
+                  {label}
+                </Text>
+              </View>
               <Icon name={MARK[status].icon} size="sm" color={MARK[status].color} />
             </Pressable>
           );
@@ -81,16 +85,15 @@ export function ExerciseList({
 }
 
 const styles = StyleSheet.create({
-  root: { gap: spacing.md },
-  group: { borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
+  root: { gap: spacing.sm + spacing.xxs },
+  group: { borderRadius: radius.card, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   row: {
     minHeight: MIN_TOUCH + spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
-  index: { width: 16, textAlign: 'center' },
   name: { flex: 1 },
 });

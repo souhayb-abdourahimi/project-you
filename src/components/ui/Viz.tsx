@@ -3,6 +3,8 @@ import { StyleSheet, View } from 'react-native';
 
 import { opacity, radius, spacing, useColors, type ColorToken } from '@/theme';
 
+import { Text } from './Text';
+
 /**
  * A circular progress for ONE main value (W-9). Drawn with two clipped half rings (no SVG
  * dependency); the value is always given as text to screen readers, and the centre shows it too.
@@ -139,6 +141,11 @@ const styles = StyleSheet.create({
   bar: { width: '100%', maxWidth: 14, borderRadius: radius.sm / 2 },
   segment: { position: 'absolute', height: 2, borderRadius: radius.pill },
   point: { position: 'absolute', borderRadius: radius.pill, borderWidth: 2 },
+  axisRoot: { gap: spacing.xs },
+  axisRow: { flexDirection: 'row', gap: spacing.sm },
+  axisY: { justifyContent: 'space-between', alignItems: 'flex-end' },
+  axisChart: { flex: 1 },
+  axisX: { flexDirection: 'row', justifyContent: 'space-between' },
 });
 
 /**
@@ -151,11 +158,14 @@ export function TrendLine({
   label,
   color = 'primary',
   height = 72,
+  axis,
 }: {
   values: readonly (number | null)[];
   label: string;
   color?: ColorToken;
   height?: number;
+  /** Quiet axis texts (decorative: `label` already says the trend): highest, lowest, first, last. */
+  axis?: { max: string; min: string; start: string; end: string };
 }) {
   const colors = useColors();
   const [width, setWidth] = useState(0);
@@ -171,7 +181,7 @@ export function TrendLine({
     y: max === min ? height / 2 : dot / 2 + ((max - v) / span) * (height - dot),
   });
   const last = values.length - 1;
-  return (
+  const chart = (
     <View
       accessible
       accessibilityRole="image"
@@ -226,6 +236,30 @@ export function TrendLine({
             );
           })
         : null}
+    </View>
+  );
+  if (!axis) return chart;
+  return (
+    <View style={styles.axisRoot}>
+      <View style={styles.axisRow}>
+        <View style={styles.axisY} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <Text variant="micro" color="textMuted">
+            {axis.max}
+          </Text>
+          <Text variant="micro" color="textMuted">
+            {axis.min}
+          </Text>
+        </View>
+        <View style={styles.axisChart}>{chart}</View>
+      </View>
+      <View style={styles.axisX} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <Text variant="micro" color="textMuted">
+          {axis.start}
+        </Text>
+        <Text variant="micro" color="textMuted">
+          {axis.end}
+        </Text>
+      </View>
     </View>
   );
 }

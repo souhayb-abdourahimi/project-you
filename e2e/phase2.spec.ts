@@ -88,7 +88,8 @@ test('health on the web: clear message, manual entry still available, nothing on
   await page.goto('/health');
   await expect(text(page, 'Les données santé ne sont pas disponibles sur cette plateforme.')).toBeVisible();
   await button(page, 'Saisir à la main').click();
-  await expect(page).toHaveURL(/\/progress$/);
+  // Progress opens with the measure entry unfolded.
+  await expect(page).toHaveURL(/\/progress\?entry=1$/);
   await expect(button(page, 'Noter mon poids')).toBeVisible();
 
   await page.goto('/privacy');

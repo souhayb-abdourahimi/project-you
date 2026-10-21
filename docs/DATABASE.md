@@ -43,6 +43,10 @@ Supabase / PostgreSQL. Migrations versionnées dans `supabase/migrations/` (horo
 | `coach_memory` | **héritée, inutilisée** (D-042) | ni lue ni écrite par l'app : la mémoire du coach vit dans `adjustments` (`coach.*`, D-039) ; exportée, supprimée avec le compte ; suppression ou usage futur à décider |
 | `ai_conversations` / `ai_messages` | AIConversation, AIMessage | phase 3 ; tables créées mais inutilisées au MVP |
 
+## Migration `20261017000001_logged_meals.sql` (W-10, D-045)
+
+- `logged_meals` : repas ajoutés hors plan après confirmation (estimation photo ou composition à la main). `eaten_on`, `slot` facultatif, `source` (`photo_estimate` | `manual`), `items` jsonb (1 à 12 `{ food_id, grams }`), estimation (`kcal`, `protein_g`, `carbs_g`, `fat_g`, bornées), `deleted_at` (suppression logique synchronisée). Jamais de photo ni de libellé du modèle. RLS propriétaire (4 politiques), aucun droit `anon`, index `(user_id, updated_at)` et `(user_id, eaten_on)`. Supprimée avec « Repas » dans le Privacy Center et avec le compte (cascade).
+
 ## Migration `20261002000001_workout_coach_foundation.sql` (W-1, D-031)
 
 Programmes versionnés et prescriptions immuables : `training_programs`, `planned_exercises` (RLS propriétaire, politiques restrictives de rattachement), colonnes de prescription et de ressenti sur `workout_sessions`, `planned_exercise_id` sur `exercise_logs` et `exercise_substitutions`, raisons de remplacement élargies, `adjustments.status = 'postponed'`, fonction `attach_reconstructed_training_history()`. Détail : `docs/TRAINING_ARCHITECTURE.md` §2–6. Tests : `supabase/tests/training.sql`.

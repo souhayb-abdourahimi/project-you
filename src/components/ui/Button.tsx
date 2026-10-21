@@ -8,6 +8,7 @@ import {
   radius,
   spacing,
   useColors,
+  useScheme,
   type ColorToken,
   type Colors,
 } from '@/theme';
@@ -84,8 +85,17 @@ export function Button({
   expanded,
 }: ButtonProps) {
   const colors = useColors();
-  const l = look(variant, onDark);
+  const scheme = useScheme();
   const inactive = disabled || loading;
+  // In dark mode a filled button at 40 % opacity turns muddy (dark text on grey-blue): a disabled
+  // filled button is drawn as a quiet well with muted text instead, at full opacity.
+  const muted = !!disabled && !loading && scheme === 'dark' && !onDark && variant !== 'ghost' && variant !== 'danger';
+  const l: Look = muted
+    ? { background: 'surfaceSubtle', pressed: 'surfaceSubtle', foreground: 'textMuted', border: 'border' }
+    : scheme === 'dark' && onDark && variant === 'primary'
+      ? // On the graphite hero in dark mode the bright primary glares: one step deeper, same text (6:1).
+        { background: 'primaryPressed', pressed: 'primaryPressed', foreground: 'onPrimary' }
+      : look(variant, onDark);
   const flat = variant === 'ghost' || variant === 'danger';
   return (
     <Pressable
@@ -103,7 +113,7 @@ export function Button({
         block && styles.block,
         {
           backgroundColor: fill(colors, pressed ? l.pressed : l.background),
-          opacity: inactive ? opacity.disabled : pressed && flat ? opacity.subtle : 1,
+          opacity: muted ? 1 : inactive ? opacity.disabled : pressed && flat ? opacity.subtle : 1,
           transform: [{ scale: pressed && !inactive && !flat ? PRESSED_SCALE : 1 }],
         },
         l.border ? { borderColor: colors[l.border], borderWidth: borderWidth.thin } : null,
@@ -128,17 +138,21 @@ export function IconButton({
   label,
   onPress,
   tone = 'subtle',
+  disabled,
 }: {
   icon: IconName;
   label: string;
   onPress: () => void;
   tone?: 'subtle' | 'plain';
+  disabled?: boolean;
 }) {
   const colors = useColors();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled: !!disabled }}
+      disabled={disabled}
       onPress={onPress}
       hitSlop={spacing.xs}
       style={({ pressed }) => [
@@ -146,7 +160,7 @@ export function IconButton({
         {
           backgroundColor: tone === 'subtle' ? colors.surface : 'transparent',
           borderColor: tone === 'subtle' ? colors.border : 'transparent',
-          opacity: pressed ? opacity.pressed : 1,
+          opacity: disabled ? opacity.disabled : pressed ? opacity.pressed : 1,
           transform: [{ scale: pressed ? PRESSED_SCALE : 1 }],
         },
       ]}>
@@ -163,7 +177,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  regular: { minHeight: 52, paddingHorizontal: spacing.xl },
+  regular: { minHeight: 48, paddingHorizontal: spacing.xl },
   compact: { paddingHorizontal: spacing.lg, borderRadius: radius.md },
   flat: { paddingHorizontal: spacing.sm, alignSelf: 'flex-start' },
   block: { alignSelf: 'stretch' },

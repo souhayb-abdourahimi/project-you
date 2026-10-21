@@ -3,6 +3,7 @@
  * only. A provider must handle auth, errors, timeouts, retries, caching, rate limits and missing data,
  * and report missing data as `unavailable` rather than inventing it.
  */
+import type { MealPhotoDetection } from '@/domain/ai/schemas';
 import type { Food } from '@/domain/meals/catalog';
 import type { GeoPoint, Place, PlaceKind } from '@/domain/places/types';
 import type {
@@ -145,4 +146,23 @@ export interface AIProvider {
     context: Record<string, unknown>;
     question: string;
   }): Promise<ProviderResult<unknown>>;
+}
+
+/** A meal photo ready to send: resized and compressed on the device, base64 without data: prefix. */
+export interface MealPhoto {
+  base64: string;
+  mediaType: 'image/jpeg' | 'image/png' | 'image/webp';
+}
+
+/**
+ * Meal photo analysis (W-10, docs/MEAL_PHOTO_ANALYSIS.md): food candidates only, validated against
+ * `MealPhotoDetection`; nutrition is computed by the domain from Ciqual. Sent only after an
+ * explicit user action; the photo is never stored.
+ */
+export interface MealPhotoProvider {
+  analyze(
+    photo: MealPhoto,
+    catalog: readonly { id: string; name: string }[],
+    signal?: AbortSignal,
+  ): Promise<ProviderResult<MealPhotoDetection>>;
 }

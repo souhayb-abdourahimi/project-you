@@ -251,11 +251,11 @@ const styles = StyleSheet.create({
   loadingRow: { flexDirection: 'row', justifyContent: 'space-between' },
   badge: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: radius.sm, paddingHorizontal: spacing.xs },
   empty: { gap: spacing.sm },
-  notice: { flexDirection: 'row', gap: spacing.md, borderRadius: radius.lg, padding: spacing.lg },
+  notice: { flexDirection: 'row', gap: spacing.md, borderRadius: radius.lg, padding: spacing.md + spacing.xxs },
   noticeText: { flex: 1, gap: spacing.xs },
   tile: { flex: 1, minWidth: 104 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, alignItems: 'center' },
-  section: { gap: spacing.md },
+  section: { gap: spacing.sm + spacing.xxs },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   avatar: { borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
@@ -297,6 +297,6 @@ export function CoachNote({
 
 const coachStyles = StyleSheet.create({
   card: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
-  mark: { width: 40, height: 40, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
+  mark: { width: 36, height: 36, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   body: { flex: 1, gap: spacing.xs },
 });

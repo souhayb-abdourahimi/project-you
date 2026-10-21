@@ -320,6 +320,19 @@ export interface SessionSummary {
   notPerformed: string[];
   /** Real new bests of this session (heavier load, or more reps at a load), from the sets. */
   records: { exerciseId: string; loadKg: number; reps: number; kind: 'load' | 'reps' }[];
+  /**
+   * Load × repetitions of the sets logged with a load (kg), rounded; null when no set carried a load
+   * (bodyweight or timed only). A sum of what was entered, never an estimate of effort or energy.
+   */
+  volumeKg: number | null;
+}
+
+/** Load × reps of the loaded sets (kg), or null when none carries a load. */
+export function sessionVolume(sets: Readonly<Record<string, readonly LoggedSet[]>>): number | null {
+  const loaded = Object.values(sets)
+    .flat()
+    .filter((s) => !isTimed(s) && s.reps > 0 && s.loadKg > 0);
+  return loaded.length > 0 ? Math.round(loaded.reduce((sum, s) => sum + s.loadKg * s.reps, 0)) : null;
 }
 
 /** End-of-session summary: real facts only (no calories, no estimate about the body). */
@@ -369,6 +382,7 @@ export function sessionSummary(input: {
       .filter((e) => exerciseStatus(e, sets[e.exerciseId] ?? [], input.reports[e.prescribedId]) === 'not_performed')
       .map((e) => e.prescribedId),
     records,
+    volumeKg: sessionVolume(sets),
   };
 }
 

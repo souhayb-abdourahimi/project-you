@@ -1,3 +1,4 @@
+import { loggedMealNutrition } from '../../meals/photo-analysis';
 import { DEFAULT_NOTIFICATION_PREFERENCES } from '../../notifications/types';
 import { SCENARIOS } from '../../scenarios';
 import { publishWeek } from '../../scenarios/training';
@@ -54,6 +55,24 @@ function fullState(): SyncableState {
     exerciseReports: { [prescribed]: { [first.exerciseId]: { difficulty: 4 } } },
     // W-8: reminder preferences the user changed (synced through notification_settings).
     notificationPrefs: { ...DEFAULT_NOTIFICATION_PREFERENCES, enabled: true, quietStart: '23:00' },
+    // W-10: a meal added outside the plan after confirmation (photo estimate).
+    loggedMeals: [
+      {
+        id: 'aaaaaaaa-0000-4000-8000-0000000000f1',
+        date: '2026-09-30',
+        slot: 'lunch',
+        source: 'photo_estimate',
+        items: [
+          { foodId: 'rice', grams: 80 },
+          { foodId: 'broccoli', grams: 100 },
+        ],
+        nutrition: loggedMealNutrition([
+          { foodId: 'rice', grams: 80 },
+          { foodId: 'broccoli', grams: 100 },
+        ])!,
+        createdAt: '',
+      },
+    ],
   };
 }
 
@@ -283,7 +302,9 @@ describe('applyRemote', () => {
     const local = { ...source, notificationPrefs: { ...source.notificationPrefs!, quietEnabled: false } };
     const merged = applyRemote(local, asServer(source), USER, synced);
     expect(merged.state.notificationPrefs?.quietEnabled).toBe(false);
-    expect(diff(project(merged.state, USER), merged.synced).upserts.map((u) => u.table)).toEqual(['notification_settings']);
+    expect(diff(project(merged.state, USER), merged.synced).upserts.map((u) => u.table)).toEqual([
+      'notification_settings',
+    ]);
   });
 
   it('W-8: the mass unit is read back only once chosen; the stored weights never change', () => {
@@ -366,6 +387,45 @@ describe('applyRemote', () => {
     const after = applyRemote(source, deleted, USER, syncedFor(source));
     expect(after.rejected).toBe(0);
     expect(after.state.inventory.map((i) => i.id)).not.toContain(source.inventory[0].id);
+  });
+});
+
+describe('meals added outside the plan (W-10)', () => {
+  it('round trip: ids and grams only, nutrition recomputed from Ciqual on arrival', () => {
+    const source = fullState();
+    const server = asServer(source);
+    const row = server.logged_meals![0];
+    expect(row).toMatchObject({
+      eaten_on: '2026-09-30',
+      source: 'photo_estimate',
+      items: [
+        { food_id: 'rice', grams: 80 },
+        { food_id: 'broccoli', grams: 100 },
+      ],
+    });
+    // A tampered total on the server is never trusted when the foods are known.
+    server.logged_meals = [{ ...row, kcal: '9999', protein_g: '1' }];
+    const { state, rejected } = applyRemote(emptyState(), server, USER, {});
+    expect(rejected).toBe(0);
+    const { createdAt: _at, ...rest } = state.loggedMeals![0];
+    const { createdAt: _src, ...expected } = source.loggedMeals![0];
+    expect(rest).toEqual(expected);
+  });
+
+  it('invalid rows are rejected; a deletion removes the meal', () => {
+    const source = fullState();
+    const bad = asServer(source);
+    bad.logged_meals = [{ ...bad.logged_meals![0], items: [] }];
+    expect(applyRemote(emptyState(), bad, USER, {}).rejected).toBe(1);
+    const deleted = asServer(source);
+    deleted.logged_meals = [{ id: source.loggedMeals![0].id, deleted_at: '2026-10-01T10:00:00Z' }];
+    expect(applyRemote(source, deleted, USER, syncedFor(source)).state.loggedMeals).toEqual([]);
+  });
+
+  it('a meal removed on this device is soft-deleted on the server', () => {
+    const source = fullState();
+    const plan = diff(project({ ...source, loggedMeals: [] }, USER), syncedFor(source));
+    expect(plan.deletes.map((d) => [d.table, d.key])).toContainEqual(['logged_meals', source.loggedMeals![0].id]);
   });
 });
 

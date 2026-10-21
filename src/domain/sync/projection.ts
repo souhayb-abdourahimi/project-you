@@ -25,6 +25,7 @@ import { MAIN_PROBLEMS, type WeeklyCheckin } from '../journey/weekly-checkin';
 import { normalizePreferences, type NotificationPreferences } from '../notifications/types';
 import type { FoodExpense } from '../meals/budget';
 import type { InventoryItem, InventorySource, InventoryUnit } from '../meals/inventory';
+import { loggedMealNutrition, type LoggedMeal } from '../meals/photo-analysis';
 import type { MealSlot } from '../meals/recipes';
 import type { WeeklyMealPlan } from '../meals/planner';
 import { Equipment, GoalType, TrainingLevel, UserContextSnapshot } from '../profile/schemas';
@@ -90,6 +91,21 @@ const REMOTE_ROWS = {
   }),
   food_expenses: z.object({ id: z.string(), amount_cents: z.coerce.number().int().nonnegative(), spent_on: isoDate }),
   weight_logs: z.object({ id: z.string(), measured_on: isoDate, weight_kg: finite.positive() }),
+  logged_meals: z.object({
+    id: z.string(),
+    eaten_on: isoDate,
+    slot: z.enum(['breakfast', 'lunch', 'snack', 'dinner']).nullish(),
+    source: z.enum(['photo_estimate', 'manual']),
+    items: z
+      .array(z.object({ food_id: z.string().regex(/^[a-z0-9_]{1,64}$/), grams: finite.positive().max(1500) }))
+      .min(1)
+      .max(12),
+    kcal: finite.nonnegative(),
+    protein_g: finite.nonnegative(),
+    carbs_g: finite.nonnegative(),
+    fat_g: finite.nonnegative(),
+    created_at: z.string().nullish(),
+  }),
   body_measurements: z.object({ id: z.string(), kind: z.string(), measured_on: isoDate, value_cm: finite.positive() }),
   training_programs: z
     .object({
@@ -286,6 +302,8 @@ export interface SyncableState {
   swapReasons?: Record<SessionKey, Record<string, ReplacementReason>>;
   dayLogs?: DayLog[];
   mealLog?: MealLogEntry[];
+  /** Meals added outside the plan, confirmed by the user (W-10: photo estimate or composed by hand). */
+  loggedMeals?: LoggedMeal[];
   measurements?: MeasurementEntry[];
   weeklyCheckins?: WeeklyCheckin[];
   milestones?: Record<string, MilestoneRecord>;
@@ -323,6 +341,7 @@ export type SyncTable =
   | 'notification_settings'
   | 'inventory_items'
   | 'meal_plan_items'
+  | 'logged_meals'
   | 'food_expenses'
   | 'training_programs'
   | 'workout_sessions'
@@ -363,6 +382,8 @@ export const SYNC_TABLES: Record<SyncTable, TableSpec> = {
   notification_settings: { key: 'user_id', deleteOnMissing: false },
   inventory_items: { key: 'id', deleteOnMissing: true },
   meal_plan_items: { key: 'id', deleteOnMissing: false },
+  // A meal the user removes is soft-deleted (W-10).
+  logged_meals: { key: 'id', deleteOnMissing: true },
   food_expenses: { key: 'id', deleteOnMissing: true },
   training_programs: { key: 'id', deleteOnMissing: false },
   workout_sessions: { key: 'id', deleteOnMissing: false },
@@ -713,6 +734,20 @@ export function project(state: SyncableState, userId: string): Record<SyncTable,
       });
     }
   }
+  for (const m of state.loggedMeals ?? []) {
+    put('logged_meals', {
+      id: m.id,
+      eaten_on: m.date,
+      slot: m.slot,
+      source: m.source,
+      items: m.items.map((i) => ({ food_id: i.foodId, grams: i.grams })),
+      kcal: m.nutrition.kcal,
+      protein_g: m.nutrition.proteinG,
+      carbs_g: m.nutrition.carbsG,
+      fat_g: m.nutrition.fatG,
+      deleted_at: null,
+    });
+  }
   for (const m of state.measurements ?? []) {
     put('body_measurements', { id: m.id, measured_on: m.date, kind: m.kind, value_cm: m.cm, deleted_at: null });
   }
@@ -989,6 +1024,7 @@ export function applyRemote(
     swapReasons: { ...state.swapReasons },
     dayLogs: [...(state.dayLogs ?? [])],
     mealLog: [...(state.mealLog ?? [])],
+    loggedMeals: [...(state.loggedMeals ?? [])],
     measurements: [...(state.measurements ?? [])],
     weeklyCheckins: [...(state.weeklyCheckins ?? [])],
     milestones: { ...state.milestones },
@@ -1066,6 +1102,34 @@ export function applyRemote(
       r.deleted_at != null,
       id,
     );
+  }
+  for (const r of rows('logged_meals')) {
+    const id = String(r.id);
+    if (r.deleted_at != null) {
+      next.loggedMeals = next.loggedMeals!.filter((m) => m.id !== id);
+      continue;
+    }
+    const items = (r.items as { food_id: string; grams: unknown }[]).map((i) => ({
+      foodId: i.food_id,
+      grams: Number(i.grams),
+    }));
+    const stored = {
+      kcal: Number(r.kcal),
+      proteinG: Number(r.protein_g),
+      carbsG: Number(r.carbs_g),
+      fatG: Number(r.fat_g),
+    };
+    const meal: LoggedMeal = {
+      id,
+      date: String(r.eaten_on),
+      slot: (r.slot as MealSlot | null | undefined) ?? null,
+      source: r.source as LoggedMeal['source'],
+      items,
+      // Recomputed from Ciqual when every food is known (same estimate on every device).
+      nutrition: loggedMealNutrition(items) ?? stored,
+      createdAt: str(r.created_at) ?? '',
+    };
+    next.loggedMeals = upsertBy(next.loggedMeals!, meal, false, id);
   }
   for (const r of rows('weight_logs')) {
     const id = String(r.id);

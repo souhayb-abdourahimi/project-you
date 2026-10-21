@@ -1,6 +1,6 @@
 # Design system (W-9)
 
-Direction validée par Souhayb (2026-10-06, W-9 du 2026-10-07) : **iOS premium, lumineux, beaucoup d'air, fond blanc cassé, bleu profond, graphite pour les surfaces fortes, couleur avec parcimonie.** Calme, précis, personnel, adulte. Jamais médical, agressif, enfantin, gamifié ou chargé.
+Direction validée par Souhayb (2026-10-06, W-9 du 2026-10-07 ; densité et bleu de la maquette de référence W-10 du 2026-10-17, D-045) : **iOS premium, lumineux, beaucoup d'air, fond blanc cassé, bleu profond, graphite pour les surfaces fortes, couleur avec parcimonie.** Calme, précis, personnel, adulte. Jamais médical, agressif, enfantin, gamifié ou chargé.
 
 Principe : _« Qu'est-ce que l'utilisateur doit comprendre ou faire maintenant ? »_ Chaque écran a **une** priorité visuelle.
 
@@ -12,11 +12,12 @@ La couche domaine reste souveraine : `données → règles → moteurs détermin
 
 | Rôle | Tokens |
 |---|---|
-| Base | `background` `#F4F5F7`, `surface` / `surfaceRaised` `#FFFFFF`, `surfaceSubtle` `#EDF0F4` |
+| Base | `background` `#F5F6F8`, `surface` / `surfaceRaised` `#FFFFFF`, `surfaceSubtle` `#EDF0F4` |
 | Surface forte | `inverse` `#121722` (graphite), `onInverse`, `onInverseMuted`, `inverseFill` |
 | Texte | `textPrimary` `#0F172A`, `textSecondary` `#475467`, `textMuted` `#5D6676` |
 | Bordures | `border` `#E3E7ED`, `borderStrong` `#C9D0DA` |
-| Action | `primary` `#1D4ED8`, `primaryPressed`, `primarySubtle`, `onPrimary` |
+| Action | `primary` `#1A5CF5`, `primaryPressed`, `primarySubtle`, `onPrimary` |
+| Graphiques | `macroProtein`, `macroCarbs`, `macroFat` : barres et anneaux seulement (jamais du texte), valeur toujours écrite à côté |
 | Sémantique | `success`, `warning`, `danger`, `info` et leurs fonds `*Subtle` |
 | Métier | `training`, `nutrition`, `progress`, `recovery` : une petite icône, jamais un aplat |
 | Démo | `mock` (badge **MOCK** obligatoire) |
@@ -27,20 +28,20 @@ Anciens noms gardés comme alias (`text`, `surfaceMuted`) pour les écrans pas e
 
 **No-guilt design** : une séance manquée est grise (`neutral`), jamais rouge. Le rouge est réservé à une vraie erreur ou à une action destructive. La sécurité a sa surface dédiée (`Notice tone="caution"`) : identifiable, jamais alarmiste.
 
-**Mode sombre** : la palette sombre porte les mêmes noms et suit le système ; elle passe le test de contraste mais n'est pas encore relue écran par écran. Le thème clair est prioritaire.
+**Mode sombre** : la palette sombre porte les mêmes noms et suit le système ; elle passe le test de contraste et a été relue écran par écran le 2026-10-17 (captures `iphone15-dark`, `iphoneSE-dark` de `npm run screens`). Deux règles propres au sombre : la lumière des vignettes dessinées est réduite (`tileGlowDark`, via `useTileGlow`) et un bouton plein désactivé devient un puits neutre à texte atténué, sans transparence (une opacité de 40 % donnait un texte sombre sur gris-bleu illisible). Les photos ne sont jamais filtrées : leur fond sombre se fond dans le héros graphite.
 
 ## Typographie
 
 Police système (SF Pro / Roboto / system-ui), taille système respectée (pas de `allowFontScaling={false}`).
 
-`display 34` · `title1 28` · `title2 22` · `title3 20` · `headline 17` · `body 16` · `bodyMedium 16` · `caption 13` · `captionStrong 13` · `overline 12` (capitales espacées) · `micro 11` (onglets) · `metric 26` · `metricLarge 44`. Les chiffres (`metric*`) sont tabulaires ; l'unité est plus petite et secondaire (`77,7` fort, `kg` discret).
+`display 30` · `title1 26` · `title2 21` · `title3 18` · `headline 16` · `body 15` · `bodyMedium 15` · `caption 13` · `captionStrong 13` · `overline 11` (capitales espacées) · `micro 11` (onglets) · `metric 24` · `metricLarge 38` (W-10 : densité de la référence). Les chiffres (`metric*`) sont tabulaires ; l'unité est plus petite et secondaire (`77,7` fort, `kg` discret).
 
 Les variantes `display`, `title*`, `heading` sont annoncées comme titres.
 
 ## Espacements, rayons, élévation, mouvement
 
-- Espacements (base 4) : `xxs 2 · xs 4 · sm 8 · md 12 · lg 16 · xl 24 · 2xl 32 · 3xl 48` ; rythme des écrans `layout` : gouttière 20, padding de carte 20, entre sections 28, entre cartes 12.
-- Rayons : `input 14 · button 16 · lg 20 · card 22 · sheet 28 · pill 999`.
+- Espacements (base 4) : `xxs 2 · xs 4 · sm 8 · md 12 · lg 16 · xl 24 · 2xl 32 · 3xl 48` ; rythme des écrans `layout` : gouttière 16, padding de carte 16, entre sections 22, entre cartes 10 (W-10).
+- Rayons : `input 12 · button 14 · lg 16 · card 18 · sheet 24 · pill 999`.
 - Élévation : `card` (ombre à peine visible), `raised` (héros, barre d'onglets). En sombre : une bordure fine.
 - Icônes : `sm 16 · md 20 · lg 24 · xl 28`.
 - Mouvement : `fast 120 · base 200 · slow 320` ms ; pression = échelle 0,98, pas de rebond. Toute animation est coupée quand « Réduire les animations » est actif (`useReducedMotion`).
@@ -73,6 +74,10 @@ Une seule famille : **SF Symbols** sur iOS, **Material Symbols** sur Android et 
 | `MiniBars` | petit graphique en barres d'une semaine, données réelles seulement : un jour sans donnée est un point, jamais une barre à zéro ; dessiné à partir de 3 jours connus, sinon la valeur seule ; décrit en une phrase |
 | `TrendLine` | ligne discrète de points réels (Progrès : moyennes hebdomadaires des pesées, `weightAverageAt`) ; échelle ajustée aux valeurs (une tendance, pas une quantité depuis zéro) ; une semaine sans deux pesées est un trou ; dessinée à partir de 2 semaines connues ; décrite en une phrase |
 | `LinkRow` (`icon`, `grouped`) | ligne qui ouvre un écran ; dans un `ListGroup` (Réglages, Confidentialité) |
+| `Tabs` | onglets soulignés d'un écran (Nutrition : Jour / Semaine / Recettes) ; liste d'onglets annoncée, ≥ 44 pt |
+| `Segmented` | choix compact d'une valeur (période de Progrès) ; groupe radio |
+| `RadioList` | une raison parmi une liste (remplacement d'exercice, exercice non fait) ; lignes iOS avec pastille radio |
+| `FeelingScale` | ressenti en cinq visages (séance, semaine) ; jamais rouge, libellé sous chaque visage |
 | `CoachNote` | le mot du coach : pastille, « Ton coach », un message court, une action au plus ; une note, pas un chat |
 
 Les cartes métier (séance, repas, progrès, coach) se composent de ces primitives dans `src/features/*` ; pas de quarante variantes presque identiques.
@@ -81,9 +86,10 @@ Les cartes métier (séance, repas, progrès, coach) se composent de ces primiti
 
 Chaque écran reprend la direction d'Aujourd'hui sans la copier : sa hiérarchie suit sa tâche.
 
-- **Séance** : en-tête graphite (nom, durée prescrite, objectif, barre des séries), exercice en cours en carte surélevée, repos en anneau qui se vide (minuteur réel), liste de la séance groupée et numérotée, bilan positif (fait, jamais ce qui manque).
-- **Programme** : la semaine en frise (date à gauche, aujourd'hui en pastille bleue), séances en cartes avec faits en chips, jours de repos sur une ligne calme.
-- **Nutrition** : repères du jour (énergie en grand, trois macros « repas notés / cible » en barres), raccourcis Chez moi / Courses, repas avec statut en badge, budget en dernier.
+- **Séance** (W-10) : en-tête clair (nom, durée prescrite, objectif, barre des séries), exercice en cours en carte surélevée avec son visuel (`ExerciseMedia`, média validé ou visuel dessiné), faits séries / répétitions / repos, objectif du jour et dernière fois en tuiles, séries en tableau (faites, en cours, prévues), repos compact, liste de la séance avec vignettes, bilan positif avec échelle de ressenti.
+- **Remplacement** (W-10) : 1. raison en liste radio, 2. alternatives illustrées (vignette, nom, muscles) ; un geste remplace pour aujourd'hui seulement.
+- **Programme** (W-10) : la semaine en frise horizontale (aujourd'hui en pastille bleue, point sous un jour d'entraînement, vert une fois fait), le jour choisi en détail avec ses actions, puis les jours d'entraînement en lignes.
+- **Nutrition** (W-10) : onglets Jour / Semaine / Recettes, navigation entre les jours du plan, anneau d'énergie à gauche et trois barres de macros à droite, repas en lignes (vignette, créneau, plat, kcal, statut ; actions et recette sous la ligne), « Ajouter un repas » (photo analysée ou composition à la main, `docs/MEAL_PHOTO_ANALYSIS.md`), puis Chez moi / Courses, budget.
 - **Progrès** : semaine (séances faites / prévues), depuis le début, habitudes, performance, corps avec courbe des pesées, parcours en frise verticale.
 - **Bilan de la semaine** : carte d'ouverture bleue, chiffres en tuiles (une valeur absente dit « Donnée indisponible »), parties avec icône.
 - **Historique** : une carte par semaine, séances séparées par des filets, chevron quand le détail s'ouvre.

@@ -15,6 +15,15 @@ export function formatDate(date: string, locale: string): string {
   }).format(new Date(y, m - 1, d));
 }
 
+/** A week as "28 sept. – 4 oct." (short day and month), from its first day. */
+export function formatWeekRange(start: string, locale: string): string {
+  const [y, m, d] = start.split('-').map(Number);
+  const first = new Date(y, m - 1, d);
+  const last = new Date(y, m - 1, d + 6);
+  const fmt = new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'fr-FR', { day: 'numeric', month: 'short' });
+  return `${fmt.format(first)} – ${fmt.format(last)}`;
+}
+
 /** Month-level date ("février 2027") for estimates, to avoid false day-level precision. */
 export function formatMonth(date: string, locale: string): string {
   const [y, m] = date.split('-').map(Number);

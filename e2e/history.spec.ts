@@ -103,6 +103,9 @@ test('Progression: this week planned vs done, with the way to the history', asyn
   await seedData(page, data);
   await page.goto('/');
   await openTab(page, 'Progrès');
+  // Figure, bar and chips first; the sentences are one tap away.
+  await expect(text(page, '2 à venir')).toBeVisible();
+  await button(page, 'Détail de la semaine').click();
   await expect(text(page, '1 séance(s) faite(s) sur 3 prévue(s) pour l’instant')).toBeVisible();
   await expect(text(page, '2 séance(s) encore à venir')).toBeVisible();
   await button(page, 'Voir l’historique').click();
