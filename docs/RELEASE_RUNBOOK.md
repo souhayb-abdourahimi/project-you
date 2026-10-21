@@ -93,7 +93,8 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST https://krcqdrrfnvfpvczxwrmt.su
 Puis, dans l'app connectée : Nutrition → ajouter un repas → photo → « Analyser » renvoie un brouillon. C'est le premier appel réel au fournisseur : il n'a pas pu être fait depuis l'environnement de développement.
 
 - Brouillon affiché : vérifier que chaque aliment a ses grammes et que les calories affichées sont celles du catalogue (étiquette « estimation »), pas un chiffre du modèle.
-- « Analyse photo pas encore disponible » (503) : un des 3 secrets manque ou `MEAL_VISION_PROVIDER` est mal écrit.
+- « Analyse photo pas encore disponible » (503) : un des 3 secrets manque ou `MEAL_VISION_PROVIDER` est mal écrit. Un 503 peut aussi venir d'une fonction qui ne démarre pas (`BOOT_ERROR`) : regarder Edge Functions → analyze-meal → Logs.
+- Erreur avec « Réessayer » après environ 40 s : délai dépassé deux fois (20 s par appel, une relance automatique).
 - Erreur avec « Réessayer » (502) : clé refusée, modèle inconnu ou incompatible, quota épuisé. Vérifier la clé et `MEAL_VISION_MODEL` ; les journaux de la fonction ne contiennent ni la photo ni la réponse.
 - Dans tous ces cas, « Composer mon repas à la main » fonctionne : c'est le repli prévu, pas une panne.
 

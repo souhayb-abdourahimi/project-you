@@ -10,7 +10,7 @@ photo (choisie par l'utilisateur) → Edge Function analyze-meal → vision : QU
                           brouillon vérifié et corrigé par l'utilisateur → « Confirmer et ajouter » → logged_meals
 ```
 
-Le modèle ne renvoie **jamais** de calories ni de macros : il ne peut que nommer des aliments du catalogue (ou `null`), estimer des grammes et donner une confiance. Le handler ne garde que ces quatre champs, et le schéma `MealPhotoDetection` (`src/domain/ai/schemas.ts`) refuse tout autre champ côté app. Tout chiffre affiché ou enregistré vient de la table Ciqual 2025 et reste étiqueté « estimation ».
+Le modèle ne renvoie **jamais** de calories ni de macros : on lui demande seulement de nommer des aliments du catalogue (ou `null`), d'estimer des grammes et de donner une confiance. Le handler ne garde que ces quatre champs, retire tout chiffre nutritionnel du libellé libre (« 300 kcal », « 20 g de protéines »), et le schéma `MealPhotoDetection` (`src/domain/ai/schemas.ts`) refuse tout autre champ côté app. Tout chiffre affiché ou enregistré vient de la table Ciqual 2025 et reste étiqueté « estimation ».
 
 ## Fournisseurs de vision
 
@@ -21,7 +21,7 @@ Choisi par le secret `MEAL_VISION_PROVIDER` (insensible à la casse) ; un seul a
 | `anthropic` | `ANTHROPIC_API_KEY` | `MEAL_VISION_MODEL` | `POST https://api.anthropic.com/v1/messages` | `temperature: 0`, 800 tokens max |
 | `openai` | `OPENAI_API_KEY` | `MEAL_VISION_MODEL` | `POST https://api.openai.com/v1/responses` | sortie structurée stricte (`text.format` json_schema `meal_foods`), `reasoning.effort: low`, `max_output_tokens: 4096`, `store: false`, pas de `temperature` |
 
-Contrat de sortie, identique pour les deux : `{"items":[{"label","foodId","grams","confidence"}]}`, 12 aliments au plus. Côté OpenAI, le schéma strict `MEAL_DETECTION_SCHEMA` ne contient que ces quatre champs : aucune valeur nutritionnelle ne peut même être exprimée. Un id hors du catalogue devient « non reconnu », une portion impossible devient « inconnue », tout champ en plus est supprimé, et la nutrition est recalculée depuis Ciqual dans `domain/meals/photo-analysis.ts`.
+Contrat de sortie, identique pour les deux : `{"items":[{"label","foodId","grams","confidence"}]}`, 12 aliments au plus. Côté OpenAI, le schéma strict `MEAL_DETECTION_SCHEMA` ne contient que ces quatre champs : aucun champ nutritionnel ; le libellé libre est nettoyé de tout chiffre nutritionnel par le handler. Un id hors du catalogue devient « non reconnu », une portion impossible devient « inconnue », tout champ en plus est supprimé, et la nutrition est recalculée depuis Ciqual dans `domain/meals/photo-analysis.ts`.
 
 Réponse OpenAI lue seulement si `status` vaut `completed` : on prend le texte des parties `output_text` des éléments `message` (les éléments `reasoning` sont ignorés). Un refus (`refusal`) → `invalid_output` ; une réponse `incomplete` (plafond de tokens, filtre) ou `failed` → `analysis_failed`. Rien n'est réparé.
 
@@ -39,7 +39,7 @@ Conditions : entrée image, sorties structurées, effort de raisonnement `low` a
 
 Non compatibles : `gpt-4o`, `gpt-4o-mini`, `gpt-4.1`, `gpt-4.1-mini` (dépréciés, arrêt le 14 janvier 2027, pas de paramètre de raisonnement), `gpt-5-mini` et `gpt-5-nano` (arrêt le 11 décembre 2026), les modèles « pro » (pas d'effort `low`). Un modèle incompatible ou inconnu fait échouer l'appel : l'app affiche une erreur avec « Composer mon repas à la main ».
 
-Pas encore testé contre l'API réelle (pas de clé ni de réseau vers OpenAI depuis l'environnement de développement) : le premier appel après déploiement sert de validation. Le premier appel avec un nouveau schéma peut être plus lent ; au-delà de 20 s, l'app propose la composition à la main.
+Pas encore testé contre l'API réelle (pas de clé ni de réseau vers OpenAI depuis l'environnement de développement) : le premier appel après déploiement sert de validation. Le premier appel avec un nouveau schéma peut être plus lent. La fonction coupe à 20 s (504) ; l'app relance une fois automatiquement, donc l'erreur avec « Composer mon repas à la main » arrive après environ 40 s et deux appels facturés.
 
 ## Fichiers
 
@@ -51,7 +51,7 @@ Pas encore testé contre l'API réelle (pas de clé ni de réseau vers OpenAI de
 | Photo | `src/services/mealPhoto.ts` — `expo-image-picker` (permission caméra au moment du geste), `expo-image-manipulator` (1024 px, JPEG 0,6) |
 | Écran | `src/app/meal-analysis.tsx` → `features/nutrition/MealAnalysisScreen.tsx`, `useMealAnalysis.ts`, `MealDraftEditor.tsx`, `FoodPicker.tsx` |
 | Serveur | `supabase/functions/analyze-meal/` — `handler.ts` (testé avec Jest), `vision.ts` (adaptateurs Anthropic et OpenAI, testés : `__tests__/handler.test.ts`, `__tests__/openai.test.ts`), `index.ts` (Deno) |
-| Repli de bout en bout | `src/features/nutrition/__tests__/mealAnalysisFallback.test.tsx` — handler réel → provider réel → écran : fournisseur absent, mal configuré, en erreur, trop lent → composition à la main ; nutrition toujours Ciqual |
+| Repli (handler → provider → view model) | `src/features/nutrition/__tests__/mealAnalysisFallback.test.tsx` — handler réel → provider réel → view model de l'écran, sans réseau : fournisseur absent, mal configuré, en erreur, trop lent → composition à la main ; nutrition toujours Ciqual |
 | Stockage | `supabase/migrations/20261017000001_logged_meals.sql`, sync dans `src/domain/sync/projection.ts` |
 
 ## États de l'écran
@@ -70,7 +70,7 @@ Pas encore testé contre l'API réelle (pas de clé ni de réseau vers OpenAI de
 - Clé du fournisseur de vision uniquement dans les secrets de la fonction (`MEAL_VISION_PROVIDER`, `MEAL_VISION_MODEL`, et `ANTHROPIC_API_KEY` ou `OPENAI_API_KEY`). Aucun secret dans l'app.
 - OpenAI : `store: false` sur chaque appel (sinon la réponse est gardée 30 jours comme état applicatif). Les données de l'API ne servent pas à l'entraînement par défaut, mais les journaux anti-abus sont gardés jusqu'à 30 jours ; la conservation zéro (ZDR) et la résidence UE (`eu.api.openai.com`, images comprises) demandent un accord commercial d'OpenAI et ne sont pas utilisées aujourd'hui. Le cache de prompt peut garder des données chiffrées jusqu'à 24 h sur un compte sans ZDR.
 - Appel authentifié (JWT de l'utilisateur) ; quota par utilisateur (30 / heure, par instance) ; corps validé (base64 ≤ ~1,5 Mo, jpeg/png/webp, catalogue ≤ 200 ids) ; erreurs du fournisseur jamais renvoyées telles quelles ; rien n'est journalisé ni stocké côté serveur.
-- La photo part seulement après un geste explicite, avec la phrase « elle n'est pas enregistrée ».
+- La photo part seulement après un geste explicite, avec la phrase « Project You ne l’enregistre pas ; le service d’analyse peut la garder jusqu’à 30 jours pour sa sécurité, sans s’en servir pour entraîner ses modèles. » Ce texte doit rester vrai pour le fournisseur réellement configuré (30 jours vérifié pour OpenAI le 2026-10-18 ; à revérifier si Anthropic est choisi).
 - Export et suppression : catégorie « Repas » du Privacy Center (`meal_plan_items`, `logged_meals`).
 
 ## Déploiement
@@ -82,7 +82,7 @@ Depuis un poste connecté au projet (`supabase login` puis `supabase link --proj
 3. Déployer : `supabase functions deploy analyze-meal`, avec la vérification JWT par défaut (ne pas passer `--no-verify-jwt`).
 4. Vérifier : la fonction est ACTIVE ; un appel sans JWT répond 401 ; dans l'app connectée, « Analyser » renvoie un brouillon.
 
-Repli (testé de bout en bout) :
+Repli (testé du handler au view model de l'écran, sans réseau ni appareil) :
 
 | Situation | Réponse de la fonction | Écran |
 |---|---|---|
@@ -90,7 +90,7 @@ Repli (testé de bout en bout) :
 | `MEAL_VISION_PROVIDER` absent ou inconnu, clé ou modèle manquant (ou clé de l'autre fournisseur) | 503 `not_configured` | idem |
 | Clé refusée, modèle inconnu ou incompatible, quota OpenAI, panne (401/403/404/429/5xx chez OpenAI) | 502 `analysis_failed` | erreur, « Réessayer » + « Composer mon repas à la main » |
 | Refus du modèle, réponse illisible | 502 `invalid_output` | idem |
-| Plus de 20 s | 504 `timeout` (requête OpenAI annulée) | idem |
+| Plus de 20 s | 504 `timeout` (requête OpenAI annulée) | une relance automatique, puis idem (environ 40 s au total) |
 
 Rien n'est ajouté au journal sans confirmation. Checklist complète : `docs/RELEASE_CHECKLIST.md`.
 

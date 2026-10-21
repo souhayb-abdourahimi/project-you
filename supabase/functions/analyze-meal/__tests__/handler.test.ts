@@ -1,3 +1,5 @@
+import { parseMealPhotoDetection } from '@/domain/ai/schemas';
+
 import { handleAnalyzeMeal, sanitizeDetection, type AnalyzeMealDeps, type VisionModel } from '../handler';
 import { anthropicVision, extractJson, visionFromEnv, visionPrompt } from '../vision';
 
@@ -116,6 +118,53 @@ describe('sanitizeDetection', () => {
     ]);
     expect(sanitizeDetection({ items: Array(13).fill({ label: 'x' }) }, catalog)).toBeNull();
   });
+
+  it('a portion under 0.5 g is unknown (never 0 g): the rest of the answer stays usable', async () => {
+    const r = await call(
+      deps(
+        answering({
+          items: [
+            { label: 'Brocoli', foodId: 'broccoli', grams: 120, confidence: 0.7 },
+            { label: 'Sel', foodId: null, grams: 0.4, confidence: 0.3 },
+          ],
+        }),
+      ),
+    );
+    expect(r.status).toBe(200);
+    expect((r.body as { items: { grams: number | null }[] }).items.map((i) => i.grams)).toEqual([120, null]);
+    expect(parseMealPhotoDetection(r.body).ok).toBe(true);
+  });
+
+  it('a label never carries a calorie or macro figure (the model never provides nutrition)', () => {
+    const labels = (raw: { label: string; foodId?: string | null }[]) =>
+      sanitizeDetection(
+        { items: raw.map((r) => ({ foodId: null, grams: 100, confidence: null, ...r })) },
+        catalog,
+      )!.map((i) => i.label);
+    expect(
+      labels([
+        { label: 'Pizza margherita (~800 kcal, 30 g protéines)' },
+        { label: 'Salade composée 120 kcal' },
+        { label: 'Poulet, 31 g of protein, 3.6 g fat' },
+        { label: 'Riz (≈ 350 cal / 7,5 g de lipides)' },
+        { label: 'Wrap - 520 kJ' },
+        { label: 'Brocoli', foodId: 'broccoli' },
+        { label: 'Riz (150 g)' },
+        { label: '250 kcal', foodId: 'chicken_breast' },
+        { label: '45 g glucides' },
+      ]),
+    ).toEqual([
+      'Pizza margherita',
+      'Salade composée',
+      'Poulet',
+      'Riz',
+      'Wrap',
+      'Brocoli',
+      'Riz (150 g)',
+      'Blanc de poulet (cru)',
+      '?',
+    ]);
+  });
 });
 
 describe('vision adapters', () => {
@@ -123,6 +172,7 @@ describe('vision adapters', () => {
     const prompt = visionPrompt(catalog);
     expect(prompt).toContain('chicken_breast: Blanc de poulet (cru)');
     expect(prompt).toMatch(/Do not return calories/);
+    expect(prompt).toMatch(/label is the short name of the food/);
   });
 
   it('extracts the JSON answer, or nothing', () => {

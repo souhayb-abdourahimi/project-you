@@ -958,7 +958,7 @@ const en: LocaleShape = {
       pickPhoto: 'Choose from the library',
       compose: 'Compose my meal by hand',
       consent:
-        'When you tap “Analyse”, this photo is sent to the analysis service for this request only. It is not stored.',
+        'When you tap “Analyse”, this photo is sent to the analysis service for this request only. Project You does not store it; the analysis service may keep it for up to 30 days for safety, without using it to train its models.',
       analyze: 'Analyse',
       changePhoto: 'Change photo',
       photoA11y: 'Photo of your meal',

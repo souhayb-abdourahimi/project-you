@@ -99,7 +99,7 @@ describe('OpenAI provider: request', () => {
     expect(body.instructions).toMatch(/Do not return calories or macros/);
   });
 
-  it('strict JSON schema: label, food id, grams, confidence; nothing nutritional can be expressed', async () => {
+  it('strict JSON schema: label, food id, grams, confidence; no nutrient field in the schema', async () => {
     const fetchImpl = fetchAnswering(200, completed('{"items":[]}'));
     await openaiVision('k', 'm', fetchImpl).detect(input());
     const format = sentBody(fetchImpl).text.format;

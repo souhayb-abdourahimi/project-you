@@ -972,7 +972,7 @@ const fr = {
       pickPhoto: 'Choisir dans la galerie',
       compose: 'Composer mon repas à la main',
       consent:
-        'En touchant « Analyser », cette photo est envoyée au service d’analyse pour cette demande uniquement. Elle n’est pas enregistrée.',
+        'En touchant « Analyser », cette photo est envoyée au service d’analyse pour cette demande uniquement. Project You ne l’enregistre pas ; le service d’analyse peut la garder jusqu’à 30 jours pour sa sécurité, sans s’en servir pour entraîner ses modèles.',
       analyze: 'Analyser',
       changePhoto: 'Changer de photo',
       photoA11y: 'Photo de ton repas',

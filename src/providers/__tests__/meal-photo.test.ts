@@ -84,4 +84,23 @@ describe('edgeMealPhotoProvider', () => {
     expect(result).toMatchObject({ error: 'timeout', retryable: false });
     expect(invoke).toHaveBeenCalledTimes(1);
   });
+
+  it('cancelled while waiting to retry: the photo is not sent again', async () => {
+    jest.useFakeTimers();
+    try {
+      const controller = new AbortController();
+      const invoke = jest.fn<ReturnType<InvokeAnalyzeMeal>, Parameters<InvokeAnalyzeMeal>>(async () => ({
+        status: 502,
+        data: null,
+      }));
+      const pending = edgeMealPhotoProvider(invoke).analyze(photo, catalog, controller.signal);
+      await jest.advanceTimersByTimeAsync(100); // first attempt failed, the retry is waiting
+      controller.abort(); // "Annuler" or "Composer mon repas à la main"
+      await jest.advanceTimersByTimeAsync(5_000);
+      expect(await pending).toMatchObject({ status: 'error', retryable: false });
+      expect(invoke).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });

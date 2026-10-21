@@ -23,7 +23,7 @@ Projet Supabase : `krcqdrrfnvfpvczxwrmt`. Les threads cloud n'atteignent pas ce 
 
 - [ ] `analyze-meal` déployée **après** ses secrets (sinon elle répond 503 et l'app propose la composition à la main, ce qui est sans risque).
 - [ ] Premier appel réel validé avec le fournisseur choisi (OpenAI `gpt-6-luna` ou Anthropic) : brouillon affiché, calories venant du catalogue Ciqual. Jamais testé contre l'API réelle depuis le développement.
-- [ ] Clé refusée, modèle inconnu, délai : erreur avec « Réessayer » et « Composer mon repas à la main » (couvert par `mealAnalysisFallback.test.tsx`, à revoir une fois sur appareil).
+- [ ] Clé refusée, modèle inconnu, délai : erreur avec « Réessayer » et « Composer mon repas à la main » (couvert du handler au view model de l'écran par `mealAnalysisFallback.test.tsx`, sans réseau ; à revoir une fois sur appareil). Un délai dépassé est relancé une fois : l'erreur arrive après environ 40 s..
 - [ ] Sans la fonction (404) ou sans secrets (503), l'écran « Ajouter un repas » affiche « Analyse photo pas encore disponible » et « Composer mon repas à la main ». Rien ne casse.
 
 ## 3. Secrets (noms seulement)
@@ -39,7 +39,7 @@ Projet Supabase : `krcqdrrfnvfpvczxwrmt`. Les threads cloud n'atteignent pas ce 
 | Edge Functions (fournis par Supabase) | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | injectés automatiquement, rien à définir |
 
 - [ ] Posés avec `supabase secrets set --env-file <fichier hors du dépôt, supprimé ensuite>` (la clé ne passe pas par l'historique du shell) ; détail dans `docs/RELEASE_RUNBOOK.md`.
-- [ ] Aucune autre clé dans le bundle : `npm run build:web`, puis `grep -rE 'sb_secret_[A-Za-z0-9]|sk-ant-[A-Za-z0-9]|sk-proj-[A-Za-z0-9]|sk-[A-Za-z0-9]{20}|eyJ[^"]*service_role' dist/` (aucun résultat attendu ; supabase-js contient le mot `sb_secret_` seul, pour refuser ces clés côté client).
+- [ ] Aucune autre clé dans le bundle : `npm run build:web`, puis `grep -rE 'sb_secret_[A-Za-z0-9]|sk-ant-[A-Za-z0-9]|sk-(proj|svcacct|admin)-[A-Za-z0-9_-]{8}|sk-[A-Za-z0-9]{20}|eyJ[^"]*service_role' dist/` (aucun résultat attendu ; supabase-js contient le mot `sb_secret_` seul, pour refuser ces clés côté client).
 - [ ] OpenAI : clé de projet dédiée, limite de dépense mensuelle posée côté OpenAI.
 - [ ] Auth : **Leaked Password Protection** activée (Authentication → Policies). Elle est désactivée aujourd'hui.
 
@@ -50,6 +50,7 @@ Projet Supabase : `krcqdrrfnvfpvczxwrmt`. Les threads cloud n'atteignent pas ce 
 - [ ] Les médias manquants (27 exercices, 22 recettes) gardent le visuel dessiné. Aucune photo web aléatoire.
 - [ ] Données Ciqual 2025 : mention de la source (ANSES) visible dans l'app (`docs/DATA_SOURCES.md`).
 - [ ] Fournisseur de vision : contrat de traitement des données signé (les photos de repas sont des données personnelles). OpenAI : `store: false` est envoyé, mais les journaux anti-abus restent jusqu'à 30 jours sans accord ZDR ; la politique de confidentialité de l'app doit nommer le fournisseur réellement utilisé.
+- [ ] Le texte de consentement de l'écran photo (« Project You ne l’enregistre pas ; le service d’analyse peut la garder jusqu’à 30 jours… », `nutrition.analysis.consent`) correspond aux conditions de conservation du fournisseur configuré (vérifié pour OpenAI le 2026-10-18 ; à revérifier si Anthropic est choisi).
 
 ## 5. Test iOS réel (build de développement ou TestFlight)
 

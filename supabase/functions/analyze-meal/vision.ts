@@ -12,6 +12,7 @@ export function visionPrompt(catalog: readonly CatalogEntry[]): string {
   return [
     'You identify the foods visible on a meal photo for a nutrition app.',
     'Answer with JSON only, exactly: {"items":[{"label":string,"foodId":string|null,"grams":number|null,"confidence":number|null}]}.',
+    'label is the short name of the food as seen, without any number or nutrition fact.',
     'foodId must be one of the ids below, or null when no id clearly matches. Never invent an id.',
     'grams is your estimate of the edible portion, or null when you cannot estimate it.',
     'confidence is between 0 and 1, or null. At most 12 items. Do not return calories or macros.',
@@ -72,8 +73,8 @@ export function anthropicVision(apiKey: string, model: string, fetchImpl: typeof
 
 /**
  * The JSON schema OpenAI must follow (strict Structured Outputs: every field required, nullable
- * through `null`, no other key). Same fields as the prompt, and nothing nutritional: no kcal, no
- * macro can even be expressed. Catalogue ids are checked by the handler, not by an enum.
+ * through `null`, no other key). Same fields as the prompt, and no nutrient field; the free-text
+ * label is limited by the prompt and cleaned by the handler. Catalogue ids are checked by the handler, not by an enum.
  */
 export const MEAL_DETECTION_SCHEMA = {
   type: 'object',
@@ -108,7 +109,9 @@ interface OpenAIResponse {
 
 /**
  * OpenAI Responses API (vision). Secrets: OPENAI_API_KEY, MEAL_VISION_MODEL.
- * - `store: false`: the response (and so the photo) is not kept as application state.
+ * - `store: false`: the response (and so the photo) is not kept as application state. OpenAI may
+ *   still keep it up to 30 days in abuse-monitoring logs and briefly in its prompt cache (up to
+ *   24 h) unless the project has zero data retention.
  * - `reasoning.effort: 'low'`: the lowest effort every current vision model accepts; no
  *   `temperature` (refused by reasoning models).
  * - Only a `completed` answer is read; an incomplete one (token cap, content filter) is a failure,

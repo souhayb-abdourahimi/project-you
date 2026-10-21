@@ -29,6 +29,8 @@ export function edgeMealPhotoProvider(
         const retryable = result.status === 'error' && result.retryable;
         if (!retryable || attempt >= retries || signal?.aborted) return result;
         await wait(RETRY_DELAY_MS);
+        // Cancelled while waiting: the photo is not sent again.
+        if (signal?.aborted) return { status: 'error', error: 'timeout', retryable: false };
       }
     },
   };

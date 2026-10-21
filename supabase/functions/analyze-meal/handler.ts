@@ -94,6 +94,27 @@ function readRequest(body: unknown): Omit<VisionInput, 'signal'> | null {
 const finiteOrNull = (v: unknown, min: number, max: number): number | null =>
   typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max ? v : null;
 
+/** "800 kcal", "350 cal", "520 kJ", "30 g protéines", "7,5 g de lipides", "31 g of protein"… */
+const NUTRIENT_FIGURE =
+  /[~≈]?\s*\d+(?:[.,]\d+)?\s*(?:k?cal(?:ories?)?|kj|g\s*(?:(?:de|of|d')\s*)?(?:prot\p{L}*|gluc\p{L}*|lip\p{L}*|carb\p{L}*|fats?|graisses?|sucres?|sugars?|fibres?|fibers?))(?![\p{L}])/giu;
+
+/**
+ * The label is the model's free text, shown to the user for a food the catalogue does not match.
+ * Nutrition never comes from the model: any calorie or macro figure is removed (then the empty
+ * brackets and dangling separators it leaves). An empty result falls back to the catalogue name.
+ */
+export function cleanLabel(label: string, fallback: string | null): string {
+  const cleaned = label
+    .replace(NUTRIENT_FIGURE, '')
+    .replace(/\(\s*[,;:/\-–~≈\s]*\)/g, '')
+    .replace(/\s*[,;:/\-–]\s*(?=[,;:/\-–)]|$)/g, '')
+    .replace(/\(\s*[,;:/\-–]\s*/g, '(')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^[,;:/\-–\s]+|[,;:/\-–\s]+$/g, '');
+  return (cleaned || fallback || '?').slice(0, 80);
+}
+
 /**
  * Keeps only what the contract allows. A food id outside the catalogue sent by the app is set to
  * null (unmatched), an impossible portion to null (unknown). A malformed answer is rejected whole.
@@ -108,11 +129,14 @@ export function sanitizeDetection(raw: unknown, catalog: readonly CatalogEntry[]
     if (!item || typeof item !== 'object') return null;
     const { label, foodId, grams, confidence } = item as Record<string, unknown>;
     if (typeof label !== 'string' || !label.trim()) return null;
+    const matched = typeof foodId === 'string' && ids.has(foodId) ? foodId : null;
+    // Rounded first: a portion under 0.5 g is unknown, never 0 g (the app refuses 0).
     const grams_ = finiteOrNull(grams, 0, MAX_PORTION_G);
+    const rounded = grams_ === null ? null : Math.round(grams_);
     out.push({
-      label: label.trim().slice(0, 80),
-      foodId: typeof foodId === 'string' && ids.has(foodId) ? foodId : null,
-      grams: grams_ !== null && grams_ > 0 ? Math.round(grams_) : null,
+      label: cleanLabel(label, matched ? (catalog.find((c) => c.id === matched)?.name ?? null) : null),
+      foodId: matched,
+      grams: rounded !== null && rounded > 0 ? rounded : null,
       confidence: finiteOrNull(confidence, 0, 1),
     });
   }
