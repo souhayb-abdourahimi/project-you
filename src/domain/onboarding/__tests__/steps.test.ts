@@ -1,8 +1,14 @@
 import type { UserContextSnapshot } from '../../profile/schemas';
 import { SCENARIOS } from '../../scenarios';
 import {
+  ONBOARDING_STEPS,
+  autoAdvances,
+  blockedReason,
   buildSnapshot,
   checkAge,
+  emptyAnswerLabel,
+  stepOfIssue,
+  targetDateIn,
   draftFromSnapshot,
   emptyDraft,
   firstIncompleteStep,
@@ -85,7 +91,10 @@ describe('adaptive onboarding', () => {
 
   it('an account created under the former 16+ rule keeps its birth year, never a new minor one', () => {
     const now = new Date('2026-09-30T10:00:00Z');
-    const legacy = draftFromSnapshot({ ...SCENARIOS.studentMediumBudget, user: { ...SCENARIOS.studentMediumBudget.user, birthYear: 2009 } });
+    const legacy = draftFromSnapshot({
+      ...SCENARIOS.studentMediumBudget,
+      user: { ...SCENARIOS.studentMediumBudget.user, birthYear: 2009 },
+    });
     expect(legacy.acceptedBirthYear).toBe(2009);
     // Unchanged: still editable (name, goal…), so nobody is locked out of their own profile.
     expect(checkAge(legacy, 2026)).toBe('ok');
@@ -146,5 +155,99 @@ describe('editing preferences (review B2)', () => {
     expect(removedAllergies(saved, saved)).toEqual([]);
     expect(removedAllergies(null, next)).toEqual([]);
     expect(removedAllergies(SCENARIOS.fatLoss, saved)).toEqual([]);
+  });
+});
+
+describe('onboarding friction rules (D-046)', () => {
+  it('only one-answer questions move on by themselves; never a multi-select, a form, the sex or the summary', () => {
+    const auto = ONBOARDING_STEPS.filter((s) => autoAdvances(s.id)).map((s) => s.id);
+    expect(auto).toEqual(['profile.activity', 'goal.type', 'diet.type', 'training.gym', 'training.level']);
+    for (const id of ['profile.sex', 'motivation.reasons', 'diet.allergies', 'review'] as const)
+      expect(autoAdvances(id)).toBe(false);
+  });
+
+  it('the removed questions are no longer asked; the old free-text answers stay in Réglages', () => {
+    const asked = ids(completeDraft());
+    for (const gone of ['goal.priorities', 'life.status', 'training.sports', 'motivation.why'])
+      expect(asked).not.toContain(gone);
+    expect(asked).toContain('motivation.reasons');
+    expect(asked).not.toContain('motivation.more');
+    expect(ONBOARDING_STEPS.map((s) => s.id)).toContain('motivation.more');
+  });
+
+  it('a blocked Continue always says why', () => {
+    const d = emptyDraft();
+    expect(blockedReason(d, 'profile.name', 2026)).toBe('name');
+    expect(blockedReason(d, 'profile.body', 2026)).toBe('body');
+    expect(blockedReason(d, 'goal.type', 2026)).toBe('choose');
+    expect(blockedReason(d, 'budget.food', 2026)).toBe('budget');
+    expect(blockedReason(completeDraft(), 'budget.food', 2026)).toBeNull();
+    // Optional steps are never blocked.
+    expect(blockedReason(d, 'diet.allergies', 2026)).toBeNull();
+  });
+
+  it('out-of-range body values block the step (never saved as typed)', () => {
+    const body = (heightCm: number, weightKg: number) => ({ ...emptyDraft(), user: { heightCm, weightKg } });
+    expect(blockedReason(body(170, 70), 'profile.body', 2026)).toBeNull();
+    expect(blockedReason(body(17, 70), 'profile.body', 2026)).toBe('body');
+    expect(blockedReason(body(170, 700), 'profile.body', 2026)).toBe('body');
+  });
+
+  it('an empty optional answer is named on the button, a filled one is not', () => {
+    const d = emptyDraft();
+    expect(emptyAnswerLabel(d, 'diet.allergies')).toBe('noAllergy');
+    expect(emptyAnswerLabel(d, 'motivation.reasons')).toBe('skip');
+    expect(emptyAnswerLabel({ ...d, motivation: { reasons: ['health'] } }, 'motivation.reasons')).toBeNull();
+    expect(emptyAnswerLabel({ ...d, nutrition: { allergies: ['soy'] } }, 'diet.allergies')).toBeNull();
+    expect(emptyAnswerLabel(d, 'goal.type')).toBeNull();
+  });
+
+  it('target date in months: same day, clamped to the end of a shorter month, across years', () => {
+    expect(targetDateIn(3, '2026-09-30')).toBe('2026-12-30');
+    expect(targetDateIn(6, '2026-08-31')).toBe('2027-02-28');
+    expect(targetDateIn(12, '2028-02-29')).toBe('2029-02-28');
+  });
+
+  it('a summary issue reopens the step where it is fixed', () => {
+    expect(stepOfIssue('user.heightCm: too small')).toBe('profile.body');
+    expect(stepOfIssue('nutrition.allergies.0: invalid')).toBe('diet.allergies');
+    expect(stepOfIssue('motivation.reasons: duplicate')).toBe('motivation.reasons');
+    expect(stepOfIssue('training.sessionsPerWeek: too big')).toBe('training.frequency');
+  });
+});
+
+describe('goal and motivations (D-046)', () => {
+  const withReasons = (reasons: OnboardingDraft['motivation']['reasons']) => ({
+    ...completeDraft(),
+    motivation: { ...completeDraft().motivation, reasons },
+  });
+
+  it.each([[[]], [['health']], [['weight', 'energy', 'habits']]])('%j motivations: one goal, saved as given', (r) => {
+    const built = buildSnapshot(withReasons(r as never), new Date('2026-09-30T10:00:00Z'));
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    expect(built.snapshot.motivation.reasons).toEqual(r);
+    expect(built.snapshot.goal.type).toBe(completeDraft().goal.type);
+  });
+
+  it('a duplicate or unknown reason is refused, never silently kept', () => {
+    expect(buildSnapshot(withReasons(['health', 'health']), new Date()).ok).toBe(false);
+    expect(buildSnapshot(withReasons(['magic' as never]), new Date()).ok).toBe(false);
+  });
+
+  it('motivations never change the targets: same snapshot otherwise', () => {
+    const none = buildSnapshot(withReasons([]), new Date('2026-09-30T10:00:00Z'));
+    const many = buildSnapshot(withReasons(['weight', 'performance', 'event']), new Date('2026-09-30T10:00:00Z'));
+    if (!none.ok || !many.ok) throw new Error('invalid');
+    const { motivation: _a, ...restNone } = none.snapshot;
+    const { motivation: _b, ...restMany } = many.snapshot;
+    expect(restMany).toEqual(restNone);
+  });
+
+  it('a profile without reasons (saved before D-046) is still valid and rebuilt unchanged', () => {
+    const legacy = { ...SCENARIOS.studentMediumBudget, motivation: { why: 'Pour moi' } } as UserContextSnapshot;
+    const rebuilt = buildSnapshot(draftFromSnapshot(legacy), new Date('2026-09-30T10:00:00Z'));
+    expect(rebuilt.ok).toBe(true);
+    if (rebuilt.ok) expect(rebuilt.snapshot.motivation.reasons).toBeUndefined();
   });
 });

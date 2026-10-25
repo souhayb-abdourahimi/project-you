@@ -7,7 +7,7 @@ Project You est un outil de fitness et bien-être ; il ne remplace pas un profes
 - Âge stocké en **année de naissance** (suffit au calcul).
 - Sexe facultatif (« préfère ne pas dire » → calcul moyen, précision moindre signalée).
 - Données santé (HealthKit / Health Connect) lues seulement si utiles et autorisées, catégorie par catégorie.
-- Réponses de motivation : privées, utilisées pour les messages de motivation uniquement.
+- Réponses de motivation : privées, utilisées pour le ton des messages du coach uniquement. Les motivations choisies (`reasons`, D-046) sont exportées et supprimées avec la catégorie « motivation » ; elles ne changent aucune cible.
 - Photos : facultatives, bucket privé, jamais envoyées à un modèle externe sans action explicite.
 - **Photo de repas** (W-10, `docs/MEAL_PHOTO_ANALYSIS.md`) : prise ou choisie par l'utilisateur, redimensionnée sur l'appareil, envoyée au service d'analyse seulement après « Analyser » (la phrase « Project You ne l’enregistre pas ; le service d’analyse peut la garder jusqu’à 30 jours pour sa sécurité » est affichée avant), traitée pour cette seule demande, jamais stockée ni journalisée par Project You ; le fournisseur de vision peut la conserver jusqu'à 30 jours dans ses journaux anti-abus (OpenAI : `store: false` envoyé, pas d'entraînement par défaut). Seuls les aliments confirmés (ids et grammes) et leur estimation sont enregistrés (`logged_meals`), exportés et supprimés avec « Repas ». Refus de la caméra : la galerie et la composition à la main restent disponibles.
 

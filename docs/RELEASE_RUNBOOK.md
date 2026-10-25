@@ -40,6 +40,26 @@ where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity;
 
 4. Database → Advisors : Security et Performance. Seul avertissement attendu côté sécurité : Leaked Password Protection (étape 4). Ne supprime aucun index « inutilisé ».
 
+### 1 bis. Migration `motivation_reasons` (D-046, même méthode)
+
+À coller **avant** de publier un client qui contient les motivations multiples. Sans elle, un client à jour fonctionne mais ses motivations choisies ne se synchronisent pas (l'envoi de la colonne échouerait).
+
+1. SQL Editor → New query → coller tout `supabase/migrations/20261025000001_motivation_reasons.sql` → Run. Elle est idempotente : la relancer ne change rien.
+2. Vérifier (lecture seule) :
+
+```sql
+-- La colonne existe, liste vide par défaut : attendu text[] / '{}'::text[]
+select data_type, column_default from information_schema.columns
+where table_schema = 'public' and table_name = 'motivations' and column_name = 'reasons';
+
+-- La contrainte de valeurs connues est là : attendu 1 ligne
+select conname from pg_constraint
+where conrelid = 'public.motivations'::regclass and conname = 'motivations_reasons_known';
+
+-- RLS toujours active sur motivations : attendu true
+select relrowsecurity from pg_class where oid = 'public.motivations'::regclass;
+```
+
 ## 2. Secrets de `analyze-meal`
 
 ```bash

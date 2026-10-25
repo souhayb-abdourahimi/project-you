@@ -72,6 +72,9 @@ Lu le 2026-10-01 sur les pages officielles ; à revérifier avant chaque changem
   - Application qui l'appelle régulièrement : diviser par 100, soit environ **100 requêtes et 10 Mo par jour**.
   - Usage commercial : instance auto-hébergée ou payante.
   - Sur une erreur 429 ou 406 : attendre avant de réessayer.
+  - **Depuis le 2026-04-19** (relu le 2026-10-25, D-046) : une application sans User-Agent identifiant reçoit 406, un navigateur doit envoyer un Referer, une partie des plages AWS / Azure est bloquée. L'app envoie `User-Agent: ProjectYou/<version> (…)` en natif (un navigateur interdit de le changer) et garde le Referer sur le web (`strict-origin-when-cross-origin`).
+  - Repli : une seule instance publique de secours, `overpass.private.coffee`, essayée une fois sur 429, 5xx, délai ou panne réseau ; jamais sur une requête refusée (400). Aucune boucle, aucune erreur mise en cache.
+  - Limites côté app : délai serveur 10 s (`[timeout:10]`), délai client 14 s, 250 éléments au plus lus, les 30 plus proches affichés, cache 10 min des réponses réussies, une même recherche en cours partagée.
 - **Nominatim** (`nominatim.openstreetmap.org`, géocodage, **non utilisé**) :
   - 1 requête par seconde maximum.
   - User-Agent ou Referer identifiant l'application.

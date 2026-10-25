@@ -19,7 +19,7 @@ Supabase / PostgreSQL. Migrations versionnées dans `supabase/migrations/` (horo
 |---|---|---|
 | `profiles` | User, Profile | 1–1 avec `auth.users` ; pseudo, année de naissance, taille, sexe (facultatif), activité, statut de vie, locale |
 | `goals` | Goal | historique ; un seul `active` par utilisateur (index unique partiel) |
-| `motivations` | Motivation | réponses libres privées ; jamais envoyées à un tiers sans besoin |
+| `motivations` | Motivation | raisons choisies (`reasons`, D-046) et réponses libres privées ; jamais envoyées à un tiers sans besoin |
 | `user_preferences` | Preference (nutrition, entraînement, planning, budget, cuisine) | `jsonb` pour matériel et créneaux |
 | `foods` | Food, Product | catalogue ; valeurs pour 100 g ; traçabilité source |
 | `inventory_items` | Inventory | « Ce que j'ai chez moi » |
@@ -42,6 +42,10 @@ Supabase / PostgreSQL. Migrations versionnées dans `supabase/migrations/` (horo
 | `integration_connections` | CalendarConnection, HealthConnection | `kind` = calendar/health, scopes, statut ; aucun token en clair côté client |
 | `coach_memory` | **héritée, inutilisée** (D-042) | ni lue ni écrite par l'app : la mémoire du coach vit dans `adjustments` (`coach.*`, D-039) ; exportée, supprimée avec le compte ; suppression ou usage futur à décider |
 | `ai_conversations` / `ai_messages` | AIConversation, AIMessage | phase 3 ; tables créées mais inutilisées au MVP |
+
+## Migration `20261025000001_motivation_reasons.sql` (D-046)
+
+`motivations.reasons text[] not null default '{}'` : les motivations choisies (choix multiple, valeurs connues seulement, au plus 10, contrainte `motivations_reasons_known`). Idempotente (`add column if not exists`, contrainte créée seulement si absente), rien n'est supprimé ni réécrit. RLS inchangée (politiques propriétaire de `motivations`), testée dans `supabase/tests/settings.sql` (A lit et modifie ses raisons, B ne voit rien, valeur inconnue refusée, double application sans effet). Le client n'envoie la colonne qu'une fois la question répondue sur l'appareil. **À coller dans le SQL Editor avant de publier le client qui la contient.**
 
 ## Migration `20261017000001_logged_meals.sql` (W-10, D-045)
 

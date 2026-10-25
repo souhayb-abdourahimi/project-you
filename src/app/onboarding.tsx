@@ -190,6 +190,7 @@ export default function OnboardingScreen() {
                     : t('common.continue')
               }
               variant={emptyLabel ? 'secondary' : 'primary'}
+              testID="onboarding-next"
               accessibilityHint={blocked ? t(`onboarding.blocked.${blocked}`) : undefined}
               onPress={next}
               disabled={

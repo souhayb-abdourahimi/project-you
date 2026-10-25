@@ -319,6 +319,31 @@ describe('applyRemote', () => {
     expect(state.weights).toEqual(source.weights);
   });
 
+  it('D-046: motivation reasons go round trip; an old profile never sends the column', () => {
+    const source = fullState();
+    const before = project(source, USER).motivations;
+    // Saved before D-046: no reasons key, so a server without the migration is still accepted.
+    expect([...before.values()].every((r) => !('reasons' in r))).toBe(true);
+    const chosen = {
+      ...source,
+      snapshot: { ...source.snapshot!, motivation: { ...source.snapshot!.motivation, reasons: ['energy', 'health'] } },
+    } as SyncableState;
+    const row = [...project(chosen, USER).motivations.values()][0];
+    // Canonical order, whatever the order of the touches.
+    expect(row.reasons).toEqual(['health', 'energy']);
+    const { state } = applyRemote(emptyState(), asServer(chosen), USER, {});
+    expect(state.snapshot?.motivation.reasons).toEqual(['health', 'energy']);
+  });
+
+  it('D-046: the column default (no reason) is not read as an answer; unknown values are dropped', () => {
+    const source = fullState();
+    const server = asServer(source);
+    server.motivations = server.motivations!.map((r) => ({ ...r, reasons: [] }));
+    expect(applyRemote(emptyState(), server, USER, {}).state.snapshot?.motivation.reasons).toBeUndefined();
+    server.motivations = server.motivations!.map((r) => ({ ...r, reasons: ['event', 'magic'] }));
+    expect(applyRemote(emptyState(), server, USER, {}).state.snapshot?.motivation.reasons).toEqual(['event']);
+  });
+
   it('keeps local changes that are not pushed yet', () => {
     const source = fullState();
     const synced = syncedFor(source);

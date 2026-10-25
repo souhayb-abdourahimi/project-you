@@ -12,6 +12,7 @@ Projet Supabase : `krcqdrrfnvfpvczxwrmt`. Les threads cloud n'atteignent pas ce 
 - [ ] **À appliquer** : `20261017000001_logged_meals.sql` (table `logged_meals`, RLS propriétaire, index de sync, trigger `set_updated_at`, aucun droit `anon`).
   - Dans l'éditeur SQL (pas `supabase db push` : l'historique de la CLI ne connaît pas les migrations déjà collées, elle les rejouerait). Étapes exactes : `docs/RELEASE_RUNBOOK.md`.
   - Contrôle après coup : la table existe, `relrowsecurity = true`, les 4 policies `logged_meals_*_own` sont présentes, et `npm run test:db` est vert en local (couvert par `supabase/tests/rls.sql`).
+- [ ] **À appliquer** : `20261025000001_motivation_reasons.sql` (colonne `motivations.reasons`, D-046), avant le client qui l'utilise. Même méthode (éditeur SQL), contrôles dans `docs/RELEASE_RUNBOOK.md` § 1 bis.
 - [ ] Advisors Supabase relus après application : sécurité et performance. Un index signalé « inutilisé » ne se supprime pas tant que la base est peu chargée.
 
 ## 2. Edge Functions

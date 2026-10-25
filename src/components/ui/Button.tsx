@@ -40,6 +40,8 @@ export interface ButtonProps {
   onDark?: boolean;
   /** For a button that shows or hides content below it (announced as expanded / collapsed). */
   expanded?: boolean;
+  /** Stable handle for end-to-end tests when the visible label changes with the state. */
+  testID?: string;
 }
 
 interface Look {
@@ -83,6 +85,7 @@ export function Button({
   icon,
   onDark = false,
   expanded,
+  testID,
 }: ButtonProps) {
   const colors = useColors();
   const scheme = useScheme();
@@ -105,6 +108,7 @@ export function Button({
       accessibilityState={{ disabled: !!inactive, busy: !!loading, expanded }}
       aria-expanded={expanded}
       disabled={inactive}
+      testID={testID}
       onPress={onPress}
       style={({ pressed }) => [
         styles.base,

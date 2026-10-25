@@ -4,6 +4,16 @@ Tâches importantes à ne pas perdre entre deux sessions. Référence des IDs : 
 
 ## En cours / prochaine étape
 
+- [ ] **Passe qualité produit (D-046, 2026-10-25)**, branche `claude/w9-checkin-premium`, rien de fusionné :
+  - [x] Onboarding : choix uniques en passage automatique, motivations multiples, « Aucun régime particulier », questions sans effet retirées, date cible et budget en un toucher, raisons de blocage affichées.
+  - [x] OpenStreetMap : User-Agent / Referer, délai, une instance de repli, erreurs distinctes + Réessayer, salles et commerces pertinents, les 30 plus proches.
+  - [x] Analyse photo : double enregistrement, double envoi, annulation en quittant, 502 inexploitable, portion 0 g.
+  - [x] Écrans : radios nommées, notices non alertes, « rien de noté » au lieu de 0, budget sans montant, démarrage à froid.
+  - [ ] **Coller `20261025000001_motivation_reasons.sql`** dans le SQL Editor avant de publier ce client (runbook § 1 bis).
+  - [ ] Tester la recherche de lieux réelle sur iPhone, Android et navigateur (Overpass injoignable depuis le cloud : 406 / délai / repli testés avec des réponses simulées).
+  - [ ] Restant de l'audit : correction d'une dépense, saisie de date d'inventaire (AAAA-MM-JJ), séparateur décimal, pluriels « (s) », « Terminer ici » sans confirmation, réinitialisation du mot de passe, Segmented 40 px, statut de séance annoncé dans Programme.
+  - [ ] Supprimer la photo temporaire du cache natif après analyse (aujourd'hui laissée au système ; `expo-file-system` non installé).
+
 - [ ] **W-10 référence visuelle + analyse photo (D-045)**, branche `claude/w9-checkin-premium`, rien de fusionné :
   - [x] Tokens densité / bleu, primitives `Tabs` `Segmented` `RadioList` `FeelingScale` ; Nutrition, Aujourd'hui, Programme, Séance, Remplacement, Résumé, Progrès, Bilan de la semaine, Profil repris.
   - [x] Registre `exercise.id → média validé` (vide) + `ExerciseMedia` ; spécification `docs/MEDIA.md`.
