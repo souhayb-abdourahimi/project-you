@@ -48,6 +48,22 @@ export default defineConfig({
       name: 'android',
       use: { viewport: { width: 412, height: 915 }, deviceScaleFactor: 2.625, isMobile: true, hasTouch: true },
     },
+    // The narrowest common Android width (360 dp).
+    {
+      name: 'android360',
+      use: { viewport: { width: 360, height: 800 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
+    },
+    // English, on an iPhone 15 (the language follows the device).
+    {
+      name: 'iphone15-en',
+      use: {
+        viewport: { width: 393, height: 852 },
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true,
+        locale: 'en-GB',
+      },
+    },
     { name: 'desktop', use: { viewport: { width: 1366, height: 900 } } },
   ],
   webServer: { command: 'node scripts/serve-dist.mjs', port: 8765, reuseExistingServer: true },

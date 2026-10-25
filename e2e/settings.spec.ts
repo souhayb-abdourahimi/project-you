@@ -31,7 +31,9 @@ test.beforeEach(async ({ page }) => {
   await seedProfile(page, SCENARIOS.muscleGain);
 });
 
-test('training: a new frequency is previewed, confirmed, and becomes a new version; the past stays', async ({ page }) => {
+test('training: a new frequency is previewed, confirmed, and becomes a new version; the past stays', async ({
+  page,
+}) => {
   const errors = collectErrors(page);
   await seedData(page, { completedSessions: [done] });
   await page.goto('/');
@@ -42,7 +44,8 @@ test('training: a new frequency is previewed, confirmed, and becomes a new versi
   await page.getByRole('link', { name: /^Entraînement/ }).click();
   await expect(page).toHaveURL(/settings\/training/);
   await expect(button(page, 'Enregistrer')).toBeDisabled();
-  await page.getByRole('checkbox', { name: '4', exact: true }).filter({ visible: true }).first().click();
+  // One answer: a radio group (W-11).
+  await page.getByRole('radio', { name: '4', exact: true }).filter({ visible: true }).first().click();
   await expect(text(page, 'Ce qui va changer')).toBeVisible();
   await expect(text(page, /Nouvelle version de ton programme à partir d’aujourd’hui/)).toBeVisible();
   await button(page, 'Enregistrer').click();
@@ -129,7 +132,7 @@ test('a mistaken weigh-in is corrected, then another is deleted after a confirma
 test('leaving a form with unsaved changes asks first', async ({ page }) => {
   await page.goto('/settings');
   await page.getByRole('link', { name: /^Motivation/ }).click();
-  await field(page, /Ton pourquoi|Pourquoi/).first().fill('Pour courir avec mes enfants');
+  await field(page, /Avec tes mots/).fill('Pour courir avec mes enfants');
   let asked = '';
   page.once('dialog', (d) => {
     asked = d.message();

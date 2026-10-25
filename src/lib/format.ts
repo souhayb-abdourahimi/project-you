@@ -1,9 +1,12 @@
 import { fromKg, type MassUnit } from '@/domain/settings/units';
 
-export function formatMoney(cents: number, locale: string, currency = 'EUR'): string {
-  return new Intl.NumberFormat(locale === 'en' ? 'en-GB' : 'fr-FR', { style: 'currency', currency }).format(
-    cents / 100,
-  );
+/** `whole`: a round amount without its zero cents ("50 €", for a choice; never for an expense). */
+export function formatMoney(cents: number, locale: string, currency = 'EUR', whole = false): string {
+  return new Intl.NumberFormat(locale === 'en' ? 'en-GB' : 'fr-FR', {
+    style: 'currency',
+    currency,
+    ...(whole && cents % 100 === 0 ? { minimumFractionDigits: 0, maximumFractionDigits: 0 } : {}),
+  }).format(cents / 100);
 }
 
 export function formatDate(date: string, locale: string): string {

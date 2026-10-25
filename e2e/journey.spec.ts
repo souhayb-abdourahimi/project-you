@@ -19,12 +19,15 @@ test('first visit: onboarding → today → meals → inventory → workout → 
   await expect(local.or(name).first()).toBeVisible();
   if (await local.isVisible()) await local.click();
 
-  const next = () => button(page, 'Continuer').click();
+  // The main button's label says what it does ("Continuer", "Aucune allergie"…): one stable handle.
+  const next = () => page.getByTestId('onboarding-next').click();
   const pick = (name: string | RegExp) =>
     page
-      .getByRole('checkbox', { name, exact: typeof name === 'string' })
+      .getByRole('radio', { name, exact: typeof name === 'string' })
+      .or(page.getByRole('checkbox', { name, exact: typeof name === 'string' }))
       .first()
       .click();
+  const title = (text: string) => expect(page.getByRole('heading', { name: text })).toBeVisible();
 
   await page.getByLabel('Prénom ou pseudo').fill('Camille');
   await next();
@@ -33,39 +36,47 @@ test('first visit: onboarding → today → meals → inventory → workout → 
   await page.getByLabel('Taille (cm)').fill('170');
   await page.getByLabel('Poids (kg)').fill('80');
   await next();
+  // Sex is a sensitive answer: chosen, then confirmed (no automatic move).
   await pick('Femme');
   await next();
-  await pick(/Légère/);
+  // One-answer questions move on by themselves after the touch.
+  await pick(/^Légère/);
+  await title('Quel est ton objectif principal ?');
+  await pick(/^Perte de gras/);
+  await title('As-tu un poids cible ?');
+  await page.getByLabel('Poids souhaité (kg)').fill('65');
+  await pick('Dans 3 mois');
+  await expect(page.getByText(/Échéance :/)).toBeVisible();
   await next();
-  await pick('Perte de gras');
+  // Motivations: as many as true, never auto-advanced.
+  await title('Qu’est-ce qui te motive ?');
+  await pick(/^Perdre du poids/);
+  await pick(/^Avoir plus d’énergie/);
+  await expect(page.getByRole('checkbox', { name: /^Perdre du poids/ })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByRole('checkbox', { name: /^Avoir plus d’énergie/ })).toHaveAttribute('aria-checked', 'true');
   await next();
-  await page.getByLabel('Poids souhaité (kg)').fill('72');
-  await page.getByLabel(/Pour quand/).fill('2026-12-01');
-  await next();
-  for (let i = 0; i < 3; i++) await next();
-  await pick('Étudiant·e');
-  await next();
-  await page.getByLabel('Budget hebdomadaire (€)').fill('30');
+  await title('Ton budget courses par semaine');
+  await page.getByLabel('Autre montant par semaine (€)').fill('30');
   await next();
   await pick('Plaques');
   await next();
-  await pick('Vegan');
-  await next();
+  await pick(/^Vegan/);
+  await title('Allergies');
   await next();
   await next();
   await pick('3');
   await pick('30 min');
   await next();
-  await pick('Non');
+  await pick(/^Non/);
+  await title('Ton matériel à la maison');
   await next();
-  await next();
-  await pick('Débutant');
-  await next();
+  await pick(/^Débutant/);
+  await title('Combien de séances par semaine ?');
   await pick('3');
   await pick('45 min');
   await next();
   await next();
-  await next();
+  await title('Ton plan de départ');
 
   // Aggressive goal: flagged, estimate at month level, user keeps the choice.
   await expect(page.getByText(/estimation, pas une promesse/)).toBeVisible();

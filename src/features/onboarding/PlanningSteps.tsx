@@ -76,7 +76,7 @@ export function BudgetStep({ draft, update }: { draft: OnboardingDraft; update: 
         label={t('onboarding.budget.food.title')}
         options={BUDGET_PRESETS_CENTS.map((value) => ({
           value,
-          label: value === 0 ? t('onboarding.budget.food.none') : formatMoney(value, lang),
+          label: value === 0 ? t('onboarding.budget.food.none') : formatMoney(value, lang, 'EUR', true),
         }))}
         selected={cents === undefined ? [] : [cents]}
         onToggle={(weeklyFoodBudgetCents) => {
