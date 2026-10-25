@@ -57,11 +57,18 @@ export function TodayGlance({ plan, journey }: { plan: Plan; journey: Journey })
 function Nutrition({ n }: { n: NonNullable<Glance['nutrition']> }) {
   const { t, i18n } = useTranslation();
   const num = (v: number) => formatNumber(v, i18n.language);
-  const label = t('today.glance.proteinA11y', { eaten: n.proteinG, target: n.proteinTargetG });
+  // Nothing noted yet: the targets, never "0 g" as if it were a measurement.
+  const none = n.logged === 0;
+  const label = none
+    ? t('today.glance.nothingA11y', { protein: n.proteinTargetG, kcal: n.kcalTarget })
+    : t('today.glance.proteinA11y', { eaten: n.proteinG, target: n.proteinTargetG });
+  const shown = (v: number) => (none ? t('common.noValue') : num(v));
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${label}. ${t('today.glance.energyA11y', { eaten: n.kcal, target: n.kcalTarget })}`}
+      accessibilityLabel={
+        none ? label : `${label}. ${t('today.glance.energyA11y', { eaten: n.kcal, target: n.kcalTarget })}`
+      }
       accessibilityHint={t('today.glance.openNutrition')}
       onPress={() => router.push('/nutrition')}
       style={({ pressed }) => [styles.pressable, styles.half, { transform: [{ scale: pressed ? PRESSED_SCALE : 1 }] }]}>
@@ -75,7 +82,7 @@ function Nutrition({ n }: { n: NonNullable<Glance['nutrition']> }) {
           </View>
           {/* Ring, then its label: side by side, "Protéines" breaks mid-word on an iPhone SE. */}
           <ProgressRing value={n.proteinG / n.proteinTargetG} color="nutrition" label={label} size={64} stroke={6}>
-            <Text variant="headline">{num(n.proteinG)}</Text>
+            <Text variant="headline">{shown(n.proteinG)}</Text>
             <Text variant="micro" color="textMuted">
               / {num(n.proteinTargetG)} g
             </Text>
@@ -87,7 +94,9 @@ function Nutrition({ n }: { n: NonNullable<Glance['nutrition']> }) {
             </Text>
           </View>
           <Text variant="caption" color="textSecondary" numberOfLines={2}>
-            {t('today.glance.energy', { eaten: num(n.kcal), target: num(n.kcalTarget) })}
+            {none
+              ? t('today.glance.nothingYet')
+              : t('today.glance.energy', { eaten: num(n.kcal), target: num(n.kcalTarget) })}
           </Text>
         </View>
       </Card>

@@ -31,6 +31,8 @@ export default function CalendarScreen() {
             <Text variant="heading">{t('calendar.readBusy')}</Text>
             <Text color="textMuted">{t('calendar.readBusyHint')}</Text>
             <ChoiceGroup
+              single
+              label={t('calendar.readBusy')}
               options={yesNo}
               selected={[cal.readBusy ? 'on' : 'off']}
               onToggle={(v) => cal.update({ readBusy: v === 'on', busy: v === 'on' ? cal.busy : null })}
@@ -48,6 +50,8 @@ export default function CalendarScreen() {
             <Text variant="heading">{t('calendar.writeSessions')}</Text>
             <Text color="textMuted">{t('calendar.writeSessionsHint')}</Text>
             <ChoiceGroup
+              single
+              label={t('calendar.writeSessions')}
               options={yesNo}
               selected={[cal.writeSessions ? 'on' : 'off']}
               onToggle={(v) => cal.update({ writeSessions: v === 'on' })}

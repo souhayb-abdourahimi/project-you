@@ -121,7 +121,8 @@ const NOTICE: Record<NoticeTone, { background: ColorToken; accent: ColorToken; i
 
 /**
  * A tinted note: identifiable at once, never alarming. `caution` is the safety surface; `danger`
- * is kept for a real error or a destructive consequence.
+ * is kept for a real error or a destructive consequence. Only those two are announced as an alert
+ * by default: an information read out as an alert on every screen would drown the real ones.
  */
 export function Notice({
   title,
@@ -129,7 +130,7 @@ export function Notice({
   tone = 'neutral',
   icon,
   children,
-  role = 'alert',
+  role,
 }: {
   title?: string;
   message?: string;
@@ -140,8 +141,9 @@ export function Notice({
 }) {
   const colors = useColors();
   const look = NOTICE[tone];
+  const announced = role ?? (tone === 'caution' || tone === 'danger' ? 'alert' : undefined);
   return (
-    <View accessibilityRole={role} style={[styles.notice, { backgroundColor: colors[look.background] }]}>
+    <View accessibilityRole={announced} style={[styles.notice, { backgroundColor: colors[look.background] }]}>
       <Icon name={icon ?? look.icon} size="md" color={look.accent} />
       <View style={styles.noticeText}>
         {title ? (

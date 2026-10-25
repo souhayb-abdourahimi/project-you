@@ -168,6 +168,8 @@ export function MealCard({ meal, compact }: { meal: PlannedMeal; compact?: boole
                 {t('nutrition.reasonQuestion')}
               </Text>
               <ChoiceGroup
+                single
+                label={t('nutrition.reasonQuestion')}
                 options={MEAL_REASONS.map((reason) => ({ value: reason, label: t(`nutrition.reason.${reason}`) }))}
                 selected={meal.reason ? [meal.reason] : []}
                 onToggle={(reason: MealReason) => {

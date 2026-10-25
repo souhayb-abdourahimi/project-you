@@ -219,6 +219,21 @@ describe('budget', () => {
       ],
       '2026-09-28',
     );
-    expect(s).toMatchObject({ plannedCents: 4500, spentCents: 3470, remainingCents: 1030, status: 'on_track' });
+    expect(s).toMatchObject({
+      plannedCents: 4500,
+      spentCents: 3470,
+      remainingCents: 1030,
+      status: 'on_track',
+      entries: 2,
+    });
+  });
+
+  it('nothing noted this week is not "0 € spent": entries says so', () => {
+    expect(summarizeWeek(4500, [], '2026-09-28')).toMatchObject({ entries: 0, spentCents: 0 });
+  });
+
+  it('no precise budget (0): nothing to compare, never "over"', () => {
+    const s = summarizeWeek(0, [{ id: '1', amountCents: 2000, spentOn: '2026-09-28' }], '2026-09-28');
+    expect(s).toMatchObject({ plannedCents: 0, spentCents: 2000, ratio: 0, status: 'on_track', entries: 1 });
   });
 });

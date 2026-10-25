@@ -92,7 +92,8 @@ export function weeklyReview(input: WeeklyReviewInput): WeeklyReview {
     : (input.plannedSessionDates?.filter((d) => inWeek(d, weekStart)) ??
       input.schedule.days.filter((d) => d.items.some((i) => i.kind === 'workout')).map((d) => d.date));
   const planned = plannedDates.length;
-  const plannedSoFar = plannedDates.filter((d) => d <= input.today).length;
+  // Today is not over: a session planned today is still ahead, never "not done" yet.
+  const plannedSoFar = plannedDates.filter((d) => d < input.today).length;
   const done = input.completedSessions.filter((c) => inWeek(c.date, weekStart));
   const shortOrLight = done.filter((c) => c.variant !== 'full').length;
   const outcomes = Object.entries(input.sessionOutcomes ?? {}).filter(([k]) => inWeek(k.split('#')[0], weekStart));
@@ -177,8 +178,10 @@ export function weeklyReview(input: WeeklyReviewInput): WeeklyReview {
     // A trend against the goal is shown in the stats only: weekly weight is noisy, not a verdict.
     worked.push({ key: 'review.worked.weight_trend', params: { change: trend.weeklyChangeKg } });
   }
-  if (waistChangeCm !== null) worked.push({ key: 'review.worked.waist', params: { change: waistChangeCm } });
-  else if (recomposition) adapt.push({ key: 'review.adapt.measure_waist' });
+  // A waist going up is in the figures only, never listed as a win (nor as a verdict).
+  if (waistChangeCm !== null) {
+    if (waistChangeCm <= 0) worked.push({ key: 'review.worked.waist', params: { change: waistChangeCm } });
+  } else if (recomposition) adapt.push({ key: 'review.adapt.measure_waist' });
 
   if (budget) {
     if (budget.status === 'over') {

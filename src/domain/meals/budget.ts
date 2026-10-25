@@ -16,14 +16,15 @@ export interface BudgetSummary {
   /** Spent / planned, 0 when no budget is set. */
   ratio: number;
   status: BudgetStatus;
+  /** Expenses noted this week: 0 means "nothing noted", not "nothing spent". */
+  entries: number;
 }
 
 /** Weekly food budget: planned, spent, remaining ("34,70 € / 45 €"). */
 export function summarizeWeek(weeklyBudgetCents: number, expenses: FoodExpense[], weekStart: IsoDate): BudgetSummary {
   const weekEnd = addDays(weekStart, 6);
-  const spentCents = expenses
-    .filter((e) => e.spentOn >= weekStart && e.spentOn <= weekEnd)
-    .reduce((sum, e) => sum + e.amountCents, 0);
+  const inWeek = expenses.filter((e) => e.spentOn >= weekStart && e.spentOn <= weekEnd);
+  const spentCents = inWeek.reduce((sum, e) => sum + e.amountCents, 0);
   const ratio = weeklyBudgetCents > 0 ? spentCents / weeklyBudgetCents : 0;
   return {
     plannedCents: weeklyBudgetCents,
@@ -31,6 +32,7 @@ export function summarizeWeek(weeklyBudgetCents: number, expenses: FoodExpense[]
     remainingCents: weeklyBudgetCents - spentCents,
     ratio,
     status: ratio > 1 ? 'over' : ratio >= 0.85 ? 'tight' : 'on_track',
+    entries: inWeek.length,
   };
 }
 

@@ -22,7 +22,12 @@ export function DayTargets({ targets, intake }: { targets: NutritionTargets; int
 
   const energyRatio = targets.calories > 0 ? intake.kcal / targets.calories : 0;
   const remaining = Math.max(0, Math.round(targets.calories - intake.kcal));
-  const energyLabel = `${num(intake.kcal)} / ${t('common.kcal', { value: num(targets.calories) })}`;
+  // Nothing noted yet: a dash, never "0" as if it had been measured.
+  const none = intake.eaten + intake.added === 0;
+  const eaten = (v: number) => (none ? t('common.noValue') : num(v));
+  const energyLabel = none
+    ? t('nutrition.nothingA11y', { target: num(targets.calories) })
+    : `${num(intake.kcal)} / ${t('common.kcal', { value: num(targets.calories) })}`;
 
   const macros: {
     key: 'protein' | 'carbs' | 'fat';
@@ -45,7 +50,7 @@ export function DayTargets({ targets, intake }: { targets: NutritionTargets; int
           color="primary"
           track="surfaceSubtle"
           label={`${t('nutrition.energy')} : ${energyLabel}`}>
-          <Text variant="metric">{num(intake.kcal)}</Text>
+          <Text variant="metric">{eaten(intake.kcal)}</Text>
           <Text variant="caption" color="textMuted">
             / {t('common.kcal', { value: num(targets.calories) })}
           </Text>
@@ -54,7 +59,7 @@ export function DayTargets({ targets, intake }: { targets: NutritionTargets; int
         <View style={styles.macros}>
           {macros.map((macro) => {
             const ratio = macro.target > 0 ? macro.eaten / macro.target : 0;
-            const value = `${num(macro.eaten)} / ${num(macro.target)} g`;
+            const value = `${eaten(macro.eaten)} / ${t('common.grams', { value: num(macro.target) })}`;
             return (
               <View key={macro.key} style={styles.macro}>
                 <View style={styles.macroTop}>
@@ -73,9 +78,11 @@ export function DayTargets({ targets, intake }: { targets: NutritionTargets; int
       <View style={styles.footer}>
         <Icon name="info" size={14} color="textMuted" />
         <Text variant="caption" color="textMuted" style={styles.flex}>
-          {remaining > 0
-            ? t('nutrition.remaining', { kcal: num(remaining), eaten: intake.eaten, meals: intake.meals })
-            : t('nutrition.mealsEaten', { eaten: intake.eaten, meals: intake.meals })}
+          {none
+            ? t('nutrition.nothingYet')
+            : remaining > 0
+              ? t('nutrition.remaining', { kcal: num(remaining), eaten: intake.eaten, meals: intake.meals })
+              : t('nutrition.mealsEaten', { eaten: intake.eaten, meals: intake.meals })}
           {' · '}
           {t('nutrition.estimate')}
         </Text>

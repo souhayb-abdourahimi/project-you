@@ -44,6 +44,10 @@ export interface CardProps {
   raised?: boolean;
   /** Tighter padding for a dense list card. */
   dense?: boolean;
+  /**
+   * A summary card read as one element (its label), its content hidden from screen readers. Only
+   * for a card with nothing to press inside: the label would hide its buttons.
+   */
   accessibilityLabel?: string;
 }
 
@@ -55,6 +59,8 @@ export function Card({ children, style, tone, muted, raised, dense, accessibilit
   const outlined = t === 'surface' && (scheme === 'dark' || !raised);
   return (
     <View
+      accessible={accessibilityLabel !== undefined}
+      role={accessibilityLabel !== undefined ? 'group' : undefined}
       accessibilityLabel={accessibilityLabel}
       style={[
         styles.card,

@@ -2,6 +2,7 @@ import type { LocaleShape } from './shape';
 
 const en: LocaleShape = {
   common: {
+    noValue: '—',
     continue: 'Continue',
     back: 'Back',
     skip: 'Skip',
@@ -346,6 +347,8 @@ const en: LocaleShape = {
       proteinCaption: 'logged meals · estimate',
       proteinA11y: '{{eaten}} g of protein logged out of {{target}} g, estimate',
       energy: 'Energy {{eaten}} / {{target}} kcal',
+      nothingYet: 'Nothing noted yet',
+      nothingA11y: 'Nothing noted yet. Guides: {{protein}} g of protein and {{kcal}} kcal, estimate',
       energyA11y: 'Energy {{eaten}} of {{target}} kcal, estimate',
       openNutrition: 'Opens the Nutrition tab',
       week: 'This week',
@@ -619,6 +622,7 @@ const en: LocaleShape = {
     },
   },
   antiAbandon: {
+    backToday: 'Back to Today',
     title: 'No worries, let’s adapt',
     recover: 'Your body needs rest. Recovery is part of the program.',
     tired: 'You are tired: a lighter version or some mobility is enough today.',
@@ -1010,6 +1014,8 @@ const en: LocaleShape = {
   nutrition: {
     macroShort: { protein: 'P', carbs: 'C', fat: 'F' },
     energy: 'Energy',
+    nothingYet: 'Nothing noted today yet',
+    nothingA11y: 'Nothing noted yet, guide {{target}} kcal',
     mealsEaten: '{{eaten}} of {{meals}} meals logged',
     title: 'Nutrition',
     targets: 'Today’s guide',
@@ -1134,6 +1140,11 @@ const en: LocaleShape = {
     noAlternative: 'No alternative fits your constraints.',
     budget: 'Grocery budget',
     budgetValue: '{{spent}} / {{planned}}',
+    budgetNone: 'No set budget. You can still note what you spend.',
+    budgetSpent: '{{amount}} noted this week',
+    budgetPlanned: 'Budget: {{amount}} a week',
+    budgetNoExpense: 'No expense noted this week.',
+    budgetAbove: '{{amount}} above the budget',
     budgetRemaining: '{{amount}} left',
     addExpense: 'Add an expense',
     expenseAmount: 'Amount (€)',
@@ -1241,8 +1252,7 @@ const en: LocaleShape = {
     quantity: 'Quantity',
     expires: 'Expires on (optional, YYYY-MM-DD)',
     consume: 'Consume',
-    scan: 'Scan (soon)',
-    scanUnavailable: 'Barcode scanning arrives in phase 2.',
+    unit: 'Unit',
     pick: 'Pick a food from the catalogue',
     expiring: 'Expiring soon',
   },
@@ -1590,6 +1600,8 @@ const en: LocaleShape = {
     flag: { fast_weight_loss: 'fast weight loss', low_intake: 'meals under your benchmarks' },
   },
   checkin: {
+    ratingNeeded: 'Rate your week, then save.',
+    outOfRange: 'This value looks out of the possible range. Check it: it will not be saved like this.',
     title: 'Weekly check-in',
     intro: 'Under a minute. Only the first question is needed; answer the rest if you want.',
     closed: 'The weekly check-in opens on Friday and stays available until Tuesday.',

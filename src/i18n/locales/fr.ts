@@ -1,5 +1,6 @@
 const fr = {
   common: {
+    noValue: '—',
     continue: 'Continuer',
     back: 'Retour',
     skip: 'Passer',
@@ -351,6 +352,8 @@ const fr = {
       proteinCaption: 'repas notés · estimation',
       proteinA11y: '{{eaten}} g de protéines notées sur {{target}} g, estimation',
       energy: 'Énergie {{eaten}} / {{target}} kcal',
+      nothingYet: 'Rien de noté pour l’instant',
+      nothingA11y: 'Rien de noté pour l’instant. Repères : {{protein}} g de protéines et {{kcal}} kcal, estimation',
       energyA11y: 'Énergie {{eaten}} sur {{target}} kcal, estimation',
       openNutrition: 'Ouvre l’onglet Nutrition',
       week: 'Cette semaine',
@@ -628,6 +631,7 @@ const fr = {
     },
   },
   antiAbandon: {
+    backToday: 'Retour à Aujourd’hui',
     title: 'Pas de souci, on adapte',
     recover: 'Ton corps demande du repos. Récupérer fait partie du programme.',
     tired: 'Tu es fatigué·e : une version allégée ou un peu de mobilité suffisent aujourd’hui.',
@@ -1021,6 +1025,8 @@ const fr = {
   nutrition: {
     macroShort: { protein: 'P', carbs: 'G', fat: 'L' },
     energy: 'Énergie',
+    nothingYet: 'Rien de noté aujourd’hui pour l’instant',
+    nothingA11y: 'Rien de noté pour l’instant, repère {{target}} kcal',
     mealsEaten: '{{eaten}} repas notés sur {{meals}}',
     title: 'Nutrition',
     targets: 'Tes repères du jour',
@@ -1145,6 +1151,11 @@ const fr = {
     noAlternative: 'Aucune alternative compatible avec tes contraintes.',
     budget: 'Budget courses',
     budgetValue: '{{spent}} / {{planned}}',
+    budgetNone: 'Pas de budget précis. Tu peux quand même noter tes dépenses.',
+    budgetSpent: '{{amount}} notés cette semaine',
+    budgetPlanned: 'Budget : {{amount}} par semaine',
+    budgetNoExpense: 'Aucune dépense notée cette semaine.',
+    budgetAbove: '{{amount}} au-dessus du budget',
     budgetRemaining: 'Reste {{amount}}',
     addExpense: 'Ajouter une dépense',
     expenseAmount: 'Montant (€)',
@@ -1255,8 +1266,7 @@ const fr = {
     quantity: 'Quantité',
     expires: 'Expire le (facultatif, AAAA-MM-JJ)',
     consume: 'Consommer',
-    scan: 'Scanner (bientôt)',
-    scanUnavailable: 'Le scan de code-barres arrive en phase 2.',
+    unit: 'Unité',
     pick: 'Choisis un aliment du catalogue',
     expiring: 'Expire bientôt',
   },
@@ -1606,6 +1616,8 @@ const fr = {
     flag: { fast_weight_loss: 'perte de poids rapide', low_intake: 'repas sous tes repères' },
   },
   checkin: {
+    ratingNeeded: 'Choisis une note pour ta semaine, puis enregistre.',
+    outOfRange: 'Cette valeur semble hors des limites possibles. Vérifie-la : elle ne sera pas enregistrée ainsi.',
     title: 'Check-in de la semaine',
     intro: 'Moins d’une minute. Seule la première question est nécessaire ; tu réponds au reste si tu veux.',
     closed: 'Le check-in de la semaine s’ouvre le vendredi et reste disponible jusqu’au mardi.',

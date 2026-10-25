@@ -80,6 +80,9 @@ export default function CheckinScreen() {
     last([...waist.map((entry) => entry.date), ...measurements.map((entry) => entry.date)]),
   );
 
+  // Out of range: said under the field (after typing), never dropped without a word.
+  const weightOk = weight !== undefined && weight >= 25 && weight <= 400;
+  const waistOk = waistCm !== undefined && waistCm >= 10 && waistCm <= 300;
   const save = () => {
     if (!rating) return;
     const checkin: WeeklyCheckin = {
@@ -90,14 +93,15 @@ export default function CheckinScreen() {
       answeredAt: new Date().toISOString(),
     };
     saveWeeklyCheckin(checkin);
-    if (body.weight && weight && weight >= 25 && weight <= 400) logWeight(plan.today, weight);
-    if (body.measurements && waistCm && waistCm >= 10 && waistCm <= 300) logWaist(plan.today, waistCm);
+    if (body.weight && weightOk) logWeight(plan.today, weight);
+    if (body.measurements && waistOk) logWaist(plan.today, waistCm);
     router.replace('/review');
   };
 
-  const levels = (value: Level | undefined | null, set: (level: Level) => void) => (
+  const levels = (label: string, value: Level | undefined | null, set: (level: Level) => void) => (
     <ChoiceGroup
       single
+      label={label}
       options={LEVELS.map((level) => ({ value: level, label: String(level) }))}
       selected={value ? [value] : []}
       onToggle={set}
@@ -168,7 +172,7 @@ export default function CheckinScreen() {
                   {t(`checkin.hint.${question}`)}
                 </Text>
               </View>
-              {levels(answers[question], (level) =>
+              {levels(t(`checkin.question.${question}`), answers[question], (level) =>
                 setAnswers((current) => ({
                   ...current,
                   [question]: current[question] === level ? undefined : level,
@@ -189,6 +193,8 @@ export default function CheckinScreen() {
           </View>
         </View>
         <ChoiceGroup
+          single
+          label={t('checkin.problemTitle')}
           options={MAIN_PROBLEMS.map((item) => ({ value: item, label: t(`checkin.problem.${item}`) }))}
           selected={problem ? [problem] : []}
           onToggle={(item) => setProblem((current) => (current === item ? null : item))}
@@ -214,15 +220,36 @@ export default function CheckinScreen() {
               label={(unit) => t('onboarding.profile.body.weight', { unit })}
               valueKg={weight}
               onChange={setWeight}
+              error={weight !== undefined && !weightOk ? t('checkin.outOfRange') : undefined}
+              deferError
             />
           ) : null}
 
-          {body.measurements ? <NumberField label={t('progress.waist')} value={waistCm} onChange={setWaistCm} /> : null}
+          {body.measurements ? (
+            <NumberField
+              label={t('progress.waist')}
+              value={waistCm}
+              onChange={setWaistCm}
+              error={waistCm !== undefined && !waistOk ? t('checkin.outOfRange') : undefined}
+              deferError
+            />
+          ) : null}
         </Card>
       ) : null}
 
       <View style={styles.footer}>
-        <Button block label={t('checkin.save')} disabled={!rating} onPress={save} />
+        <Button
+          block
+          label={t('checkin.save')}
+          disabled={!rating}
+          accessibilityHint={rating ? undefined : t('checkin.ratingNeeded')}
+          onPress={save}
+        />
+        {!rating ? (
+          <Text variant="caption" color="textMuted" style={styles.center}>
+            {t('checkin.ratingNeeded')}
+          </Text>
+        ) : null}
       </View>
     </Screen>
   );
@@ -247,4 +274,5 @@ const styles = StyleSheet.create({
   questionTop: { gap: 2 },
   footer: { gap: spacing.sm },
   flex: { flex: 1 },
+  center: { textAlign: 'center' },
 });

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 
 import { diff, project, SYNC_TABLES, type SyncTable } from '@/domain/sync/projection';
@@ -169,4 +169,26 @@ export function useSync() {
       sub.remove();
     };
   }, [userId]);
+}
+
+type Persisted = Parameters<typeof hydrated>[0];
+
+/**
+ * True once every given store has read its saved state. On iOS / Android the storage is
+ * asynchronous: deciding "no profile, go to onboarding" before that would be wrong.
+ */
+export function useHydrated(...stores: Persisted[]): boolean {
+  const all = () => stores.every((s) => s.persist.hasHydrated());
+  const [done, setDone] = useState(all);
+  useEffect(() => {
+    if (done) return;
+    let active = true;
+    void Promise.all(stores.map(hydrated)).then(() => {
+      if (active) setDone(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, [done]); // eslint-disable-line react-hooks/exhaustive-deps
+  return done;
 }

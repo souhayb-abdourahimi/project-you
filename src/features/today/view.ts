@@ -45,7 +45,14 @@ export type WeekDayState = 'done' | 'adapted' | 'planned' | 'not_done' | 'rest';
 
 export interface TodayGlance {
   /** Protein of the meals marked eaten (the leading number), energy second; planned values. */
-  nutrition: { proteinG: number; proteinTargetG: number; kcal: number; kcalTarget: number } | null;
+  nutrition: {
+    proteinG: number;
+    proteinTargetG: number;
+    kcal: number;
+    kcalTarget: number;
+    /** Meals noted today (eaten or added): 0 means "nothing noted yet", never "0 g eaten". */
+    logged: number;
+  } | null;
   /** This week's sessions, done over planned, and a strip Monday → Sunday. */
   week: { done: number; planned: number; days: { date: IsoDate; state: WeekDayState; today: boolean }[] } | null;
   /** Steps measured by the phone: today, and the last seven days when at least three are known. */
@@ -102,6 +109,7 @@ export function todayGlance(input: GlanceInput): TodayGlance {
       proteinTargetG: Math.round(input.proteinTargetG),
       kcal: intake.kcal,
       kcalTarget: Math.round(input.kcalTarget),
+      logged: intake.eaten + intake.added,
     };
   }
 

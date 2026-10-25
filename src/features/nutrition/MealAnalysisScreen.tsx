@@ -68,7 +68,7 @@ export function MealAnalysisScreen() {
       ) : null}
 
       {issue && (phase === 'start' || phase === 'preview') ? (
-        <Notice tone="info" message={t(ISSUE_KEY[issue])} />
+        <Notice tone="info" role="alert" message={t(ISSUE_KEY[issue])} />
       ) : null}
 
       {phase === 'start' && !analysis.photoAvailable ? (
@@ -116,7 +116,7 @@ export function MealAnalysisScreen() {
       ) : null}
 
       {phase === 'analyzing' ? (
-        <Card style={styles.card} accessibilityLabel={t('nutrition.analysis.analyzing')}>
+        <Card style={styles.card}>
           <Text variant="headline" accessibilityLiveRegion="polite">
             {t('nutrition.analysis.analyzing')}
           </Text>
@@ -143,7 +143,12 @@ export function MealAnalysisScreen() {
 
       {phase === 'error' ? (
         <Card style={styles.card}>
-          <Notice tone="info" title={t('nutrition.analysis.errorTitle')} message={t(ISSUE_KEY[issue ?? 'unknown'])} />
+          <Notice
+            tone="info"
+            role="alert"
+            title={t('nutrition.analysis.errorTitle')}
+            message={t(ISSUE_KEY[issue ?? 'unknown'])}
+          />
           {RETRYABLE_ISSUES.includes(issue ?? 'unknown') ? (
             <Button block label={t('common.retry')} onPress={analysis.analyze} />
           ) : null}
