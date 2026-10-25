@@ -77,7 +77,7 @@ test('places: OpenStreetMap refuses the request, then offline', async ({ page, c
   await page.getByRole('alert').first().waitFor();
   await shot(page, 'places-error');
   await context.setOffline(true);
-  await page.getByRole('button', { name: /Réessayer|Try again/ }).click();
+  await page.getByRole('button', { name: /Réessayer|Retry/ }).click();
   await page.waitForTimeout(400);
   await shot(page, 'places-offline');
   await context.setOffline(false);
