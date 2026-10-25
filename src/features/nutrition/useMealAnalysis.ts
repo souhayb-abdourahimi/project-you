@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { FOOD_CATALOG } from '@/domain/meals/catalog';
 import {
@@ -28,7 +28,10 @@ import { useDataStore } from '@/state/data';
 export type AnalysisPhase = 'start' | 'preview' | 'analyzing' | 'review' | 'unavailable' | 'error';
 
 export type AnalysisIssue =
-  'denied' | 'too_large' | 'pick_failed' | 'timeout' | 'network' | 'rate_limited' | 'auth' | 'unknown';
+  'denied' | 'too_large' | 'pick_failed' | 'timeout' | 'network' | 'service' | 'rate_limited' | 'auth' | 'unknown';
+
+/** Issues where "Réessayer" can help; the others offer composing by hand only. */
+export const RETRYABLE_ISSUES: readonly AnalysisIssue[] = ['timeout', 'network', 'service', 'unknown'];
 
 /** The catalogue the vision service may choose from (ids and French names, nothing personal). */
 const CATALOG = FOOD_CATALOG.map((f) => ({ id: f.id, name: f.name.fr }));
@@ -47,6 +50,18 @@ export function useMealAnalysis(date: IsoDate) {
   const [draft, setDraft] = useState<MealDraft>(emptyDraft());
   const [slot, setSlot] = useState<MealSlot | null>(null);
   const request = useRef<AbortController | null>(null);
+  // One id per meal being composed: a second tap on "Confirmer" rewrites the same row, never adds one.
+  const mealId = useRef(newId());
+
+  // Leaving the screen cancels the request: no photo upload, no state update after unmount.
+  useEffect(() => () => request.current?.abort(), []);
+  // The web preview is an in-memory blob: released when the photo changes or the screen closes.
+  useEffect(
+    () => () => {
+      if (uri?.startsWith('blob:')) URL.revokeObjectURL(uri);
+    },
+    [uri],
+  );
 
   const choose = useCallback(async (source: 'camera' | 'library') => {
     setIssue(null);
@@ -62,7 +77,7 @@ export function useMealAnalysis(date: IsoDate) {
   }, []);
 
   const analyze = useCallback(async () => {
-    if (!photo) return;
+    if (!photo || request.current) return; // already running: a second tap sends nothing
     setIssue(null);
     setPhase('analyzing');
     const controller = new AbortController();
@@ -76,7 +91,7 @@ export function useMealAnalysis(date: IsoDate) {
     } else if (result.status === 'unavailable') {
       setPhase('unavailable');
     } else {
-      setIssue(result.error);
+      setIssue(result.error === 'offline' ? 'network' : result.error);
       setPhase('error');
     }
   }, [photo]);
@@ -94,6 +109,7 @@ export function useMealAnalysis(date: IsoDate) {
     setPhoto(null);
     setIssue(null);
     setDraft(emptyDraft());
+    mealId.current = newId();
     setPhase('start');
   }, []);
 
@@ -108,7 +124,7 @@ export function useMealAnalysis(date: IsoDate) {
 
   /** Saves the meal: only a complete draft, only now. Returns false when it cannot be saved. */
   const confirm = useCallback((): boolean => {
-    const meal = toLoggedMeal(draft, { id: newId(), date, slot, at: new Date().toISOString() });
+    const meal = toLoggedMeal(draft, { id: mealId.current, date, slot, at: new Date().toISOString() });
     if (!meal) return false;
     addLoggedMeal(meal);
     return true;

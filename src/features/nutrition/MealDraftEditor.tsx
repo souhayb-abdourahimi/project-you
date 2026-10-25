@@ -106,11 +106,11 @@ export function MealDraftEditor({ analysis, onSaved }: { analysis: MealAnalysis;
             <Text variant="caption" color="textMuted">
               {t('nutrition.analysis.total')}
             </Text>
-            <Text variant="metric">{num(draft.totals.kcal)} kcal</Text>
+            <Text variant="metric">{t('common.kcal', { value: num(draft.totals.kcal) })}</Text>
           </View>
-          <Macro letter="P" value={num(draft.totals.proteinG)} color="nutrition" />
-          <Macro letter="G" value={num(draft.totals.carbsG)} color="primary" />
-          <Macro letter="L" value={num(draft.totals.fatG)} color="warning" />
+          <Macro letter={t('nutrition.macroShort.protein')} value={num(draft.totals.proteinG)} color="nutrition" />
+          <Macro letter={t('nutrition.macroShort.carbs')} value={num(draft.totals.carbsG)} color="primary" />
+          <Macro letter={t('nutrition.macroShort.fat')} value={num(draft.totals.fatG)} color="warning" />
         </View>
       ) : draft.status === 'incomplete' ? (
         <Notice
@@ -177,7 +177,10 @@ function ItemRow({ item, onRemove, onMatch }: { item: DraftItem; onRemove: () =>
         </Text>
         {item.nutrition ? (
           <Text variant="caption" color="textMuted">
-            ≈ {num(item.nutrition.proteinG)} g {t('nutrition.protein').toLowerCase()} · {num(item.nutrition.kcal)} kcal
+            {t('nutrition.analysis.itemNutrition', {
+              protein: num(item.nutrition.proteinG),
+              kcal: num(item.nutrition.kcal),
+            })}
           </Text>
         ) : (
           <Text variant="caption" color="warning">
@@ -205,12 +208,13 @@ function Macro({
   value: string;
   color: 'nutrition' | 'primary' | 'warning';
 }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.macro} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       <Text variant="captionStrong" color={color}>
         {letter}
       </Text>
-      <Text variant="headline">{value} g</Text>
+      <Text variant="headline">{t('common.grams', { value })}</Text>
     </View>
   );
 }

@@ -97,13 +97,16 @@ describe('meal photo analysis: manual fallback', () => {
     ['an unknown model (404)', 404],
     ['a provider quota (429)', 429],
     ['a provider failure (500)', 500],
-  ])('OpenAI answers %s: an error the user can retry, composing by hand', async (_, status) => {
-    chain(OPENAI, answering(status));
-    const hook = await analyse();
-    expect(hook.result.current.phase).toBe('error');
-    expect(hook.result.current.issue).toBe('network');
-    await expectManualFallback(hook);
-  });
+  ])(
+    'OpenAI answers %s: a service error (not "check your connection"), retry or compose by hand',
+    async (_, status) => {
+      chain(OPENAI, answering(status));
+      const hook = await analyse();
+      expect(hook.result.current.phase).toBe('error');
+      expect(hook.result.current.issue).toBe('service');
+      await expectManualFallback(hook);
+    },
+  );
 
   it('OpenAI unreachable: an error, composing by hand', async () => {
     chain(OPENAI, jest.fn(async () => Promise.reject(new TypeError('fetch failed'))) as unknown as typeof fetch);

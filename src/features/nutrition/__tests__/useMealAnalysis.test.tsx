@@ -95,4 +95,52 @@ describe('useMealAnalysis', () => {
     expect(hook.result.current.uri).toBe('file://meal.jpg');
     expect(useDataStore.getState().loggedMeals).toEqual([]);
   });
+
+  it('a second tap on "Confirmer" does not add the meal twice', async () => {
+    const hook = await analysed(detection(120));
+    await act(async () => {
+      hook.result.current.confirm();
+      hook.result.current.confirm();
+    });
+    expect(useDataStore.getState().loggedMeals).toHaveLength(1);
+  });
+
+  it('a second tap on "Analyser" while it runs sends nothing more', async () => {
+    let finish: (value: unknown) => void = () => undefined;
+    mockAnalyze.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+    const hook = await renderHook(() => useMealAnalysis('2026-10-08'));
+    await act(() => hook.result.current.choose('library'));
+    let first: Promise<void> = Promise.resolve();
+    await act(async () => {
+      first = hook.result.current.analyze();
+    });
+    await act(() => hook.result.current.analyze());
+    expect(mockAnalyze).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      finish(detection(120));
+      await first;
+    });
+    expect(hook.result.current.phase).toBe('review');
+  });
+
+  it('leaving the screen during the analysis cancels the request', async () => {
+    let signal: AbortSignal | undefined;
+    mockAnalyze.mockImplementationOnce((_photo, _catalog, s: AbortSignal) => {
+      signal = s;
+      return new Promise(() => undefined);
+    });
+    const hook = await renderHook(() => useMealAnalysis('2026-10-08'));
+    await act(() => hook.result.current.choose('library'));
+    await act(async () => {
+      void hook.result.current.analyze();
+    });
+    expect(signal?.aborted).toBe(false);
+    await act(async () => hook.unmount());
+    expect(signal?.aborted).toBe(true);
+  });
+
+  it('a service failure is not reported as a connection problem', async () => {
+    const hook = await analysed({ status: 'error', error: 'service', retryable: true });
+    expect(hook.result.current.issue).toBe('service');
+  });
 });

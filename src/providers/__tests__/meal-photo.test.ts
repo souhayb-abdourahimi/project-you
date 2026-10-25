@@ -53,8 +53,30 @@ describe('edgeMealPhotoProvider', () => {
       status: 502,
       data: null,
     }));
-    expect(await edgeMealPhotoProvider(failing).analyze(photo, catalog)).toMatchObject({ error: 'network' });
+    expect(await edgeMealPhotoProvider(failing).analyze(photo, catalog)).toMatchObject({ error: 'service' });
     expect(failing).toHaveBeenCalledTimes(2);
+  });
+
+  it('an unusable answer (502 invalid_output) is not sent again and is not called a connection problem', async () => {
+    const invoke = jest.fn<ReturnType<InvokeAnalyzeMeal>, Parameters<InvokeAnalyzeMeal>>(async () => ({
+      status: 502,
+      data: { error: 'invalid_output' },
+    }));
+    expect(await edgeMealPhotoProvider(invoke).analyze(photo, catalog)).toEqual({
+      status: 'error',
+      error: 'unknown',
+      retryable: false,
+    });
+    expect(invoke).toHaveBeenCalledTimes(1);
+  });
+
+  it('a provider failure (502 analysis_failed) is a service error, retried once', async () => {
+    const invoke = jest.fn<ReturnType<InvokeAnalyzeMeal>, Parameters<InvokeAnalyzeMeal>>(async () => ({
+      status: 502,
+      data: { error: 'analysis_failed' },
+    }));
+    expect(await edgeMealPhotoProvider(invoke).analyze(photo, catalog)).toMatchObject({ error: 'service' });
+    expect(invoke).toHaveBeenCalledTimes(2);
   });
 
   it('times out an attempt and aborts its request', async () => {

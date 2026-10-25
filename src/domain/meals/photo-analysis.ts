@@ -47,8 +47,12 @@ const roundNutrients = (n: Nutrients): Nutrients => ({
   fatG: round1(n.fatG),
 });
 
-const validGrams = (grams: number | null): number | null =>
-  grams !== null && Number.isFinite(grams) && grams > 0 && grams <= MAX_PORTION_G ? Math.round(grams) : null;
+/** Whole grams, at least 1: a portion that rounds to 0 g stays unknown rather than saved as 0 g. */
+const validGrams = (grams: number | null): number | null => {
+  if (grams === null || !Number.isFinite(grams)) return null;
+  const rounded = Math.round(grams);
+  return rounded >= 1 && rounded <= MAX_PORTION_G ? rounded : null;
+};
 
 function itemOf(
   key: string,

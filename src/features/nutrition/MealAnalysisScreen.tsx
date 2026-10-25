@@ -1,14 +1,16 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { Button, Card, Icon, Notice, Screen, ScreenHeader, Skeleton, Text } from '@/components/ui';
 import { toIsoDate } from '@/domain/shared/dates';
+import { useUnsavedGuard } from '@/features/settings/useUnsavedGuard';
 import { radius, spacing, useColors } from '@/theme';
 
 import { MealDraftEditor } from './MealDraftEditor';
-import { useMealAnalysis, type AnalysisIssue } from './useMealAnalysis';
+import { RETRYABLE_ISSUES, useMealAnalysis, type AnalysisIssue } from './useMealAnalysis';
 
 const ISSUE_KEY: Record<AnalysisIssue, string> = {
   denied: 'nutrition.analysis.issue.denied',
@@ -16,6 +18,7 @@ const ISSUE_KEY: Record<AnalysisIssue, string> = {
   pick_failed: 'nutrition.analysis.issue.pickFailed',
   timeout: 'nutrition.analysis.issue.timeout',
   network: 'nutrition.analysis.issue.network',
+  service: 'nutrition.analysis.issue.service',
   rate_limited: 'nutrition.analysis.issue.rateLimited',
   auth: 'nutrition.analysis.issue.auth',
   unknown: 'nutrition.analysis.issue.unknown',
@@ -37,6 +40,17 @@ export function MealAnalysisScreen() {
   const analysis = useMealAnalysis(readDate(params.date));
   const { phase, issue, uri } = analysis;
   const back = () => (router.canGoBack() ? router.back() : router.replace('/nutrition'));
+  // Leaving with a meal being built asks first; once added, the screen closes (after the guard is off).
+  const [saved, setSaved] = useState(false);
+  useUnsavedGuard(!saved && phase === 'review' && analysis.draft.items.length > 0, {
+    title: t('nutrition.analysis.leaveTitle'),
+    message: t('nutrition.analysis.leaveMessage'),
+    leave: t('settings.form.leave'),
+    stay: t('settings.form.stay'),
+  });
+  useEffect(() => {
+    if (saved) back();
+  }, [saved]);
 
   return (
     <Screen airy>
@@ -130,12 +144,19 @@ export function MealAnalysisScreen() {
       {phase === 'error' ? (
         <Card style={styles.card}>
           <Notice tone="info" title={t('nutrition.analysis.errorTitle')} message={t(ISSUE_KEY[issue ?? 'unknown'])} />
-          <Button block label={t('common.retry')} onPress={analysis.analyze} />
-          <Button variant="ghost" label={t('nutrition.analysis.compose')} onPress={analysis.composeManually} />
+          {RETRYABLE_ISSUES.includes(issue ?? 'unknown') ? (
+            <Button block label={t('common.retry')} onPress={analysis.analyze} />
+          ) : null}
+          <Button
+            block={!RETRYABLE_ISSUES.includes(issue ?? 'unknown')}
+            variant={RETRYABLE_ISSUES.includes(issue ?? 'unknown') ? 'ghost' : 'primary'}
+            label={t('nutrition.analysis.compose')}
+            onPress={analysis.composeManually}
+          />
         </Card>
       ) : null}
 
-      {phase === 'review' ? <MealDraftEditor analysis={analysis} onSaved={back} /> : null}
+      {phase === 'review' ? <MealDraftEditor analysis={analysis} onSaved={() => setSaved(true)} /> : null}
     </Screen>
   );
 }

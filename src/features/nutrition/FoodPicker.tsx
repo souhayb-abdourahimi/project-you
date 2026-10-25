@@ -45,7 +45,7 @@ export function FoodPicker({ onPick, onClose }: { onPick: (foodId: string) => vo
             <Pressable
               key={food.id}
               accessibilityRole="button"
-              accessibilityLabel={food.name[lang]}
+              accessibilityLabel={`${food.name[lang]}, ${t('nutrition.analysis.per100g', { kcal: Math.round(food.per100g.kcal) })}`}
               onPress={() => onPick(food.id)}
               style={({ pressed }) => [
                 styles.row,
@@ -55,7 +55,7 @@ export function FoodPicker({ onPick, onClose }: { onPick: (foodId: string) => vo
               <Icon name="plus" size="sm" color="primary" />
               <Text style={styles.flex}>{food.name[lang]}</Text>
               <Text variant="caption" color="textMuted">
-                {Math.round(food.per100g.kcal)} kcal / 100 g
+                {t('nutrition.analysis.per100g', { kcal: Math.round(food.per100g.kcal) })}
               </Text>
             </Pressable>
           ))}

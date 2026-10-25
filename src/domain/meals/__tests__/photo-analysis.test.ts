@@ -111,6 +111,11 @@ describe('user corrections', () => {
     expect(setPortion(base(), 'd0', 99_999).items[0].grams).toBeNull();
   });
 
+  it('a portion that rounds to 0 g stays unknown (never saved as 0 g)', () => {
+    expect(setPortion(base(), 'd0', 0.4).items[0].grams).toBeNull();
+    expect(setPortion(base(), 'd0', 0.6).items[0].grams).toBe(1);
+  });
+
   it('a food added by hand starts without a portion (a piece mass is never assumed)', () => {
     const draft = addFood(emptyDraft(), 'banana');
     expect(draft.items[0].grams).toBeNull();

@@ -73,7 +73,11 @@ async function once(
     if (status === 401) return { status: 'error', error: 'auth', retryable: false };
     if (status === 429) return { status: 'error', error: 'rate_limited', retryable: false };
     if (status === 504) return { status: 'error', error: 'timeout', retryable: true };
-    if (status >= 500) return { status: 'error', error: 'network', retryable: true };
+    // The service answered with something unusable: asking again sends the same photo for nothing.
+    if (status === 502 && errorCode(data) === 'invalid_output')
+      return { status: 'error', error: 'unknown', retryable: false };
+    // The connection works: the analysis service itself failed (worth one more try, not "check your connection").
+    if (status >= 500) return { status: 'error', error: 'service', retryable: true };
     return { status: 'error', error: 'unknown', retryable: false };
   } catch {
     return controller.signal.aborted
@@ -85,6 +89,11 @@ async function once(
   }
 }
 
+const errorCode = (data: unknown): string | null =>
+  data !== null && typeof data === 'object' && typeof (data as { error?: unknown }).error === 'string'
+    ? (data as { error: string }).error
+    : null;
+
 /** Supabase client wiring: the user's session JWT is attached by supabase-js. */
 const invokeSupabase: InvokeAnalyzeMeal = async (body, signal) => {
   if (!supabase) return { status: 503, data: null };
@@ -94,7 +103,11 @@ const invokeSupabase: InvokeAnalyzeMeal = async (body, signal) => {
   });
   if (!error) return { status: 200, data };
   const response = (error as { context?: unknown }).context;
-  if (response instanceof Response) return { status: response.status, data: null };
+  if (response instanceof Response) {
+    // The body says which failure it was (`{ error: 'invalid_output' }`); never anything personal.
+    const body: unknown = await response.json().catch(() => null);
+    return { status: response.status, data: body };
+  }
   // Relay / fetch errors (offline, DNS): a network failure.
   throw error;
 };
