@@ -30,8 +30,11 @@ export interface JourneyState {
   /** Where the user is in the journey. `startedOn`: onboarding or first logged data, the earliest. */
   journey: { startedOn: IsoDate; dayIndex: number; firstDay: boolean };
   goal: { type: GoalType; family: GoalFamily };
-  /** The user's own words (motivations table). */
-  motivation: Pick<MotivationProfile, 'why' | 'change' | 'feel'>;
+  /**
+   * The user's own words (motivations table) and the reasons they picked (D-046): the reasons only
+   * change the wording of the coach, never a target or a decision.
+   */
+  motivation: Pick<MotivationProfile, 'why' | 'change' | 'feel' | 'reasons'>;
   tone: Tone;
   progress: {
     /** Days with a completed session. */
@@ -219,7 +222,12 @@ export function deriveJourneyState(input: JourneyInput): JourneyState {
     today,
     journey: { startedOn, dayIndex: Math.max(0, daysBetween(startedOn, today)), firstDay: startedOn >= today },
     goal: { type: input.goal, family },
-    motivation: { why: input.motivation.why, change: input.motivation.change, feel: input.motivation.feel },
+    motivation: {
+      why: input.motivation.why,
+      change: input.motivation.change,
+      feel: input.motivation.feel,
+      reasons: input.motivation.reasons,
+    },
     tone: input.tone,
     progress: {
       sessionDates,

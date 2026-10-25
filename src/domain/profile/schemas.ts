@@ -119,7 +119,32 @@ export const GoalProfile = z.object({
 });
 export type GoalProfile = z.infer<typeof GoalProfile>;
 
+/**
+ * Why the user starts (D-046): zero, one or several reasons, unlike the goal, which stays one
+ * measurable target for the engines. A reason changes the coach's wording, never a target, a
+ * load or a calorie. `weight` follows the goal's direction (lose, gain or keep).
+ */
+export const MotivationReason = z.enum([
+  'weight',
+  'health',
+  'body_confidence',
+  'energy',
+  'strength',
+  'endurance',
+  'performance',
+  'habits',
+  'mental',
+  'event',
+]);
+export type MotivationReason = z.infer<typeof MotivationReason>;
+
 export const MotivationProfile = z.object({
+  /** Absent on profiles saved before W-11: read as "no reason given" (`reasonsOf`). */
+  reasons: z
+    .array(MotivationReason)
+    .max(MotivationReason.options.length)
+    .refine((list) => new Set(list).size === list.length, { message: 'duplicate_reason' })
+    .optional(),
   why: shortText.optional(),
   change: shortText.optional(),
   feel: shortText.optional(),
@@ -157,7 +182,8 @@ export const TrainingProfile = z.object({
 export type TrainingProfile = z.infer<typeof TrainingProfile>;
 
 export const LifestyleProfile = z.object({
-  lifeStatus: LifeStatus,
+  /** Legacy (no engine reads it, no longer asked since W-11, D-046): kept when present. */
+  lifeStatus: LifeStatus.optional(),
   kitchen: z.array(KitchenEquipment),
 });
 export type LifestyleProfile = z.infer<typeof LifestyleProfile>;
@@ -203,6 +229,15 @@ export type UserContextSnapshot = z.infer<typeof UserContextSnapshot>;
 export function weightUnitOf(snapshot: { preferences: { weightUnit?: 'kg' | 'lb' } } | null): 'kg' | 'lb' {
   return snapshot?.preferences.weightUnit ?? 'kg';
 }
+
+/** The reasons of a profile, in the canonical order (none when never answered). */
+export function reasonsOf(motivation: Pick<MotivationProfile, 'reasons'> | undefined): MotivationReason[] {
+  const given = new Set(motivation?.reasons ?? []);
+  return MotivationReason.options.filter((r) => given.has(r));
+}
+
+/** The diet a user with no particular diet has (D-046): every food, minus allergies and exclusions. */
+export const NO_PARTICULAR_DIET: Diet = 'omnivore';
 
 export function ageFromBirthYear(birthYear: number, referenceYear: number): number {
   return referenceYear - birthYear;

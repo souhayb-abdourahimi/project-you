@@ -46,7 +46,7 @@ export function composeMessage(input: {
   trigger: Trigger;
   date: string;
   facts: Record<string, string>;
-  state: Pick<JourneyState, 'goal' | 'tone' | 'motivation' | 'profile'>;
+  state: Pick<JourneyState, 'goal' | 'tone' | 'motivation' | 'profile'> & Partial<Pick<JourneyState, 'safety'>>;
   quotePersonalWords: boolean;
   /** Messages already used, on every channel (rotation). */
   history: VoiceUse[];
@@ -59,6 +59,8 @@ export function composeMessage(input: {
     tone: state.tone,
     family: state.goal.family,
     facts: state.profile.noPush ? { ...facts, protected: '1' } : facts,
+    // Picked reasons are personal: only where the user's own words may be shown (D-046).
+    reasons: input.quotePersonalWords ? (state.motivation.reasons ?? []) : [],
   };
   const seed = `${date}|${trigger}`;
 
@@ -67,7 +69,9 @@ export function composeMessage(input: {
   const slots: AnchorSlot[] =
     trigger === 'safety_low_logging'
       ? ['checkin']
-      : SAFETY_TRIGGERS.includes(trigger)
+      : // While the safety rule is active, no message leans on the user's goal words, whatever
+        // its trigger (a session or weigh-in reminder included): the Today screen already does so.
+        SAFETY_TRIGGERS.includes(trigger) || state.safety?.active
         ? ['care']
         : given.length === 0
           ? ['none']
@@ -81,7 +85,7 @@ export function composeMessage(input: {
   const slot: AnchorSlot = personal ?? slots[0];
 
   const anchorUse = lastUses(history, (e) => [templateParts(e.templateId).anchor]);
-  const [anchor] = leastRecentlyUsed(ANCHORS[slot], (x) => anchorUse.get(`${slot}.${x.id}`) ?? '', seed);
+  const [anchor] = leastRecentlyUsed(eligible(ANCHORS[slot], ctx), (x) => anchorUse.get(`${slot}.${x.id}`) ?? '', seed);
 
   const pick = (kind: PartKind): Variant => {
     const options = eligible(CATALOG[trigger][kind], ctx);

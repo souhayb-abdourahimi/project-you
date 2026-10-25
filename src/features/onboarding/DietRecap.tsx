@@ -20,7 +20,10 @@ export function DietRecap({ nutrition }: { nutrition: NutritionProfile }) {
       </Text>
       {rows.map(([label, value]) => (
         <Text key={label}>
-          <Text variant="label">{label} : </Text>
+          <Text variant="label">
+            {label}
+            {t('common.labelSeparator')}
+          </Text>
           {value}
         </Text>
       ))}

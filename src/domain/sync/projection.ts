@@ -28,7 +28,14 @@ import type { InventoryItem, InventorySource, InventoryUnit } from '../meals/inv
 import { loggedMealNutrition, type LoggedMeal } from '../meals/photo-analysis';
 import type { MealSlot } from '../meals/recipes';
 import type { WeeklyMealPlan } from '../meals/planner';
-import { Equipment, GoalType, TrainingLevel, UserContextSnapshot } from '../profile/schemas';
+import {
+  Equipment,
+  GoalType,
+  MotivationReason,
+  TrainingLevel,
+  UserContextSnapshot,
+  reasonsOf,
+} from '../profile/schemas';
 import type { WeightEntry } from '../progress/weight';
 import { addDays, type IsoDate } from '../shared/dates';
 import { parseSessionKey, sessionKey, stableUuid, type SessionKey } from '../shared/ids';
@@ -640,7 +647,7 @@ export function project(state: SyncableState, userId: string): Record<SyncTable,
       height_cm: s.user.heightCm,
       sex: s.user.sex,
       activity_level: s.user.activityLevel,
-      life_status: s.lifestyle.lifeStatus,
+      life_status: s.lifestyle.lifeStatus ?? null,
       locale: s.preferences.locale,
       onboarding_completed_at: s.createdAt,
     });
@@ -659,6 +666,9 @@ export function project(state: SyncableState, userId: string): Record<SyncTable,
       feel: orNull(s.motivation.feel),
       quit_risk: orNull(s.motivation.quitRisk),
       proud_of: orNull(s.motivation.proudOf),
+      // W-11 (D-046): only once the question was answered, so a profile saved before is pushed as
+      // before (and works against a database where the column is not added yet).
+      ...(s.motivation.reasons !== undefined ? { reasons: reasonsOf(s.motivation) } : {}),
     });
     put('user_preferences', {
       nutrition: s.nutrition,
@@ -992,6 +1002,19 @@ export interface MergeResult {
   synced: SyncedHashes;
   /** Rows ignored because they failed validation. */
   rejected: number;
+}
+
+/**
+ * Motivation reasons read from the server: unknown values dropped. `'{}'` is the column default,
+ * kept as "answered, none" only when this device already answered, so an untouched account reads
+ * back exactly as it was written (same rule as `weight_unit`).
+ */
+function pulledReasons(value: unknown, answeredHere: boolean): { reasons?: MotivationReason[] } {
+  if (!Array.isArray(value)) return {};
+  const reasons = reasonsOf({
+    reasons: value.filter((r): r is MotivationReason => MotivationReason.safeParse(r).success),
+  });
+  return reasons.length > 0 || answeredHere ? { reasons } : {};
 }
 
 const num = (v: unknown) => (v === null || v === undefined ? undefined : Number(v));
@@ -1578,10 +1601,14 @@ export function applyRemote(
         feel: str(motivation.feel),
         quitRisk: str(motivation.quit_risk),
         proudOf: str(motivation.proud_of),
+        ...pulledReasons(motivation.reasons, state.snapshot?.motivation.reasons !== undefined),
       },
       nutrition: prefs.nutrition,
       training: prefs.training,
-      lifestyle: { lifeStatus: profile.life_status ?? 'other', kitchen: prefs.kitchen ?? [] },
+      lifestyle: {
+        ...(str(profile.life_status) ? { lifeStatus: profile.life_status } : {}),
+        kitchen: prefs.kitchen ?? [],
+      },
       budget: { weeklyFoodBudgetCents: Number(prefs.weekly_food_budget_cents ?? 0), currency: prefs.currency ?? 'EUR' },
       schedule: prefs.schedule,
       preferences: {

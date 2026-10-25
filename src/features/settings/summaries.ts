@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next';
 
-import type { UserContextSnapshot } from '@/domain/profile/schemas';
+import { reasonsOf, type UserContextSnapshot } from '@/domain/profile/schemas';
+import { reasonLabelKey } from '@/features/onboarding/MotivationStep';
 import type { SettingsSection } from '@/domain/settings/sections';
 
 /** One line per section of the hub: the current values, so nothing important is hidden (D-043). */
@@ -14,8 +15,11 @@ export function sectionSummary(section: SettingsSection, s: UserContextSnapshot,
       });
     case 'goal':
       return t(`enums.goal.${s.goal.type}`);
-    case 'motivation':
+    case 'motivation': {
+      const reasons = reasonsOf(s.motivation).map((r) => t(reasonLabelKey(r, s.goal.type)));
+      if (reasons.length > 0) return reasons.join(', ');
       return s.motivation.why?.trim() ? s.motivation.why.trim() : t('settings.summary.empty');
+    }
     case 'training':
       return t('settings.summary.training', {
         count: s.training.sessionsPerWeek,

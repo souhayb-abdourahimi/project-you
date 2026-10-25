@@ -271,6 +271,33 @@ describeDb('sync against the real schema (Postgres + RLS)', () => {
     expect(laptop.state().snapshot?.user.weightKg).toBe(SCENARIOS.veganFatLoss.user.weightKg);
   });
 
+  it('W-11: several motivation reasons go through the real schema; a profile saved before keeps working', async () => {
+    const before = memoryStore({ snapshot: SCENARIOS.beginner });
+    expect(await syncOnce(restAs(db, J), before, J, { claim: true })).toMatchObject({ failed: 0, rejected: 0 });
+    const other = memoryStore({});
+    await syncOnce(restAs(db, J), other, J);
+    // Never answered: still "no reason given", nothing pushed back.
+    expect(other.state().snapshot?.motivation.reasons).toBeUndefined();
+    expect((await syncOnce(restAs(db, J), other, J)).pushed).toBe(0);
+
+    const snap = before.state().snapshot!;
+    before.write({
+      snapshot: { ...snap, motivation: { ...snap.motivation, reasons: ['weight', 'health', 'energy'] } },
+    });
+    expect(await syncOnce(restAs(db, J), before, J)).toMatchObject({ failed: 0, rejected: 0 });
+    await syncOnce(restAs(db, J), other, J);
+    expect(other.state().snapshot?.motivation.reasons).toEqual(['weight', 'health', 'energy']);
+    // The main goal is untouched by the reasons.
+    expect(other.state().snapshot?.goal.type).toBe(before.state().snapshot?.goal.type);
+
+    // Cleared on one device, cleared everywhere (an empty list, not the old reasons).
+    const o = other.state().snapshot!;
+    other.write({ snapshot: { ...o, motivation: { ...o.motivation, reasons: [] } } });
+    await syncOnce(restAs(db, J), other, J);
+    await syncOnce(restAs(db, J), before, J);
+    expect(before.state().snapshot?.motivation.reasons).toEqual([]);
+  });
+
   it('edits and deletions propagate between devices', async () => {
     const a = memoryStore();
     const b = memoryStore();

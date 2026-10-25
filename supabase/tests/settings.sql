@@ -142,3 +142,50 @@ select pg_temp.expect(
   not exists (select 1 from public.notification_settings where user_id = '00000000-0000-0000-0000-0000000000c1')
     and not exists (select 1 from public.user_preferences where user_id = '00000000-0000-0000-0000-0000000000c1'),
   'account deletion removes reminder preferences and mass unit');
+
+-- W-11 (D-046): motivation reasons, a multi-select stored with the owner's other motivation answers.
+reset role;
+insert into auth.users (id, email) values
+  ('00000000-0000-0000-0000-0000000000e1', 'e@example.test'),
+  ('00000000-0000-0000-0000-0000000000f1', 'f@example.test');
+begin;
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000e1');
+insert into public.motivations (user_id, why, reasons)
+  values ('00000000-0000-0000-0000-0000000000e1', null, array['weight', 'health', 'energy']);
+select pg_temp.expect(
+  (select reasons = array['weight', 'health', 'energy'] from public.motivations),
+  'owner stores several motivation reasons');
+update public.motivations set reasons = '{}';
+select pg_temp.expect((select cardinality(reasons) = 0 from public.motivations), 'owner clears the reasons');
+commit;
+
+begin;
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000f1');
+select pg_temp.expect((select count(*) from public.motivations) = 0, 'F cannot read E motivation reasons');
+with u as (update public.motivations set reasons = array['health'] returning 1)
+  select pg_temp.expect((select count(*) from u) = 0, 'F cannot change E motivation reasons');
+commit;
+
+do $$
+begin
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000f1"}', true);
+  begin
+    insert into public.motivations (user_id, reasons) values ('00000000-0000-0000-0000-0000000000f1', array['lose_10kg']);
+    raise exception 'SETTINGS TEST FAILED: unknown motivation reason accepted';
+  exception when check_violation then
+    raise notice 'ok - an unknown motivation reason is refused';
+  end;
+end;
+$$;
+
+reset role;
+-- Applying the migration again changes nothing (it is pasted by hand in the SQL editor).
+\i supabase/migrations/20261025000001_motivation_reasons.sql
+select pg_temp.expect(
+  (select count(*) from pg_constraint where conname = 'motivations_reasons_known') = 1,
+  'motivation reasons migration is idempotent');
+select pg_temp.expect(
+  (select column_default from information_schema.columns
+    where table_schema = 'public' and table_name = 'motivations' and column_name = 'reasons') = '''{}''::text[]',
+  'existing accounts read as "no reason given"');

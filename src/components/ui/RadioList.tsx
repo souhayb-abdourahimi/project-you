@@ -15,7 +15,8 @@ export function RadioList<T extends string>({
   onChange,
   label,
 }: {
-  options: { value: T; label: string }[];
+  /** `description`: one short line under the label, read with it by screen readers. */
+  options: { value: T; label: string; description?: string }[];
   value: T | null;
   onChange: (value: T) => void;
   label: string;
@@ -37,7 +38,7 @@ export function RadioList<T extends string>({
               aria-checked={selected}
               accessibilityRole="radio"
               accessibilityState={{ checked: selected }}
-              accessibilityLabel={option.label}
+              accessibilityLabel={option.description ? `${option.label}, ${option.description}` : option.label}
               onPress={() => onChange(option.value)}
               style={({ pressed }) => [
                 styles.row,
@@ -46,9 +47,14 @@ export function RadioList<T extends string>({
               <View style={[styles.mark, { borderColor: selected ? colors.primary : colors.borderStrong }]}>
                 {selected ? <View style={[styles.dot, { backgroundColor: colors.primary }]} /> : null}
               </View>
-              <Text variant={selected ? 'bodyMedium' : 'body'} style={styles.flex}>
-                {option.label}
-              </Text>
+              <View style={styles.flex}>
+                <Text variant={selected ? 'bodyMedium' : 'body'}>{option.label}</Text>
+                {option.description ? (
+                  <Text variant="caption" color="textMuted">
+                    {option.description}
+                  </Text>
+                ) : null}
+              </View>
             </Pressable>
           </Fragment>
         );
@@ -62,6 +68,7 @@ const styles = StyleSheet.create({
   separator: { height: StyleSheet.hairlineWidth, marginLeft: spacing['2xl'] + spacing.sm },
   row: {
     minHeight: MIN_TOUCH,
+    paddingVertical: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,

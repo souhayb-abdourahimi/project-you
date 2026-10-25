@@ -18,6 +18,7 @@ const fr = {
     mock: 'MOCK',
     mockHint: 'Donnée de démonstration, non réelle.',
     estimate: 'estimation',
+    labelSeparator: ' : ',
     why: 'Pourquoi cette recommandation ?',
     optional: 'Facultatif',
     minutes: '{{count}} min',
@@ -56,11 +57,31 @@ const fr = {
   },
   onboarding: {
     progress: 'Étape {{current}} sur {{total}}',
+    touchToContinue: 'Touche une réponse pour continuer.',
+    blocked: {
+      choose: 'Choisis une réponse pour continuer.',
+      sex: 'Choisis une réponse pour continuer (« Je préfère ne pas répondre » convient).',
+      name: 'Indique un prénom ou un pseudo pour continuer.',
+      age: 'Indique ton année de naissance pour continuer.',
+      body: 'Indique ta taille (120 à 230 cm) et ton poids pour continuer.',
+      budget: 'Choisis un montant, ou « Pas de budget précis ».',
+      meals: 'Choisis le nombre de repas et le temps pour cuisiner.',
+      frequency: 'Choisis le nombre de séances et leur durée.',
+    },
+    empty: {
+      noTarget: 'Pas de poids cible',
+      skip: 'Passer',
+      noKitchen: 'Je n’ai rien de tout ça',
+      noAllergy: 'Aucune allergie',
+      nothingToAdd: 'Rien à signaler',
+      noEquipment: 'Pas de matériel',
+      noRefused: 'Aucun à exclure',
+      later: 'Je verrai plus tard',
+    },
     sections: {
       profile: 'Profil',
       goal: 'Objectif',
       motivation: 'Motivation',
-      life: 'Vie',
       budget: 'Budget',
       kitchen: 'Cuisine',
       diet: 'Alimentation',
@@ -77,42 +98,62 @@ const fr = {
         'Project You est réservé aux personnes de 18 ans et plus : le parcours ne peut pas continuer avec cette année de naissance.',
       outOfRange: 'Vérifie l’année saisie.',
     },
-    'profile.body': { title: 'Ta taille et ton poids', height: 'Taille (cm)', weight: 'Poids ({{unit}})' },
+    'profile.body': {
+      title: 'Ta taille et ton poids',
+      height: 'Taille (cm)',
+      weight: 'Poids ({{unit}})',
+      heightRange: 'Indique une taille entre {{min}} et {{max}} cm.',
+      weightRange: 'Vérifie le poids saisi.',
+    },
     'profile.sex': {
       title: 'Sexe utilisé pour le calcul',
       hint: 'Les équations d’estimation diffèrent selon le sexe. Tu peux ne pas répondre : l’estimation sera un peu moins précise.',
     },
     'profile.activity': { title: 'Ton activité au quotidien (hors sport)' },
-    'goal.type': { title: 'Quel est ton objectif principal ?' },
+    'goal.type': {
+      title: 'Quel est ton objectif principal ?',
+      hint: 'Un seul objectif, celui sur lequel ton plan se règle. Tes autres envies viennent juste après, et tout se modifie plus tard.',
+    },
     'goal.target': {
       title: 'As-tu un poids cible ?',
       hint: 'Facultatif. Nous te dirons honnêtement si le délai est réaliste.',
       weight: 'Poids souhaité ({{unit}})',
-      date: 'Pour quand ? (AAAA-MM-JJ)',
+      date: 'Pour quand ?',
+      inMonths_one: 'Dans {{count}} mois',
+      inMonths_other: 'Dans {{count}} mois',
+      noDate: 'Pas de date',
+      deadline: 'Échéance : {{month}}',
+      outOfRange: 'Vérifie le poids saisi.',
     },
-    'goal.priorities': {
-      title: 'Qu’est-ce qui compte le plus pour toi ?',
-      hint: 'Touche pour ajuster l’importance (0 à 3).',
-    },
-    'motivation.why': {
-      title: 'Pourquoi commences-tu ce projet ?',
-      hint: 'Ta réponse reste privée. On te la rappellera dans les moments difficiles.',
+    'motivation.reasons': {
+      title: 'Qu’est-ce qui te motive ?',
+      hint: 'Choisis tout ce qui compte pour toi. Ton objectif principal reste : {{goal}}. Ces raisons changent la façon dont le coach te parle, pas tes calories.',
+      hintNoGoal:
+        'Choisis tout ce qui compte pour toi. Ces raisons changent la façon dont le coach te parle, pas tes calories.',
+      own: 'Avec tes mots (facultatif)',
+      ownHint: 'Ta réponse reste privée. Elle peut t’être rappelée dans les moments difficiles.',
     },
     'motivation.more': {
-      title: 'Encore quelques questions (facultatives)',
+      title: 'Tes mots, en détail',
+      hint: 'Facultatif. Le coach peut citer ces phrases, seulement dans l’app.',
       change: 'Qu’aimerais-tu changer dans les prochains mois ?',
       feel: 'Comment aimerais-tu te sentir dans ton corps ?',
       quitRisk: 'Qu’est-ce qui pourrait te faire abandonner ?',
       proudOf: 'Qu’est-ce qui te rendrait fier dans 3 à 6 mois ?',
     },
-    'life.status': { title: 'Ta situation' },
     'budget.food': {
-      title: 'Ton budget alimentaire par semaine',
-      label: 'Budget hebdomadaire (€)',
+      title: 'Ton budget courses par semaine',
+      hint: 'Un ordre d’idée suffit. Il sert à suivre tes dépenses, et tu peux le changer quand tu veux.',
+      label: 'Autre montant par semaine (€)',
+      none: 'Pas de budget précis',
+      noneHint: 'Pas de budget fixé : tu peux quand même noter tes dépenses, sans comparaison à un plafond.',
       monthly: 'Soit environ {{amount}} par mois.',
     },
     'kitchen.equipment': { title: 'Ton équipement de cuisine', hint: 'Sélectionne ce que tu as.' },
-    'diet.type': { title: 'Ton alimentation' },
+    'diet.type': {
+      title: 'Suis-tu un régime alimentaire particulier ?',
+      hint: 'Les allergies, intolérances et aliments à éviter se règlent juste après, quel que soit ton choix.',
+    },
     'diet.allergies': {
       title: 'Allergies',
       hint: 'Les aliments concernés ne seront jamais proposés.',
@@ -127,11 +168,15 @@ const fr = {
       suggestions: 'Suggestions',
     },
     'diet.meals': { title: 'Tes repas', meals: 'Nombre de repas par jour', cooking: 'Temps pour cuisiner par repas' },
-    'training.gym': { title: 'As-tu accès à une salle de sport ?' },
+    'training.gym': {
+      title: 'As-tu accès à une salle de sport ?',
+      yes: 'Oui, j’ai accès à une salle',
+      no: 'Non',
+      noHint: 'Séances à la maison ou dehors, avec ce que tu as',
+    },
     'training.gymDetails': {
       title: 'Ta salle',
-      name: 'Nom de la salle',
-      membership: 'Abonnement en cours',
+      name: 'Nom de la salle (facultatif)',
       travel: 'Trajet aller (minutes)',
       hint: 'Ta salle reste ta préférence principale.',
     },
@@ -144,12 +189,6 @@ const fr = {
       title: 'Combien de séances par semaine ?',
       sessions: 'Séances par semaine',
       duration: 'Durée d’une séance',
-    },
-    'training.sports': {
-      title: 'Tes sports',
-      liked: 'Sports que tu apprécies',
-      refused: 'Sports que tu refuses',
-      hint: 'Sépare par des virgules.',
     },
     'training.refusedExercises': { title: 'Exercices que tu refuses', hint: 'Ils ne seront jamais proposés.' },
     'schedule.availability': {
@@ -174,7 +213,10 @@ const fr = {
       finish: 'Créer mon programme',
       disclaimer:
         'Ces chiffres sont des estimations, ajustées ensuite selon ta progression réelle. Project You ne remplace pas un professionnel de santé.',
-      invalid: 'Certaines réponses manquent : {{steps}}',
+      invalid: 'Il manque une réponse à : {{steps}}. Reviens en arrière pour la compléter.',
+      goalTitle: 'Ton objectif',
+      reasons: 'Ce qui te motive : {{reasons}}',
+      noReasons: 'Ce qui te motive : tu pourras l’ajouter dans Réglages.',
       dietTitle: 'Ton alimentation',
       diet: 'Régime alimentaire',
       allergies: 'Allergies',
@@ -190,11 +232,12 @@ const fr = {
   },
   enums: {
     sex: { female: 'Femme', male: 'Homme', unspecified: 'Je préfère ne pas répondre' },
-    activity: {
-      sedentary: 'Sédentaire (assis la plupart du temps)',
-      light: 'Légère (marche un peu chaque jour)',
-      moderate: 'Modérée (souvent debout ou en mouvement)',
-      active: 'Élevée (métier physique)',
+    activity: { sedentary: 'Sédentaire', light: 'Légère', moderate: 'Modérée', active: 'Élevée' },
+    activityHint: {
+      sedentary: 'Assis la plupart du temps',
+      light: 'Tu marches un peu chaque jour',
+      moderate: 'Souvent debout ou en mouvement',
+      active: 'Métier physique',
     },
     goal: {
       fat_loss: 'Perte de gras',
@@ -205,6 +248,29 @@ const fr = {
       fitness: 'Condition physique',
       performance: 'Performance',
     },
+    goalHint: {
+      fat_loss: 'Perdre du gras en gardant ton muscle ; le tour de taille compte autant que la balance',
+      weight_loss: 'Faire baisser ton poids, progressivement',
+      muscle_gain: 'Prendre du muscle, avec un léger surplus',
+      recomposition: 'Perdre du gras et prendre du muscle, poids à peu près stable',
+      maintenance: 'Garder ton poids actuel',
+      fitness: 'Être en meilleure forme au quotidien',
+      performance: 'Progresser dans ton sport',
+    },
+    motivationReason: {
+      weight_lose: 'Perdre du poids',
+      weight_gain: 'Prendre du poids',
+      weight_keep: 'Garder un poids stable',
+      health: 'Améliorer ma santé',
+      body_confidence: 'Me sentir bien dans mon corps',
+      energy: 'Avoir plus d’énergie',
+      strength: 'Devenir plus fort·e',
+      endurance: 'Améliorer mon endurance',
+      performance: 'Être plus performant·e',
+      habits: 'Prendre de bonnes habitudes',
+      mental: 'Me sentir mieux dans ma tête',
+      event: 'Préparer un événement',
+    },
     priority: { aesthetics: 'Esthétique', strength: 'Force', health: 'Santé', performance: 'Performance' },
     life: {
       student: 'Étudiant·e',
@@ -214,7 +280,12 @@ const fr = {
       other: 'Autre',
     },
     kitchen: { stove: 'Plaques', oven: 'Four', microwave: 'Micro-ondes', freezer: 'Congélateur', blender: 'Blender' },
-    diet: { omnivore: 'Omnivore', vegetarian: 'Végétarien', vegan: 'Vegan' },
+    diet: { omnivore: 'Aucun régime particulier', vegetarian: 'Végétarien', vegan: 'Vegan' },
+    dietHint: {
+      omnivore: 'Tous les aliments sont possibles',
+      vegetarian: 'Sans viande ni poisson',
+      vegan: 'Aucun produit d’origine animale',
+    },
     allergen: {
       gluten: 'Gluten',
       crustaceans: 'Crustacés',
@@ -232,6 +303,11 @@ const fr = {
       molluscs: 'Mollusques',
     },
     level: { beginner: 'Débutant', intermediate: 'Intermédiaire', advanced: 'Avancé' },
+    levelHint: {
+      beginner: 'Tu débutes, ou tu reprends après une longue pause',
+      intermediate: 'Tu t’entraînes régulièrement depuis quelques mois',
+      advanced: 'Plusieurs années d’entraînement structuré',
+    },
     equipment: {
       bodyweight: 'Poids du corps',
       dumbbells: 'Haltères',
@@ -943,6 +1019,7 @@ const fr = {
     },
   },
   nutrition: {
+    macroShort: { protein: 'P', carbs: 'G', fat: 'L' },
     energy: 'Énergie',
     mealsEaten: '{{eaten}} repas notés sur {{meals}}',
     title: 'Nutrition',
@@ -998,6 +1075,10 @@ const fr = {
       searchFood: 'Rechercher un aliment',
       noFood: 'Aucun aliment de la table ne correspond.',
       total: 'Total estimé',
+      itemNutrition: '≈ {{protein}} g de protéines · {{kcal}} kcal',
+      per100g: '{{kcal}} kcal pour 100 g',
+      leaveTitle: 'Quitter sans ajouter ce repas ?',
+      leaveMessage: 'Le repas en cours n’est pas encore ajouté à ta journée.',
       totalA11y: 'Total estimé : {{kcal}} kcal, protéines {{protein}} g, glucides {{carbs}} g, lipides {{fat}} g',
       missingFoods: '{{count}} aliment(s) à identifier.',
       missingPortions: '{{count}} portion(s) à indiquer.',
@@ -1011,6 +1092,8 @@ const fr = {
         pickFailed: 'La photo n’a pas pu être ouverte. Essaie une autre photo.',
         timeout: 'L’analyse a pris trop de temps. Réessaie dans un instant.',
         network: 'Pas de connexion au service d’analyse. Vérifie ta connexion et réessaie.',
+        service:
+          'Le service d’analyse n’a pas pu répondre. Ta connexion n’est pas en cause : réessaie ou compose ton repas.',
         rateLimited: 'Beaucoup d’analyses récemment. Réessaie plus tard ou compose ton repas.',
         auth: 'Connecte-toi à ton compte pour utiliser l’analyse photo.',
         unknown: 'Le résultat reçu n’est pas exploitable. Rien n’a été ajouté.',
@@ -1759,6 +1842,18 @@ const fr = {
         v1: 'Tu as choisi de prendre soin de toi.',
         v2: 'Tu as fait le choix de commencer, et ça compte.',
         v3: 'Ce projet, c’est pour toi.',
+        weight_lose: 'Tu as dit vouloir perdre du poids, à ton rythme.',
+        weight_gain: 'Tu as dit vouloir prendre du poids, à ton rythme.',
+        weight_keep: 'Tu as dit vouloir garder un poids stable.',
+        health: 'Tu as dit que ta santé compte pour toi.',
+        body_confidence: 'Tu as dit vouloir te sentir bien dans ton corps.',
+        energy: 'Tu as dit vouloir plus d’énergie au quotidien.',
+        strength: 'Tu as dit vouloir devenir plus fort·e.',
+        endurance: 'Tu as dit vouloir gagner en endurance.',
+        performance: 'Tu as dit vouloir être plus performant·e.',
+        habits: 'Tu as dit vouloir prendre de bonnes habitudes, un jour à la fois.',
+        mental: 'Tu as dit vouloir te sentir mieux dans ta tête.',
+        event: 'Tu as dit préparer un événement.',
       },
       care: {
         v1: 'Prendre soin de toi passe avant le rythme.',
@@ -1978,7 +2073,7 @@ const fr = {
       session_planned: {
         v1: 'Chaque séance faite rend la suivante plus facile.',
         v2: 'Une séance, même courte, entretient l’habitude.',
-        lose: 'Des séances régulières t’aident à garder ta force pendant que ton poids baisse.',
+        lose: 'Des séances régulières t’aident à garder ta force pendant une perte de poids.',
         gain: 'C’est l’entraînement régulier qui fait progresser tes charges.',
         recomp:
           'Tes séances comptent même quand la balance bouge peu : regarde aussi ton tour de taille et tes charges.',
@@ -2003,7 +2098,7 @@ const fr = {
         v2: 'Une liste prête, c’est moins d’achats imprévus et un budget respecté.',
       },
       weekly_progress: {
-        v1: 'Ta tendance va dans le sens de ton objectif : ta régularité paie.',
+        v1: 'Ta tendance va dans le sens de ton objectif.',
         v2: 'Voir le chemin parcouru aide à continuer.',
       },
       weekly_checkin: {
@@ -2232,16 +2327,31 @@ const fr = {
     open: 'Salles et magasins proches',
     intro: 'Données OpenStreetMap, saisies par des contributeurs : vérifie les horaires avant de te déplacer.',
     kinds: { gym: 'Salles de sport', store: 'Magasins d’alimentation' },
+    kindLabel: 'Type de lieu',
     locationWhy:
       'Ta position est demandée seulement quand tu lances la recherche. Elle est arrondie (environ 100 m) avant l’envoi et n’est jamais enregistrée.',
     search: 'Chercher autour de moi',
     locating: 'Localisation…',
     locationDenied:
       'Position refusée : la recherche autour de toi n’est pas possible. Tu peux toujours indiquer ta salle dans ton profil.',
-    locationError: 'Position indisponible pour le moment. Réessaie dans un instant.',
-    none: 'Donnée indisponible : aucun lieu trouvé autour de toi sur OpenStreetMap.',
-    busy: 'Le service OpenStreetMap est saturé. Réessaie dans quelques minutes.',
-    error: 'Impossible de joindre OpenStreetMap. Vérifie ta connexion.',
+    locationError:
+      'Position indisponible pour le moment. Vérifie que la localisation de l’appareil est activée, puis réessaie.',
+    locationTimeout:
+      'Ta position met trop de temps à arriver. Réessaie, de préférence près d’une fenêtre ou en extérieur.',
+    none: {
+      gym: 'Aucune salle de sport référencée sur OpenStreetMap à moins de {{radius}} km. Tu peux indiquer ta salle dans ton profil.',
+      store: 'Aucun magasin d’alimentation référencé sur OpenStreetMap à moins de {{radius}} km.',
+    },
+    errors: {
+      offline:
+        'Tu es hors connexion. La recherche pourra reprendre dès que tu seras en ligne ; le reste de l’app fonctionne.',
+      timeout: 'OpenStreetMap met trop de temps à répondre. Réessaie dans un instant.',
+      busy: 'Le service OpenStreetMap reçoit trop de demandes. Réessaie dans quelques minutes.',
+      unreachable:
+        'Le service OpenStreetMap ne répond pas pour le moment. Réessaie plus tard ; le reste de l’app fonctionne normalement.',
+      service:
+        'Le service OpenStreetMap est momentanément indisponible. Réessaie plus tard ; ce n’est pas un problème de ton côté.',
+    },
     distance: '≈ {{distance}} à vol d’oiseau',
     noAddress: 'Adresse : donnée indisponible',
     hours: 'Horaires indiqués sur OpenStreetMap (à vérifier) : {{hours}}',
@@ -2346,7 +2456,8 @@ const fr = {
       },
       motivation: {
         title: 'Motivation',
-        intro: 'Tes mots, cités dans tes rappels si tu le souhaites. Chaque réponse est facultative.',
+        intro:
+          'Ce qui te motive : autant de raisons que tu veux. Elles changent la façon dont le coach te parle, jamais tes objectifs chiffrés. Tout est facultatif.',
       },
       training: {
         title: 'Entraînement',
@@ -2489,6 +2600,7 @@ const fr = {
         priorities: 'Priorités',
       },
       motivation: {
+        reasons: 'Ce qui te motive',
         why: 'Ton pourquoi',
         change: 'Ce que tu veux changer',
         feel: 'Ce que tu veux ressentir',
