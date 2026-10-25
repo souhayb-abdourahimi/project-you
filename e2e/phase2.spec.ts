@@ -8,7 +8,8 @@ test.beforeEach(async ({ page }) => {
   await freezeClock(page);
 });
 
-const OVERPASS = 'https://overpass-api.de/api/interpreter';
+// Every Overpass instance the app may try (main, then fallback).
+const OVERPASS = '**/api/interpreter';
 const GYMS = {
   elements: [
     {
@@ -53,7 +54,46 @@ test.describe('nearby places', () => {
     await seedProfile(page, SCENARIOS.beginner);
     await page.goto('/places');
     await button(page, 'Chercher autour de moi').click();
-    await expect(text(page, /Donnée indisponible : aucun lieu trouvé/)).toBeVisible();
+    await expect(text(page, /Aucune salle de sport référencée sur OpenStreetMap à moins de 5 km/)).toBeVisible();
+  });
+
+  test('OSM refuses (406) on every instance: a service message, never "check your connection", and Retry works', async ({
+    page,
+  }) => {
+    let calls = 0;
+    let refuse = true;
+    await page.route(OVERPASS, (route) => {
+      calls += 1;
+      return refuse ? route.fulfill({ status: 406, body: 'Not Acceptable' }) : route.fulfill({ json: GYMS });
+    });
+    await seedProfile(page, SCENARIOS.noGym);
+    await page.goto('/places');
+    await button(page, 'Chercher autour de moi').click();
+    await expect(text(page, /momentanément indisponible/)).toBeVisible();
+    await expect(text(page, /Vérifie ta connexion/)).toHaveCount(0);
+    // Main instance then the fallback, once each: no retry loop.
+    expect(calls).toBe(2);
+
+    refuse = false;
+    await button(page, 'Réessayer').click();
+    await expect(text(page, 'Salle Rivoli (fixture)')).toBeVisible();
+  });
+
+  test('offline: says so, sends nothing', async ({ page, context }) => {
+    let calls = 0;
+    await page.route(OVERPASS, (route) => {
+      calls += 1;
+      return route.fulfill({ json: GYMS });
+    });
+    await seedProfile(page, SCENARIOS.noGym);
+    await page.goto('/places');
+    await context.setOffline(true);
+    await button(page, 'Chercher autour de moi').click();
+    await expect(text(page, /Tu es hors connexion/)).toBeVisible();
+    expect(calls).toBe(0);
+    await context.setOffline(false);
+    await button(page, 'Réessayer').click();
+    await expect(text(page, 'Salle Rivoli (fixture)')).toBeVisible();
   });
 });
 

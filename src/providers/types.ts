@@ -21,7 +21,13 @@ import type { ExternalDataMeta } from '@/domain/shared/external';
 export type ProviderResult<T> =
   | { status: 'ok'; data: T; meta: ExternalDataMeta }
   | { status: 'unavailable'; reason: 'not_configured' | 'no_data' | 'not_supported_on_platform' | 'permission_denied' }
-  | { status: 'error'; error: 'timeout' | 'rate_limited' | 'network' | 'auth' | 'unknown'; retryable: boolean };
+  | {
+      status: 'error';
+      /** `offline`: the device says it has no connection. `service`: the provider answered, but with a
+       * refusal or an unusable answer (it is not the user's connection). */
+      error: 'timeout' | 'rate_limited' | 'network' | 'offline' | 'service' | 'auth' | 'unknown';
+      retryable: boolean;
+    };
 
 export type { GeoPoint, Place, PlaceKind } from '@/domain/places/types';
 

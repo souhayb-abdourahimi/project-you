@@ -1,6 +1,7 @@
-import { Linking } from 'react-native';
+import Constants from 'expo-constants';
+import { Linking, Platform } from 'react-native';
 
-import { coarsen, overpassQuery, parseOverpass } from '@/domain/places/osm';
+import { SERVER_TIMEOUT_S, coarsen, overpassQuery, readOverpassAnswer } from '@/domain/places/osm';
 
 import type {
   GeoPoint,
@@ -13,62 +14,123 @@ import type {
   StoreProvider,
 } from './types';
 
-const ENDPOINT = 'https://overpass-api.de/api/interpreter';
-const TIMEOUT_MS = 15_000;
+/**
+ * Public Overpass instances, tried in this order (at most once each). The main instance requires,
+ * since April 2026, an identifying User-Agent from apps and a Referer from browsers; without them
+ * it answers 406. The second one is a community instance used only when the first fails
+ * (docs/DATA_SOURCES.md, verified 2026-10-25). Production still needs a dedicated provider (D-019).
+ */
+export const OVERPASS_ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+] as const;
+/** Per attempt: a little more than the server budget, so the server's own timeout answers first. */
+const TIMEOUT_MS = (SERVER_TIMEOUT_S + 4) * 1000;
+const BACKOFF_MS = 800;
 const CACHE_MS = 10 * 60_000;
 
 const cache = new Map<string, { at: number; result: ProviderResult<Place[]> }>();
+const inFlight = new Map<string, Promise<ProviderResult<Place[]>>>();
+
+/** Identifies the app to the volunteer-run servers, as their usage policy asks. */
+export const USER_AGENT = `ProjectYou/${Constants.expoConfig?.version ?? '1'} (fitness and nutrition coach; nearby places search)`;
+
+type Attempt = ProviderResult<Place[]> & { fallback?: boolean };
+
+/** One request to one instance. `fallback`: worth trying the next instance. */
+async function ask(endpoint: string, query: string, kind: PlaceKind, point: GeoPoint): Promise<Attempt> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Accept: 'application/json',
+        // A browser sends its own User-Agent and the page's origin as Referer (it refuses a custom
+        // User-Agent); the native apps have neither, so they say who they are.
+        ...(Platform.OS === 'web' ? {} : { 'User-Agent': USER_AGENT }),
+      },
+      ...(Platform.OS === 'web' ? { referrerPolicy: 'strict-origin-when-cross-origin' as const } : {}),
+      body: `data=${encodeURIComponent(query)}`,
+      signal: controller.signal,
+    });
+    if (response.status === 429) return { status: 'error', error: 'rate_limited', retryable: true, fallback: true };
+    if (response.status === 504) return { status: 'error', error: 'timeout', retryable: true, fallback: true };
+    // 400: our query is wrong; another instance would refuse it too.
+    if (response.status === 400) return { status: 'error', error: 'unknown', retryable: false };
+    // 403 / 406 (refused) and 5xx: the service, not the user's connection.
+    if (!response.ok) return { status: 'error', error: 'service', retryable: true, fallback: true };
+    let json: unknown;
+    try {
+      json = JSON.parse(await response.text());
+    } catch {
+      return { status: 'error', error: 'service', retryable: true, fallback: true };
+    }
+    const answer = readOverpassAnswer(json, kind, point);
+    if (answer.kind === 'server_timeout') return { status: 'error', error: 'timeout', retryable: true, fallback: true };
+    if (answer.kind === 'invalid') return { status: 'error', error: 'service', retryable: true, fallback: true };
+    if (answer.places.length === 0) return { status: 'unavailable', reason: 'no_data' };
+    return {
+      status: 'ok',
+      data: answer.places,
+      meta: {
+        provider: 'openstreetmap-overpass',
+        externalId: null,
+        source: 'OpenStreetMap (contributeurs, licence ODbL)',
+        fetchedAt: new Date().toISOString(),
+        updatedAt: null,
+        confidence: 'medium',
+        isMock: false,
+      },
+    };
+  } catch (e) {
+    if (e instanceof Error && e.name === 'AbortError') {
+      return { status: 'error', error: 'timeout', retryable: true, fallback: true };
+    }
+    // No HTTP answer at all. In a browser this is also what a refusal without CORS headers looks
+    // like, so it is "unreachable", not "check your connection" (offline is checked before).
+    return { status: 'error', error: 'network', retryable: true, fallback: true };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+const isOffline = () => typeof navigator !== 'undefined' && navigator.onLine === false;
 
 /**
- * Gyms and food stores from OpenStreetMap through the public Overpass API (no key). Collaborative
- * data: confidence "medium", source shown, nothing added when a field is missing.
- * The public instance is for development and beta only (fair use ≈ 100 queries/day for a regular
- * app): production needs a self-hosted Overpass or a paid provider behind the same interface (D-019).
+ * Gyms and food stores from OpenStreetMap through public Overpass instances (no key).
+ * Collaborative data: confidence "medium", source shown, nothing added when a field is missing.
+ * At most one request per instance, one short pause between them, never a loop. Answers are
+ * cached 10 minutes per rounded area; the same search already running is shared, not repeated.
  */
 async function nearby(kind: PlaceKind, near: GeoPoint, radiusMeters: number): Promise<ProviderResult<Place[]>> {
   const point = coarsen(near);
   const key = `${kind}:${point.lat}:${point.lng}:${radiusMeters}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < CACHE_MS) return hit.result;
+  if (isOffline()) return { status: 'error', error: 'offline', retryable: true };
+  const running = inFlight.get(key);
+  if (running) return running;
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  try {
-    const response = await fetch(ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `data=${encodeURIComponent(overpassQuery(kind, point, radiusMeters))}`,
-      signal: controller.signal,
-    });
-    if (response.status === 429 || response.status === 504) {
-      return { status: 'error', error: 'rate_limited', retryable: true };
+  const run = (async (): Promise<ProviderResult<Place[]>> => {
+    const query = overpassQuery(kind, point, radiusMeters);
+    let last: Attempt = { status: 'error', error: 'unknown', retryable: true };
+    for (const [i, endpoint] of OVERPASS_ENDPOINTS.entries()) {
+      if (i > 0) await new Promise((resolve) => setTimeout(resolve, BACKOFF_MS));
+      if (isOffline()) return { status: 'error', error: 'offline', retryable: true };
+      last = await ask(endpoint, query, kind, point);
+      if (last.status !== 'error' || !last.fallback) break;
     }
-    if (!response.ok) return { status: 'error', error: 'unknown', retryable: true };
-    const places = parseOverpass(await response.json(), kind, point);
-    const fetchedAt = new Date().toISOString();
-    const result: ProviderResult<Place[]> =
-      places.length === 0
-        ? { status: 'unavailable', reason: 'no_data' }
-        : {
-            status: 'ok',
-            data: places,
-            meta: {
-              provider: 'openstreetmap-overpass',
-              externalId: null,
-              source: 'OpenStreetMap (contributeurs, licence ODbL)',
-              fetchedAt,
-              updatedAt: null,
-              confidence: 'medium',
-              isMock: false,
-            },
-          };
-    cache.set(key, { at: Date.now(), result });
-    return result;
-  } catch (e) {
-    const aborted = e instanceof Error && e.name === 'AbortError';
-    return { status: 'error', error: aborted ? 'timeout' : 'network', retryable: true };
+    const { fallback: _fallback, ...result } = last as Attempt;
+    if (result.status !== 'error') cache.set(key, { at: Date.now(), result });
+    return result as ProviderResult<Place[]>;
+  })();
+  inFlight.set(key, run);
+  try {
+    return await run;
   } finally {
-    clearTimeout(timer);
+    inFlight.delete(key);
   }
 }
 
@@ -103,4 +165,5 @@ export const osmMapsProvider: MapsProvider = {
 /** For tests. */
 export function clearPlacesCache() {
   cache.clear();
+  inFlight.clear();
 }

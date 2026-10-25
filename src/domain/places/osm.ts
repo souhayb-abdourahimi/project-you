@@ -10,19 +10,40 @@ export type { GeoPoint, PlaceKind } from './types';
 /** An OSM place is a provider-neutral `Place`: only fields OSM contributors entered are filled. */
 export type OsmPlace = Place;
 
-const SELECTORS: Record<PlaceKind, [string, string][]> = {
+/**
+ * What counts as a gym or a food store. `sport` narrows a generic sports centre to the ones with a
+ * weights or fitness room (a swimming pool or a tennis club is not a gym).
+ */
+interface Selector {
+  key: string;
+  value: string;
+  /** Overpass regex on the `sport` tag; the place must match it. */
+  sport?: string;
+}
+
+const GYM_SPORTS = 'fitness|weightlifting|crossfit|bodybuilding|powerlifting';
+
+const SELECTORS: Record<PlaceKind, Selector[]> = {
   gym: [
-    ['leisure', 'fitness_centre'],
-    ['amenity', 'gym'],
-    ['leisure', 'sports_centre'],
+    { key: 'leisure', value: 'fitness_centre' },
+    { key: 'amenity', value: 'gym' },
+    { key: 'leisure', value: 'sports_centre', sport: GYM_SPORTS },
   ],
   store: [
-    ['shop', 'supermarket'],
-    ['shop', 'convenience'],
-    ['shop', 'greengrocer'],
-    ['shop', 'health_food'],
+    { key: 'shop', value: 'supermarket' },
+    { key: 'shop', value: 'convenience' },
+    { key: 'shop', value: 'greengrocer' },
+    { key: 'shop', value: 'health_food' },
+    { key: 'amenity', value: 'marketplace' },
   ],
 };
+
+/** Places kept after sorting by distance: the nearest ones, never an arbitrary subset. */
+export const MAX_PLACES = 30;
+/** Elements the server may return; enough for a dense city centre, then sorted here. */
+const SERVER_LIMIT = 250;
+/** Server-side time budget (seconds), below the client timeout so the server answers first. */
+export const SERVER_TIMEOUT_S = 10;
 
 /**
  * The position is rounded to about 100 m before leaving the device, so the exact location is
@@ -39,8 +60,13 @@ export function isValidPoint(p: GeoPoint): boolean {
 export function overpassQuery(kind: PlaceKind, near: GeoPoint, radiusMeters: number): string {
   const { lat, lng } = coarsen(near);
   const r = Math.round(Math.min(Math.max(radiusMeters, 200), 10_000));
-  const parts = SELECTORS[kind].map(([k, v]) => `nwr["${k}"="${v}"](around:${r},${lat},${lng});`).join('');
-  return `[out:json][timeout:15];(${parts});out center tags 60;`;
+  const parts = SELECTORS[kind]
+    .map(
+      ({ key, value, sport }) =>
+        `nwr["${key}"="${value}"]${sport ? `["sport"~"${sport}"]` : ''}(around:${r},${lat},${lng});`,
+    )
+    .join('');
+  return `[out:json][timeout:${SERVER_TIMEOUT_S}];(${parts});out center tags ${SERVER_LIMIT};`;
 }
 
 /** Great-circle distance in metres ("as the crow flies", not a travel time). */
@@ -83,7 +109,10 @@ export function parseOverpass(json: unknown, kind: PlaceKind, from: GeoPoint): O
     const lat = Number(raw.lat ?? raw.center?.lat);
     const lng = Number(raw.lon ?? raw.center?.lon);
     if (!name || !isValidPoint({ lat, lng }) || raw.id == null) continue;
-    const match = SELECTORS[kind].find(([k, v]) => tags[k] === v);
+    const match = SELECTORS[kind].find(
+      ({ key, value, sport }) =>
+        tags[key] === value && (!sport || new RegExp(`(^|;)\\s*(${sport})\\s*($|;)`).test(String(tags.sport ?? ''))),
+    );
     if (!match) continue;
     const id = `${String(raw.type ?? 'node')}/${String(raw.id)}`;
     if (places.has(id)) continue;
@@ -92,7 +121,7 @@ export function parseOverpass(json: unknown, kind: PlaceKind, from: GeoPoint): O
       id,
       kind,
       name,
-      category: `${match[0]}=${match[1]}`,
+      category: `${match.key}=${match.value}`,
       location: { lat, lng },
       address: address(tags),
       openingHours: text(tags.opening_hours, 200),
@@ -100,5 +129,22 @@ export function parseOverpass(json: unknown, kind: PlaceKind, from: GeoPoint): O
       distanceMeters: distanceMeters(from, { lat, lng }),
     });
   }
-  return [...places.values()].sort((a, b) => a.distanceMeters - b.distanceMeters);
+  return [...places.values()].sort((a, b) => a.distanceMeters - b.distanceMeters).slice(0, MAX_PLACES);
+}
+
+/**
+ * How to read an Overpass answer. A server-side timeout comes back as HTTP 200 with a `remark`
+ * and no (or partial) elements: that is a failure, never "nothing around you".
+ */
+export type OverpassAnswer = { kind: 'ok'; places: OsmPlace[] } | { kind: 'server_timeout' } | { kind: 'invalid' };
+
+export function readOverpassAnswer(json: unknown, kind: PlaceKind, from: GeoPoint): OverpassAnswer {
+  if (!json || typeof json !== 'object' || !Array.isArray((json as { elements?: unknown }).elements)) {
+    return { kind: 'invalid' };
+  }
+  const remark = (json as { remark?: unknown }).remark;
+  if (typeof remark === 'string' && /runtime error|timed out|out of memory/i.test(remark)) {
+    return { kind: 'server_timeout' };
+  }
+  return { kind: 'ok', places: parseOverpass(json, kind, from) };
 }
