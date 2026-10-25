@@ -14,6 +14,8 @@ const types = {
   '.ico': 'image/x-icon',
   '.ttf': 'font/ttf',
   '.svg': 'image/svg+xml',
+  '.webmanifest': 'application/manifest+json',
+  '.webp': 'image/webp',
 };
 
 createServer((req, res) => {

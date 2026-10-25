@@ -3,6 +3,7 @@ const fr = {
     noValue: '—',
     continue: 'Continuer',
     back: 'Retour',
+    backHome: 'Retour à Aujourd’hui',
     skip: 'Passer',
     save: 'Enregistrer',
     cancel: 'Annuler',
@@ -1053,6 +1054,7 @@ const fr = {
         'On reconnaît les aliments et on calcule une estimation à partir de la table Ciqual. Tu vérifies tout avant d’ajouter : rien n’est enregistré sans ta confirmation.',
       takePhoto: 'Prendre une photo',
       pickPhoto: 'Choisir dans la galerie',
+      pickFile: 'Choisir une photo',
       compose: 'Composer mon repas à la main',
       consent:
         'En touchant « Analyser », cette photo est envoyée au service d’analyse pour cette demande uniquement. Project You ne l’enregistre pas ; le service d’analyse peut la garder jusqu’à 30 jours pour sa sécurité, sans s’en servir pour entraîner ses modèles.',
@@ -2346,6 +2348,8 @@ const fr = {
     locating: 'Localisation…',
     locationDenied:
       'Position refusée : la recherche autour de toi n’est pas possible. Tu peux toujours indiquer ta salle dans ton profil.',
+    locationDeniedWeb:
+      'Position refusée : la recherche autour de toi n’est pas possible. Sur iPhone, autorise la position dans Réglages > Confidentialité et sécurité > Service de localisation > Sites web Safari, puis réessaie. Tu peux toujours indiquer ta salle dans ton profil.',
     locationError:
       'Position indisponible pour le moment. Vérifie que la localisation de l’appareil est activée, puis réessaie.',
     locationTimeout:

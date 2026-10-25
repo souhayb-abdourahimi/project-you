@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 
 import type { PlaceKind } from '@/domain/places/types';
 import { UserContextSnapshot } from '@/domain/profile/schemas';
@@ -77,6 +78,8 @@ export function usePlaces() {
 
   return {
     radiusKm: RADIUS[placeKind] / 1000,
+    /** In a browser the permission lives in the browser / iPhone settings, not in the app's. */
+    deniedMessage: Platform.OS === 'web' ? 'places.locationDeniedWeb' : 'places.locationDenied',
     busy: phase.kind === 'locating' || phase.kind === 'loading',
     placeKind,
     phase,

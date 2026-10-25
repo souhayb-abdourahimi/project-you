@@ -5,9 +5,12 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Platform } from 'react-native';
 
+import { HomeFallbackButton } from '@/components/navigation/HomeFallbackButton';
 import { useApplyDisplaySettings } from '@/hooks/useApplyDisplaySettings';
 import { hydrated, useSync } from '@/hooks/useSync';
+import { applyWebChrome, registerServiceWorker } from '@/services/web';
 import { useDataStore } from '@/state/data';
 import { moveLegacyCheckins } from '@/state/legacy';
 import { useNotificationStore } from '@/state/notifications';
@@ -17,7 +20,7 @@ void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const scheme = useScheme();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const colors = palette[scheme];
   const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
   useSync();
@@ -25,7 +28,9 @@ export default function RootLayout() {
   useEffect(() => {
     void SplashScreen.hideAsync();
     void Promise.all([hydrated(useDataStore), hydrated(useNotificationStore)]).then(moveLegacyCheckins);
+    registerServiceWorker();
   }, []);
+  useEffect(() => applyWebChrome(colors.background, i18n.language), [colors.background, i18n.language]);
 
   return (
     <ThemeProvider
@@ -41,7 +46,12 @@ export default function RootLayout() {
         },
       }}>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack
+        screenOptions={({ navigation }) => ({
+          headerShown: false,
+          // Web: a page opened without history still has a way back (no browser bar in the installed app).
+          ...(Platform.OS === 'web' && !navigation.canGoBack() ? { headerLeft: () => <HomeFallbackButton /> } : {}),
+        })}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="sign-in" />
         <Stack.Screen name="onboarding" />

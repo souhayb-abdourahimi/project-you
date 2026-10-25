@@ -4,6 +4,7 @@ Tâches importantes à ne pas perdre entre deux sessions. Référence des IDs : 
 
 ## En cours / prochaine étape
 
+- [ ] **PWA iPhone (D-047, 2026-10-25)**, branche `claude/w9-checkin-premium`, rien de fusionné ni déployé. Fait : manifeste, icônes, balises iOS, service worker coquille, position web, photo web honnête, export par feuille de partage, retour sans historique, Cloudflare Pages (`docs/WEB_PWA.md`). À faire par Souhayb : compte Cloudflare + `npm run deploy:web`, Redirect URLs Supabase (§ 4), puis `RELEASE_CHECKLIST.md` § 6 bis sur l'iPhone 15. Plus tard : Web Push (iOS 16.4+, app installée) si les rappels deviennent nécessaires sur le web.
 - [ ] **Passe qualité produit (D-046, 2026-10-25)**, branche `claude/w9-checkin-premium`, rien de fusionné :
   - [x] Onboarding : choix uniques en passage automatique, motivations multiples, « Aucun régime particulier », questions sans effet retirées, date cible et budget en un toucher, raisons de blocage affichées.
   - [x] OpenStreetMap : User-Agent / Referer, délai, une instance de repli, erreurs distinctes + Réessayer, salles et commerces pertinents, les 30 plus proches.

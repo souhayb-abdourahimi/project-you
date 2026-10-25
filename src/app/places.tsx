@@ -62,7 +62,7 @@ export default function PlacesScreen() {
 
       {phase.kind === 'locating' ? <LoadingScreen message={t('places.locating')} /> : null}
       {phase.kind === 'loading' ? <LoadingScreen message={t('common.loading')} /> : null}
-      {phase.kind === 'location_denied' ? <Banner message={t('places.locationDenied')} /> : null}
+      {phase.kind === 'location_denied' ? <Banner message={t(p.deniedMessage)} /> : null}
       {phase.kind === 'location_error' ? (
         <ErrorWithRetry
           message={t(phase.reason === 'timeout' ? 'places.locationTimeout' : 'places.locationError')}

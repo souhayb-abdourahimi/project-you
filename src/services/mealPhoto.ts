@@ -1,5 +1,6 @@
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
+import { Platform } from 'react-native';
 
 import type { MealPhoto } from '@/providers/types';
 
@@ -23,11 +24,18 @@ export type MealPhotoPick =
  */
 export async function pickMealPhoto(source: 'camera' | 'library'): Promise<MealPhotoPick> {
   try {
-    if (source === 'camera') {
+    // Web: the browser's file field needs no permission, and must open within the tap (iOS Safari).
+    if (source === 'camera' && Platform.OS !== 'web') {
       const permission = await ImagePicker.requestCameraPermissionsAsync();
       if (!permission.granted) return { status: 'denied' };
     }
-    const options: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], quality: 1, allowsEditing: false };
+    const options: ImagePicker.ImagePickerOptions = {
+      mediaTypes: ['images'],
+      quality: 1,
+      allowsEditing: false,
+      // Back camera; on the web this is the file field's capture="environment".
+      cameraType: ImagePicker.CameraType.back,
+    };
     const result =
       source === 'camera'
         ? await ImagePicker.launchCameraAsync(options)

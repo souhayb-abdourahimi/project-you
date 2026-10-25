@@ -16,6 +16,9 @@ export default defineConfig({
     baseURL: 'http://localhost:8765',
     locale: 'fr-FR',
     trace: 'retain-on-failure',
+    // The app-shell service worker is tested on its own (e2e/pwa.spec.ts); elsewhere it would only
+    // add caching between specs.
+    serviceWorkers: 'block',
     launchOptions: { executablePath },
   },
   projects: [

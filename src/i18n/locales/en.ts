@@ -5,6 +5,7 @@ const en: LocaleShape = {
     noValue: '—',
     continue: 'Continue',
     back: 'Back',
+    backHome: 'Back to Today',
     skip: 'Skip',
     save: 'Save',
     cancel: 'Cancel',
@@ -1042,6 +1043,7 @@ const en: LocaleShape = {
         'We recognise the foods and compute an estimate from the Ciqual table. You check everything before adding: nothing is saved without your confirmation.',
       takePhoto: 'Take a photo',
       pickPhoto: 'Choose from the library',
+      pickFile: 'Choose a photo',
       compose: 'Compose my meal by hand',
       consent:
         'When you tap “Analyse”, this photo is sent to the analysis service for this request only. Project You does not store it; the analysis service may keep it for up to 30 days for safety, without using it to train its models.',
@@ -2314,6 +2316,8 @@ const en: LocaleShape = {
     locating: 'Locating…',
     locationDenied:
       'Location refused: searching around you is not possible. You can still enter your gym in your profile.',
+    locationDeniedWeb:
+      'Location refused: searching around you is not possible. On iPhone, allow location in Settings > Privacy & Security > Location Services > Safari Websites, then try again. You can still enter your gym in your profile.',
     locationError: 'Location unavailable right now. Check that location is turned on for this device, then try again.',
     locationTimeout: 'Your position is taking too long. Try again, ideally near a window or outside.',
     none: {

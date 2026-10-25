@@ -68,6 +68,21 @@ Projet Supabase : `krcqdrrfnvfpvczxwrmt`. Les threads cloud n'atteignent pas ce 
 - [ ] Bouton retour système sur chaque écran modal (séance, repas, check-in) : aucune saisie perdue sans confirmation.
 - [ ] Taille de police système au maximum, mode sombre, écran 360 dp de large.
 
+## 6 bis. PWA iPhone (Safari, sans Mac) — D-047, `docs/WEB_PWA.md`
+
+- [ ] `npm run build:pwa` affiche « Supabase project configured, no server secret found ».
+- [ ] Déploiement Cloudflare Pages fait par toi (`npm run deploy:web`), URL notée ; Redirect URLs Supabase ajoutées sans rien retirer.
+- [ ] Safari : l'URL s'ouvre en HTTPS ; Partager → Sur l'écran d'accueil → icône PROJECT YOU correcte, nom complet.
+- [ ] App installée : plein écran, heure et batterie lisibles en clair et en sombre, rien sous l'encoche ni sous la barre d'accueil, barre d'onglets au-dessus de l'indicateur.
+- [ ] Inscription dans l'app installée, lien de confirmation (s'ouvre dans Safari), retour dans l'app et connexion ; fermer l'app (balayage) puis la rouvrir : toujours connecté.
+- [ ] Onboarding complet : aucun zoom quand un champ prend le focus, le clavier ne cache pas le bouton Continuer.
+- [ ] Repas : « Prendre une photo » ouvre l'appareil photo ; « Choisir dans la galerie » ouvre la photothèque ; annuler ne bloque pas l'écran ; analyse → brouillon → confirmation ; mode avion → message réseau puis « Composer mon repas à la main ».
+- [ ] Salles et magasins : invite de position, refus → message avec le chemin Réglages, autorisation → résultats OpenStreetMap réels ou erreur précise avec « Réessayer ».
+- [ ] Recharger une page profonde (Réglages) : bouton « Retour à Aujourd'hui » présent.
+- [ ] Mode avion puis ouverture depuis l'icône : l'app s'ouvre, les données locales sont là, les actions réseau disent qu'elles sont hors ligne.
+- [ ] Export des données (Confidentialité) : la feuille de partage propose « Enregistrer dans Fichiers ».
+- [ ] iPhone SE (ou affichage zoomé) : rien n'est coupé.
+
 ## 7. VoiceOver et TalkBack
 
 - [ ] Aujourd'hui : le héros se lit dans l'ordre (action, durée, lieu, « Commencer »), l'anneau protéines donne la vraie valeur.

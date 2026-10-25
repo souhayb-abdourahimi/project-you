@@ -89,16 +89,18 @@ export function MealAnalysisScreen() {
           </View>
           <Text variant="title3">{t('nutrition.analysis.startTitle')}</Text>
           <Text color="textSecondary">{t('nutrition.analysis.startBody')}</Text>
+          {analysis.cameraAvailable ? (
+            <Button
+              block
+              icon="camera"
+              label={t('nutrition.analysis.takePhoto')}
+              onPress={() => analysis.choose('camera')}
+            />
+          ) : null}
           <Button
             block
-            icon="camera"
-            label={t('nutrition.analysis.takePhoto')}
-            onPress={() => analysis.choose('camera')}
-          />
-          <Button
-            block
-            variant="secondary"
-            label={t('nutrition.analysis.pickPhoto')}
+            variant={analysis.cameraAvailable ? 'secondary' : 'primary'}
+            label={t(analysis.cameraAvailable ? 'nutrition.analysis.pickPhoto' : 'nutrition.analysis.pickFile')}
             onPress={() => analysis.choose('library')}
           />
           <Button variant="ghost" label={t('nutrition.analysis.compose')} onPress={analysis.composeManually} />

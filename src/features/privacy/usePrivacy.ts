@@ -14,6 +14,7 @@ import { resetDeviceData } from '@/hooks/deviceData';
 import { signOut, useSession } from '@/services/auth';
 import { deleteAccount, deleteRemoteCategory, fetchAccountData } from '@/services/privacy';
 import { supabase } from '@/services/supabase';
+import { saveFileOnWeb } from '@/services/web';
 import { useCalendarStore } from '@/state/calendar';
 import { useDataStore } from '@/state/data';
 import { useHealthStore } from '@/state/health';
@@ -34,12 +35,7 @@ function localState() {
 
 async function share(json: string, fileName: string) {
   if (Platform.OS === 'web') {
-    const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    link.click();
-    URL.revokeObjectURL(url);
+    await saveFileOnWeb(json, fileName, 'application/json');
     return;
   }
   await Share.share({ title: fileName, message: json });

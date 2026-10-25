@@ -46,6 +46,7 @@ export const ICONS = {
   shopping: { sf: 'cart', md: 'shopping_cart' },
   celebrate: { sf: 'star', md: 'auto_awesome' },
   back: { sf: 'chevron.left', md: 'chevron_left' },
+  backArrow: { sf: 'arrow.left', md: 'arrow_back' },
   camera: { sf: 'camera', md: 'photo_camera' },
   plus: { sf: 'plus', md: 'add' },
   trophy: { sf: 'trophy', md: 'emoji_events' },

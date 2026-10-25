@@ -18,6 +18,7 @@ import { providers } from '@/providers';
 import type { MealPhoto } from '@/providers/types';
 import { pickMealPhoto } from '@/services/mealPhoto';
 import { isSupabaseConfigured } from '@/services/supabase';
+import { cameraCaptureAvailable } from '@/services/web';
 import { useDataStore } from '@/state/data';
 
 /**
@@ -133,6 +134,8 @@ export function useMealAnalysis(date: IsoDate) {
   return {
     /** False in local mode (no account service): the photo analysis cannot run, composing can. */
     photoAvailable: isSupabaseConfigured,
+    /** False on a computer's browser: only "choose a photo" is offered there. */
+    cameraAvailable: cameraCaptureAvailable(),
     phase,
     issue,
     uri,
