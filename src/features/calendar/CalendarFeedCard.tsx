@@ -32,7 +32,7 @@ export function CalendarFeedCard({ feed }: { feed: CalendarFeedModel }) {
   if (link)
     return (
       <Card style={styles.card}>
-        <Title />
+        <Title linked />
         <View style={styles.linked}>
           <Icon name="link" size="sm" color="primary" />
           <Text variant="bodyMedium" style={styles.flex} numberOfLines={1}>
@@ -125,9 +125,13 @@ export function CalendarFeedCard({ feed }: { feed: CalendarFeedModel }) {
   );
 }
 
-function Title() {
+function Title({ linked = false }: { linked?: boolean }) {
   const { t } = useTranslation();
-  return <Text variant="heading">{t('calendar.feed.title')}</Text>;
+  return (
+    <Text variant="heading" accessibilityRole="header">
+      {t(linked ? 'calendar.feed.linkedTitle' : 'calendar.feed.title')}
+    </Text>
+  );
 }
 
 const styles = StyleSheet.create({

@@ -2251,6 +2251,7 @@ const fr = {
       'La synchronisation directe avec le calendrier de l’iPhone arrivera avec l’app native. Le lien iCal fonctionne déjà ici.',
     feed: {
       title: 'Ajouter un calendrier iCal',
+      linkedTitle: 'Ton calendrier iCal',
       intro:
         'Colle le lien iCal de ton planning scolaire, professionnel ou personnel. PROJECT YOU lit uniquement les créneaux occupés pour mieux placer tes séances.',
       urlLabel: 'Lien iCal (https ou webcal)',

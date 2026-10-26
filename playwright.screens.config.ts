@@ -66,5 +66,14 @@ export default defineConfig({
     },
     { name: 'desktop', use: { viewport: { width: 1366, height: 900 } } },
   ],
-  webServer: { command: 'node scripts/serve-dist.mjs', port: 8765, reuseExistingServer: true },
+  webServer: [
+    { command: 'node scripts/serve-dist.mjs', port: 8765, reuseExistingServer: true },
+    // Signed-in captures (npm run build:web:e2e-account first): fake project answered by the script.
+    {
+      command: 'node scripts/serve-dist.mjs',
+      env: { DIST_DIR: 'dist-account', PORT: '8766' },
+      port: 8766,
+      reuseExistingServer: true,
+    },
+  ],
 });

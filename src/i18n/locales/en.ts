@@ -2224,6 +2224,7 @@ const en: LocaleShape = {
       'Direct sync with the iPhone calendar will come with the native app. The iCal link already works here.',
     feed: {
       title: 'Add an iCal calendar',
+      linkedTitle: 'Your iCal calendar',
       intro:
         'Paste the iCal link of your school, work or personal schedule. PROJECT YOU reads busy times and nothing else, to place your sessions better.',
       urlLabel: 'iCal link (https or webcal)',
