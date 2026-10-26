@@ -50,11 +50,11 @@ import {
 import { compareWeek, type WeekComparison } from '@/domain/training/compare';
 import { activeProgram, plannedVariantMinutes, progressionSignals, refreshWeek } from '@/domain/training/week';
 import { plannedSessionDates as plannedDates, unknownPrescriptionDates } from '@/domain/training/week-view';
-import { useCalendarStore } from '@/state/calendar';
 import { useDataStore } from '@/state/data';
 import { useNotificationStore } from '@/state/notifications';
 
 import { scheduleOfWeek, type Plan } from './usePlan';
+import { useWeekBusy } from './useWeekBusy';
 import { useWeights } from './useWeights';
 
 export interface Journey {
@@ -103,7 +103,8 @@ export function useJourney(plan: Plan | null): Journey | null {
   const screenVoice = useNotificationStore((s) => s.screenVoice);
   const coachShown = useNotificationStore((s) => s.coachShown);
   const weighInDay = useNotificationStore((s) => s.prefs.weighInDay);
-  const calendarBusy = useCalendarStore((s) => (s.connected && s.readBusy ? s.busy : null));
+  // Device calendar and iCal link busy times of the plan's week (empty before a plan exists).
+  const weekBusy = useWeekBusy((plan?.weekStart ?? '') as IsoDate);
 
   const journey = useMemo((): Journey | null => {
     if (!plan) return null;
@@ -225,7 +226,7 @@ export function useJourney(plan: Plan | null): Journey | null {
     const sessionIndex = workout?.kind === 'workout' ? workout.sessionIndex : 0;
     const prescription = template ? plan.prescription(today, sessionIndex) : null;
     const done = data.completedSessions.find((c) => c.date === today);
-    const busyToday = calendarBusy?.weekStart === plan.weekStart ? calendarBusy.slots : [];
+    const busyToday = weekBusy;
     const history: VoiceUse[] = [...notificationHistory, ...screenVoice];
 
     // Structural changes the user accepted, in force today (a light week lasts its 7 days).
@@ -452,7 +453,7 @@ export function useJourney(plan: Plan | null): Journey | null {
       memory,
       keptGoingDates,
     };
-  }, [plan, data, weights, notificationHistory, screenVoice, coachShown, weighInDay, calendarBusy, locale]);
+  }, [plan, data, weights, notificationHistory, screenVoice, coachShown, weighInDay, weekBusy, locale]);
 
   // Milestones reached are recorded (synced) so that each is celebrated once, on any device.
   const recordMilestones = useDataStore((s) => s.recordMilestones);

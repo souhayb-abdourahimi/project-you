@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { SCENARIOS } from '../src/domain/scenarios';
 
-import { button, collectErrors, freezeClock, seedProfile, text } from './helpers';
+import { button, collectErrors, field, freezeClock, seedProfile, text } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await freezeClock(page);
@@ -115,22 +115,32 @@ test('location refused: the app stays usable and explains why', async ({ page, c
   await expect(text(page, /Position (refusée|indisponible)/)).toBeVisible();
 });
 
-test('calendar on the web says it is unsupported instead of failing', async ({ page }) => {
+test('calendar on the web: no dead button, availability editable, iCal needs an account', async ({ page }) => {
   await seedProfile(page, SCENARIOS.beginner);
   await page.goto('/calendar');
-  await expect(text(page, /n’est pas disponible sur le web/)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Connecter mon calendrier' }).filter({ visible: true })).toBeDisabled();
+  await expect(text(page, 'Tes disponibilités')).toBeVisible();
+  await expect(text(page, /arrivera avec l’app native/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Connecter mon calendrier' })).toHaveCount(0);
+  // Local mode: the server reads the iCal link, so it says an account is needed.
+  await expect(text(page, 'Ajouter un calendrier iCal')).toBeVisible();
+  await expect(text(page, /Connecte-toi à ton compte pour ajouter un calendrier iCal/)).toBeVisible();
+  await button(page, 'Modifier mes disponibilités').click();
+  await expect(page).toHaveURL(/\/settings\/schedule$/);
 });
 
 test('health on the web: clear message, manual entry still available, nothing on Today', async ({ page }) => {
   const errors = collectErrors(page);
   await seedProfile(page, SCENARIOS.beginner);
   await page.goto('/health');
-  await expect(text(page, 'Les données santé ne sont pas disponibles sur cette plateforme.')).toBeVisible();
-  await button(page, 'Saisir à la main').click();
-  // Progress opens with the measure entry unfolded.
-  await expect(page).toHaveURL(/\/progress\?entry=1$/);
-  await expect(button(page, 'Noter mon poids')).toBeVisible();
+  // No dead screen: weight and waist are entered right here; the native sync is one line.
+  await expect(text(page, /Note ton poids et ton tour de taille ici/)).toBeVisible();
+  await expect(text(page, 'La synchronisation avec Apple Santé arrivera avec l’app native iPhone.')).toBeVisible();
+  await field(page, /Poids/).fill('78.4');
+  await button(page, 'Noter mon poids').click();
+  await expect(text(page, 'Poids noté pour aujourd’hui.')).toBeVisible();
+  await button(page, 'Voir ma progression').click();
+  await expect(page).toHaveURL(/\/progress$/);
+  await expect(text(page, /78[,.]4/)).toBeVisible();
 
   await page.goto('/privacy');
   await expect(text(page, 'Santé et activité')).toBeVisible();

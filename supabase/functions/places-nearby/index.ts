@@ -4,9 +4,27 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 import { callOverpass, handlePlacesNearby, type PlacesBody } from './handler.ts';
 
-const auth = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
+const env = (name: string) => Deno.env.get(name) || undefined;
+/** The project's public key: the legacy anon key, or the first publishable key (new API keys). */
+function publicKey() {
+  const anon = env('SUPABASE_ANON_KEY');
+  if (anon) return anon;
+  try {
+    const keys = JSON.parse(env('SUPABASE_PUBLISHABLE_KEYS') ?? '{}') as Record<string, string>;
+    return Object.values(keys).find((k) => typeof k === 'string' && k.length > 0);
+  } catch {
+    return undefined;
+  }
+}
+// Created on the first request, never at boot: a missing key is a clear 503, not a BOOT_ERROR (D-048).
+let auth: ReturnType<typeof createClient> | null = null;
+function authClient() {
+  const url = env('SUPABASE_URL');
+  const key = publicKey();
+  if (!url || !key) return null;
+  auth ??= createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  return auth;
+}
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -23,11 +41,17 @@ const answers = new Map<string, { at: number; body: PlacesBody }>();
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+  const client = authClient();
+  if (!client)
+    return new Response(JSON.stringify({ error: 'not_configured', missing: ['SUPABASE_ANON_KEY'] }), {
+      status: 503,
+      headers: { ...cors, 'Content-Type': 'application/json' },
+    });
   const body = await req.json().catch(() => null);
   const result = await handlePlacesNearby(
     { method: req.method, authorization: req.headers.get('Authorization'), body },
     {
-      getUserId: async (token) => (await auth.auth.getUser(token)).data.user?.id ?? null,
+      getUserId: async (token) => (await client.auth.getUser(token)).data.user?.id ?? null,
       overpass: (query) => callOverpass(query, { userAgent: USER_AGENT }),
       allow: async (userId) => {
         const now = Date.now();

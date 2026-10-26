@@ -43,6 +43,8 @@ for (const path of files(root)) {
   if (!/\.(js|html|json|webmanifest|txt|map)$/.test(name)) continue;
   const text = readFileSync(path, 'utf8');
   for (const [pattern, kind] of SECRETS) if (pattern.test(text)) problems.push(`${kind} found in ${name}`);
+  // The account-mode E2E build points to a fake project; it must never be the one deployed.
+  if (text.includes('e2e.supabase.test')) problems.push(`E2E test project URL found in ${name} (rebuild with --clear)`);
   for (const match of text.matchAll(JWT)) {
     try {
       const payload = JSON.parse(Buffer.from(match[1], 'base64url').toString('utf8'));

@@ -15,10 +15,10 @@ import type { SessionVariant } from '@/domain/training/adapt';
 import { generateWorkoutPlan, type WorkoutTemplate } from '@/domain/training/engine';
 import { durableTraining, structureFor, versionDecisions } from '@/domain/training/structure';
 import { activeProgram, ensureProgram, ensureWeek, prescriptionFor, variantTemplate } from '@/domain/training/week';
-import { useCalendarStore } from '@/state/calendar';
 import { useDataStore } from '@/state/data';
 import { useProfileStore } from '@/state/profile';
 
+import { useWeekBusy } from './useWeekBusy';
 import { useWeights } from './useWeights';
 
 /** Applies user reschedules on top of the engine's weekly plan. */
@@ -75,7 +75,6 @@ export function usePlan() {
   const mealPlan = useDataStore((s) => s.mealPlan);
   const setMealPlan = useDataStore((s) => s.setMealPlan);
   const rescheduled = useDataStore((s) => s.rescheduled);
-  const calendarBusy = useCalendarStore((s) => (s.connected && s.readBusy ? s.busy : null));
   const adjustments = useDataStore((s) => s.adjustments);
   const previousMealPlan = useDataStore((s) => s.previousMealPlan);
   const addedMeals = useDataStore((s) => s.loggedMeals);
@@ -93,6 +92,7 @@ export function usePlan() {
   const today = toIsoDate(new Date());
   const weekStart = startOfWeek(today);
   const year = Number(today.slice(0, 4));
+  const busy = useWeekBusy(weekStart);
 
   // Safety signals that only need weigh-ins and marked meals (no plan targets): enough to freeze the
   // weight basis without depending on the targets it feeds (docs/ADAPTATION_ENGINE.md §4).
@@ -142,15 +142,14 @@ export function usePlan() {
     );
     const feasibility = assessGoalFeasibility(snapshot, today);
     const workoutPlan = generateWorkoutPlan({ goal: snapshot.goal.type, training: effective.training });
-    // Busy times from the user's calendar count as fixed constraints for this week only.
-    const busy = calendarBusy?.weekStart === weekStart ? calendarBusy.slots : [];
+    // Busy times from the device calendar and the iCal link count as fixed constraints (this week).
     const schedule = planSchedule({
       weekStart,
       schedule: { ...snapshot.schedule, fixedConstraints: [...snapshot.schedule.fixedConstraints, ...busy] },
       training: effective.training,
     });
     return { targets, feasibility, workoutPlan, schedule, basis, sessionsPerWeek, startedOn, training };
-  }, [snapshot, year, today, weekStart, calendarBusy, adjustments, weights, frozen, startedOn]);
+  }, [snapshot, year, today, weekStart, busy, adjustments, weights, frozen, startedOn]);
 
   const planKey = useMemo(
     () =>

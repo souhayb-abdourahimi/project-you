@@ -82,6 +82,8 @@ export const EXPORT_ONLY_TABLES = [
   'recipes',
   'shopping_list_items',
   'workout_plans',
+  // iCal link (D-049): host, busy times and sync state; the sealed link column is not exported.
+  'calendar_feeds',
 ] as const;
 
 export function countByCategory(state: PrivacyState): Record<PrivacyCategory, number> {

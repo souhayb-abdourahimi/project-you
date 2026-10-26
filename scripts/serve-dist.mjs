@@ -3,7 +3,8 @@ import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, join, normalize } from 'node:path';
 
-const root = join(process.cwd(), 'dist');
+// DIST_DIR: another export (the account-mode E2E build in dist-account).
+const root = join(process.cwd(), process.env.DIST_DIR ?? 'dist');
 const port = Number(process.env.PORT ?? 8765);
 const types = {
   '.html': 'text/html',

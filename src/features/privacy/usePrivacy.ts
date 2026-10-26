@@ -16,6 +16,7 @@ import { deleteAccount, deleteRemoteCategory, fetchAccountData } from '@/service
 import { supabase } from '@/services/supabase';
 import { saveFileOnWeb } from '@/services/web';
 import { useCalendarStore } from '@/state/calendar';
+import { useCalendarFeedStore } from '@/state/calendarFeed';
 import { useDataStore } from '@/state/data';
 import { useHealthStore } from '@/state/health';
 import { useNotificationStore } from '@/state/notifications';
@@ -53,6 +54,8 @@ function deviceSettings() {
     // Check-ins saved before D-028 and not moved into the day logs yet (normally empty).
     checkins,
     calendar: { connected, readBusy, writeSessions, busy, writtenEvents: written },
+    // iCal link (D-049) as cached here: host and busy times only (the link stays sealed on the server).
+    calendarFeed: useCalendarFeedStore.getState().link,
     // Imported from Apple Health / Health Connect: kept on this device only.
     health: {
       connected: health.connected,

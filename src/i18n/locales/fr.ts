@@ -1442,6 +1442,8 @@ const fr = {
     recompositionHint: 'En recomposition, la balance bouge peu : le tour de taille et tes performances en disent plus.',
     waist: 'Tour de taille (cm)',
     logWaist: 'Noter mon tour de taille',
+    savedWeight: 'Poids noté pour aujourd’hui.',
+    savedWaist: 'Tour de taille noté pour aujourd’hui.',
     consistency: 'Régularité (4 semaines)',
     streak: '{{count}} semaine(s) d’affilée avec au moins une séance',
     indicators: 'À suivre en priorité',
@@ -2232,8 +2234,55 @@ const fr = {
       'Relie ton calendrier pour placer les séances là où tu es vraiment libre, et retrouver tes séances dans ton agenda.',
     why: 'L’app lit seulement les heures occupées (jamais les titres ni les détails) et écrit uniquement dans un calendrier « Project You » qu’elle crée. Tes événements personnels ne sont jamais modifiés ni supprimés.',
     connect: 'Connecter mon calendrier',
-    webUnsupported:
-      'Le calendrier de l’appareil n’est pas disponible sur le web. Tes créneaux saisis à la main restent utilisés.',
+    introWeb:
+      'Tes séances sont placées dans tes disponibilités, en évitant les créneaux occupés de ton calendrier iCal si tu en ajoutes un.',
+    manualTitle: 'Tes disponibilités',
+    manualBody:
+      'Les séances sont placées dans les créneaux que tu as indiqués. Ils restent la base, avec ou sans calendrier.',
+    editAvailability: 'Modifier mes disponibilités',
+    deviceTitle: 'Calendrier de l’appareil',
+    nativeLater:
+      'La synchronisation directe avec le calendrier de l’iPhone arrivera avec l’app native. Le lien iCal fonctionne déjà ici.',
+    feed: {
+      title: 'Ajouter un calendrier iCal',
+      intro:
+        'Colle le lien iCal de ton planning scolaire, professionnel ou personnel. PROJECT YOU lit uniquement les créneaux occupés pour mieux placer tes séances.',
+      urlLabel: 'Lien iCal (https ou webcal)',
+      test: 'Tester le lien',
+      testedTitle: 'Calendrier trouvé : {{host}}',
+      tested: '{{count}} événement(s) dans les 6 prochaines semaines.',
+      testedEmpty: 'Aucun événement dans les 6 prochaines semaines. Tu peux l’utiliser quand même.',
+      truncated: 'Ce calendrier est très chargé : seuls les premiers événements sont pris en compte.',
+      save: 'Utiliser ce calendrier',
+      synced: 'Actualisé le {{date}} : {{count}} événement(s) sur 6 semaines.',
+      neverSynced: 'Pas encore actualisé.',
+      use: 'Tenir compte de ce calendrier',
+      useHint: 'Les séances évitent ses créneaux occupés. Tes disponibilités restent la base.',
+      refresh: 'Actualiser',
+      remove: 'Supprimer ce calendrier',
+      removeConfirm:
+        'Le lien et les créneaux occupés lus seront supprimés de ton compte. Tes disponibilités ne changent pas. Continuer ?',
+      needsAccount: 'Connecte-toi à ton compte pour ajouter un calendrier iCal : c’est le serveur qui lit le lien.',
+      privacy:
+        'PROJECT YOU utilise uniquement les horaires occupés de ton calendrier pour planifier tes séances. Les titres et détails de tes événements ne sont pas utilisés par le coach.',
+      issue: {
+        invalid_url: 'Ce lien n’est pas valide. Copie le lien iCal complet (il commence par https:// ou webcal://).',
+        not_https: 'Seuls les liens sécurisés (https ou webcal) sont acceptés.',
+        blocked_address: 'Ce lien pointe vers une adresse privée ou locale : il ne peut pas être lu.',
+        timeout: 'Le calendrier met trop de temps à répondre. Réessaie dans un moment.',
+        access_denied: 'Le calendrier refuse l’accès (lien expiré ou privé). Génère un nouveau lien iCal et colle-le.',
+        not_found: 'Calendrier introuvable à cette adresse. Vérifie le lien.',
+        not_ics:
+          'Ce lien ne renvoie pas un calendrier iCal (souvent une page de connexion). Utilise le lien d’export iCal.',
+        too_large: 'Ce calendrier est trop volumineux pour être lu.',
+        unavailable: 'Le calendrier n’a pas pu être lu pour le moment. Tes disponibilités restent utilisées.',
+        not_configured: 'Le lien iCal n’est pas encore configuré sur le serveur.',
+        not_deployed: 'Le service de calendrier n’est pas déployé sur le serveur.',
+        too_many_requests: 'Beaucoup d’essais récemment. Réessaie un peu plus tard.',
+        auth: 'Reconnecte-toi à ton compte pour gérer ton calendrier iCal.',
+        offline: 'Pas de connexion. Réessaie une fois en ligne.',
+      },
+    },
     denied:
       'Accès au calendrier refusé. Tu peux l’autoriser dans les réglages de ton appareil ; l’app reste utilisable sans.',
     error: 'Le calendrier n’a pas pu être lu. Tes créneaux saisis à la main restent utilisés.',
@@ -2260,9 +2309,13 @@ const fr = {
     intro:
       'Relie {{store}} pour que ton coach voie tes pas, tes entraînements, ton poids et ton énergie active, sans tout ressaisir. C’est facultatif : sans, l’app fonctionne pareil avec la saisie manuelle.',
     store: { apple: 'Apple Santé', google: 'Health Connect' },
-    webUnsupported: 'Les données santé ne sont pas disponibles sur cette plateforme.',
-    manualStillWorks: 'Tu peux toujours saisir ton poids et tes mensurations à la main dans Progrès.',
-    logManually: 'Saisir à la main',
+    webUnsupported: 'Sur le web, rien n’est lu depuis Apple Santé ni Health Connect : seules tes saisies comptent.',
+    web: {
+      intro:
+        'Note ton poids et ton tour de taille ici : ils comptent dans ta progression comme n’importe quelle pesée.',
+      nativeLater: 'La synchronisation avec Apple Santé arrivera avec l’app native iPhone.',
+      seeProgress: 'Voir ma progression',
+    },
     availability: {
       available: 'Disponible',
       not_supported: 'Les données santé ne sont pas disponibles sur cette plateforme.',

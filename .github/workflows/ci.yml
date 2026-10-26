@@ -42,6 +42,8 @@ jobs:
       - run: npm ci
       # No Supabase variables: the export runs in local mode, like a first visit without an account.
       - run: npm run build:web
+      # Second export against a fake Supabase project answered by the tests (signed-in journeys).
+      - run: npm run build:web:e2e-account
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - if: failure()
@@ -72,16 +74,3 @@ jobs:
           cache: npm
       - run: npm ci
       - run: bash scripts/db-test.sh
-
-  # TEMPORARY (D-048 diagnosis, removed once read): times the old and new Overpass queries from a
-  # GitHub runner, since the cloud sandbox cannot reach Overpass. Never fails the build.
-  overpass-measure:
-    name: Overpass timing (diagnostic)
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: node scripts/places/measure-overpass.mjs
