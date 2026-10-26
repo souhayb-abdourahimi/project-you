@@ -2,6 +2,8 @@
  * Where every onboarding answer lives afterwards (W-8, D-043): each question of the questionnaire
  * belongs to exactly one section of Réglages, edited with the same fields. Nothing asked once is
  * hidden for ever (docs/SETTINGS_ARCHITECTURE.md §3, matrix tested in __tests__/sections.test.ts).
+ * W-11 (D-046): the questions no engine read (situation, 0-3 priorities, liked/refused sports,
+ * membership) are no longer asked anywhere; their stored answers are kept and exported.
  */
 import type { OnboardingStepId } from '../onboarding/steps';
 
@@ -10,9 +12,9 @@ export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 
 /** Questions of each section, in the questionnaire's order (a short form per screen). */
 export const SECTION_STEPS: Record<SettingsSection, readonly OnboardingStepId[]> = {
-  profile: ['profile.name', 'profile.age', 'profile.body', 'profile.sex', 'profile.activity', 'life.status'],
-  goal: ['goal.type', 'goal.target', 'goal.priorities'],
-  motivation: ['motivation.why', 'motivation.more'],
+  profile: ['profile.name', 'profile.age', 'profile.body', 'profile.sex', 'profile.activity'],
+  goal: ['goal.type', 'goal.target'],
+  motivation: ['motivation.reasons', 'motivation.more'],
   training: [
     'training.gym',
     'training.gymDetails',
@@ -20,7 +22,6 @@ export const SECTION_STEPS: Record<SettingsSection, readonly OnboardingStepId[]>
     'training.level',
     'training.frequency',
     'training.refusedExercises',
-    'training.sports',
   ],
   schedule: ['schedule.availability'],
   nutrition: ['diet.type', 'diet.allergies', 'diet.foods', 'diet.meals', 'kitchen.equipment', 'budget.food'],

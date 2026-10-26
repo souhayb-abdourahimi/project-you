@@ -12,15 +12,29 @@ describe('weightTrend', () => {
       weigh('2026-09-30', 79.8),
     ];
     const trend = weightTrend(weights, '2026-09-30');
-    expect(trend?.weeks).toHaveLength(8);
+    // Default range: 12 weeks (the Progress screen's default filter).
+    expect(trend?.weeks).toHaveLength(12);
     expect(trend?.weeks.at(-1)).toEqual({ end: '2026-09-30', kg: 79.9 });
     expect(trend?.weeks.at(-2)).toEqual({ end: '2026-09-23', kg: 80.1 });
     expect(trend?.weeks.at(-3)).toEqual({ end: '2026-09-16', kg: null });
     expect(trend?.points).toBe(2);
   });
 
+  it('follows the selected range', () => {
+    const weights = [
+      weigh('2026-09-22', 80),
+      weigh('2026-09-23', 80.2),
+      weigh('2026-09-29', 79.6),
+      weigh('2026-09-30', 79.8),
+    ];
+    expect(weightTrend(weights, '2026-09-30', 4)?.weeks).toHaveLength(4);
+  });
+
   it('a week with a single weigh-in is a gap, never a guess', () => {
-    const trend = weightTrend([weigh('2026-09-30', 79), weigh('2026-09-29', 79.2), weigh('2026-09-22', 80)], '2026-09-30');
+    const trend = weightTrend(
+      [weigh('2026-09-30', 79), weigh('2026-09-29', 79.2), weigh('2026-09-22', 80)],
+      '2026-09-30',
+    );
     expect(trend).toBeNull();
   });
 

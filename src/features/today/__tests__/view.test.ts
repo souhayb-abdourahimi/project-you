@@ -37,8 +37,21 @@ const session = (date: string, status: SessionComparison['status']) => ({ date, 
 
 describe('todayGlance: real values only', () => {
   it('nutrition: protein and energy of the meals marked eaten, against the targets', () => {
-    expect(todayGlance(input()).nutrition).toEqual({ proteinG: 32, proteinTargetG: 140, kcal: 500, kcalTarget: 2400 });
+    expect(todayGlance(input()).nutrition).toEqual({
+      proteinG: 32,
+      proteinTargetG: 140,
+      kcal: 500,
+      kcalTarget: 2400,
+      logged: 1,
+    });
     expect(todayGlance(input({ meals: null })).nutrition).toBeNull();
+  });
+
+  it('nothing noted yet: logged is 0, so the screen never shows "0 g" as a measurement', () => {
+    expect(todayGlance(input({ meals: [meal('planned', 40), meal('skipped', 20)] })).nutrition).toMatchObject({
+      logged: 0,
+      proteinG: 0,
+    });
   });
 
   it('the week strip: done, adapted, not done in grey words, planned ahead, rest', () => {
@@ -101,16 +114,16 @@ const item = (over: Partial<DailyItem>): DailyItem => ({
 });
 
 describe('heroContent: planned facts only', () => {
-  it('a session to do: its focus, minutes, version and start, on the graphite surface', () => {
+  it('a session to do: its start first, then minutes, version and place, on the graphite surface', () => {
     expect(
       heroContent(item({ params: { focus: 'upper', minutes: 20, variant: 'short', location: 'gym', start: '18:00' } })),
     ).toEqual({
       focus: 'upper',
       chips: [
+        { kind: 'start', time: '18:00' },
         { kind: 'minutes', minutes: 20 },
         { kind: 'variant', variant: 'short' },
         { kind: 'location', location: 'gym' },
-        { kind: 'start', time: '18:00' },
       ],
       tone: 'inverse',
     });

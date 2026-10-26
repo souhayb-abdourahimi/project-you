@@ -28,6 +28,8 @@ export default function AdaptScreen() {
   const [fatigue, setFatigue] = useState<Level>(3);
   const [minutes, setMinutes] = useState(mode === 'time' ? 15 : 60);
   const [message, setMessage] = useState<string | null>(null);
+  // Once a choice is recorded the options go away: a second tap never moves or logs twice.
+  const [recorded, setRecorded] = useState(false);
   if (!plan) return null;
 
   const advice = suggestAlternatives(
@@ -70,6 +72,7 @@ export default function AdaptScreen() {
       const [first] = rescheduleOptions(plan.schedule, plan.today, input);
       if (!first) return setMessage(t('antiAbandon.noRescheduleSlot'));
       reschedule(plan.today, first.date);
+      setRecorded(true);
       return setMessage(t('antiAbandon.rescheduled', { date: formatDate(first.date, i18n.language) }));
     }
     // A walk or mobility instead of today's session: adapted, not missed. Rest: the session is
@@ -87,13 +90,20 @@ export default function AdaptScreen() {
         option === 'rest' ? { status: 'skipped', ...reason } : { status: 'replaced', replacedBy: option, ...reason },
       );
     }
+    setRecorded(true);
     setMessage(t(option === 'rest' ? 'antiAbandon.restLogged' : 'antiAbandon.activityLogged'));
   };
 
   const scale = (label: string, value: Level, set: (v: Level) => void) => (
     <>
       <Text variant="label">{label}</Text>
-      <ChoiceGroup options={LEVELS.map((v) => ({ value: v, label: String(v) }))} selected={[value]} onToggle={set} />
+      <ChoiceGroup
+        single
+        label={label}
+        options={LEVELS.map((v) => ({ value: v, label: String(v) }))}
+        selected={[value]}
+        onToggle={set}
+      />
     </>
   );
 
@@ -105,21 +115,26 @@ export default function AdaptScreen() {
         {scale(t('antiAbandon.fatigue'), fatigue, setFatigue)}
         <Text variant="label">{t('antiAbandon.available')}</Text>
         <ChoiceGroup
+          single
+          label={t('antiAbandon.available')}
           options={MINUTES.map((v) => ({ value: v, label: t('common.minutes', { count: v }) }))}
           selected={[minutes]}
           onToggle={setMinutes}
         />
       </Card>
       <Text variant="heading">{t(advice.messageKey)}</Text>
-      {advice.options.map((o, i) => (
-        <Button
-          key={o}
-          variant={i === 0 ? 'primary' : 'secondary'}
-          label={t(`antiAbandon.options.${o}`, { minutes: shortFor })}
-          onPress={() => choose(o)}
-        />
-      ))}
-      {message ? <Banner tone="success" message={message} /> : null}
+      {recorded
+        ? null
+        : advice.options.map((o, i) => (
+            <Button
+              key={o}
+              variant={i === 0 ? 'primary' : 'secondary'}
+              label={t(`antiAbandon.options.${o}`, { minutes: shortFor })}
+              onPress={() => choose(o)}
+            />
+          ))}
+      {message ? <Banner tone={recorded ? 'success' : 'primary'} message={message} /> : null}
+      {recorded ? <Button label={t('antiAbandon.backToday')} onPress={() => router.replace('/')} /> : null}
     </Screen>
   );
 }

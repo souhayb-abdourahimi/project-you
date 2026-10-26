@@ -1,5 +1,6 @@
 import type { Session } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 
 import { supabase } from './supabase';
 
@@ -32,7 +33,9 @@ export async function signIn(email: string, password: string) {
 /** Returns true when the project requires email confirmation before the first sign-in. */
 export async function signUp(email: string, password: string): Promise<boolean> {
   if (!supabase) throw new Error('supabase_not_configured');
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  // Web: the confirmation link comes back to this site (it must be listed in the Supabase Redirect URLs).
+  const emailRedirectTo = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : undefined;
+  const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo } });
   if (error) throw error;
   return data.session === null;
 }

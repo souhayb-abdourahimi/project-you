@@ -62,7 +62,7 @@ export function emptyDraft(): OnboardingDraft {
 }
 
 export type OnboardingSection =
-  'profile' | 'goal' | 'motivation' | 'life' | 'budget' | 'kitchen' | 'diet' | 'training' | 'schedule' | 'review';
+  'profile' | 'goal' | 'motivation' | 'budget' | 'kitchen' | 'diet' | 'training' | 'schedule' | 'review';
 
 export type OnboardingStepId =
   | 'profile.name'
@@ -72,10 +72,8 @@ export type OnboardingStepId =
   | 'profile.activity'
   | 'goal.type'
   | 'goal.target'
-  | 'goal.priorities'
-  | 'motivation.why'
+  | 'motivation.reasons'
   | 'motivation.more'
-  | 'life.status'
   | 'budget.food'
   | 'kitchen.equipment'
   | 'diet.type'
@@ -87,7 +85,6 @@ export type OnboardingStepId =
   | 'training.homeEquipment'
   | 'training.level'
   | 'training.frequency'
-  | 'training.sports'
   | 'training.refusedExercises'
   | 'schedule.availability'
   | 'review';
@@ -99,89 +96,226 @@ export interface OnboardingStep {
   isVisible: (draft: OnboardingDraft) => boolean;
   /** Whether the answers required by this step are present (optional steps are always complete). */
   isComplete: (draft: OnboardingDraft, referenceYear: number) => boolean;
+  /**
+   * `single`: one answer among a few, nothing else on the screen, nothing to check: touching an
+   * answer moves on (W-11). `multi`, `form` and `summary` always wait for "Continuer".
+   */
+  answer: 'single' | 'multi' | 'form' | 'summary';
+  /** Asked only in Réglages (older free-text answers stay editable, D-046). */
+  settingsOnly?: boolean;
 }
 
 const always = () => true;
 const optional = () => true;
 const isWeightGoal = (d: OnboardingDraft) => d.goal.type !== undefined && WEIGHT_GOALS.includes(d.goal.type);
 
+/** Same bounds as the profile schema: an out-of-range value is said on the step, not at the end. */
+export const HEIGHT_RANGE = { min: 120, max: 230 } as const;
+export const WEIGHT_RANGE = { min: 35, max: 300 } as const;
+const inRange = (v: number | undefined, r: { min: number; max: number }) => v !== undefined && v >= r.min && v <= r.max;
+
 export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
-  { id: 'profile.name', section: 'profile', isVisible: always, isComplete: (d) => !!d.user.displayName?.trim() },
+  {
+    id: 'profile.name',
+    section: 'profile',
+    answer: 'form',
+    isVisible: always,
+    isComplete: (d) => !!d.user.displayName?.trim(),
+  },
   {
     id: 'profile.age',
     section: 'profile',
+    answer: 'form',
     isVisible: always,
     isComplete: (d, year) => checkAge(d, year) === 'ok',
   },
   {
     id: 'profile.body',
     section: 'profile',
+    answer: 'form',
     isVisible: always,
-    isComplete: (d) => d.user.heightCm !== undefined && d.user.weightKg !== undefined,
+    isComplete: (d) => inRange(d.user.heightCm, HEIGHT_RANGE) && inRange(d.user.weightKg, WEIGHT_RANGE),
   },
-  { id: 'profile.sex', section: 'profile', isVisible: always, isComplete: (d) => d.user.sex !== undefined },
+  // Not automatic: the hint (why it is asked, "prefer not to say") must be readable first.
+  {
+    id: 'profile.sex',
+    section: 'profile',
+    answer: 'form',
+    isVisible: always,
+    isComplete: (d) => d.user.sex !== undefined,
+  },
   {
     id: 'profile.activity',
     section: 'profile',
+    answer: 'single',
     isVisible: always,
     isComplete: (d) => d.user.activityLevel !== undefined,
   },
-  { id: 'goal.type', section: 'goal', isVisible: always, isComplete: (d) => d.goal.type !== undefined },
-  { id: 'goal.target', section: 'goal', isVisible: isWeightGoal, isComplete: optional },
-  { id: 'goal.priorities', section: 'goal', isVisible: always, isComplete: optional },
-  { id: 'motivation.why', section: 'motivation', isVisible: always, isComplete: optional },
-  { id: 'motivation.more', section: 'motivation', isVisible: always, isComplete: optional },
-  { id: 'life.status', section: 'life', isVisible: always, isComplete: (d) => d.lifestyle.lifeStatus !== undefined },
+  {
+    id: 'goal.type',
+    section: 'goal',
+    answer: 'single',
+    isVisible: always,
+    isComplete: (d) => d.goal.type !== undefined,
+  },
+  { id: 'goal.target', section: 'goal', answer: 'form', isVisible: isWeightGoal, isComplete: optional },
+  { id: 'motivation.reasons', section: 'motivation', answer: 'multi', isVisible: always, isComplete: optional },
+  {
+    id: 'motivation.more',
+    section: 'motivation',
+    answer: 'form',
+    settingsOnly: true,
+    isVisible: always,
+    isComplete: optional,
+  },
   {
     id: 'budget.food',
     section: 'budget',
+    answer: 'form',
     isVisible: always,
     isComplete: (d) => d.budget.weeklyFoodBudgetCents !== undefined,
   },
-  { id: 'kitchen.equipment', section: 'kitchen', isVisible: always, isComplete: optional },
-  { id: 'diet.type', section: 'diet', isVisible: always, isComplete: (d) => d.nutrition.diet !== undefined },
-  { id: 'diet.allergies', section: 'diet', isVisible: always, isComplete: optional },
-  { id: 'diet.foods', section: 'diet', isVisible: always, isComplete: optional },
+  { id: 'kitchen.equipment', section: 'kitchen', answer: 'multi', isVisible: always, isComplete: optional },
+  {
+    id: 'diet.type',
+    section: 'diet',
+    answer: 'single',
+    isVisible: always,
+    isComplete: (d) => d.nutrition.diet !== undefined,
+  },
+  { id: 'diet.allergies', section: 'diet', answer: 'multi', isVisible: always, isComplete: optional },
+  { id: 'diet.foods', section: 'diet', answer: 'form', isVisible: always, isComplete: optional },
   {
     id: 'diet.meals',
     section: 'diet',
+    answer: 'form',
     isVisible: always,
     isComplete: (d) => d.nutrition.mealsPerDay !== undefined && d.nutrition.cookingMinutes !== undefined,
   },
-  { id: 'training.gym', section: 'training', isVisible: always, isComplete: (d) => d.training.hasGym !== undefined },
+  {
+    id: 'training.gym',
+    section: 'training',
+    answer: 'single',
+    isVisible: always,
+    isComplete: (d) => d.training.hasGym !== undefined,
+  },
   {
     id: 'training.gymDetails',
     section: 'training',
+    answer: 'form',
     isVisible: (d) => d.training.hasGym === true,
     isComplete: optional,
   },
   {
     id: 'training.homeEquipment',
     section: 'training',
+    answer: 'multi',
     isVisible: (d) => d.training.hasGym === false,
     isComplete: optional,
   },
-  { id: 'training.level', section: 'training', isVisible: always, isComplete: (d) => d.training.level !== undefined },
+  {
+    id: 'training.level',
+    section: 'training',
+    answer: 'single',
+    isVisible: always,
+    isComplete: (d) => d.training.level !== undefined,
+  },
   {
     id: 'training.frequency',
     section: 'training',
+    answer: 'form',
     isVisible: always,
     isComplete: (d) => d.training.sessionsPerWeek !== undefined && d.training.sessionMinutes !== undefined,
   },
-  { id: 'training.sports', section: 'training', isVisible: always, isComplete: optional },
   {
     // Beginners get a simpler flow; fine-grained exercise control is for experienced users.
     id: 'training.refusedExercises',
     section: 'training',
+    answer: 'multi',
     isVisible: (d) => d.training.level !== undefined && d.training.level !== 'beginner',
     isComplete: optional,
   },
-  { id: 'schedule.availability', section: 'schedule', isVisible: always, isComplete: optional },
-  { id: 'review', section: 'review', isVisible: always, isComplete: optional },
+  { id: 'schedule.availability', section: 'schedule', answer: 'form', isVisible: always, isComplete: optional },
+  { id: 'review', section: 'review', answer: 'summary', isVisible: always, isComplete: optional },
 ];
 
+/**
+ * Touching an answer moves on: only for a simple single choice, in the questionnaire (never in
+ * Réglages, where a form is saved explicitly).
+ */
+export function autoAdvances(id: OnboardingStepId): boolean {
+  return getStep(id).answer === 'single';
+}
+
+/** Why "Continuer" cannot be pressed yet, said under the button (never a silent disabled button). */
+export type BlockedReason = 'choose' | 'name' | 'age' | 'body' | 'budget' | 'meals' | 'frequency' | 'sex';
+
+export function blockedReason(
+  draft: OnboardingDraft,
+  id: OnboardingStepId,
+  referenceYear: number,
+): BlockedReason | null {
+  const step = getStep(id);
+  if (step.isComplete(draft, referenceYear)) return null;
+  switch (id) {
+    case 'profile.name':
+      return 'name';
+    case 'profile.age':
+      return 'age';
+    case 'profile.body':
+      return 'body';
+    case 'profile.sex':
+      return 'sex';
+    case 'budget.food':
+      return 'budget';
+    case 'diet.meals':
+      return 'meals';
+    case 'training.frequency':
+      return 'frequency';
+    default:
+      return 'choose';
+  }
+}
+
+/**
+ * The label of "Continuer" on an optional step left empty: it says what the empty answer means
+ * ("Aucune allergie"), so nobody has to invent an answer to go on.
+ */
+export function emptyAnswerLabel(draft: OnboardingDraft, id: OnboardingStepId): string | null {
+  switch (id) {
+    case 'goal.target':
+      return draft.goal.targetWeightKg === undefined && draft.goal.targetDate === undefined ? 'noTarget' : null;
+    case 'motivation.reasons':
+      return (draft.motivation.reasons ?? []).length === 0 && !draft.motivation.why?.trim() ? 'skip' : null;
+    case 'kitchen.equipment':
+      return (draft.lifestyle.kitchen ?? []).length === 0 ? 'noKitchen' : null;
+    case 'diet.allergies':
+      return (draft.nutrition.allergies ?? []).length === 0 && (draft.nutrition.intolerances ?? []).length === 0
+        ? 'noAllergy'
+        : null;
+    case 'diet.foods':
+      return [draft.nutrition.excludedFoods, draft.nutrition.dislikedFoods, draft.nutrition.likedFoods].every(
+        (l) => (l ?? []).length === 0,
+      )
+        ? 'nothingToAdd'
+        : null;
+    case 'training.homeEquipment':
+      return (draft.training.equipment ?? []).filter((e) => e !== 'bodyweight').length === 0 ? 'noEquipment' : null;
+    case 'training.refusedExercises':
+      return (draft.training.refusedExerciseIds ?? []).length === 0 ? 'noRefused' : null;
+    case 'training.gymDetails':
+      return !draft.training.gymName?.trim() && draft.training.gymTravelMinutes === undefined ? 'skip' : null;
+    case 'schedule.availability':
+      return (draft.schedule.availability ?? []).length === 0 && (draft.schedule.fixedConstraints ?? []).length === 0
+        ? 'later'
+        : null;
+    default:
+      return null;
+  }
+}
+
 export function visibleSteps(draft: OnboardingDraft): OnboardingStep[] {
-  return ONBOARDING_STEPS.filter((step) => step.isVisible(draft));
+  return ONBOARDING_STEPS.filter((step) => !step.settingsOnly && step.isVisible(draft));
 }
 
 export function getStep(id: OnboardingStepId): OnboardingStep {
@@ -314,4 +448,49 @@ export function removedAllergies(
 ): UserContextSnapshot['nutrition']['allergies'] {
   if (!saved) return [];
   return saved.nutrition.allergies.filter((a) => !next.nutrition.allergies.includes(a));
+}
+
+/** Deadlines offered for a target weight, in months; a date is never typed by hand (W-11). */
+export const TARGET_HORIZONS = [3, 6, 12] as const;
+
+/** The same day `months` later (the last day of the month when it does not exist, 31 → 30). */
+export function targetDateIn(months: number, today: string): string {
+  const [y, m, d] = today.split('-').map(Number);
+  const total = m - 1 + months;
+  const year = y + Math.floor(total / 12);
+  const month = (total % 12) + 1;
+  const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return `${year}-${String(month).padStart(2, '0')}-${String(Math.min(d, last)).padStart(2, '0')}`;
+}
+
+/** Weekly food budgets offered as one touch; 0 = no precise budget (spending is then not compared). */
+export const BUDGET_PRESETS_CENTS = [0, 3000, 5000, 8000, 12000] as const;
+
+/** Where a validation issue of the summary is fixed: the step to reopen, named by its title. */
+export function stepOfIssue(issue: string): OnboardingStepId {
+  const path = issue.split(':')[0];
+  const rules: [RegExp, OnboardingStepId][] = [
+    [/^user\.displayName/, 'profile.name'],
+    [/^user\.birthYear/, 'profile.age'],
+    [/^user\.(heightCm|weightKg)/, 'profile.body'],
+    [/^user\.sex/, 'profile.sex'],
+    [/^user\.activityLevel/, 'profile.activity'],
+    [/^goal\.type/, 'goal.type'],
+    [/^goal\./, 'goal.target'],
+    [/^motivation\./, 'motivation.reasons'],
+    [/^budget\./, 'budget.food'],
+    [/^lifestyle\./, 'kitchen.equipment'],
+    [/^nutrition\.diet/, 'diet.type'],
+    [/^nutrition\.(allergies|intolerances)/, 'diet.allergies'],
+    [/^nutrition\.(mealsPerDay|cookingMinutes)/, 'diet.meals'],
+    [/^nutrition\./, 'diet.foods'],
+    [/^training\.level/, 'training.level'],
+    [/^training\.(sessionsPerWeek|sessionMinutes)/, 'training.frequency'],
+    [/^training\.(gymName|gymTravelMinutes)/, 'training.gymDetails'],
+    [/^training\.equipment/, 'training.homeEquipment'],
+    [/^training\.refusedExerciseIds/, 'training.refusedExercises'],
+    [/^training\./, 'training.gym'],
+    [/^schedule\./, 'schedule.availability'],
+  ];
+  return rules.find(([re]) => re.test(path))?.[1] ?? 'profile.name';
 }

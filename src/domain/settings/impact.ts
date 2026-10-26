@@ -77,6 +77,7 @@ export const FIELD_EFFECTS: Record<string, ChangeEffect[]> = {
   'goal.targetWeightKg': ['immediate'],
   'goal.targetDate': ['immediate'],
   'goal.priorities': ['immediate'],
+  'motivation.reasons': ['immediate'],
   'motivation.why': ['immediate'],
   'motivation.change': ['immediate'],
   'motivation.feel': ['immediate'],
@@ -145,7 +146,8 @@ export function profileImpact(input: {
   // The frequency the program uses now: an accepted adaptation, else the profile.
   const frequencyDecision = sessionsPerWeekDecision([...adjustments]);
   const frequencyChanged = fields.includes('training.sessionsPerWeek');
-  if (frequencyDecision && frequencyChanged) replaced.push({ decision: frequencyDecision, reason: 'frequency_setting' });
+  if (frequencyDecision && frequencyChanged)
+    replaced.push({ decision: frequencyDecision, reason: 'frequency_setting' });
   // A calorie offset accepted for the old goal does not carry over to a new goal.
   if (fields.includes('goal.type') && appliedCalorieOffset([...adjustments]) !== 0) {
     const offset = appliedDecisions(adjustments)
@@ -156,7 +158,11 @@ export function profileImpact(input: {
 
   const before = programParams(
     saved.goal.type,
-    programTraining(saved, adjustments, frequencyDecision ? Number(frequencyDecision.to) : saved.training.sessionsPerWeek),
+    programTraining(
+      saved,
+      adjustments,
+      frequencyDecision ? Number(frequencyDecision.to) : saved.training.sessionsPerWeek,
+    ),
   );
   const keepDecision = frequencyDecision && !frequencyChanged;
   const after = programParams(
@@ -179,8 +185,7 @@ export function profileImpact(input: {
     newProgramVersion,
     removedAllergies: removed,
     replaced,
-    needsConfirmation:
-      newProgramVersion || removed.length > 0 || replaced.length > 0 || fields.includes('goal.type'),
+    needsConfirmation: newProgramVersion || removed.length > 0 || replaced.length > 0 || fields.includes('goal.type'),
   };
 }
 

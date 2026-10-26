@@ -6,9 +6,10 @@ import { Button, Card, ChoiceGroup, Text } from '@/components/ui';
 import type { TrainingProfile } from '@/domain/profile/schemas';
 import { getExercise } from '@/domain/training/exercises';
 import { DIFFICULTY_LEVELS, difficultyLevel } from '@/domain/training/program';
-import { spacing } from '@/theme';
+import { radius, spacing, useColors } from '@/theme';
 
 import { ExerciseFacts } from './ExerciseFacts';
+import { ExerciseMedia } from './ExerciseMedia';
 import { NotPerformedPanel, ReplacePanel } from './ReplacePanel';
 import { SetEntry } from './SetEntry';
 import { SetList } from './SetList';
@@ -27,22 +28,38 @@ export function CurrentExercise({
   training: Pick<TrainingProfile, 'equipment' | 'level' | 'refusedExerciseIds'>;
 }) {
   const { t, i18n } = useTranslation();
+  const colors = useColors();
   const lang = i18n.language === 'en' ? 'en' : 'fr';
   const [panel, setPanel] = useState<Panel>(null);
   const [editing, setEditing] = useState<number | null>(null);
   const { exercise: ex, actions } = controller;
   if (!ex) return null;
-  const name = getExercise(ex.exerciseId)?.name[lang] ?? ex.exerciseId;
+  const info = getExercise(ex.exerciseId);
+  const name = info?.name[lang] ?? ex.exerciseId;
+  const muscles = info?.primary.map((m) => t(`workout.targets.${m}`)).join(' · ') ?? '';
   const planned = getExercise(ex.prescribedId)?.name[lang] ?? ex.prescribedId;
   const doneAll = ex.today.length >= ex.sets;
   const editSet = editing !== null ? ex.today[editing] : undefined;
 
   return (
     <Card raised style={styles.card}>
-      <Text variant="overline" color="primary">
-        {t('workout.header.exerciseOf', { index: ex.index + 1, total })}
-      </Text>
-      <Text variant="title2">{name}</Text>
+      <ExerciseMedia exerciseId={ex.exerciseId} label={name} variant="hero">
+        <View style={[styles.pill, { backgroundColor: colors.inverseFill }]}>
+          <Text variant="captionStrong" color="onInverse">
+            {t('workout.header.exerciseOf', { index: ex.index + 1, total })}
+          </Text>
+        </View>
+        <View style={styles.title}>
+          <Text variant="title2" color="onInverse" accessibilityRole="header">
+            {name}
+          </Text>
+          {muscles ? (
+            <Text variant="caption" color="onInverseMuted" numberOfLines={1}>
+              {muscles}
+            </Text>
+          ) : null}
+        </View>
+      </ExerciseMedia>
       {ex.replaced ? (
         <View style={styles.row}>
           <Text variant="caption" color="textMuted">
@@ -54,7 +71,12 @@ export function CurrentExercise({
         </View>
       ) : null}
       <ExerciseFacts exercise={ex} last={ex.last} hint={ex.hint} />
-      <SetList sets={ex.today} editing={editing} onEdit={(i) => setEditing(editing === i ? null : i)} />
+      <SetList
+        sets={ex.today}
+        planned={ex.sets}
+        editing={editing}
+        onEdit={(i) => setEditing(editing === i ? null : i)}
+      />
 
       {/* One thing at a time: the replace / skip panel takes the place of the set entry. */}
       {panel !== null ? null : ex.status === 'not_performed' ? (
@@ -149,6 +171,13 @@ export function CurrentExercise({
 
 const styles = StyleSheet.create({
   card: { gap: spacing.md },
+  title: { gap: 2 },
+  pill: {
+    alignSelf: 'flex-start',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm + spacing.xxs,
+    paddingVertical: spacing.xxs + 1,
+  },
   row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
   block: { gap: spacing.sm },
 });

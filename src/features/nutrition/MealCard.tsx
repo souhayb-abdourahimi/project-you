@@ -1,29 +1,26 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import {
-  Badge,
-  Button,
-  Card,
-  ChoiceGroup,
-  Icon,
-  MockBadge,
-  Rationale,
-  Row,
-  Text,
-} from '@/components/ui';
+import { Button, Card, ChoiceGroup, Icon, MockBadge, Text } from '@/components/ui';
 import { MEAL_REASONS, type MealReason } from '@/domain/journey/outcomes';
 import { getFood, hasMockFood } from '@/domain/meals/catalog';
-import { alternativesFor, type PlannedMeal, type ReplaceReason } from '@/domain/meals/planner';
+import type { PlannedMeal } from '@/domain/meals/planner';
 import { getRecipe } from '@/domain/meals/recipes';
-import { usePlan } from '@/hooks/usePlan';
+import { MealDetails } from '@/features/nutrition/MealDetails';
 import { MealMedia } from '@/features/nutrition/MealMedia';
+import { usePlan } from '@/hooks/usePlan';
+import { formatNumber } from '@/lib/format';
 import { useDataStore } from '@/state/data';
-import { radius, spacing, useColors } from '@/theme';
+import { MIN_TOUCH, PRESSED_SCALE, radius, spacing, useColors } from '@/theme';
 
-const REASONS: ReplaceReason[] = ['replace', 'faster', 'more_protein', 'cheaper'];
-
+/**
+ * A planned meal as one row (W-10 reference): thumbnail, slot, dish, kcal and macros, and a round
+ * "eaten" control on the right (one tap). Tapping the row opens the rest: not as planned (skipped /
+ * something else, with an optional reason), undo, and the recipe. `compact` (Today) is the row
+ * alone and opens Nutrition.
+ */
 export function MealCard({ meal, compact }: { meal: PlannedMeal; compact?: boolean }) {
   const { t, i18n } = useTranslation();
   const colors = useColors();
@@ -33,110 +30,147 @@ export function MealCard({ meal, compact }: { meal: PlannedMeal; compact?: boole
   const markSkipped = useDataStore((s) => s.markMealSkipped);
   const markReplaced = useDataStore((s) => s.markMealReplaced);
   const unmark = useDataStore((s) => s.unmarkMeal);
-  const replaceMeal = useDataStore((s) => s.replaceMeal);
   const [open, setOpen] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
 
   const recipe = getRecipe(meal.recipeId);
   if (!recipe || !plan) return null;
-
-  const replace = (reason: ReplaceReason, missingFoodId?: string) => {
-    const result = alternativesFor(meal, reason, plan.plannerContext, { missingFoodId });
-    if (result.status === 'unavailable') return setMessage(t('nutrition.noPrices'));
-    if (result.meals.length === 0) return setMessage(t('nutrition.noAlternative'));
-    replaceMeal(result.meals[0]);
-    setMessage(null);
-  };
-
-  const statusTone =
+  const num = (v: number) => formatNumber(Math.round(v), i18n.language);
+  const slot = t(`enums.slot.${meal.slot}`);
+  const status =
     meal.status === 'eaten'
-      ? { background: colors.successSubtle, accent: colors.success }
-      : meal.status === 'planned'
-        ? { background: colors.surfaceSubtle, accent: colors.textMuted }
-        : { background: colors.warningSubtle, accent: colors.warning };
+      ? t('nutrition.eaten')
+      : meal.status === 'skipped'
+        ? t('nutrition.skipped')
+        : meal.status === 'replaced'
+          ? t('nutrition.replaced')
+          : null;
+  const macros = `P ${num(meal.nutrition.proteinG)} · G ${num(meal.nutrition.carbsG)} · L ${num(meal.nutrition.fatG)} g`;
+  const label = [
+    slot,
+    recipe.name[lang],
+    `${num(meal.nutrition.kcal)} kcal`,
+    t('nutrition.macrosA11y', {
+      protein: num(meal.nutrition.proteinG),
+      carbs: num(meal.nutrition.carbsG),
+      fat: num(meal.nutrition.fatG),
+    }),
+    status,
+  ]
+    .filter(Boolean)
+    .join(', ');
+
+  const row = (
+    <View style={styles.row}>
+      <MealMedia recipeId={recipe.id} slot={meal.slot} label={recipe.name[lang]} size={compact ? 52 : 60} />
+      <View style={styles.text} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <View style={styles.slotLine}>
+          <Text variant="headline">{slot}</Text>
+          {hasMockFood(meal.ingredients.map((i) => i.foodId)) ? <MockBadge /> : null}
+        </View>
+        <Text variant="caption" color="textSecondary" numberOfLines={1}>
+          {recipe.name[lang]}
+        </Text>
+        <View style={styles.kcalLine}>
+          <Text variant="captionStrong">{num(meal.nutrition.kcal)} kcal</Text>
+          <Text variant="caption" color="textMuted" numberOfLines={1} style={styles.flexShrink}>
+            {meal.status === 'skipped' || meal.status === 'replaced' ? status : macros}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  if (compact) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityHint={t('today.glance.openNutrition')}
+        onPress={() => router.push('/nutrition')}
+        style={({ pressed }) => ({ transform: [{ scale: pressed ? PRESSED_SCALE : 1 }] })}>
+        <Card dense style={styles.compactCard}>
+          <View style={styles.flex}>{row}</View>
+          {meal.status === 'eaten' ? (
+            <View style={[styles.mark, styles.markSmall, { backgroundColor: colors.success }]}>
+              <Icon name="check" size={14} color="surface" />
+            </View>
+          ) : (
+            <Icon name="chevron" size="sm" color="textMuted" />
+          )}
+        </Card>
+      </Pressable>
+    );
+  }
 
   return (
-    <Card style={styles.card}>
-      <MealMedia uri={recipe.mediaUri} label={recipe.name[lang]} compact={compact} />
+    <Card dense style={styles.card}>
+      <View style={styles.top}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={label}
+          accessibilityHint={t('nutrition.openMeal')}
+          accessibilityState={{ expanded: open }}
+          aria-expanded={open}
+          onPress={() => setOpen((v) => !v)}
+          style={styles.flex}>
+          {row}
+        </Pressable>
+        <MarkButton
+          status={meal.status}
+          slot={slot}
+          onEat={() => markEaten(meal.id)}
+          onUndo={() => unmark(meal.id)}
+          onOpen={() => setOpen(true)}
+        />
+      </View>
 
-      <View style={styles.header}>
-        <View style={[styles.slotIcon, { backgroundColor: statusTone.background }]}>
-          <Icon name="meal" size="md" color={meal.status === 'eaten' ? 'success' : 'nutrition'} />
-        </View>
-
-        <View style={styles.titleBlock}>
-          <View style={styles.slotLine}>
-            <Text variant="overline" color="nutrition">
-              {t(`enums.slot.${meal.slot}`)}
+      {open ? (
+        <View style={[styles.more, { borderTopColor: colors.border }]}>
+          {(meal.substitutions ?? []).map((sub) => (
+            <Text key={sub.from} variant="caption" color="textMuted">
+              {t('nutrition.adapted', { from: getFood(sub.from)?.name[lang], to: getFood(sub.to)?.name[lang] })}
             </Text>
-            {hasMockFood(meal.ingredients.map((i) => i.foodId)) ? <MockBadge /> : null}
-          </View>
-          <Text variant={compact ? 'headline' : 'title3'}>{recipe.name[lang]}</Text>
-          <Text variant="caption" color="textMuted">
-            {t('common.minutes', { count: recipe.minutes })}
-          </Text>
-        </View>
+          ))}
+          {meal.usesInventory.length > 0 ? (
+            <View style={styles.inline}>
+              <Icon name="check" size="sm" color="success" />
+              <Text variant="caption" color="success">
+                {t('nutrition.usesInventory', { count: meal.usesInventory.length })}
+              </Text>
+            </View>
+          ) : null}
 
-        {meal.status === 'eaten' ? (
-          <Badge tone="positive" icon="check" label={t('nutrition.eaten')} />
-        ) : null}
-      </View>
-
-      <View style={styles.nutritionRow}>
-        <NutritionValue
-          label="kcal"
-          value={String(Math.round(meal.nutrition.kcal))}
-          background={colors.primarySubtle}
-        />
-        <NutritionValue
-          label={t('nutrition.protein')}
-          value={`${Math.round(meal.nutrition.proteinG)} g`}
-          background={colors.successSubtle}
-        />
-        <NutritionValue
-          label={t('nutrition.carbs')}
-          value={`${Math.round(meal.nutrition.carbsG)} g`}
-          background={colors.surfaceSubtle}
-        />
-        <NutritionValue
-          label={t('nutrition.fat')}
-          value={`${Math.round(meal.nutrition.fatG)} g`}
-          background={colors.surfaceSubtle}
-        />
-      </View>
-
-      {(meal.substitutions ?? []).map((sub) => (
-        <Text key={sub.from} variant="caption" color="textMuted">
-          {t('nutrition.adapted', { from: getFood(sub.from)?.name[lang], to: getFood(sub.to)?.name[lang] })}
-        </Text>
-      ))}
-
-      {meal.usesInventory.length > 0 ? (
-        <View style={styles.inventoryLine}>
-          <Icon name="check" size="sm" color="success" />
-          <Text variant="caption" color="success">
-            {t('nutrition.usesInventory', { count: meal.usesInventory.length })}
-          </Text>
-        </View>
-      ) : null}
-
-      {meal.status === 'skipped' || meal.status === 'replaced' ? (
-        <View style={[styles.statusPanel, { backgroundColor: statusTone.background }]}>
-          <Text variant="captionStrong" style={{ color: statusTone.accent }}>
-            {t(meal.status === 'skipped' ? 'nutrition.skipped' : 'nutrition.replaced')}
-            {meal.reason ? ` · ${t(`nutrition.reason.${meal.reason}`)}` : ''}
-          </Text>
-
-          {compact ? null : (
-            <>
+          {meal.status === 'planned' ? (
+            <View style={styles.actions}>
+              <Text variant="caption" color="textMuted" style={styles.full}>
+                {t('nutrition.notAsPlanned')}
+              </Text>
+              <Button
+                compact
+                variant="secondary"
+                label={t('nutrition.markSkipped')}
+                onPress={() => markSkipped(meal.id)}
+              />
+              <Button
+                compact
+                variant="secondary"
+                label={t('nutrition.markReplaced')}
+                onPress={() => markReplaced(meal.id)}
+              />
+            </View>
+          ) : meal.status === 'eaten' ? null : (
+            <View style={[styles.panel, { backgroundColor: colors.surfaceSubtle }]}>
+              <Text variant="captionStrong" color="textSecondary">
+                {status}
+                {meal.reason ? ` · ${t(`nutrition.reason.${meal.reason}`)}` : ''}
+              </Text>
               <Text variant="caption" color="textMuted">
                 {t('nutrition.reasonQuestion')}
               </Text>
               <ChoiceGroup
-                options={MEAL_REASONS.map((reason) => ({
-                  value: reason,
-                  label: t(`nutrition.reason.${reason}`),
-                }))}
+                single
+                label={t('nutrition.reasonQuestion')}
+                options={MEAL_REASONS.map((reason) => ({ value: reason, label: t(`nutrition.reason.${reason}`) }))}
                 selected={meal.reason ? [meal.reason] : []}
                 onToggle={(reason: MealReason) => {
                   const mark = meal.status === 'skipped' ? markSkipped : markReplaced;
@@ -144,165 +178,90 @@ export function MealCard({ meal, compact }: { meal: PlannedMeal; compact?: boole
                 }}
               />
               <Button compact variant="ghost" label={t('nutrition.undo')} onPress={() => unmark(meal.id)} />
-            </>
+            </View>
           )}
-        </View>
-      ) : meal.status === 'eaten' ? (
-        compact ? null : (
-          <Button compact variant="ghost" label={t('nutrition.undo')} onPress={() => unmark(meal.id)} />
-        )
-      ) : compact ? null : (
-        <View style={styles.actions}>
-          <Button label={t('nutrition.markEaten')} onPress={() => markEaten(meal.id)} />
-          <Row>
-            <Button
-              compact
-              variant="secondary"
-              label={t('nutrition.markSkipped')}
-              onPress={() => markSkipped(meal.id)}
-            />
-            <Button
-              compact
-              variant="secondary"
-              label={t('nutrition.markReplaced')}
-              onPress={() => markReplaced(meal.id)}
-            />
-          </Row>
-        </View>
-      )}
 
-      {compact ? null : (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ expanded: open }}
-          onPress={() => setOpen((value) => !value)}
-          style={({ pressed }) => [
-            styles.detailsToggle,
-            { backgroundColor: pressed ? colors.surfaceSubtle : 'transparent' },
-          ]}>
-          <Text variant="captionStrong" color="textSecondary">
-            {t('nutrition.recipe')}
-          </Text>
-          <Icon name="chevron" size="sm" color="textMuted" />
-        </Pressable>
-      )}
-
-      {open ? (
-        <View style={styles.details}>
-          <Text variant="label">{t('nutrition.ingredients')}</Text>
-          {meal.ingredients.map((ingredient) => (
-            <View key={ingredient.foodId} style={styles.ingredient}>
-              <Text style={styles.flex}>
-                {getFood(ingredient.foodId)?.name[lang]} · {t('common.grams', { value: ingredient.grams })}
-              </Text>
-              <Button
-                compact
-                variant="ghost"
-                label={t('nutrition.alternatives.missing_ingredient')}
-                onPress={() => replace('missing_ingredient', ingredient.foodId)}
-              />
-            </View>
-          ))}
-
-          <Text variant="label">{t('nutrition.steps')}</Text>
-          {recipe.steps[lang].map((step, index) => (
-            <View key={index} style={styles.step}>
-              <View style={[styles.stepNumber, { backgroundColor: colors.primarySubtle }]}>
-                <Text variant="captionStrong" color="primary">
-                  {index + 1}
-                </Text>
-              </View>
-              <Text style={styles.flex}>{step}</Text>
-            </View>
-          ))}
-
-          <View style={styles.alternatives}>
-            {REASONS.map((reason) => (
-              <Button
-                key={reason}
-                compact
-                variant="secondary"
-                label={t(`nutrition.alternatives.${reason}`)}
-                onPress={() => replace(reason)}
-              />
-            ))}
-          </View>
-
-          {message ? (
-            <Text variant="caption" color="textMuted">
-              {message}
-            </Text>
-          ) : null}
-
-          <Rationale data={meal.rationale} />
+          <MealDetails meal={meal} recipe={recipe} plan={plan} />
         </View>
       ) : null}
     </Card>
   );
 }
 
-function NutritionValue({
-  label,
-  value,
-  background,
+/**
+ * The round control on the right of a meal: planned → "Je l'ai mangé" in one tap; eaten → a green
+ * check that undoes it; skipped / something else → opens the meal to change it. ≥ 44 pt.
+ */
+function MarkButton({
+  status,
+  slot,
+  onEat,
+  onUndo,
+  onOpen,
 }: {
-  label: string;
-  value: string;
-  background: string;
+  status: PlannedMeal['status'];
+  slot: string;
+  onEat: () => void;
+  onUndo: () => void;
+  onOpen: () => void;
 }) {
+  const { t } = useTranslation();
+  const colors = useColors();
+  const look =
+    status === 'eaten'
+      ? { bg: colors.success, border: colors.success, icon: 'check' as const, color: 'surface' as const }
+      : status === 'planned'
+        ? { bg: colors.surface, border: colors.borderStrong, icon: 'check' as const, color: 'textMuted' as const }
+        : {
+            bg: colors.surfaceSubtle,
+            border: colors.surfaceSubtle,
+            icon: 'skipped' as const,
+            color: 'textMuted' as const,
+          };
+  const a11y =
+    status === 'eaten'
+      ? t('nutrition.undoEaten', { slot })
+      : status === 'planned'
+        ? t('nutrition.markEaten')
+        : t('nutrition.changeStatus', { slot });
   return (
-    <View style={[styles.nutritionValue, { backgroundColor: background }]}>
-      <Text variant="captionStrong">{value}</Text>
-      <Text variant="micro" color="textMuted" numberOfLines={1}>
-        {label}
-      </Text>
-    </View>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={a11y}
+      accessibilityState={{ checked: status === 'eaten' }}
+      hitSlop={spacing.xs}
+      onPress={status === 'eaten' ? onUndo : status === 'planned' ? onEat : onOpen}
+      style={({ pressed }) => [
+        styles.mark,
+        { backgroundColor: look.bg, borderColor: look.border, transform: [{ scale: pressed ? PRESSED_SCALE : 1 }] },
+      ]}>
+      <Icon name={look.icon} size="md" color={look.color} />
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { gap: spacing.lg },
-  header: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
-  slotIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  titleBlock: { flex: 1, gap: spacing.xs },
+  card: { gap: spacing.sm },
+  compactCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  top: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  text: { flex: 1, gap: 1 },
   slotLine: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
-  nutritionRow: { flexDirection: 'row', gap: spacing.sm },
-  nutritionValue: {
-    flex: 1,
-    minWidth: 64,
-    borderRadius: radius.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xs,
-    alignItems: 'center',
-    gap: 2,
-  },
-  inventoryLine: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  statusPanel: { borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm },
-  actions: { gap: spacing.sm },
-  detailsToggle: {
-    minHeight: 44,
-    borderRadius: radius.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-  },
-  details: { gap: spacing.md },
-  ingredient: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  step: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
-  stepNumber: {
-    width: 28,
-    height: 28,
+  kcalLine: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
+  mark: {
+    width: MIN_TOUCH,
+    height: MIN_TOUCH,
     borderRadius: radius.pill,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  alternatives: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  markSmall: { width: 26, height: 26, borderWidth: 0 },
+  more: { gap: spacing.sm, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: spacing.sm },
+  inline: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  panel: { borderRadius: radius.md, padding: spacing.md, gap: spacing.sm },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  full: { width: '100%' },
   flex: { flex: 1 },
+  flexShrink: { flexShrink: 1 },
 });

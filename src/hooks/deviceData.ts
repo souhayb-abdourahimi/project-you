@@ -1,6 +1,7 @@
 import { providers } from '@/providers';
 import { replaceScheduled } from '@/services/notifications';
 import { useCalendarStore } from '@/state/calendar';
+import { useCalendarFeedStore } from '@/state/calendarFeed';
 import { useDataStore } from '@/state/data';
 import { useHealthStore } from '@/state/health';
 import { useNotificationStore } from '@/state/notifications';
@@ -19,6 +20,8 @@ export function resetDeviceData(): Promise<void> {
   useNotificationStore.getState().reset();
   const calendarLinked = useCalendarStore.getState().connected;
   useCalendarStore.getState().reset();
+  // The iCal busy times cached from the account (the link itself stays on the server).
+  useCalendarFeedStore.getState().reset();
   const healthLinked = useHealthStore.getState().connected;
   useHealthStore.getState().reset();
   return Promise.all([

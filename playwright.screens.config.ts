@@ -23,11 +23,57 @@ export default defineConfig({
       name: 'iphoneSE',
       use: { viewport: { width: 375, height: 667 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
     },
+    // The same two iPhones in dark mode (the app follows the system appearance).
+    {
+      name: 'iphone15-dark',
+      use: {
+        viewport: { width: 393, height: 852 },
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true,
+        colorScheme: 'dark',
+      },
+    },
+    {
+      name: 'iphoneSE-dark',
+      use: {
+        viewport: { width: 375, height: 667 },
+        deviceScaleFactor: 2,
+        isMobile: true,
+        hasTouch: true,
+        colorScheme: 'dark',
+      },
+    },
     {
       name: 'android',
       use: { viewport: { width: 412, height: 915 }, deviceScaleFactor: 2.625, isMobile: true, hasTouch: true },
     },
+    // The narrowest common Android width (360 dp).
+    {
+      name: 'android360',
+      use: { viewport: { width: 360, height: 800 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
+    },
+    // English, on an iPhone 15 (the language follows the device).
+    {
+      name: 'iphone15-en',
+      use: {
+        viewport: { width: 393, height: 852 },
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true,
+        locale: 'en-GB',
+      },
+    },
     { name: 'desktop', use: { viewport: { width: 1366, height: 900 } } },
   ],
-  webServer: { command: 'node scripts/serve-dist.mjs', port: 8765, reuseExistingServer: true },
+  webServer: [
+    { command: 'node scripts/serve-dist.mjs', port: 8765, reuseExistingServer: true },
+    // Signed-in captures (npm run build:web:e2e-account first): fake project answered by the script.
+    {
+      command: 'node scripts/serve-dist.mjs',
+      env: { DIST_DIR: 'dist-account', PORT: '8766' },
+      port: 8766,
+      reuseExistingServer: true,
+    },
+  ],
 });

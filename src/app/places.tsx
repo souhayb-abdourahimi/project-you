@@ -1,10 +1,24 @@
 import { useTranslation } from 'react-i18next';
+import { View } from 'react-native';
 
 import { Banner, Button, Card, ChoiceGroup, EmptyState, LoadingScreen, Screen, Text } from '@/components/ui';
 import { toIsoDate } from '@/domain/shared/dates';
+import { placesErrorKey } from '@/features/places/errors';
 import { PlaceCard } from '@/features/places/PlaceCard';
 import { usePlaces } from '@/features/places/usePlaces';
 import { formatDate } from '@/lib/format';
+
+function ErrorWithRetry({ message, onRetry }: { message: string; onRetry: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <Card>
+      <View accessibilityRole="alert" accessibilityLiveRegion="polite">
+        <Text>{message}</Text>
+      </View>
+      <Button variant="secondary" label={t('common.retry')} onPress={onRetry} />
+    </Card>
+  );
+}
 
 export default function PlacesScreen() {
   const { t, i18n } = useTranslation();
@@ -17,6 +31,8 @@ export default function PlacesScreen() {
       <Text color="textMuted">{t('places.intro')}</Text>
       {p.currentGym ? <Banner tone="textMuted" message={t('places.currentGym', { name: p.currentGym })} /> : null}
       <ChoiceGroup
+        single
+        label={t('places.kindLabel')}
         options={[
           { value: 'gym' as const, label: t('places.kinds.gym') },
           { value: 'store' as const, label: t('places.kinds.store') },
@@ -26,20 +42,23 @@ export default function PlacesScreen() {
       />
       <Card>
         <Text color="textMuted">{t('places.locationWhy')}</Text>
-        <Button
-          label={t('places.search')}
-          onPress={() => void p.search()}
-          disabled={phase.kind === 'locating' || phase.kind === 'loading'}
-        />
+        <Button label={t('places.search')} onPress={() => void p.search()} disabled={p.busy} />
       </Card>
 
       {phase.kind === 'locating' ? <LoadingScreen message={t('places.locating')} /> : null}
       {phase.kind === 'loading' ? <LoadingScreen message={t('common.loading')} /> : null}
-      {phase.kind === 'location_denied' ? <Banner message={t('places.locationDenied')} /> : null}
-      {phase.kind === 'location_error' ? <Banner message={t('places.locationError')} /> : null}
-      {result?.status === 'unavailable' ? <EmptyState message={t('places.none')} /> : null}
+      {phase.kind === 'location_denied' ? <Banner message={t(p.deniedMessage)} /> : null}
+      {phase.kind === 'location_error' ? (
+        <ErrorWithRetry
+          message={t(phase.reason === 'timeout' ? 'places.locationTimeout' : 'places.locationError')}
+          onRetry={() => void p.search()}
+        />
+      ) : null}
+      {result?.status === 'unavailable' ? (
+        <EmptyState message={t(`places.none.${p.placeKind}`, { radius: p.radiusKm })} />
+      ) : null}
       {result?.status === 'error' ? (
-        <Banner message={t(result.error === 'rate_limited' ? 'places.busy' : 'places.error')} />
+        <ErrorWithRetry message={t(`places.errors.${placesErrorKey(result.error)}`)} onRetry={() => void p.search()} />
       ) : null}
 
       {result?.status === 'ok' ? (

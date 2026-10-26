@@ -22,15 +22,37 @@ export function BudgetCard() {
   return (
     <Card>
       <Text variant="title3">{t('nutrition.budget')}</Text>
-      <Text variant="title2">
-        {t('nutrition.budgetValue', { spent: money(summary.spentCents), planned: money(summary.plannedCents) })}
-      </Text>
-      <ProgressBar
-        value={summary.ratio}
-        label={t('nutrition.budget')}
-        color={summary.status === 'on_track' ? 'success' : 'warning'}
-      />
-      <Text color="textMuted">{t('nutrition.budgetRemaining', { amount: money(summary.remainingCents) })}</Text>
+      {summary.plannedCents === 0 ? (
+        // "Pas de budget précis": the expenses noted, nothing to compare them with.
+        <>
+          <Text color="textMuted">{t('nutrition.budgetNone')}</Text>
+          {summary.entries > 0 ? (
+            <Text variant="title2">{t('nutrition.budgetSpent', { amount: money(summary.spentCents) })}</Text>
+          ) : null}
+        </>
+      ) : summary.entries === 0 ? (
+        // Nothing noted is not "0 € spent".
+        <>
+          <Text variant="title2">{t('nutrition.budgetPlanned', { amount: money(summary.plannedCents) })}</Text>
+          <Text color="textMuted">{t('nutrition.budgetNoExpense')}</Text>
+        </>
+      ) : (
+        <>
+          <Text variant="title2">
+            {t('nutrition.budgetValue', { spent: money(summary.spentCents), planned: money(summary.plannedCents) })}
+          </Text>
+          <ProgressBar
+            value={summary.ratio}
+            label={t('nutrition.budget')}
+            color={summary.status === 'on_track' ? 'success' : 'warning'}
+          />
+          <Text color="textMuted">
+            {summary.remainingCents >= 0
+              ? t('nutrition.budgetRemaining', { amount: money(summary.remainingCents) })
+              : t('nutrition.budgetAbove', { amount: money(-summary.remainingCents) })}
+          </Text>
+        </>
+      )}
       <NumberField key={formKey} label={t('nutrition.expenseAmount')} value={amount} onChange={setAmount} />
       <Button
         variant="secondary"

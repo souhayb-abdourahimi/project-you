@@ -8,6 +8,7 @@ import type { BodyBlock } from '@/domain/journey/progress-journey';
 import type { PlannedMeal } from '@/domain/meals/planner';
 import { addDays, startOfWeek, type IsoDate } from '@/domain/shared/dates';
 import { isDone, type WeekComparison } from '@/domain/training/compare';
+import type { LoggedMeal } from '@/domain/meals/photo-analysis';
 import { dayIntake } from '@/features/nutrition/view';
 
 /** The few lines under the hero's title: planned facts only. */
@@ -30,10 +31,11 @@ export function heroContent(item: DailyItem): HeroContent {
   const chips: HeroChip[] = [];
   const minutes = Number(p.minutes);
   if (item.kind === 'workout' && item.status === 'todo') {
+    // The time first ("17:30 · ≈ 39 min · Salle"), only when the planner found a real free slot.
+    if (typeof p.start === 'string' && p.start) chips.push({ kind: 'start', time: p.start });
     if (Number.isFinite(minutes) && minutes > 0) chips.push({ kind: 'minutes', minutes });
     if (p.variant === 'short' || p.variant === 'light') chips.push({ kind: 'variant', variant: p.variant });
     if (p.location === 'gym' || p.location === 'home') chips.push({ kind: 'location', location: p.location });
-    if (typeof p.start === 'string' && p.start) chips.push({ kind: 'start', time: p.start });
     return { focus: typeof p.focus === 'string' ? p.focus : null, chips, tone: 'inverse' };
   }
   return { focus: null, chips, tone: 'surface' };
@@ -44,7 +46,14 @@ export type WeekDayState = 'done' | 'adapted' | 'planned' | 'not_done' | 'rest';
 
 export interface TodayGlance {
   /** Protein of the meals marked eaten (the leading number), energy second; planned values. */
-  nutrition: { proteinG: number; proteinTargetG: number; kcal: number; kcalTarget: number } | null;
+  nutrition: {
+    proteinG: number;
+    proteinTargetG: number;
+    kcal: number;
+    kcalTarget: number;
+    /** Meals noted today (eaten or added): 0 means "nothing noted yet", never "0 g eaten". */
+    logged: number;
+  } | null;
   /** This week's sessions, done over planned, and a strip Monday → Sunday. */
   week: { done: number; planned: number; days: { date: IsoDate; state: WeekDayState; today: boolean }[] } | null;
   /** Steps measured by the phone: today, and the last seven days when at least three are known. */
@@ -54,6 +63,8 @@ export interface TodayGlance {
 }
 
 export interface GlanceInput {
+  /** Meals added outside the plan today (W-10, confirmed estimates). */
+  added?: readonly Pick<LoggedMeal, 'nutrition'>[];
   today: IsoDate;
   week: WeekComparison;
   /** Today's planned meals; null without a meal plan. */
@@ -70,7 +81,7 @@ export interface GlanceInput {
 /** Days with data needed before the steps chart is drawn (otherwise: the value alone). */
 export const MIN_STEP_DAYS = 3;
 
-function weekStrip(week: WeekComparison, today: IsoDate): TodayGlance['week'] {
+export function weekStrip(week: WeekComparison, today: IsoDate): TodayGlance['week'] {
   // A week whose prescriptions are unknown has no honest denominator (W-7.1).
   if (week.planned === 0 || week.prescriptionUnknown) return null;
   const monday = startOfWeek(today);
@@ -93,12 +104,13 @@ export function todayGlance(input: GlanceInput): TodayGlance {
   let nutrition: TodayGlance['nutrition'] = null;
   if (meals && meals.length > 0 && input.proteinTargetG > 0) {
     // Meals the user marked as eaten, with their planned values: the same sum as Nutrition.
-    const intake = dayIntake(meals);
+    const intake = dayIntake(meals, input.added ?? []);
     nutrition = {
       proteinG: intake.proteinG,
       proteinTargetG: Math.round(input.proteinTargetG),
       kcal: intake.kcal,
       kcalTarget: Math.round(input.kcalTarget),
+      logged: intake.eaten + intake.added,
     };
   }
 

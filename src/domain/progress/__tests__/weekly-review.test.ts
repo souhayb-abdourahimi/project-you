@@ -161,6 +161,27 @@ describe('weeklyReview', () => {
     );
   });
 
+  it('a session planned today is still ahead: never counted as not done', () => {
+    const r = weeklyReview(
+      input(undefined, { today: '2026-09-30', plannedSessionDates: ['2026-09-28', '2026-09-30'] }),
+    );
+    // Monday missed; Wednesday (today) still possible.
+    expect(r.hard).toContainEqual({ key: 'review.hard.sessions', params: { done: 0, planned: 1 } });
+  });
+
+  it('a waist increase is not listed under what worked (only in the figures)', () => {
+    const r = weeklyReview(
+      input(undefined, {
+        waist: [
+          { date: '2026-09-20', cm: 89 },
+          { date: '2026-10-01', cm: 90 },
+        ],
+      }),
+    );
+    expect(r.waistChangeCm).toBe(1);
+    expect(r.worked.map((p) => p.key)).not.toContain('review.worked.waist');
+  });
+
   it('reads protein coverage from the meal plan', () => {
     const r = weeklyReview(input(SCENARIOS.veganFatLoss));
     expect(r.meals?.proteinDaysMet).toBe(7);

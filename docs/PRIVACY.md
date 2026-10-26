@@ -7,8 +7,9 @@ Project You est un outil de fitness et bien-être ; il ne remplace pas un profes
 - Âge stocké en **année de naissance** (suffit au calcul).
 - Sexe facultatif (« préfère ne pas dire » → calcul moyen, précision moindre signalée).
 - Données santé (HealthKit / Health Connect) lues seulement si utiles et autorisées, catégorie par catégorie.
-- Réponses de motivation : privées, utilisées pour les messages de motivation uniquement.
+- Réponses de motivation : privées, utilisées pour le ton des messages du coach uniquement. Les motivations choisies (`reasons`, D-046) sont exportées et supprimées avec la catégorie « motivation » ; elles ne changent aucune cible.
 - Photos : facultatives, bucket privé, jamais envoyées à un modèle externe sans action explicite.
+- **Photo de repas** (W-10, `docs/MEAL_PHOTO_ANALYSIS.md`) : prise ou choisie par l'utilisateur, redimensionnée sur l'appareil, envoyée au service d'analyse seulement après « Analyser » (la phrase « Project You ne l’enregistre pas ; le service d’analyse peut la garder jusqu’à 30 jours pour sa sécurité » est affichée avant), traitée pour cette seule demande, jamais stockée ni journalisée par Project You ; le fournisseur de vision peut la conserver jusqu'à 30 jours dans ses journaux anti-abus (OpenAI : `store: false` envoyé, pas d'entraînement par défaut). Seuls les aliments confirmés (ids et grammes) et leur estimation sont enregistrés (`logged_meals`), exportés et supprimés avec « Repas ». Refus de la caméra : la galerie et la composition à la main restent disponibles.
 
 ## Privacy Center (M-20, écran `/privacy`)
 
@@ -28,7 +29,8 @@ Project You est un outil de fitness et bien-être ; il ne remplace pas un profes
 ## Calendrier et position (phase 2)
 
 - **Calendrier** : seules les heures de début et de fin des événements sont lues (ni titre, ni lieu, ni invités), et gardées sur l'appareil pour la semaine en cours. L'app écrit uniquement dans son propre calendrier « Project You ». Déconnexion (écran Calendrier ou Privacy Center) = suppression de ce calendrier et oubli des heures lues. Inclus dans l'export (`deviceSettings.calendar`) ; effacé à la déconnexion du compte.
-- **Position** : demandée seulement quand l'utilisateur lance une recherche de lieux, arrondie à ~100 m avant l'envoi à OpenStreetMap, jamais enregistrée, synchronisée ni journalisée. Refus = l'app reste utilisable (salle saisie à la main).
+- **Lien iCal (D-049)** : lu par le serveur (`calendar-feed`), jamais par le navigateur. Le lien est scellé (AES-256-GCM, secret `CALENDAR_FEED_KEY`) dans `calendar_feeds` ; on garde seulement l'hôte affiché et les **plages occupées** des 6 semaines à venir : jamais de titre, lieu, description ni invités, et rien n'est déduit des titres. Texte affiché : « PROJECT YOU utilise uniquement les horaires occupés de ton calendrier pour planifier tes séances. Les titres et détails de tes événements ne sont pas utilisés par le coach. » Suppression : bouton « Supprimer ce calendrier », réinitialisation locale, suppression du compte (cascade). Export : la ligne sans le lien scellé.
+- **Position** : demandée seulement quand l'utilisateur lance une recherche de lieux, arrondie à ~100 m sur l'appareil avant tout envoi (à la fonction `places-nearby`, qui l'arrondit encore, puis à OpenStreetMap), jamais enregistrée, synchronisée ni journalisée ; la fonction garde au plus 10 minutes en mémoire la réponse d'une zone arrondie. Refus = l'app reste utilisable (salle saisie à la main).
 
 ## Santé et activité (phase 2, D-018)
 

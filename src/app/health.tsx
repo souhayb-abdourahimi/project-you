@@ -6,6 +6,7 @@ import { Banner, Button, Card, ConfirmButton, Screen, Text } from '@/components/
 import { toIsoDate } from '@/domain/shared/dates';
 import type { HealthDataType } from '@/domain/health/types';
 import { HealthTypes } from '@/features/health/HealthTypes';
+import { QuickEntry } from '@/features/progress/QuickEntry';
 import { healthPlatform, useHealth } from '@/features/health/useHealth';
 import { formatDate, nowTime } from '@/lib/format';
 
@@ -23,12 +24,16 @@ export default function HealthScreen() {
     else setChoice(next);
   };
 
+  // Web (PWA): no dead screen. Weight and waist are entered here, the native sync is one line.
   if (!healthPlatform) {
     return (
       <Screen>
-        <Banner message={t('health.webUnsupported')} />
-        <Text color="textMuted">{t('health.manualStillWorks')}</Text>
-        <Button variant="secondary" label={t('health.logManually')} onPress={() => router.push('/progress')} />
+        <Text color="textMuted">{t('health.web.intro')}</Text>
+        <QuickEntry today={toIsoDate(new Date())} initiallyOpen fixed />
+        <Button variant="secondary" label={t('health.web.seeProgress')} onPress={() => router.push('/progress')} />
+        <Text variant="caption" color="textMuted">
+          {t('health.web.nativeLater')}
+        </Text>
       </Screen>
     );
   }

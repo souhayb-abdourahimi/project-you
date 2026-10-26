@@ -1,0 +1,28 @@
+# Cloudflare Pages headers (docs/WEB_PWA.md). Pages serves index.html for unknown paths by itself
+# (single-page app, no 404.html), so no _redirects file is needed.
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Permissions-Policy: geolocation=(self), camera=(self), microphone=(), payment=(), usb=()
+
+# Always revalidated: a new deploy is picked up at the next launch.
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/sw.js
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Content-Type: application/manifest+json
+  Cache-Control: no-cache
+
+# File names carry a content hash: safe to keep for a year.
+/_expo/static/*
+  Cache-Control: public, max-age=31536000, immutable
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/icons/*
+  Cache-Control: public, max-age=86400

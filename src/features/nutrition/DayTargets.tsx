@@ -22,7 +22,12 @@ export function DayTargets({ targets, intake }: { targets: NutritionTargets; int
 
   const energyRatio = targets.calories > 0 ? intake.kcal / targets.calories : 0;
   const remaining = Math.max(0, Math.round(targets.calories - intake.kcal));
-  const energyLabel = `${num(intake.kcal)} / ${t('common.kcal', { value: num(targets.calories) })}`;
+  // Nothing noted yet: a dash, never "0" as if it had been measured.
+  const none = intake.eaten + intake.added === 0;
+  const eaten = (v: number) => (none ? t('common.noValue') : num(v));
+  const energyLabel = none
+    ? t('nutrition.nothingA11y', { target: num(targets.calories) })
+    : `${num(intake.kcal)} / ${t('common.kcal', { value: num(targets.calories) })}`;
 
   const macros: {
     key: 'protein' | 'carbs' | 'fat';
@@ -30,76 +35,57 @@ export function DayTargets({ targets, intake }: { targets: NutritionTargets; int
     target: number;
     color: ColorToken;
   }[] = [
-    { key: 'protein', eaten: intake.proteinG, target: targets.proteinG, color: 'nutrition' },
-    { key: 'carbs', eaten: intake.carbsG, target: targets.carbsG, color: 'primary' },
-    { key: 'fat', eaten: intake.fatG, target: targets.fatG, color: 'progress' },
+    { key: 'protein', eaten: intake.proteinG, target: targets.proteinG, color: 'macroProtein' },
+    { key: 'carbs', eaten: intake.carbsG, target: targets.carbsG, color: 'macroCarbs' },
+    { key: 'fat', eaten: intake.fatG, target: targets.fatG, color: 'macroFat' },
   ];
 
   return (
-    <Card raised style={styles.card}>
-      <View style={styles.heading}>
-        <View style={[styles.iconWell, { backgroundColor: colors.successSubtle }]}>
-          <Icon name="nutrition" size="md" color="nutrition" />
-        </View>
-        <View style={styles.flex}>
-          <Text variant="headline">{t('nutrition.targets')}</Text>
-          <Text variant="caption" color="textMuted">
-            {t('nutrition.targetsHint')}
-          </Text>
-        </View>
-      </View>
-
+    <Card style={styles.card}>
       <View style={[styles.hero, compact && styles.heroCompact]}>
         <ProgressRing
           value={energyRatio}
-          size={compact ? 124 : 144}
-          stroke={11}
-          color="nutrition"
+          size={compact ? 108 : 120}
+          stroke={10}
+          color="primary"
           track="surfaceSubtle"
           label={`${t('nutrition.energy')} : ${energyLabel}`}>
-          <Text variant={compact ? 'title1' : 'metricLarge'}>{num(intake.kcal)}</Text>
-          <Text variant="captionStrong" color="textMuted">
-            kcal
+          <Text variant="metric">{eaten(intake.kcal)}</Text>
+          <Text variant="caption" color="textMuted">
+            / {t('common.kcal', { value: num(targets.calories) })}
           </Text>
         </ProgressRing>
 
-        <View style={styles.energyCopy}>
-          <Text variant="overline" color="nutrition">
-            {t('nutrition.energy')}
-          </Text>
-          <Text variant="title2">
-            {remaining > 0 ? t('common.kcal', { value: num(remaining) }) : t('nutrition.eaten')}
-          </Text>
-          <Text variant="caption" color="textMuted">
-            {remaining > 0
-              ? `${t('nutrition.mealsEaten', { eaten: intake.eaten, meals: intake.meals })} · ${energyLabel}`
-              : energyLabel}
-          </Text>
+        <View style={styles.macros}>
+          {macros.map((macro) => {
+            const ratio = macro.target > 0 ? macro.eaten / macro.target : 0;
+            const value = `${eaten(macro.eaten)} / ${t('common.grams', { value: num(macro.target) })}`;
+            return (
+              <View key={macro.key} style={styles.macro}>
+                <View style={styles.macroTop}>
+                  <Text variant="caption" color="textSecondary">
+                    {t(`nutrition.${macro.key}`)}
+                  </Text>
+                  <Text variant="captionStrong">{value}</Text>
+                </View>
+                <ProgressBar value={ratio} label={`${t(`nutrition.${macro.key}`)} : ${value}`} color={macro.color} />
+              </View>
+            );
+          })}
         </View>
       </View>
 
-      <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-      <View style={styles.macros}>
-        {macros.map((macro) => {
-          const ratio = macro.target > 0 ? macro.eaten / macro.target : 0;
-          const value = `${num(macro.eaten)} / ${num(macro.target)} g`;
-          return (
-            <View key={macro.key} style={styles.macro}>
-              <View style={styles.macroTop}>
-                <Text variant="captionStrong" color="textSecondary">
-                  {t(`nutrition.${macro.key}`)}
-                </Text>
-                <Text variant="captionStrong">{value}</Text>
-              </View>
-              <ProgressBar
-                value={ratio}
-                label={`${t(`nutrition.${macro.key}`)} : ${value}`}
-                color={macro.color}
-              />
-            </View>
-          );
-        })}
+      <View style={styles.footer}>
+        <Icon name="info" size={14} color="textMuted" />
+        <Text variant="caption" color="textMuted" style={styles.flex}>
+          {none
+            ? t('nutrition.nothingYet')
+            : remaining > 0
+              ? t('nutrition.remaining', { kcal: num(remaining), eaten: intake.eaten, meals: intake.meals })
+              : t('nutrition.mealsEaten', { eaten: intake.eaten, meals: intake.meals })}
+          {' · '}
+          {t('nutrition.estimate')}
+        </Text>
       </View>
 
       {targets.warnings.map((warning) => (
@@ -117,28 +103,13 @@ export function DayTargets({ targets, intake }: { targets: NutritionTargets; int
 }
 
 const styles = StyleSheet.create({
-  card: { gap: spacing.lg, overflow: 'hidden' },
-  heading: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  iconWell: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  hero: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xl,
-  },
-  heroCompact: {
-    gap: spacing.lg,
-  },
-  energyCopy: { flex: 1, gap: spacing.xs },
-  divider: { height: StyleSheet.hairlineWidth },
-  macros: { gap: spacing.md },
-  macro: { gap: spacing.xs },
+  card: { gap: spacing.md },
+  hero: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg + spacing.xs },
+  heroCompact: { gap: spacing.md },
+  macros: { flex: 1, gap: spacing.md },
+  macro: { gap: spacing.xs + spacing.xxs },
   macroTop: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm },
+  footer: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   warning: {
     flexDirection: 'row',
     alignItems: 'flex-start',

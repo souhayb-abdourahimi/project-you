@@ -1,4 +1,4 @@
-import { ICONS } from '@/components/ui/Icon';
+import { ICONS } from '@/components/ui/icons';
 
 /** The five main destinations (W-9): one icon family, a visible label, the same order everywhere. */
 export const TABS = [

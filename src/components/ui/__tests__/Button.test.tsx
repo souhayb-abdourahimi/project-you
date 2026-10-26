@@ -52,4 +52,9 @@ describe('MetricCard, Badge, Notice', () => {
     expect(screen.toJSON()).toMatchObject({ props: { accessibilityRole: 'alert' } });
     expect(screen.getByText('On ralentit un peu')).toBeTruthy();
   });
+
+  it('an information notice is not announced as an alert', async () => {
+    await render(<Notice tone="info" message="Estimation" />);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
 });

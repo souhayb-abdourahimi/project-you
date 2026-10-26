@@ -19,7 +19,7 @@ Supabase / PostgreSQL. Migrations versionnées dans `supabase/migrations/` (horo
 |---|---|---|
 | `profiles` | User, Profile | 1–1 avec `auth.users` ; pseudo, année de naissance, taille, sexe (facultatif), activité, statut de vie, locale |
 | `goals` | Goal | historique ; un seul `active` par utilisateur (index unique partiel) |
-| `motivations` | Motivation | réponses libres privées ; jamais envoyées à un tiers sans besoin |
+| `motivations` | Motivation | raisons choisies (`reasons`, D-046) et réponses libres privées ; jamais envoyées à un tiers sans besoin |
 | `user_preferences` | Preference (nutrition, entraînement, planning, budget, cuisine) | `jsonb` pour matériel et créneaux |
 | `foods` | Food, Product | catalogue ; valeurs pour 100 g ; traçabilité source |
 | `inventory_items` | Inventory | « Ce que j'ai chez moi » |
@@ -42,6 +42,18 @@ Supabase / PostgreSQL. Migrations versionnées dans `supabase/migrations/` (horo
 | `integration_connections` | CalendarConnection, HealthConnection | `kind` = calendar/health, scopes, statut ; aucun token en clair côté client |
 | `coach_memory` | **héritée, inutilisée** (D-042) | ni lue ni écrite par l'app : la mémoire du coach vit dans `adjustments` (`coach.*`, D-039) ; exportée, supprimée avec le compte ; suppression ou usage futur à décider |
 | `ai_conversations` / `ai_messages` | AIConversation, AIMessage | phase 3 ; tables créées mais inutilisées au MVP |
+
+## Migration `20261026000001_calendar_feeds.sql` (D-049)
+
+Table `calendar_feeds`, une ligne par utilisateur (clé `user_id`, cascade à la suppression du compte) : `url_ciphertext` (lien iCal scellé AES-256-GCM, jamais lu par l'app), `url_host`, `enabled`, `status`, `last_error` (liste fermée : `timeout`, `access_denied`, `not_found`, `not_ics`, `too_large`, `unavailable`, `blocked_address`), `last_synced_at`, `busy` (jsonb, 3 000 plages au plus, `{start, end, allDay}` seulement), `busy_from`, `busy_to`, `event_count`, `created_at`, `updated_at` (trigger). RLS propriétaire (4 policies), aucun droit pour `anon`. Écrite par la fonction `calendar-feed` avec le JWT de l'utilisateur (RLS appliquée), lue / désactivée / supprimée par l'app. Idempotente. Tests : `supabase/tests/rls.sql`, `supabase/tests/settings.sql`. **À coller dans le SQL Editor.**
+
+## Migration `20261025000001_motivation_reasons.sql` (D-046)
+
+`motivations.reasons text[] not null default '{}'` : les motivations choisies (choix multiple, valeurs connues seulement, au plus 10, contrainte `motivations_reasons_known`). Idempotente (`add column if not exists`, contrainte créée seulement si absente), rien n'est supprimé ni réécrit. RLS inchangée (politiques propriétaire de `motivations`), testée dans `supabase/tests/settings.sql` (A lit et modifie ses raisons, B ne voit rien, valeur inconnue refusée, double application sans effet). Le client n'envoie la colonne qu'une fois la question répondue sur l'appareil. **À coller dans le SQL Editor avant de publier le client qui la contient.**
+
+## Migration `20261017000001_logged_meals.sql` (W-10, D-045)
+
+- `logged_meals` : repas ajoutés hors plan après confirmation (estimation photo ou composition à la main). `eaten_on`, `slot` facultatif, `source` (`photo_estimate` | `manual`), `items` jsonb (1 à 12 `{ food_id, grams }`), estimation (`kcal`, `protein_g`, `carbs_g`, `fat_g`, bornées), `deleted_at` (suppression logique synchronisée). Jamais de photo ni de libellé du modèle. RLS propriétaire (4 politiques), aucun droit `anon`, index `(user_id, updated_at)` et `(user_id, eaten_on)`. Supprimée avec « Repas » dans le Privacy Center et avec le compte (cascade).
 
 ## Migration `20261002000001_workout_coach_foundation.sql` (W-1, D-031)
 

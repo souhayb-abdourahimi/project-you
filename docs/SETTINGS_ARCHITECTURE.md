@@ -46,8 +46,8 @@ est régénéré avec `carryOverEaten`).
 | Prénom, année de naissance, taille, sexe, activité, rythme de vie | Réglages › Toi | `snapshot.user`, `lifestyle` | `profiles` | nutrition (estimation des besoins), voix | aucun (repères recalculés à partir d'aujourd'hui) | catégorie « Profil » |
 | Poids du profil | Mon évolution (pesées) | `weights` (+ `snapshot.user.weightKg` = base avant la 1re pesée) | `weight_logs` | nutrition, tendances | une correction change la valeur de cette pesée (classe A) | « Pesées » |
 | Objectif, poids et date souhaités, priorités | Réglages › Objectif | `snapshot.goal` | `goals` | nutrition, programme (`programParams`) | nouvelle version de programme à partir d'aujourd'hui ; l'ajustement calorique de l'ancien objectif est terminé | « Profil » |
-| Pourquoi, réponses de motivation | Réglages › Motivation | `snapshot.motivation` | `motivations` | voix (citées si « Citer mes mots ») | aucun | « Réponses de motivation » |
-| Salle, matériel, niveau, fréquence, durée, exercices exclus, sports | Réglages › Entraînement | `snapshot.training` | `user_preferences.training` | `programParams` → `ensureProgram`, planning | nouvelle version si un paramètre figé change ; séances faites ou commencées intactes | « Profil » |
+| Motivations choisies, pourquoi, réponses de motivation | Réglages › Motivation | `snapshot.motivation` | `motivations` | voix (citées si « Citer mes mots ») | aucun | « Réponses de motivation » |
+| Salle, matériel, niveau, fréquence, durée, exercices exclus | Réglages › Entraînement | `snapshot.training` | `user_preferences.training` | `programParams` → `ensureProgram`, planning | nouvelle version si un paramètre figé change ; séances faites ou commencées intactes | « Profil » |
 | Disponibilités | Réglages › Disponibilités | `snapshot.schedule` | `user_preferences.schedule` | planning (`ensureWeek`) | séances à venir replacées, même version | « Profil » |
 | Régime, allergies, intolérances, exclusions, repas, cuisine, budget | Réglages › Alimentation | `snapshot.nutrition`, `lifestyle.kitchen`, `budget` | `user_preferences` | plan de repas | repas à venir de la semaine régénérés, repas cochés conservés | « Profil » |
 | Ton du coach | Réglages › Affichage | `snapshot.preferences.motivationStyle` | `user_preferences.motivation_style` | voix | aucun | « Profil » |
@@ -69,10 +69,13 @@ Test : `src/domain/settings/__tests__/settings.test.ts` (matrice).
 
 | Section | Questions |
 | --- | --- |
-| Toi | `profile.name`, `profile.age`, `profile.body` (taille ; le poids vit dans Mon évolution), `profile.sex`, `profile.activity`, `life.status` |
-| Objectif | `goal.type`, `goal.target`, `goal.priorities` |
-| Motivation | `motivation.why`, `motivation.more` |
-| Entraînement | `training.gym`, `training.gymDetails`, `training.homeEquipment`, `training.level`, `training.frequency`, `training.refusedExercises`, `training.sports` |
+| Toi | `profile.name`, `profile.age`, `profile.body` (taille ; le poids vit dans Mon évolution), `profile.sex`, `profile.activity` |
+| Objectif | `goal.type` (un seul objectif principal), `goal.target` |
+| Motivation | `motivation.reasons` (choix multiple + mots libres), `motivation.more` (Réglages seulement) |
+| Entraînement | `training.gym`, `training.gymDetails`, `training.homeEquipment`, `training.level`, `training.frequency`, `training.refusedExercises` |
+
+D-046 : `goal.priorities`, `life.status` et `training.sports` ne sont plus posées (aucun effet dans
+les moteurs). Les valeurs déjà enregistrées restent stockées, synchronisées et exportées.
 | Disponibilités | `schedule.availability` |
 | Alimentation | `diet.type`, `diet.allergies`, `diet.foods`, `diet.meals`, `kitchen.equipment`, `budget.food` |
 
@@ -87,7 +90,7 @@ d'enregistrer.
 
 | Effet | Champs | Ce qui change | Confirmation |
 | --- | --- | --- | --- |
-| `immediate` | prénom, motivation, priorités, poids et date souhaités, nom de salle, sports, ton | affiché tout de suite | non |
+| `immediate` | prénom, motivations (raisons et mots), poids et date souhaités, nom de salle, ton | affiché tout de suite | non |
 | `targets` | âge, taille, sexe, activité, objectif | repères caloriques recalculés à partir d'aujourd'hui (estimation) | objectif : oui |
 | `meals` | régime, allergies, exclusions, repas, cuisine, objectif | repas à venir de la semaine régénérés, repas cochés gardés | retrait d'allergie : oui |
 | `schedule` | disponibilités, fréquence, durée, salle | séances à venir replacées | — |

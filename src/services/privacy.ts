@@ -10,6 +10,13 @@ const EXPORT_ORDER: Record<string, string> = {
   notification_preferences: 'category',
   notification_settings: 'user_id',
   notification_history: 'local_date',
+  calendar_feeds: 'user_id',
+};
+
+/** Columns exported when not all of them are the user's data (the sealed link is useless to them). */
+const EXPORT_COLUMNS: Record<string, string> = {
+  calendar_feeds:
+    'user_id, url_host, enabled, status, last_error, last_synced_at, busy, busy_from, busy_to, event_count, created_at, updated_at',
 };
 
 /** Reads everything the account holds (RLS limits it to the signed-in user). */
@@ -21,7 +28,7 @@ export async function fetchAccountData(
   for (const table of [...SYNC_TABLE_ORDER, ...EXPORT_ONLY_TABLES]) {
     try {
       const { data, error } = await fetchAllPages((from, to) => {
-        const query = client.from(table).select('*');
+        const query = client.from(table).select(EXPORT_COLUMNS[table] ?? '*');
         // Shared catalogue recipes are readable by everyone: export only the user's own.
         const own = table === 'recipes' ? query.not('owner_id', 'is', null) : query;
         return own.order(EXPORT_ORDER[table] ?? 'id').range(from, to);

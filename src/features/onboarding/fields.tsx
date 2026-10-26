@@ -12,22 +12,31 @@ export function NumberField({
   onChange,
   hint,
   error,
+  deferError,
+  onSubmit,
 }: {
   label: string;
   value: number | undefined;
   onChange: (value: number | undefined) => void;
   hint?: string;
   error?: string;
+  /** Shown once the field is left, not while the first digits are typed ("1" of "175"). */
+  deferError?: boolean;
+  onSubmit?: () => void;
 }) {
   const [text, setText] = useState(value === undefined ? '' : String(value));
+  const [left, setLeft] = useState(false);
   return (
     <TextField
       label={label}
       hint={hint}
-      error={error}
+      error={!deferError || left ? error : undefined}
       value={text}
       keyboardType="decimal-pad"
       inputMode="decimal"
+      onBlur={() => setLeft(true)}
+      returnKeyType={onSubmit ? 'next' : undefined}
+      onSubmitEditing={onSubmit}
       onChangeText={(next) => {
         setText(next);
         onChange(parseNumber(next));
@@ -46,12 +55,16 @@ export function MassField({
   onChange,
   hint,
   error,
+  deferError,
+  onSubmit,
 }: {
   label: (unit: string) => string;
   valueKg: number | undefined;
   onChange: (kg: number | undefined) => void;
   hint?: string;
   error?: string;
+  deferError?: boolean;
+  onSubmit?: () => void;
 }) {
   const unit = useMassUnit();
   return (
@@ -61,6 +74,8 @@ export function MassField({
       label={label(unit)}
       hint={hint}
       error={error}
+      deferError={deferError}
+      onSubmit={onSubmit}
       value={valueKg === undefined ? undefined : fromKg(valueKg, unit)}
       onChange={(v) => onChange(v === undefined ? undefined : toKg(v, unit))}
     />

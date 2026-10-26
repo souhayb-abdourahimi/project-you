@@ -1,33 +1,27 @@
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
-import { Banner, Card, ChoiceGroup, Text, TextField } from '@/components/ui';
-import { buildSnapshot, checkAge, type DraftSection, type OnboardingDraft, type OnboardingStepId } from '@/domain/onboarding/steps';
-import { monthlyFromWeekly } from '@/domain/meals/budget';
-import { assessGoalFeasibility, computeNutritionTargets } from '@/domain/nutrition/engine';
+import { ChoiceGroup, Text, TextField } from '@/components/ui';
 import {
-  ActivityLevel,
-  Allergen,
-  Diet,
-  Equipment,
-  GoalType,
-  KitchenEquipment,
-  LifeStatus,
-  Sex,
-  TrainingLevel,
-} from '@/domain/profile/schemas';
+  HEIGHT_RANGE,
+  WEIGHT_RANGE,
+  checkAge,
+  type OnboardingDraft,
+  type OnboardingStepId,
+} from '@/domain/onboarding/steps';
+import { Allergen, Equipment, KitchenEquipment } from '@/domain/profile/schemas';
 import { EXERCISES } from '@/domain/training/exercises';
 import { ExclusionSummary } from '@/features/nutrition/ExclusionSummary';
-import { formatMoney, formatMonth } from '@/lib/format';
 import { spacing } from '@/theme';
 
-import { DietRecap } from './DietRecap';
+import { ChoiceStep, isChoiceStep } from './ChoiceStep';
 import { ListField, MassField, NumberField, toggle } from './fields';
+import { MotivationMore, MotivationStep } from './MotivationStep';
+import { BudgetStep, TargetStep } from './PlanningSteps';
+import { ReviewStep } from './ReviewStep';
 import { ScheduleEditor } from './ScheduleEditor';
+import type { Update } from './types';
 
-type Update = <K extends DraftSection>(section: K, patch: Partial<OnboardingDraft[K]>) => void;
-
-const PRIORITIES = ['aesthetics', 'strength', 'health', 'performance'] as const;
 const MEALS = [2, 3, 4, 5];
 const COOKING = [5, 15, 30, 45, 60];
 const SESSIONS = [1, 2, 3, 4, 5, 6];
@@ -38,10 +32,16 @@ export function StepContent({
   draft,
   update,
   mode = 'onboarding',
+  onAnswered,
+  onSubmit,
 }: {
   step: OnboardingStepId;
   draft: OnboardingDraft;
   update: Update;
+  /** A one-answer question was answered (the questionnaire may move on, W-11). */
+  onAnswered?: () => void;
+  /** "Next" on the keyboard of a text step. */
+  onSubmit?: () => void;
   /**
    * `settings`: the same fields, edited from Réglages (W-8, D-043). The body weight is then not a
    * field: it comes from the weigh-ins (Mon évolution), never typed over the history.
@@ -55,6 +55,9 @@ export function StepContent({
   const single = <T extends string | number>(value: T | undefined) => (value === undefined ? [] : [value]);
 
   const body = (() => {
+    if (isChoiceStep(step)) {
+      return <ChoiceStep step={step} draft={draft} update={update} title={title} onAnswered={onAnswered} />;
+    }
     switch (step) {
       case 'profile.name':
         return (
@@ -64,6 +67,9 @@ export function StepContent({
             onChangeText={(displayName) => update('user', { displayName })}
             autoComplete="nickname"
             maxLength={40}
+            autoFocus={mode === 'onboarding'}
+            returnKeyType="next"
+            onSubmitEditing={onSubmit}
           />
         );
       case 'profile.age': {
@@ -74,6 +80,9 @@ export function StepContent({
             hint={t('onboarding.profile.age.hint')}
             value={draft.user.birthYear}
             onChange={(birthYear) => update('user', { birthYear })}
+            onSubmit={onSubmit}
+            // "1" of "1990" is not an error yet: the year is checked once it has 4 digits.
+            deferError={draft.user.birthYear === undefined || draft.user.birthYear < 1000}
             error={
               age === 'too_young'
                 ? t('onboarding.profile.age.tooYoung')
@@ -84,154 +93,56 @@ export function StepContent({
           />
         );
       }
-      case 'profile.body':
+      case 'profile.body': {
+        const h = draft.user.heightCm;
+        const w = draft.user.weightKg;
         return (
           <>
             <NumberField
               label={t('onboarding.profile.body.height')}
-              value={draft.user.heightCm}
+              value={h}
               onChange={(heightCm) => update('user', { heightCm })}
+              deferError
+              error={
+                h !== undefined && (h < HEIGHT_RANGE.min || h > HEIGHT_RANGE.max)
+                  ? t('onboarding.profile.body.heightRange', HEIGHT_RANGE)
+                  : undefined
+              }
             />
             {mode === 'onboarding' ? (
               <MassField
                 label={(unit) => t('onboarding.profile.body.weight', { unit })}
-                valueKg={draft.user.weightKg}
+                valueKg={w}
                 onChange={(weightKg) => update('user', { weightKg })}
+                onSubmit={onSubmit}
+                deferError
+                error={
+                  w !== undefined && (w < WEIGHT_RANGE.min || w > WEIGHT_RANGE.max)
+                    ? t('onboarding.profile.body.weightRange')
+                    : undefined
+                }
               />
             ) : (
               <Text color="textMuted">{t('settings.profile.weightFromProgress')}</Text>
             )}
           </>
         );
-      case 'profile.sex':
-        return (
-          <>
-            <Text color="textMuted">{t('onboarding.profile.sex.hint')}</Text>
-            <ChoiceGroup
-              options={Sex.options.map((v) => ({ value: v, label: t(`enums.sex.${v}`) }))}
-              selected={single(draft.user.sex)}
-              onToggle={(sex) => update('user', { sex })}
-            />
-          </>
-        );
-      case 'profile.activity':
-        return (
-          <ChoiceGroup
-            options={ActivityLevel.options.map((v) => ({ value: v, label: t(`enums.activity.${v}`) }))}
-            selected={single(draft.user.activityLevel)}
-            onToggle={(activityLevel) => update('user', { activityLevel })}
-          />
-        );
-      case 'goal.type':
-        return (
-          <ChoiceGroup
-            options={GoalType.options.map((v) => ({ value: v, label: t(`enums.goal.${v}`) }))}
-            selected={single(draft.goal.type)}
-            onToggle={(type) => update('goal', { type })}
-          />
-        );
+      }
       case 'goal.target':
-        return (
-          <>
-            <Text color="textMuted">{t('onboarding.goal.target.hint')}</Text>
-            <MassField
-              label={(unit) => t('onboarding.goal.target.weight', { unit })}
-              valueKg={draft.goal.targetWeightKg}
-              onChange={(targetWeightKg) => update('goal', { targetWeightKg })}
-            />
-            <TextField
-              label={t('onboarding.goal.target.date')}
-              value={draft.goal.targetDate ?? ''}
-              placeholder="2027-06-30"
-              onChangeText={(v) => update('goal', { targetDate: /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined })}
-            />
-          </>
-        );
-      case 'goal.priorities': {
-        const priorities = draft.goal.priorities ?? { aesthetics: 1, strength: 1, health: 1, performance: 1 };
-        return (
-          <>
-            <Text color="textMuted">{t('onboarding.goal.priorities.hint')}</Text>
-            {PRIORITIES.map((key) => (
-              <View key={key} style={{ gap: spacing.xs }}>
-                <Text variant="label">{t(`enums.priority.${key}`)}</Text>
-                <ChoiceGroup
-                  options={[0, 1, 2, 3].map((v) => ({ value: v, label: String(v) }))}
-                  selected={[priorities[key]]}
-                  onToggle={(v) => update('goal', { priorities: { ...priorities, [key]: v } })}
-                />
-              </View>
-            ))}
-          </>
-        );
-      }
-      case 'motivation.why':
-        return (
-          <TextField
-            label={title}
-            hint={t('onboarding.motivation.why.hint')}
-            value={draft.motivation.why ?? ''}
-            onChangeText={(why) => update('motivation', { why })}
-            multiline
-            maxLength={500}
-          />
-        );
+        return <TargetStep draft={draft} update={update} />;
+      case 'motivation.reasons':
+        return <MotivationStep draft={draft} update={update} title={title} />;
       case 'motivation.more':
-        return (
-          <>
-            {(['change', 'feel', 'quitRisk', 'proudOf'] as const).map((key) => (
-              <TextField
-                key={key}
-                label={t(`onboarding.motivation.more.${key}`)}
-                value={draft.motivation[key] ?? ''}
-                onChangeText={(value) => update('motivation', { [key]: value })}
-                multiline
-                maxLength={500}
-              />
-            ))}
-          </>
-        );
-      case 'life.status':
-        return (
-          <ChoiceGroup
-            options={LifeStatus.options.map((v) => ({ value: v, label: t(`enums.life.${v}`) }))}
-            selected={single(draft.lifestyle.lifeStatus)}
-            onToggle={(lifeStatus) => update('lifestyle', { lifeStatus })}
-          />
-        );
-      case 'budget.food': {
-        const cents = draft.budget.weeklyFoodBudgetCents;
-        return (
-          <>
-            <NumberField
-              label={t('onboarding.budget.food.label')}
-              value={cents === undefined ? undefined : cents / 100}
-              onChange={(euros) =>
-                update('budget', { weeklyFoodBudgetCents: euros === undefined ? undefined : Math.round(euros * 100) })
-              }
-            />
-            {cents !== undefined ? (
-              <Text color="textMuted">
-                {t('onboarding.budget.food.monthly', { amount: formatMoney(monthlyFromWeekly(cents), lang) })}
-              </Text>
-            ) : null}
-          </>
-        );
-      }
+        return <MotivationMore draft={draft} update={update} />;
+      case 'budget.food':
+        return <BudgetStep draft={draft} update={update} />;
       case 'kitchen.equipment':
         return (
           <ChoiceGroup
+            label={title}
             options={KitchenEquipment.options.map((v) => ({ value: v, label: t(`enums.kitchen.${v}`) }))}
             selected={draft.lifestyle.kitchen ?? []}
             onToggle={(v) => update('lifestyle', { kitchen: toggle(draft.lifestyle.kitchen, v) })}
-          />
-        );
-      case 'diet.type':
-        return (
-          <ChoiceGroup
-            options={Diet.options.map((v) => ({ value: v, label: t(`enums.diet.${v}`) }))}
-            selected={single(draft.nutrition.diet)}
-            onToggle={(diet) => update('nutrition', { diet })}
           />
         );
       case 'diet.allergies': {
@@ -242,6 +153,7 @@ export function StepContent({
           <>
             <Text color="textMuted">{t('onboarding.diet.allergies.hint')}</Text>
             <ChoiceGroup
+              label={title}
               options={Allergen.options
                 .filter((a) => !hidden.includes(a))
                 .map((v) => ({ value: v, label: t(`enums.allergen.${v}`) }))}
@@ -284,28 +196,21 @@ export function StepContent({
           <>
             <Text variant="label">{t('onboarding.diet.meals.meals')}</Text>
             <ChoiceGroup
+              single
+              label={t('onboarding.diet.meals.meals')}
               options={MEALS.map((v) => ({ value: v, label: String(v) }))}
               selected={single(draft.nutrition.mealsPerDay)}
               onToggle={(mealsPerDay) => update('nutrition', { mealsPerDay })}
             />
             <Text variant="label">{t('onboarding.diet.meals.cooking')}</Text>
             <ChoiceGroup
+              single
+              label={t('onboarding.diet.meals.cooking')}
               options={COOKING.map((v) => ({ value: v, label: t('common.minutes', { count: v }) }))}
               selected={single(draft.nutrition.cookingMinutes)}
               onToggle={(cookingMinutes) => update('nutrition', { cookingMinutes })}
             />
           </>
-        );
-      case 'training.gym':
-        return (
-          <ChoiceGroup
-            options={[
-              { value: 'yes', label: t('common.yes') },
-              { value: 'no', label: t('common.no') },
-            ]}
-            selected={draft.training.hasGym === undefined ? [] : [draft.training.hasGym ? 'yes' : 'no']}
-            onToggle={(v) => update('training', { hasGym: v === 'yes' })}
-          />
         );
       case 'training.gymDetails':
         return (
@@ -315,11 +220,6 @@ export function StepContent({
               label={t('onboarding.training.gymDetails.name')}
               value={draft.training.gymName ?? ''}
               onChangeText={(gymName) => update('training', { gymName })}
-            />
-            <ChoiceGroup
-              options={[{ value: 'member', label: t('onboarding.training.gymDetails.membership') }]}
-              selected={draft.training.hasMembership ? ['member'] : []}
-              onToggle={() => update('training', { hasMembership: !draft.training.hasMembership })}
             />
             <NumberField
               label={t('onboarding.training.gymDetails.travel')}
@@ -333,6 +233,7 @@ export function StepContent({
           <>
             <Text color="textMuted">{t('onboarding.training.homeEquipment.hint')}</Text>
             <ChoiceGroup
+              label={title}
               options={Equipment.options
                 .filter((e) => e !== 'bodyweight')
                 .map((v) => ({ value: v, label: t(`enums.equipment.${v}`) }))}
@@ -341,44 +242,24 @@ export function StepContent({
             />
           </>
         );
-      case 'training.level':
-        return (
-          <ChoiceGroup
-            options={TrainingLevel.options.map((v) => ({ value: v, label: t(`enums.level.${v}`) }))}
-            selected={single(draft.training.level)}
-            onToggle={(level) => update('training', { level })}
-          />
-        );
       case 'training.frequency':
         return (
           <>
             <Text variant="label">{t('onboarding.training.frequency.sessions')}</Text>
             <ChoiceGroup
+              single
+              label={t('onboarding.training.frequency.sessions')}
               options={SESSIONS.map((v) => ({ value: v, label: String(v) }))}
               selected={single(draft.training.sessionsPerWeek)}
               onToggle={(sessionsPerWeek) => update('training', { sessionsPerWeek })}
             />
             <Text variant="label">{t('onboarding.training.frequency.duration')}</Text>
             <ChoiceGroup
+              single
+              label={t('onboarding.training.frequency.duration')}
               options={DURATIONS.map((v) => ({ value: v, label: t('common.minutes', { count: v }) }))}
               selected={single(draft.training.sessionMinutes)}
               onToggle={(sessionMinutes) => update('training', { sessionMinutes })}
-            />
-          </>
-        );
-      case 'training.sports':
-        return (
-          <>
-            <ListField
-              label={t('onboarding.training.sports.liked')}
-              hint={t('onboarding.training.sports.hint')}
-              value={draft.training.likedSports}
-              onChange={(likedSports) => update('training', { likedSports })}
-            />
-            <ListField
-              label={t('onboarding.training.sports.refused')}
-              value={draft.training.refusedSports}
-              onChange={(refusedSports) => update('training', { refusedSports })}
             />
           </>
         );
@@ -387,6 +268,7 @@ export function StepContent({
           <>
             <Text color="textMuted">{t('onboarding.training.refusedExercises.hint')}</Text>
             <ChoiceGroup
+              label={title}
               options={EXERCISES.map((e) => ({ value: e.id, label: e.name[lang] }))}
               selected={draft.training.refusedExerciseIds ?? []}
               onToggle={(id) =>
@@ -407,13 +289,13 @@ export function StepContent({
           </>
         );
       case 'review':
-        return <Review draft={draft} />;
+        return <ReviewStep draft={draft} />;
     }
   })();
 
   return (
     <View style={{ gap: spacing.lg }}>
-      <Text variant={mode === 'settings' ? 'heading' : 'title'}>
+      <Text variant={mode === 'settings' ? 'heading' : 'title'} accessibilityRole="header">
         {step === 'review'
           ? t('onboarding.review.title')
           : mode === 'settings' && step === 'profile.body'
@@ -422,54 +304,5 @@ export function StepContent({
       </Text>
       {body}
     </View>
-  );
-}
-
-function Review({ draft }: { draft: OnboardingDraft }) {
-  const { t, i18n } = useTranslation();
-  const now = new Date();
-  const result = buildSnapshot(draft, now);
-  if (!result.ok)
-    return (
-      <Banner
-        tone="danger"
-        message={t('onboarding.review.invalid', { steps: result.issues.map((i) => i.split(':')[0]).join(', ') })}
-      />
-    );
-  const s = result.snapshot;
-  const targets = computeNutritionTargets(s, now.getFullYear());
-  const feasibility = assessGoalFeasibility(s, now.toISOString().slice(0, 10));
-  return (
-    <>
-      <Card>
-        <Text variant="caption" color="textMuted">
-          {t('onboarding.review.calories')} ({t('common.estimate')})
-        </Text>
-        <Text variant="display">{t('common.kcal', { value: targets.calories })}</Text>
-        <Text>{t('onboarding.review.macros', { p: targets.proteinG, c: targets.carbsG, f: targets.fatG })}</Text>
-        <Text color="textMuted">
-          {t('onboarding.review.sessions', { count: s.training.sessionsPerWeek, minutes: s.training.sessionMinutes })}
-        </Text>
-      </Card>
-      <DietRecap nutrition={s.nutrition} />
-      {targets.warnings
-        .filter((w) => w !== 'sex_unspecified_estimate' || s.user.sex === 'unspecified')
-        .map((w) => (
-          <Banner key={w} message={t(`nutrition.warnings.${w}`)} />
-        ))}
-      {feasibility.status !== 'not_applicable' ? (
-        <Banner
-          tone={feasibility.status === 'ok' ? 'success' : 'warning'}
-          message={t(`feasibility.${feasibility.status}`, {
-            rate: Math.abs(feasibility.recommendedWeeklyChangeKg ?? 0),
-            required: Math.abs(feasibility.requiredWeeklyChangeKg ?? 0),
-            month: feasibility.suggestedTargetDate ? formatMonth(feasibility.suggestedTargetDate, i18n.language) : '',
-          })}
-        />
-      ) : null}
-      <Text variant="caption" color="textMuted">
-        {t('onboarding.review.disclaimer')}
-      </Text>
-    </>
   );
 }

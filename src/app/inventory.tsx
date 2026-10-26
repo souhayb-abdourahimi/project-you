@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { Banner, Button, Card, ChoiceGroup, EmptyState, Row, Screen, Text, TextField } from '@/components/ui';
+import { Button, Card, ChoiceGroup, EmptyState, Row, Screen, Text, TextField } from '@/components/ui';
 import { FOOD_CATALOG } from '@/domain/meals/catalog';
 import { isExpiringSoon, type InventoryUnit } from '@/domain/meals/inventory';
 import { toIsoDate } from '@/domain/shared/dates';
@@ -19,7 +19,6 @@ export default function InventoryScreen() {
   const [unit, setUnit] = useState<InventoryUnit>('g');
   const [expires, setExpires] = useState('');
   const [formKey, setFormKey] = useState(0);
-  const [scanInfo, setScanInfo] = useState(false);
   const today = toIsoDate(new Date());
 
   const add = () => {
@@ -73,20 +72,22 @@ export default function InventoryScreen() {
         <Text variant="heading">{t('common.add')}</Text>
         <Text variant="label">{t('inventory.pick')}</Text>
         <ChoiceGroup
+          single
+          label={t('inventory.pick')}
           options={FOOD_CATALOG.map((f) => ({ value: f.id, label: f.name[lang] }))}
           selected={foodId ? [foodId] : []}
           onToggle={(id) => setFoodId(id)}
         />
         <NumberField key={formKey} label={t('inventory.quantity')} value={quantity} onChange={setQuantity} />
         <ChoiceGroup
+          single
+          label={t('inventory.unit')}
           options={UNITS.map((u) => ({ value: u, label: t(`enums.unit.${u}`) }))}
           selected={[unit]}
           onToggle={setUnit}
         />
         <TextField label={t('inventory.expires')} value={expires} onChangeText={setExpires} placeholder="2026-10-05" />
         <Button label={t('common.add')} onPress={add} disabled={!foodId || !quantity} />
-        <Button variant="ghost" label={t('inventory.scan')} onPress={() => setScanInfo(true)} />
-        {scanInfo ? <Banner message={t('inventory.scanUnavailable')} /> : null}
       </Card>
     </Screen>
   );

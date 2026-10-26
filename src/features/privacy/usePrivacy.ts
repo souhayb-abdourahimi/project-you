@@ -14,7 +14,9 @@ import { resetDeviceData } from '@/hooks/deviceData';
 import { signOut, useSession } from '@/services/auth';
 import { deleteAccount, deleteRemoteCategory, fetchAccountData } from '@/services/privacy';
 import { supabase } from '@/services/supabase';
+import { saveFileOnWeb } from '@/services/web';
 import { useCalendarStore } from '@/state/calendar';
+import { useCalendarFeedStore } from '@/state/calendarFeed';
 import { useDataStore } from '@/state/data';
 import { useHealthStore } from '@/state/health';
 import { useNotificationStore } from '@/state/notifications';
@@ -34,12 +36,7 @@ function localState() {
 
 async function share(json: string, fileName: string) {
   if (Platform.OS === 'web') {
-    const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    link.click();
-    URL.revokeObjectURL(url);
+    await saveFileOnWeb(json, fileName, 'application/json');
     return;
   }
   await Share.share({ title: fileName, message: json });
@@ -57,6 +54,8 @@ function deviceSettings() {
     // Check-ins saved before D-028 and not moved into the day logs yet (normally empty).
     checkins,
     calendar: { connected, readBusy, writeSessions, busy, writtenEvents: written },
+    // iCal link (D-049) as cached here: host and busy times only (the link stays sealed on the server).
+    calendarFeed: useCalendarFeedStore.getState().link,
     // Imported from Apple Health / Health Connect: kept on this device only.
     health: {
       connected: health.connected,
@@ -83,6 +82,7 @@ export function usePrivacy() {
   const sessionIds = useDataStore((s) => s.sessionIds);
   const sessionOutcomes = useDataStore((s) => s.sessionOutcomes);
   const mealLog = useDataStore((s) => s.mealLog);
+  const loggedMeals = useDataStore((s) => s.loggedMeals);
   const measurements = useDataStore((s) => s.measurements);
   const dayLogs = useDataStore((s) => s.dayLogs);
   const weeklyCheckins = useDataStore((s) => s.weeklyCheckins);
@@ -102,6 +102,7 @@ export function usePrivacy() {
     sessionIds,
     sessionOutcomes,
     mealLog,
+    loggedMeals,
     measurements,
     dayLogs,
     weeklyCheckins,

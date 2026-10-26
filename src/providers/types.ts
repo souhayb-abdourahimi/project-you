@@ -3,6 +3,7 @@
  * only. A provider must handle auth, errors, timeouts, retries, caching, rate limits and missing data,
  * and report missing data as `unavailable` rather than inventing it.
  */
+import type { MealPhotoDetection } from '@/domain/ai/schemas';
 import type { Food } from '@/domain/meals/catalog';
 import type { GeoPoint, Place, PlaceKind } from '@/domain/places/types';
 import type {
@@ -19,8 +20,28 @@ import type { ExternalDataMeta } from '@/domain/shared/external';
 
 export type ProviderResult<T> =
   | { status: 'ok'; data: T; meta: ExternalDataMeta }
-  | { status: 'unavailable'; reason: 'not_configured' | 'no_data' | 'not_supported_on_platform' | 'permission_denied' }
-  | { status: 'error'; error: 'timeout' | 'rate_limited' | 'network' | 'auth' | 'unknown'; retryable: boolean };
+  | {
+      status: 'unavailable';
+      /** `not_deployed`: the server function does not exist; `boot_error`: it exists but does not start. */
+      reason:
+        | 'not_configured'
+        | 'not_deployed'
+        | 'boot_error'
+        | 'no_data'
+        | 'not_supported_on_platform'
+        | 'permission_denied';
+      /** Names of the server settings still missing (never a value), when the server said so. */
+      missing?: string[];
+    }
+  | {
+      status: 'error';
+      /** `offline`: the device says it has no connection. `service`: the provider answered, but with a
+       * refusal or an unusable answer (it is not the user's connection). `quota`: the server's
+       * provider has no credit or free allocation left. `provider_auth`: the server's key is refused. */
+      error:
+        'timeout' | 'rate_limited' | 'network' | 'offline' | 'service' | 'auth' | 'quota' | 'provider_auth' | 'unknown';
+      retryable: boolean;
+    };
 
 export type { GeoPoint, Place, PlaceKind } from '@/domain/places/types';
 
@@ -131,7 +152,8 @@ export interface LocationProvider {
 }
 /** Opens a point on a map; the UI never builds a map URL itself. */
 export interface MapsProvider {
-  open(at: GeoPoint): Promise<ProviderResult<true>>;
+  /** `label`: the place's name, shown by the maps app (never the user's own position). */
+  open(at: GeoPoint, label?: string): Promise<ProviderResult<true>>;
 }
 export interface NotificationProvider {
   requestPermission(): Promise<ProviderResult<true>>;
@@ -145,4 +167,23 @@ export interface AIProvider {
     context: Record<string, unknown>;
     question: string;
   }): Promise<ProviderResult<unknown>>;
+}
+
+/** A meal photo ready to send: resized and compressed on the device, base64 without data: prefix. */
+export interface MealPhoto {
+  base64: string;
+  mediaType: 'image/jpeg' | 'image/png' | 'image/webp';
+}
+
+/**
+ * Meal photo analysis (W-10, docs/MEAL_PHOTO_ANALYSIS.md): food candidates only, validated against
+ * `MealPhotoDetection`; nutrition is computed by the domain from Ciqual. Sent only after an
+ * explicit user action; the photo is never stored.
+ */
+export interface MealPhotoProvider {
+  analyze(
+    photo: MealPhoto,
+    catalog: readonly { id: string; name: string }[],
+    signal?: AbortSignal,
+  ): Promise<ProviderResult<MealPhotoDetection>>;
 }

@@ -6,6 +6,8 @@
  * the goal (CLAUDE.md rule 8); fact `protected` (minor or underweight user, docs/TRANSFORMATION_JOURNEY.md §4.5)
  * removes the same variants, so the coach never encourages intensity or a calorie deficit.
  */
+import type { MotivationReason } from '../../profile/schemas';
+
 import type { AnchorSlot, GoalFamily, Tone, Trigger } from './types';
 
 export interface Variant {
@@ -18,6 +20,11 @@ export interface Variant {
   needs?: string[];
   /** Facts that must be absent. */
   unless?: string[];
+  /**
+   * Only for users who picked one of these motivation reasons (D-046). Used for wording only, and
+   * only where personal words may be shown (never on a lock screen that hides them).
+   */
+  reasons?: MotivationReason[];
 }
 
 export type PartKind = 'title' | 'action' | 'meaning';
@@ -45,7 +52,25 @@ export const ANCHORS: Record<AnchorSlot, Variant[]> = {
   change: [v('v1'), v('v2'), v('v3')],
   feel: [v('v1'), v('v2'), v('v3')],
   private: [v('v1'), v('v2'), v('v3')],
-  none: [v('v1'), v('v2'), v('v3')],
+  // "You said …": the reason the user picked, when they wrote no words of their own. A fact they
+  // gave, never a promise; the body and pace ones never while the coach must not push.
+  none: [
+    v('v1'),
+    v('v2'),
+    v('v3'),
+    v('weight_lose', { reasons: ['weight'], goals: ['lose'], unless: NO_PUSH }),
+    v('weight_gain', { reasons: ['weight'], goals: ['gain'], unless: NO_PUSH }),
+    v('weight_keep', { reasons: ['weight'], goals: ['recomp', 'health', 'performance'], unless: NO_PUSH }),
+    v('health', { reasons: ['health'] }),
+    v('body_confidence', { reasons: ['body_confidence'], unless: NO_PUSH }),
+    v('energy', { reasons: ['energy'] }),
+    v('strength', { reasons: ['strength'], unless: NO_PUSH }),
+    v('endurance', { reasons: ['endurance'], unless: NO_PUSH }),
+    v('performance', { reasons: ['performance'], unless: NO_PUSH }),
+    v('habits', { reasons: ['habits'] }),
+    v('mental', { reasons: ['mental'] }),
+    v('event', { reasons: ['event'], unless: NO_PUSH }),
+  ],
   care: [v('v1'), v('v2'), v('v3')],
   checkin: [v('v1'), v('v2'), v('v3')],
 };
@@ -260,11 +285,12 @@ export const partKey = (trigger: Trigger, kind: PartKind, id: string) => `coach.
 /** Variants usable for this user and these facts, in catalog order. */
 export function eligible(
   variants: Variant[],
-  ctx: { tone: Tone; family: GoalFamily; facts: Record<string, string> },
+  ctx: { tone: Tone; family: GoalFamily; facts: Record<string, string>; reasons?: readonly MotivationReason[] },
 ): Variant[] {
   return variants.filter(
     (x) =>
       (!x.tone || x.tone === ctx.tone) &&
+      (!x.reasons || x.reasons.some((r) => (ctx.reasons ?? []).includes(r))) &&
       (!x.goals || x.goals.includes(ctx.family)) &&
       (x.needs ?? []).every((f) => ctx.facts[f] !== undefined && ctx.facts[f] !== '') &&
       (x.unless ?? []).every((f) => ctx.facts[f] === undefined || ctx.facts[f] === ''),

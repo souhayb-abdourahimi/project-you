@@ -1,5 +1,5 @@
 import type { WeeklyMealPlan } from '../../meals/planner';
-import { deriveJourneyState, loggedDays, type JourneyInput } from '../state';
+import { deriveJourneyState, loggedDays, withAddedMeals, type JourneyInput } from '../state';
 
 type Status = 'planned' | 'eaten' | 'skipped';
 /** Minimal meal plan: only the fields the journey reads. */
@@ -106,6 +106,26 @@ describe('journey state (single source of truth)', () => {
       ]),
     });
     expect(s.plan.mainMeal).toEqual({ '2026-10-02': 'Curry de lentilles' });
+  });
+
+  it('a meal added outside the plan (photo estimate) counts for its day: no false low-intake alert', () => {
+    const plan = mealPlan(
+      ['2026-09-28', '2026-09-29', '2026-09-30'].map((date) => ({
+        date,
+        meals: [
+          ['breakfast', 'eaten', 300],
+          ['lunch', 'eaten', 500],
+          ['dinner', 'skipped', 0],
+        ] as [string, Status, number][],
+      })),
+    );
+    const added = ['2026-09-28', '2026-09-29', '2026-09-30'].map((date) => ({ date, nutrition: { kcal: 900 } }));
+    expect(withAddedMeals(loggedDays(plan), added).map((d) => d.kcal)).toEqual([1700, 1700, 1700]);
+    expect(deriveJourneyState({ ...base, mealPlan: plan, addedMeals: added }).safety.flags).toEqual([]);
+    // Added meals never complete a day whose planned meals are not marked.
+    const open = mealPlan([{ date: '2026-09-28', meals: [['lunch', 'planned', 500]] }]);
+    expect(withAddedMeals(loggedDays(open), added)[0].complete).toBe(false);
+    expect(withAddedMeals(loggedDays(plan), undefined)).toEqual(loggedDays(plan));
   });
 
   it('feeds the safety rule with what the user logged, and nothing else', () => {

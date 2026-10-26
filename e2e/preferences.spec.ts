@@ -16,11 +16,15 @@ async function restartQuestionnaire(page: Page) {
   await expect(page).toHaveURL(/onboarding/);
 }
 
-/** Clicks "Continuer" until the given step title is shown (every answer is prefilled). */
+/**
+ * Clicks the main button until the given step title is shown (every answer is prefilled). Its
+ * label follows the answer ("Continuer", "Aucune allergie"…), so it is found by its test id.
+ */
 async function continueUntil(page: Page, title: string) {
   for (let i = 0; i < 40; i++) {
-    if (await text(page, title).isVisible()) return;
-    await button(page, 'Continuer').click();
+    // The step title, exactly (a hint can contain the same word: "Les allergies, …").
+    if (await page.getByRole('heading', { name: title, exact: true }).isVisible()) return;
+    await page.getByTestId('onboarding-next').click();
   }
   throw new Error(`step "${title}" not reached`);
 }

@@ -121,7 +121,8 @@ const NOTICE: Record<NoticeTone, { background: ColorToken; accent: ColorToken; i
 
 /**
  * A tinted note: identifiable at once, never alarming. `caution` is the safety surface; `danger`
- * is kept for a real error or a destructive consequence.
+ * is kept for a real error or a destructive consequence. Only those two are announced as an alert
+ * by default: an information read out as an alert on every screen would drown the real ones.
  */
 export function Notice({
   title,
@@ -129,7 +130,7 @@ export function Notice({
   tone = 'neutral',
   icon,
   children,
-  role = 'alert',
+  role,
 }: {
   title?: string;
   message?: string;
@@ -140,8 +141,9 @@ export function Notice({
 }) {
   const colors = useColors();
   const look = NOTICE[tone];
+  const announced = role ?? (tone === 'caution' || tone === 'danger' ? 'alert' : undefined);
   return (
-    <View accessibilityRole={role} style={[styles.notice, { backgroundColor: colors[look.background] }]}>
+    <View accessibilityRole={announced} style={[styles.notice, { backgroundColor: colors[look.background] }]}>
       <Icon name={icon ?? look.icon} size="md" color={look.accent} />
       <View style={styles.noticeText}>
         {title ? (
@@ -251,11 +253,11 @@ const styles = StyleSheet.create({
   loadingRow: { flexDirection: 'row', justifyContent: 'space-between' },
   badge: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: radius.sm, paddingHorizontal: spacing.xs },
   empty: { gap: spacing.sm },
-  notice: { flexDirection: 'row', gap: spacing.md, borderRadius: radius.lg, padding: spacing.lg },
+  notice: { flexDirection: 'row', gap: spacing.md, borderRadius: radius.lg, padding: spacing.md + spacing.xxs },
   noticeText: { flex: 1, gap: spacing.xs },
   tile: { flex: 1, minWidth: 104 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, alignItems: 'center' },
-  section: { gap: spacing.md },
+  section: { gap: spacing.sm + spacing.xxs },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   avatar: { borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
@@ -297,6 +299,6 @@ export function CoachNote({
 
 const coachStyles = StyleSheet.create({
   card: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
-  mark: { width: 40, height: 40, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
+  mark: { width: 36, height: 36, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   body: { flex: 1, gap: spacing.xs },
 });

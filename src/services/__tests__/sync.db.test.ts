@@ -11,6 +11,7 @@ import { CATEGORY_TABLES, EXPORT_ONLY_TABLES } from '@/domain/privacy/data';
 import { SCENARIOS, scenario } from '@/domain/scenarios';
 import { publishWeek } from '@/domain/scenarios/training';
 import type { UserContextSnapshot } from '@/domain/profile/schemas';
+import { loggedMealNutrition } from '@/domain/meals/photo-analysis';
 import {
   SYNC_TABLE_ORDER,
   type Row,
@@ -229,7 +230,7 @@ describeDb('sync against the real schema (Postgres + RLS)', () => {
     expect(intruder.state().snapshot).toBeNull();
   });
 
-  it('W-8: reminder preferences and mass unit are the account\'s; untouched defaults never overwrite them', async () => {
+  it("W-8: reminder preferences and mass unit are the account's; untouched defaults never overwrite them", async () => {
     const prefs = {
       ...DEFAULT_NOTIFICATION_PREFERENCES,
       enabled: true,
@@ -255,7 +256,11 @@ describeDb('sync against the real schema (Postgres + RLS)', () => {
     laptop.write({ notificationPrefs: { ...prefs, quietEnabled: true, pausedUntil: '2026-10-20' } });
     expect((await syncOnce(restAs(db, J), laptop, J)).pushed).toBe(1);
     await syncOnce(restAs(db, J), phone, J);
-    expect(phone.state().notificationPrefs).toMatchObject({ quietEnabled: true, pausedUntil: '2026-10-20', maxPerDay: 2 });
+    expect(phone.state().notificationPrefs).toMatchObject({
+      quietEnabled: true,
+      pausedUntil: '2026-10-20',
+      maxPerDay: 2,
+    });
 
     // Back to kg on the phone: every stored weight stays in kg, only the unit changes on the laptop.
     const snap = phone.state().snapshot!;
@@ -264,6 +269,33 @@ describeDb('sync against the real schema (Postgres + RLS)', () => {
     await syncOnce(restAs(db, J), laptop, J);
     expect(laptop.state().snapshot?.preferences.weightUnit).toBe('kg');
     expect(laptop.state().snapshot?.user.weightKg).toBe(SCENARIOS.veganFatLoss.user.weightKg);
+  });
+
+  it('W-11: several motivation reasons go through the real schema; a profile saved before keeps working', async () => {
+    const before = memoryStore({ snapshot: SCENARIOS.beginner });
+    expect(await syncOnce(restAs(db, J), before, J, { claim: true })).toMatchObject({ failed: 0, rejected: 0 });
+    const other = memoryStore({});
+    await syncOnce(restAs(db, J), other, J);
+    // Never answered: still "no reason given", nothing pushed back.
+    expect(other.state().snapshot?.motivation.reasons).toBeUndefined();
+    expect((await syncOnce(restAs(db, J), other, J)).pushed).toBe(0);
+
+    const snap = before.state().snapshot!;
+    before.write({
+      snapshot: { ...snap, motivation: { ...snap.motivation, reasons: ['weight', 'health', 'energy'] } },
+    });
+    expect(await syncOnce(restAs(db, J), before, J)).toMatchObject({ failed: 0, rejected: 0 });
+    await syncOnce(restAs(db, J), other, J);
+    expect(other.state().snapshot?.motivation.reasons).toEqual(['weight', 'health', 'energy']);
+    // The main goal is untouched by the reasons.
+    expect(other.state().snapshot?.goal.type).toBe(before.state().snapshot?.goal.type);
+
+    // Cleared on one device, cleared everywhere (an empty list, not the old reasons).
+    const o = other.state().snapshot!;
+    other.write({ snapshot: { ...o, motivation: { ...o.motivation, reasons: [] } } });
+    await syncOnce(restAs(db, J), other, J);
+    await syncOnce(restAs(db, J), before, J);
+    expect(before.state().snapshot?.motivation.reasons).toEqual([]);
   });
 
   it('edits and deletions propagate between devices', async () => {
@@ -312,6 +344,18 @@ describeDb('sync against the real schema (Postgres + RLS)', () => {
         },
       ],
       measurements: [{ id: 'aaaaaaaa-0000-4000-8000-0000000000d3', date: '2026-09-29', kind: 'chest', cm: 101 }],
+      // W-10: a confirmed photo estimate, ids and grams only.
+      loggedMeals: [
+        {
+          id: 'aaaaaaaa-0000-4000-8000-0000000000d5',
+          date: '2026-09-29',
+          slot: 'dinner',
+          source: 'photo_estimate',
+          items: [{ foodId: 'salmon', grams: 120 }],
+          nutrition: loggedMealNutrition([{ foodId: 'salmon', grams: 120 }])!,
+          createdAt: '',
+        },
+      ],
       weeklyCheckins: [
         {
           weekStart: '2026-09-21',
@@ -351,6 +395,7 @@ describeDb('sync against the real schema (Postgres + RLS)', () => {
     expect(s.milestones).toEqual(phone.state().milestones);
     expect(s.adjustments).toEqual(phone.state().adjustments);
     expect(s.mealLog).toEqual([expect.objectContaining({ date: '2026-09-21', status: 'skipped', reason: 'no_time' })]);
+    expect(s.loggedMeals).toEqual([{ ...phone.state().loggedMeals![0], createdAt: expect.stringMatching(/^\d{4}-/) }]);
     // The second device has nothing to push back.
     expect((await syncOnce(restAs(db, A), laptop, A)).pushed).toBe(0);
   });

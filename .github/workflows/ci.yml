@@ -42,8 +42,13 @@ jobs:
       - run: npm ci
       # No Supabase variables: the export runs in local mode, like a first visit without an account.
       - run: npm run build:web
-      - run: npx playwright install --with-deps chromium
+      # Second export against a fake Supabase project answered by the tests (signed-in journeys).
+      - run: npm run build:web:e2e-account
+      # WebKit runs the critical screens with the iPhone 15 profile (playwright.config.ts).
+      - run: npx playwright install --with-deps chromium webkit
       - run: npm run test:e2e
+        env:
+          PW_WEBKIT: '1'
       - if: failure()
         uses: actions/upload-artifact@v4
         with:

@@ -46,9 +46,9 @@ const styles = StyleSheet.create({
     maxWidth: MAX_CONTENT_WIDTH,
     alignSelf: 'center',
     paddingHorizontal: layout.screenPadding,
-    paddingVertical: spacing.xl,
-    gap: spacing.lg,
+    paddingVertical: spacing.lg,
+    gap: spacing.md + spacing.xxs,
   },
-  airy: { gap: layout.sectionGap, paddingTop: spacing.lg, paddingBottom: spacing['3xl'] },
-  airyCompact: { gap: spacing.xl, paddingTop: spacing.sm, paddingHorizontal: spacing.lg },
+  airy: { gap: layout.sectionGap, paddingTop: spacing.md, paddingBottom: spacing['3xl'] },
+  airyCompact: { gap: spacing.lg + spacing.xxs, paddingTop: spacing.sm, paddingHorizontal: spacing.md + spacing.xxs },
 });

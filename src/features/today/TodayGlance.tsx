@@ -2,12 +2,14 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Card, Icon, MiniBars, ProgressRing, Text } from '@/components/ui';
+import { Card, Icon, MiniBars, ProgressRing, Text, TrendLine } from '@/components/ui';
 import { fromKg } from '@/domain/settings/units';
+import { weightTrend } from '@/features/progress/view';
 import type { Journey } from '@/hooks/useJourney';
 import { useMassUnit } from '@/hooks/useMassUnit';
 import type { Plan } from '@/hooks/usePlan';
 import { formatNumber } from '@/lib/format';
+import { useDataStore } from '@/state/data';
 import { useHealthStore } from '@/state/health';
 import { PRESSED_SCALE, borderWidth, radius, spacing, useColors } from '@/theme';
 
@@ -20,72 +22,96 @@ import { todayGlance, type TodayGlance as Glance, type WeekDayState } from './vi
 export function TodayGlance({ plan, journey }: { plan: Plan; journey: Journey }) {
   const sharing = useHealthStore((s) => s.connected && s.wanted.includes('steps'));
   const steps = useHealthStore((s) => s.data.steps);
+  const loggedMeals = useDataStore((s) => s.loggedMeals);
   const glance = todayGlance({
     today: plan.today,
     week: journey.trainingWeek,
     meals: plan.mealPlan?.days.find((d) => d.date === plan.today)?.meals ?? null,
+    added: loggedMeals.filter((m) => m.date === plan.today),
     proteinTargetG: plan.targets.proteinG,
     kcalTarget: plan.targets.calories,
     steps: sharing ? steps : null,
     weight: journey.progress.body.weight,
     bodyOrder: journey.progress.bodyOrder,
   });
-  const side = glance.steps ? <Steps steps={glance.steps} /> : glance.weight ? <Weight weight={glance.weight} /> : null;
+  const side = glance.steps ? (
+    <Steps steps={glance.steps} />
+  ) : glance.weight ? (
+    <Weight weight={glance.weight} today={plan.today} />
+  ) : null;
   if (!glance.nutrition && !glance.week && !side) return null;
+  // W-10 reference: two tiles side by side (nutrition ring, steps or weight), then the week strip.
   return (
     <View style={styles.glance}>
-      {glance.nutrition ? <Nutrition n={glance.nutrition} /> : null}
-      {glance.week || side ? (
+      {glance.nutrition || side ? (
         <View style={styles.row}>
-          {glance.week ? <Week week={glance.week} /> : null}
+          {glance.nutrition ? <Nutrition n={glance.nutrition} alone={!side} /> : null}
           {side}
         </View>
       ) : null}
+      {glance.week ? <WeekGlance week={glance.week} /> : null}
     </View>
   );
 }
 
-function Nutrition({ n }: { n: NonNullable<Glance['nutrition']> }) {
+/** `alone`: no second tile beside it (no steps, no weight yet): ring and words side by side. */
+function Nutrition({ n, alone }: { n: NonNullable<Glance['nutrition']>; alone: boolean }) {
   const { t, i18n } = useTranslation();
-  const colors = useColors();
   const num = (v: number) => formatNumber(v, i18n.language);
-  const label = t('today.glance.proteinA11y', { eaten: n.proteinG, target: n.proteinTargetG });
+  // Nothing noted yet: the targets, never "0 g" as if it were a measurement.
+  const none = n.logged === 0;
+  const label = none
+    ? t('today.glance.nothingA11y', { protein: n.proteinTargetG, kcal: n.kcalTarget })
+    : t('today.glance.proteinA11y', { eaten: n.proteinG, target: n.proteinTargetG });
+  const shown = (v: number) => (none ? t('common.noValue') : num(v));
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${label}. ${t('today.glance.energyA11y', { eaten: n.kcal, target: n.kcalTarget })}`}
+      accessibilityLabel={
+        none ? label : `${label}. ${t('today.glance.energyA11y', { eaten: n.kcal, target: n.kcalTarget })}`
+      }
       accessibilityHint={t('today.glance.openNutrition')}
       onPress={() => router.push('/nutrition')}
-      style={({ pressed }) => [styles.pressable, { transform: [{ scale: pressed ? PRESSED_SCALE : 1 }] }]}>
-      <Card style={styles.nutrition}>
-        <ProgressRing value={n.proteinG / n.proteinTargetG} color="nutrition" label={label} size={104} stroke={10}>
-          <Text variant="metric">{num(n.proteinG)}</Text>
-          <Text variant="caption" color="textMuted">
-            / {num(n.proteinTargetG)} g
-          </Text>
-        </ProgressRing>
-        <View style={styles.flex} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      style={({ pressed }) => [styles.pressable, styles.half, { transform: [{ scale: pressed ? PRESSED_SCALE : 1 }] }]}>
+      <Card dense style={styles.fill}>
+        <View style={styles.halfBody} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           <View style={styles.inline}>
             <Icon name="nutrition" size="sm" color="nutrition" />
             <Text variant="captionStrong" color="textSecondary">
               {t('today.glance.nutrition')}
             </Text>
           </View>
-          <Text variant="title3">{t('today.glance.protein')}</Text>
-          <Text variant="caption" color="textMuted">
-            {t('today.glance.proteinCaption')}
-          </Text>
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-          <Text variant="caption" color="textSecondary">
-            {t('today.glance.energy', { eaten: num(n.kcal), target: num(n.kcalTarget) })}
-          </Text>
+          {/* Half tile: ring, then its label ("Protéines" breaks mid-word side by side on an
+              iPhone SE). Alone on the row: side by side, so the tile is not half empty. */}
+          <View style={alone ? styles.wide : styles.halfBody}>
+            <ProgressRing value={n.proteinG / n.proteinTargetG} color="nutrition" label={label} size={64} stroke={6}>
+              <Text variant="headline">{shown(n.proteinG)}</Text>
+              <Text variant="micro" color="textMuted">
+                / {num(n.proteinTargetG)} g
+              </Text>
+            </ProgressRing>
+            <View style={alone ? styles.flex : styles.halfBody}>
+              <View>
+                <Text variant="captionStrong">{t('today.glance.protein')}</Text>
+                <Text variant="caption" color="textMuted">
+                  {t('nutrition.estimate')}
+                </Text>
+              </View>
+              <Text variant="caption" color="textSecondary" numberOfLines={2}>
+                {none
+                  ? t('today.glance.nothingYet')
+                  : t('today.glance.energy', { eaten: num(n.kcal), target: num(n.kcalTarget) })}
+              </Text>
+            </View>
+          </View>
         </View>
       </Card>
     </Pressable>
   );
 }
 
-function Week({ week }: { week: NonNullable<Glance['week']> }) {
+/** The week as a strip of days (Today, weekly check-in): done, adapted, planned, not done, rest. */
+export function WeekGlance({ week }: { week: NonNullable<Glance['week']> }) {
   const { t, i18n } = useTranslation();
   const letter = new Intl.DateTimeFormat(i18n.language === 'en' ? 'en-GB' : 'fr-FR', { weekday: 'narrow' });
   const describe = week.days
@@ -93,16 +119,14 @@ function Week({ week }: { week: NonNullable<Glance['week']> }) {
     .map((d) => `${formatDay(d.date, i18n.language)} : ${t(`today.glance.day.${d.state}`)}`)
     .join(', ');
   return (
-    <Card dense style={styles.half} accessibilityLabel={`${t('today.glance.weekA11y', week)}. ${describe}`}>
+    <Card dense accessibilityLabel={`${t('today.glance.weekA11y', week)}. ${describe}`}>
       <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.halfBody}>
         <View style={styles.inline}>
           <Icon name="sessions" size="sm" color="training" />
-          <Text variant="captionStrong" color="textSecondary">
+          <Text variant="captionStrong" color="textSecondary" style={styles.flex}>
             {t('today.glance.week')}
           </Text>
-        </View>
-        <View style={styles.value}>
-          <Text variant="metric">{week.done}</Text>
+          <Text variant="headline">{week.done}</Text>
           <Text variant="captionStrong" color="textMuted">
             / {week.planned} {t('today.glance.sessions')}
           </Text>
@@ -173,9 +197,20 @@ function Steps({ steps }: { steps: NonNullable<Glance['steps']> }) {
   );
 }
 
-function Weight({ weight }: { weight: NonNullable<Glance['weight']> }) {
+function Weight({ weight, today }: { weight: NonNullable<Glance['weight']>; today: string }) {
   const { t, i18n } = useTranslation();
   const unit = useMassUnit();
+  const weights = useDataStore((s) => s.weights);
+  const trend = weightTrend(weights, today, TREND_WEEKS);
+  const known = trend?.weeks.filter((w) => w.kg !== null) ?? [];
+  const trendLabel =
+    known.length >= 2
+      ? t('progress.body.trendA11y', {
+          count: known.length,
+          first: t('common.mass', { value: known[0].kg }),
+          last: t('common.mass', { value: known[known.length - 1].kg }),
+        })
+      : '';
   const num = (kg: number) => formatNumber(fromKg(kg, unit), i18n.language);
   const change =
     weight.changeKg === null
@@ -188,6 +223,7 @@ function Weight({ weight }: { weight: NonNullable<Glance['weight']> }) {
       accessibilityLabel={[
         `${t('today.glance.weight')}, ${num(weight.kg)} ${unit}, ${t('today.glance.weightCaption')}`,
         change ? t('today.glance.sinceStart', { change }) : null,
+        trendLabel || null,
       ]
         .filter(Boolean)
         .join('. ')}>
@@ -212,10 +248,17 @@ function Weight({ weight }: { weight: NonNullable<Glance['weight']> }) {
             {t('today.glance.sinceStart', { change })}
           </Text>
         ) : null}
+        {/* The weekly averages of the real weigh-ins, as on Progress; nothing drawn under two weeks. */}
+        {known.length >= 2 ? (
+          <TrendLine values={trend!.weeks.map((w) => w.kg)} color="primary" height={30} label={trendLabel} />
+        ) : null}
       </View>
     </Card>
   );
 }
+
+/** Weeks of weigh-in averages drawn on the Today tile (the Progress screen chooses its own range). */
+const TREND_WEEKS = 8;
 
 const formatDay = (date: string, lang: string) =>
   new Intl.DateTimeFormat(lang === 'en' ? 'en-GB' : 'fr-FR', { weekday: 'long' }).format(new Date(`${date}T12:00:00`));
@@ -224,12 +267,12 @@ const styles = StyleSheet.create({
   glance: { gap: spacing.sm },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   pressable: { borderRadius: radius.card },
-  nutrition: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  fill: { flex: 1 },
   flex: { flex: 1, gap: spacing.xxs },
   inline: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  divider: { height: StyleSheet.hairlineWidth, marginVertical: spacing.sm },
   half: { flex: 1, minWidth: 150 },
   halfBody: { gap: spacing.sm },
+  wide: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   value: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs },
   strip: { flexDirection: 'row', justifyContent: 'space-between' },
   day: { alignItems: 'center', gap: spacing.xs },
