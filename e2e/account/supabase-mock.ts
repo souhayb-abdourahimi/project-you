@@ -49,6 +49,9 @@ export interface MockState {
   calls: Record<string, unknown>[];
   /** The busy ranges the function answers with (times only, as the real one). */
   busy: FeedRow['busy'];
+  /** What analyze-meal answers (status and body); bodies it received are kept in `analyses`. */
+  analysis?: { status: number; body: unknown };
+  analyses?: unknown[];
 }
 
 const cors = {
@@ -84,6 +87,11 @@ export async function mockAccount(page: Page, state: MockState) {
     }
 
     if (url.pathname === '/functions/v1/calendar-feed') return calendarFeed(route, state);
+    if (url.pathname === '/functions/v1/analyze-meal') {
+      (state.analyses ??= []).push(request.postDataJSON());
+      const answer = state.analysis ?? { status: 404, body: null };
+      return json(route, answer.status, answer.body);
+    }
 
     if (url.pathname === '/rest/v1/calendar_feeds') {
       if (method === 'GET') {
