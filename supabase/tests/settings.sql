@@ -189,3 +189,43 @@ select pg_temp.expect(
   (select column_default from information_schema.columns
     where table_schema = 'public' and table_name = 'motivations' and column_name = 'reasons') = '''{}''::text[]',
   'existing accounts read as "no reason given"');
+
+-- iCal link (D-049): only times are stored, never what the events are; owner-only; re-runnable.
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-0000000000f2', 'g@example.test');
+select pg_temp.expect(
+  (select array_agg(column_name::text order by column_name) from information_schema.columns
+    where table_schema = 'public' and table_name = 'calendar_feeds')
+  = array['busy', 'busy_from', 'busy_to', 'created_at', 'enabled', 'event_count', 'last_error', 'last_synced_at',
+          'status', 'updated_at', 'url_ciphertext', 'url_host', 'user_id'],
+  'calendar_feeds holds no title, description, location or attendee column');
+do $$
+begin
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000f2"}', true);
+  insert into public.calendar_feeds (user_id, url_ciphertext, url_host)
+    values ('00000000-0000-0000-0000-0000000000f2', 'v1:aaaaaaaaaaaaaaaa:bbbbbbbbbbbbbbbbbbbbbbbb', 'edt.example.test');
+  begin
+    update public.calendar_feeds set busy = '{"start":"x"}'::jsonb;
+    raise exception 'SETTINGS TEST FAILED: busy accepted a non-array';
+  exception when check_violation then
+    raise notice 'ok - busy is always a list of ranges';
+  end;
+  begin
+    update public.calendar_feeds set last_error = 'something else';
+    raise exception 'SETTINGS TEST FAILED: unknown feed error accepted';
+  exception when check_violation then
+    raise notice 'ok - feed errors are a closed list';
+  end;
+  delete from public.calendar_feeds;
+  if exists (select 1 from public.calendar_feeds) then
+    raise exception 'SETTINGS TEST FAILED: the owner could not delete their link';
+  end if;
+  raise notice 'ok - the owner deletes their link and its busy times';
+  perform set_config('role', 'postgres', true);
+end;
+$$;
+reset role;
+\i supabase/migrations/20261026000001_calendar_feeds.sql
+select pg_temp.expect(
+  (select count(*) from pg_policies where tablename = 'calendar_feeds') = 4,
+  'calendar feeds migration is idempotent');
