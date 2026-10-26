@@ -9,6 +9,7 @@ import { toIsoDate } from '@/domain/shared/dates';
 import { useUnsavedGuard } from '@/features/settings/useUnsavedGuard';
 import { radius, spacing, useColors } from '@/theme';
 
+import { AnalysisUnavailable } from './AnalysisUnavailable';
 import { MealDraftEditor } from './MealDraftEditor';
 import { RETRYABLE_ISSUES, useMealAnalysis, type AnalysisIssue } from './useMealAnalysis';
 
@@ -21,6 +22,8 @@ const ISSUE_KEY: Record<AnalysisIssue, string> = {
   service: 'nutrition.analysis.issue.service',
   rate_limited: 'nutrition.analysis.issue.rateLimited',
   auth: 'nutrition.analysis.issue.auth',
+  quota: 'nutrition.analysis.issue.quota',
+  provider_auth: 'nutrition.analysis.issue.providerAuth',
   unknown: 'nutrition.analysis.issue.unknown',
 };
 
@@ -71,16 +74,7 @@ export function MealAnalysisScreen() {
         <Notice tone="info" role="alert" message={t(ISSUE_KEY[issue])} />
       ) : null}
 
-      {phase === 'start' && !analysis.photoAvailable ? (
-        <Card style={styles.card}>
-          <Notice
-            tone="neutral"
-            title={t('nutrition.analysis.unavailableTitle')}
-            message={t('nutrition.analysis.unavailableBody')}
-          />
-          <Button block label={t('nutrition.analysis.compose')} onPress={analysis.composeManually} />
-        </Card>
-      ) : null}
+      {phase === 'start' && !analysis.photoAvailable ? <AnalysisUnavailable analysis={analysis} /> : null}
 
       {phase === 'start' && analysis.photoAvailable ? (
         <Card raised style={styles.card}>
@@ -132,16 +126,7 @@ export function MealAnalysisScreen() {
         </Card>
       ) : null}
 
-      {phase === 'unavailable' ? (
-        <Card style={styles.card}>
-          <Notice
-            tone="neutral"
-            title={t('nutrition.analysis.unavailableTitle')}
-            message={t('nutrition.analysis.unavailableBody')}
-          />
-          <Button block label={t('nutrition.analysis.compose')} onPress={analysis.composeManually} />
-        </Card>
-      ) : null}
+      {phase === 'unavailable' ? <AnalysisUnavailable analysis={analysis} /> : null}
 
       {phase === 'error' ? (
         <Card style={styles.card}>

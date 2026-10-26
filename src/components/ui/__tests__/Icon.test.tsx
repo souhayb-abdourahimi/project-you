@@ -68,7 +68,9 @@ describe('No icon depends on a font', () => {
 
   it('no icon font is loaded or named', () => {
     const offenders = sources
-      .filter((f) => /material-symbols|MaterialSymbols|MaterialIcons|vector-icons|fontFamily:\s*['"]Material/.test(f.text))
+      .filter((f) =>
+        /material-symbols|MaterialSymbols|MaterialIcons|vector-icons|fontFamily:\s*['"]Material/.test(f.text),
+      )
       .map((f) => f.path);
     expect(offenders).toEqual([]);
   });
@@ -83,6 +85,10 @@ describe('No icon depends on a font', () => {
   it('the registry draws only lucide vector icons, imported one by one', () => {
     const registry = readFileSync(join(__dirname, '../icons.ts'), 'utf8');
     const imports = [...registry.matchAll(/^import .* from '([^']+)';$/gm)].map((m) => m[1]);
-    expect(imports.filter((m) => m !== 'expo-symbols' && m !== 'react').every((m) => m.startsWith('lucide-react-native/icons/'))).toBe(true);
+    expect(
+      imports
+        .filter((m) => m !== 'expo-symbols' && m !== 'react')
+        .every((m) => m.startsWith('lucide-react-native/icons/')),
+    ).toBe(true);
   });
 });

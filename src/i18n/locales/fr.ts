@@ -1063,9 +1063,26 @@ const fr = {
       photoA11y: 'Photo de ton repas',
       analyzing: 'Analyse en cours…',
       analyzingHint: 'Identification des aliments et des portions. Tu pourras tout corriger.',
-      unavailableTitle: 'Analyse photo pas encore disponible',
-      unavailableBody:
-        'Le service d’analyse n’est pas activé pour l’instant. Tu peux composer ton repas à partir des aliments de la table Ciqual : le calcul est le même.',
+      unavailable: {
+        local_mode: {
+          title: 'Analyse photo indisponible en mode local',
+          body: 'Cette version de l’app n’est reliée à aucun compte : l’analyse photo ne peut pas tourner. Compose ton repas à partir de la table Ciqual : le calcul est le même.',
+        },
+        not_configured: {
+          title: 'Analyse photo pas configurée sur le serveur',
+          body: 'Le serveur répond, mais aucun service de reconnaissance n’y est réglé. Compose ton repas à partir de la table Ciqual : le calcul est le même.',
+        },
+        not_deployed: {
+          title: 'Service d’analyse introuvable',
+          body: 'La fonction d’analyse n’est pas déployée sur le serveur. Compose ton repas à partir de la table Ciqual : le calcul est le même.',
+        },
+        boot_error: {
+          title: 'Service d’analyse en panne',
+          body: 'La fonction d’analyse existe mais ne démarre pas sur le serveur. Compose ton repas à partir de la table Ciqual : le calcul est le même.',
+        },
+        missing: 'Réglage manquant côté serveur : {{names}}',
+        code: 'Code : {{code}}',
+      },
       errorTitle: 'Analyse impossible pour le moment',
       estimateTitle: 'Notre estimation',
       manualTitle: 'Ton repas',
@@ -1104,6 +1121,10 @@ const fr = {
           'Le service d’analyse n’a pas pu répondre. Ta connexion n’est pas en cause : réessaie ou compose ton repas.',
         rateLimited: 'Beaucoup d’analyses récemment. Réessaie plus tard ou compose ton repas.',
         auth: 'Connecte-toi à ton compte pour utiliser l’analyse photo.',
+        quota:
+          'Le service d’analyse a atteint sa limite (crédit ou quota gratuit du jour). Compose ton repas : le calcul Ciqual est le même.',
+        providerAuth:
+          'Le service d’analyse refuse la clé réglée sur le serveur. Compose ton repas en attendant : le calcul Ciqual est le même.',
         unknown: 'Le résultat reçu n’est pas exploitable. Rien n’a été ajouté.',
       },
     },

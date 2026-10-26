@@ -20,12 +20,26 @@ import type { ExternalDataMeta } from '@/domain/shared/external';
 
 export type ProviderResult<T> =
   | { status: 'ok'; data: T; meta: ExternalDataMeta }
-  | { status: 'unavailable'; reason: 'not_configured' | 'no_data' | 'not_supported_on_platform' | 'permission_denied' }
+  | {
+      status: 'unavailable';
+      /** `not_deployed`: the server function does not exist; `boot_error`: it exists but does not start. */
+      reason:
+        | 'not_configured'
+        | 'not_deployed'
+        | 'boot_error'
+        | 'no_data'
+        | 'not_supported_on_platform'
+        | 'permission_denied';
+      /** Names of the server settings still missing (never a value), when the server said so. */
+      missing?: string[];
+    }
   | {
       status: 'error';
       /** `offline`: the device says it has no connection. `service`: the provider answered, but with a
-       * refusal or an unusable answer (it is not the user's connection). */
-      error: 'timeout' | 'rate_limited' | 'network' | 'offline' | 'service' | 'auth' | 'unknown';
+       * refusal or an unusable answer (it is not the user's connection). `quota`: the server's
+       * provider has no credit or free allocation left. `provider_auth`: the server's key is refused. */
+      error:
+        'timeout' | 'rate_limited' | 'network' | 'offline' | 'service' | 'auth' | 'quota' | 'provider_auth' | 'unknown';
       retryable: boolean;
     };
 

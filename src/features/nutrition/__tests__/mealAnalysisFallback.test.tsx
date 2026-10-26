@@ -93,20 +93,35 @@ describe('meal photo analysis: manual fallback', () => {
   });
 
   it.each([
-    ['a rejected key (401)', 401],
-    ['an unknown model (404)', 404],
-    ['a provider quota (429)', 429],
-    ['a provider failure (500)', 500],
+    ['a rejected key (401)', 401, 'provider_auth'],
+    ['an unknown model (404)', 404, 'provider_auth'],
+    ['a short burst (429)', 429, 'rate_limited'],
+    ['a provider failure (500)', 500, 'service'],
   ])(
-    'OpenAI answers %s: a service error (not "check your connection"), retry or compose by hand',
-    async (_, status) => {
+    'OpenAI answers %s: its own message (never "check your connection"), compose by hand',
+    async (_, status, issue) => {
       chain(OPENAI, answering(status));
       const hook = await analyse();
       expect(hook.result.current.phase).toBe('error');
-      expect(hook.result.current.issue).toBe('service');
+      expect(hook.result.current.issue).toBe(issue);
       await expectManualFallback(hook);
     },
   );
+
+  it('OpenAI has no credit left (429 insufficient_quota): "quota", not a vague failure', async () => {
+    chain(
+      OPENAI,
+      jest.fn(async () => ({
+        ok: false,
+        status: 429,
+        json: async () => ({}),
+        text: async () => '{"error":{"code":"insufficient_quota"}}',
+      })) as unknown as typeof fetch,
+    );
+    const hook = await analyse();
+    expect(hook.result.current.issue).toBe('quota');
+    await expectManualFallback(hook);
+  });
 
   it('OpenAI unreachable: an error, composing by hand', async () => {
     chain(OPENAI, jest.fn(async () => Promise.reject(new TypeError('fetch failed'))) as unknown as typeof fetch);

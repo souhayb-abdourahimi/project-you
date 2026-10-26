@@ -29,19 +29,53 @@ export interface VisionInput {
   signal: AbortSignal;
 }
 
+/** Shown by the diagnostic call and in `not_configured`: tells which code is deployed. */
+export const ANALYZE_MEAL_VERSION = '2026-10-26';
+
+/** Why a provider failed, from its HTTP answer (never its text). */
+export type VisionFailure =
+  | 'provider_auth'
+  | 'quota'
+  | 'rate_limited'
+  | 'timeout'
+  | 'model_not_found'
+  | 'bad_request'
+  | 'invalid_output'
+  | 'unavailable';
+
+export class VisionError extends Error {
+  readonly failure: VisionFailure;
+  readonly status: number;
+  constructor(failure: VisionFailure, status: number) {
+    super(`vision ${failure} ${status}`);
+    this.failure = failure;
+    this.status = status;
+  }
+}
+
 /** The configured vision model: returns the model's raw JSON answer, checked by the handler. */
 export interface VisionModel {
+  /** `openai`, `anthropic`, `cloudflare`… (no secret, shown in diagnostics). */
+  provider?: string;
   name: string;
   detect(input: VisionInput): Promise<unknown>;
 }
 
 export interface AnalyzeMealDeps {
   getUserId: (accessToken: string) => Promise<string | null>;
-  /** Null when no vision provider is configured (missing secrets): the app says "unavailable". */
-  model: VisionModel | null;
+  /** The providers to try, in order (MEAL_VISION_PROVIDER=openai,cloudflare). */
+  models?: VisionModel[];
+  /** A single provider (older wiring); ignored when `models` is given. Null: not configured. */
+  model?: VisionModel | null;
+  /** Names of the missing secrets, returned with `not_configured` (never a value). */
+  missing?: string[];
   /** False when the user exceeded their quota (optional). */
   allow?: (userId: string) => Promise<boolean>;
+  /** Time given to each provider. */
   timeoutMs?: number;
+  /** Time for the whole chain: no provider is started after it. */
+  totalTimeoutMs?: number;
+  now?: () => number;
 }
 
 export interface DetectedItem {
@@ -53,16 +87,11 @@ export interface DetectedItem {
 
 export type AnalyzeMealBody =
   | { items: DetectedItem[]; model: string }
+  | { version: string; providers: { provider: string; model: string }[]; missing: string[] }
+  | { error: 'not_configured'; missing: string[]; version: string }
+  | { error: 'analysis_failed'; reason: VisionFailure; tried: { provider: string; failure: VisionFailure }[] }
   | {
-      error:
-        | 'method_not_allowed'
-        | 'unauthorized'
-        | 'invalid_request'
-        | 'not_configured'
-        | 'rate_limited'
-        | 'timeout'
-        | 'invalid_output'
-        | 'analysis_failed';
+      error: 'method_not_allowed' | 'unauthorized' | 'invalid_request' | 'rate_limited' | 'timeout' | 'invalid_output';
     };
 
 export interface HandlerResponse {
@@ -145,42 +174,92 @@ export function sanitizeDetection(raw: unknown, catalog: readonly CatalogEntry[]
 
 class Timeout extends Error {}
 
+/** The failure most useful to the user when every provider failed (what to fix first). */
+const PRIORITY: VisionFailure[] = [
+  'quota',
+  'provider_auth',
+  'model_not_found',
+  'rate_limited',
+  'bad_request',
+  'unavailable',
+  'timeout',
+  'invalid_output',
+];
+
+async function attempt(model: VisionModel, input: Omit<VisionInput, 'signal'>, timeoutMs: number): Promise<unknown> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      model.detect({ ...input, signal: controller.signal }),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          controller.abort();
+          reject(new Timeout());
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 export async function handleAnalyzeMeal(
   request: { method: string; authorization: string | null; body: unknown },
   deps: AnalyzeMealDeps,
 ): Promise<HandlerResponse> {
-  if (request.method !== 'POST') return { status: 405, body: { error: 'method_not_allowed' } };
+  if (request.method !== 'POST' && request.method !== 'GET')
+    return { status: 405, body: { error: 'method_not_allowed' } };
   const token = request.authorization?.match(/^Bearer (.+)$/)?.[1];
   if (!token) return { status: 401, body: { error: 'unauthorized' } };
   const userId = await deps.getUserId(token).catch(() => null);
   if (!userId) return { status: 401, body: { error: 'unauthorized' } };
-  if (!deps.model) return { status: 503, body: { error: 'not_configured' } };
+  const models = deps.models ?? (deps.model ? [deps.model] : []);
+  const missing = (deps.missing ?? []).slice(0, 10);
+  const label = (m: VisionModel) => (m.provider ?? 'vision').slice(0, 20);
+  // Diagnostic for the owner (curl with a signed-in token): which code and which providers are
+  // live. Names only: no key, no part of a key.
+  if (request.method === 'GET')
+    return {
+      status: 200,
+      body: {
+        version: ANALYZE_MEAL_VERSION,
+        providers: models.map((m) => ({ provider: label(m), model: m.name.slice(0, 80) })),
+        missing,
+      },
+    };
+  if (models.length === 0)
+    return { status: 503, body: { error: 'not_configured', missing, version: ANALYZE_MEAL_VERSION } };
   const input = readRequest(request.body);
   if (!input) return { status: 400, body: { error: 'invalid_request' } };
   if (deps.allow && !(await deps.allow(userId).catch(() => false)))
     return { status: 429, body: { error: 'rate_limited' } };
 
-  const controller = new AbortController();
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    const raw = await Promise.race([
-      deps.model.detect({ ...input, signal: controller.signal }),
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(() => {
-          controller.abort();
-          reject(new Timeout());
-        }, deps.timeoutMs ?? 20_000);
-      }),
-    ]);
-    const items = sanitizeDetection(raw, input.catalog);
-    if (!items) return { status: 502, body: { error: 'invalid_output' } };
-    return { status: 200, body: { items, model: deps.model.name.slice(0, 80) } };
-  } catch (error) {
-    // Never echo the provider's error (it may contain request details); the client retries.
-    return error instanceof Timeout
-      ? { status: 504, body: { error: 'timeout' } }
-      : { status: 502, body: { error: 'analysis_failed' } };
-  } finally {
-    if (timer) clearTimeout(timer);
+  const now = deps.now ?? Date.now;
+  const started = now();
+  const perModel = deps.timeoutMs ?? 20_000;
+  const total = deps.totalTimeoutMs ?? perModel * models.length;
+  const tried: { provider: string; failure: VisionFailure }[] = [];
+  for (const model of models) {
+    const left = total - (now() - started);
+    // Not enough time for one more provider to answer: stop with what is known.
+    if (tried.length > 0 && left < Math.min(5_000, perModel)) break;
+    try {
+      const raw = await attempt(model, input, Math.min(perModel, left));
+      const items = sanitizeDetection(raw, input.catalog);
+      // Same 200 body as before the chain (the app parses it strictly).
+      if (items) return { status: 200, body: { items, model: model.name.slice(0, 80) } };
+      tried.push({ provider: label(model), failure: 'invalid_output' });
+    } catch (error) {
+      // Never echo the provider's error (it may contain request details): only its kind.
+      const failure: VisionFailure =
+        error instanceof Timeout ? 'timeout' : error instanceof VisionError ? error.failure : 'unavailable';
+      tried.push({ provider: label(model), failure });
+    }
   }
+  // Same answers as with one provider when every failure is of one plain kind.
+  if (tried.every((t) => t.failure === 'invalid_output')) return { status: 502, body: { error: 'invalid_output' } };
+  if (tried.every((t) => t.failure === 'timeout')) return { status: 504, body: { error: 'timeout' } };
+  const reason = PRIORITY.find((p) => tried.some((t) => t.failure === p)) ?? 'unavailable';
+  return { status: 502, body: { error: 'analysis_failed', reason, tried } };
 }

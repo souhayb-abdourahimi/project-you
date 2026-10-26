@@ -1,4 +1,4 @@
-import { handleAnalyzeMeal, MAX_ITEMS, type VisionModel } from '../handler';
+import { ANALYZE_MEAL_VERSION, handleAnalyzeMeal, MAX_ITEMS, type VisionModel } from '../handler';
 import { MEAL_DETECTION_SCHEMA, openaiVision, visionFromEnv, visionPrompt } from '../vision';
 
 const catalog = [
@@ -157,7 +157,8 @@ describe('OpenAI provider: answer', () => {
         .detect(input())
         .catch((e: Error) => e);
       expect(error).toBeInstanceOf(Error);
-      expect((error as Error).message).toBe(`vision ${status}`);
+      expect((error as Error).message).toMatch(new RegExp(`^vision [a-z_]+ ${status}$`));
+      expect((error as Error).message).not.toContain('server-key');
     }
   });
 });
@@ -194,13 +195,21 @@ describe('OpenAI provider through the Edge Function handler', () => {
   it('missing configuration: 503 not_configured (the app offers composing by hand)', async () => {
     expect(await call(visionFromEnv(env({ MEAL_VISION_PROVIDER: 'openai' })))).toEqual({
       status: 503,
-      body: { error: 'not_configured' },
+      body: { error: 'not_configured', missing: [], version: ANALYZE_MEAL_VERSION },
     });
   });
 
   it('a provider error: 502, the provider message is not passed on', async () => {
     const r = await call(openaiVision('k', 'm', fetchAnswering(401, { error: { message: 'bad key k' } })));
-    expect(r).toEqual({ status: 502, body: { error: 'analysis_failed' } });
+    expect(r).toEqual({
+      status: 502,
+      body: {
+        error: 'analysis_failed',
+        reason: 'provider_auth',
+        tried: [{ provider: 'openai', failure: 'provider_auth' }],
+      },
+    });
+    expect(JSON.stringify(r)).not.toContain('bad key');
   });
 
   it('a refusal: 502 invalid_output', async () => {

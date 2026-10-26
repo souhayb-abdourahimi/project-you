@@ -1052,9 +1052,26 @@ const en: LocaleShape = {
       photoA11y: 'Photo of your meal',
       analyzing: 'Analysing…',
       analyzingHint: 'Identifying foods and portions. You can correct everything.',
-      unavailableTitle: 'Photo analysis not available yet',
-      unavailableBody:
-        'The analysis service is not enabled yet. You can compose your meal from the foods of the Ciqual table: the calculation is the same.',
+      unavailable: {
+        local_mode: {
+          title: 'Photo analysis unavailable in local mode',
+          body: 'This version of the app is not linked to an account: photo analysis cannot run. Compose your meal from the Ciqual table: the calculation is the same.',
+        },
+        not_configured: {
+          title: 'Photo analysis not set up on the server',
+          body: 'The server answers, but no recognition service is set up on it. Compose your meal from the Ciqual table: the calculation is the same.',
+        },
+        not_deployed: {
+          title: 'Analysis service not found',
+          body: 'The analysis function is not deployed on the server. Compose your meal from the Ciqual table: the calculation is the same.',
+        },
+        boot_error: {
+          title: 'Analysis service down',
+          body: 'The analysis function exists but does not start on the server. Compose your meal from the Ciqual table: the calculation is the same.',
+        },
+        missing: 'Missing server setting: {{names}}',
+        code: 'Code: {{code}}',
+      },
       errorTitle: 'Analysis not possible right now',
       estimateTitle: 'Our estimate',
       manualTitle: 'Your meal',
@@ -1093,6 +1110,10 @@ const en: LocaleShape = {
           'The analysis service could not answer. Your connection is fine: try again or build your meal by hand.',
         rateLimited: 'Many analyses recently. Try again later or compose your meal.',
         auth: 'Sign in to your account to use photo analysis.',
+        quota:
+          'The analysis service has reached its limit (credit or today’s free quota). Compose your meal: the Ciqual calculation is the same.',
+        providerAuth:
+          'The analysis service refuses the key set on the server. Compose your meal meanwhile: the Ciqual calculation is the same.',
         unknown: 'The result received cannot be used. Nothing was added.',
       },
     },

@@ -11,7 +11,8 @@ const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-const USER_AGENT = 'ProjectYou/1.0 (fitness and nutrition coach; nearby places search; +https://github.com/souhayb-abdourahimi/project-you)';
+const USER_AGENT =
+  'ProjectYou/1.0 (fitness and nutrition coach; nearby places search; +https://github.com/souhayb-abdourahimi/project-you)';
 
 // Per-instance quota and a 10-minute cache of answers by rounded area (no position is kept longer).
 const WINDOW_MS = 60 * 60 * 1000;

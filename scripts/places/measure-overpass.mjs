@@ -10,7 +10,13 @@ const OLD = {
   gym: (lat, lng, r) =>
     `[out:json][timeout:10];(nwr["leisure"="fitness_centre"](around:${r},${lat},${lng});nwr["amenity"="gym"](around:${r},${lat},${lng});nwr["leisure"="sports_centre"]["sport"~"${GYM_SPORTS}"](around:${r},${lat},${lng}););out center tags 250;`,
   store: (lat, lng, r) =>
-    `[out:json][timeout:10];(${['shop=supermarket', 'shop=convenience', 'shop=greengrocer', 'shop=health_food', 'amenity=marketplace']
+    `[out:json][timeout:10];(${[
+      'shop=supermarket',
+      'shop=convenience',
+      'shop=greengrocer',
+      'shop=health_food',
+      'amenity=marketplace',
+    ]
       .map((kv) => kv.split('='))
       .map(([k, v]) => `nwr["${k}"="${v}"](around:${r},${lat},${lng});`)
       .join('')});out center tags 250;`,
@@ -47,7 +53,10 @@ async function run(endpoint, query) {
 
 const pause = () => new Promise((r) => setTimeout(r, 1500));
 for (const [city, [lat, lng]] of Object.entries(POINTS)) {
-  for (const [kind, r] of [['gym', 5000], ['store', 2000]]) {
+  for (const [kind, r] of [
+    ['gym', 5000],
+    ['store', 2000],
+  ]) {
     for (const endpoint of ENDPOINTS) {
       const host = new URL(endpoint).host;
       console.log(`${city} ${kind} ${host} OLD: ${await run(endpoint, OLD[kind](lat, lng, r))}`);

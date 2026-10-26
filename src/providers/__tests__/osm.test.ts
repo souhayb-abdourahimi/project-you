@@ -234,10 +234,22 @@ describe('places-nearby function (signed in)', () => {
 
   it('each server answer keeps its own meaning: timeout, busy, unavailable, nothing found', async () => {
     const cases: [{ status: number; data: unknown }, unknown][] = [
-      [{ status: 504, data: { error: 'timeout' } }, { status: 'error', error: 'timeout' }],
-      [{ status: 503, data: { error: 'rate_limited' } }, { status: 'error', error: 'rate_limited' }],
-      [{ status: 502, data: { error: 'unavailable' } }, { status: 'error', error: 'service' }],
-      [{ status: 200, data: { elements: [], source: 'x' } }, { status: 'unavailable', reason: 'no_data' }],
+      [
+        { status: 504, data: { error: 'timeout' } },
+        { status: 'error', error: 'timeout' },
+      ],
+      [
+        { status: 503, data: { error: 'rate_limited' } },
+        { status: 'error', error: 'rate_limited' },
+      ],
+      [
+        { status: 502, data: { error: 'unavailable' } },
+        { status: 'error', error: 'service' },
+      ],
+      [
+        { status: 200, data: { elements: [], source: 'x' } },
+        { status: 'unavailable', reason: 'no_data' },
+      ],
     ];
     for (const [answer, expected] of cases) {
       clearPlacesCache();
@@ -253,8 +265,10 @@ describe('places-nearby function (signed in)', () => {
   });
 
   it('a function that never answers is a timeout, not an endless "searching"', async () => {
-    setInvokePlaces((_body, signal) => new Promise((_, reject) => signal.addEventListener('abort', () => reject(new Error('aborted')))));
+    setInvokePlaces(
+      (_body, signal) =>
+        new Promise((_, reject) => signal.addEventListener('abort', () => reject(new Error('aborted')))),
+    );
     expect(await run(osmGymProvider.nearby(HOME, 5000))).toMatchObject({ status: 'error', error: 'timeout' });
   });
 });
-

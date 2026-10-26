@@ -6,7 +6,11 @@ const json = (status: number, body: unknown) =>
 
 const deps = (over: Partial<PlacesDeps> = {}): PlacesDeps => ({
   getUserId: async (t) => (t === 'good' ? 'user-a' : null),
-  overpass: async () => ({ kind: 'ok', elements: [{ type: 'node', id: 1, lat: 1, lon: 2, tags: { name: 'x' } }], endpoint: 'https://overpass-api.de/api/interpreter' }),
+  overpass: async () => ({
+    kind: 'ok',
+    elements: [{ type: 'node', id: 1, lat: 1, lon: 2, tags: { name: 'x' } }],
+    endpoint: 'https://overpass-api.de/api/interpreter',
+  }),
   ...over,
 });
 const call = (body: unknown, d = deps(), authorization: string | null = 'Bearer good') =>
@@ -33,7 +37,10 @@ describe('places-nearby handler', () => {
 
   it('the query sent to Overpass carries only the rounded position', async () => {
     const queries: string[] = [];
-    await call({ kind: 'store', lat: 48.856614, lng: 2.3522219 }, deps({ overpass: async (q) => (queries.push(q), { kind: 'timeout' }) }));
+    await call(
+      { kind: 'store', lat: 48.856614, lng: 2.3522219 },
+      deps({ overpass: async (q) => (queries.push(q), { kind: 'timeout' }) }),
+    );
     expect(queries[0]).toContain('around:2000,48.857,2.352');
     expect(queries[0]).not.toContain('48.8566');
   });
@@ -54,7 +61,10 @@ describe('places-nearby handler', () => {
     const first = await call({ kind: 'gym', lat: 1, lng: 1 }, d);
     expect(first).toEqual({
       status: 200,
-      body: { elements: [{ type: 'node', id: 1, lat: 1, lon: 2, center: undefined, tags: { name: 'x' } }], source: 'overpass-api.de' },
+      body: {
+        elements: [{ type: 'node', id: 1, lat: 1, lon: 2, center: undefined, tags: { name: 'x' } }],
+        source: 'overpass-api.de',
+      },
     });
     await call({ kind: 'gym', lat: 1.00001, lng: 1 }, d);
     expect(overpass).toHaveBeenCalledTimes(1);
@@ -67,9 +77,9 @@ describe('places-nearby handler', () => {
   });
 
   it('keeps only id, type, position and tags of each element', () => {
-    expect(trimElements([{ type: 'way', id: 2, center: { lat: 1, lon: 2 }, tags: {}, nodes: [1, 2, 3], geometry: [] }])).toEqual([
-      { type: 'way', id: 2, lat: undefined, lon: undefined, center: { lat: 1, lon: 2 }, tags: {} },
-    ]);
+    expect(
+      trimElements([{ type: 'way', id: 2, center: { lat: 1, lon: 2 }, tags: {}, nodes: [1, 2, 3], geometry: [] }]),
+    ).toEqual([{ type: 'way', id: 2, lat: undefined, lon: undefined, center: { lat: 1, lon: 2 }, tags: {} }]);
   });
 });
 
@@ -78,7 +88,9 @@ describe('Overpass call', () => {
 
   it('a 200 with a runtime error remark is a timeout; 429 busy; 504 timeout; garbage unavailable', async () => {
     const e = 'https://a/api';
-    expect(await classify(json(200, { elements: [], remark: 'runtime error: Query timed out in "query"' }), e)).toEqual({ kind: 'timeout' });
+    expect(await classify(json(200, { elements: [], remark: 'runtime error: Query timed out in "query"' }), e)).toEqual(
+      { kind: 'timeout' },
+    );
     expect(await classify(json(429, {}), e)).toEqual({ kind: 'rate_limited' });
     expect(await classify(json(504, {}), e)).toEqual({ kind: 'timeout' });
     expect(await classify(json(400, {}), e)).toEqual({ kind: 'bad_query' });
@@ -118,7 +130,12 @@ describe('Overpass call', () => {
           init.signal?.addEventListener('abort', () => reject(new Error('aborted')));
         }),
     );
-    const pending = callOverpass('q', { fetchImpl: fetchImpl as never, userAgent: 'ua', hedgeAfterMs: 4000, timeoutMs: 11_000 });
+    const pending = callOverpass('q', {
+      fetchImpl: fetchImpl as never,
+      userAgent: 'ua',
+      hedgeAfterMs: 4000,
+      timeoutMs: 11_000,
+    });
     await jest.advanceTimersByTimeAsync(4600);
     const out = await pending;
     expect(out).toMatchObject({ kind: 'ok', endpoint: 'https://overpass.private.coffee/api/interpreter' });

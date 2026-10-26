@@ -168,7 +168,7 @@ test('photo analysis unavailable (no service): says so, the meal is composed by 
   const errors = collectErrors(page);
   await seedProfile(page, SCENARIOS.beginner);
   await page.goto('/meal-analysis');
-  await expect(text(page, 'Analyse photo pas encore disponible')).toBeVisible();
+  await expect(text(page, 'Analyse photo indisponible en mode local')).toBeVisible();
   await button(page, 'Composer mon repas à la main').click();
   await button(page, 'Ajouter un aliment').click();
   await field(page, 'Rechercher un aliment').fill('banane');

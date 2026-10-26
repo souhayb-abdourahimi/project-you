@@ -1,6 +1,12 @@
 import { parseMealPhotoDetection } from '@/domain/ai/schemas';
 
-import { handleAnalyzeMeal, sanitizeDetection, type AnalyzeMealDeps, type VisionModel } from '../handler';
+import {
+  ANALYZE_MEAL_VERSION,
+  handleAnalyzeMeal,
+  sanitizeDetection,
+  type AnalyzeMealDeps,
+  type VisionModel,
+} from '../handler';
 import { anthropicVision, extractJson, visionFromEnv, visionPrompt } from '../vision';
 
 const catalog = [
@@ -43,11 +49,15 @@ describe('analyze-meal', () => {
       expect(r.status).toBe(401);
     }
     expect(detect).not.toHaveBeenCalled();
-    expect((await call(deps(null), { method: 'GET' })).status).toBe(405);
+    expect((await call(deps(null), { method: 'PUT' })).status).toBe(405);
+    expect((await call(deps(null), { method: 'GET', authorization: null })).status).toBe(401);
   });
 
   it('no vision secrets: not configured (the app keeps manual composition)', async () => {
-    expect(await call(deps(null))).toEqual({ status: 503, body: { error: 'not_configured' } });
+    expect(await call(deps(null))).toEqual({
+      status: 503,
+      body: { error: 'not_configured', missing: [], version: ANALYZE_MEAL_VERSION },
+    });
   });
 
   it('rejects malformed requests: image, media type, catalogue', async () => {
@@ -89,7 +99,15 @@ describe('analyze-meal', () => {
 
   it('a model error or a malformed answer is never passed on', async () => {
     const failing: VisionModel = { name: 'x', detect: async () => Promise.reject(new Error('secret details 401')) };
-    expect(await call(deps(failing))).toEqual({ status: 502, body: { error: 'analysis_failed' } });
+    expect(await call(deps(failing))).toEqual({
+      status: 502,
+      body: {
+        error: 'analysis_failed',
+        reason: 'unavailable',
+        tried: [{ provider: 'vision', failure: 'unavailable' }],
+      },
+    });
+    expect(JSON.stringify(await call(deps(failing)))).not.toContain('secret');
     expect(await call(deps(answering('free text')))).toEqual({ status: 502, body: { error: 'invalid_output' } });
     expect(await call(deps(answering({ items: [{ foodId: 'broccoli' }] })))).toEqual({
       status: 502,

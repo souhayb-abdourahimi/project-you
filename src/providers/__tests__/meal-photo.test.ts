@@ -31,11 +31,21 @@ describe('edgeMealPhotoProvider', () => {
     });
   });
 
-  it('maps the function answers: not configured, auth, quota', async () => {
-    const answer = (status: number) => edgeMealPhotoProvider(async () => ({ status, data: null }), { retries: 0 });
-    expect(await answer(503).analyze(photo, catalog)).toEqual({ status: 'unavailable', reason: 'not_configured' });
-    // Function not deployed yet: same as not configured, the app offers the composition by hand.
-    expect(await answer(404).analyze(photo, catalog)).toEqual({ status: 'unavailable', reason: 'not_configured' });
+  it('maps the function answers: each unavailable case keeps its own reason (D-048)', async () => {
+    const answer = (status: number, data: unknown = null) =>
+      edgeMealPhotoProvider(async () => ({ status, data }), { retries: 0 });
+    const missing = { error: 'not_configured', missing: ['OPENAI_API_KEY', 'sk-leak?'], version: 'x' };
+    expect(await answer(503, missing).analyze(photo, catalog)).toEqual({
+      status: 'unavailable',
+      reason: 'not_configured',
+      missing: ['OPENAI_API_KEY'],
+    });
+    // The platform's own 503 (the function does not start), without our body.
+    expect(await answer(503, { code: 'BOOT_ERROR' }).analyze(photo, catalog)).toEqual({
+      status: 'unavailable',
+      reason: 'boot_error',
+    });
+    expect(await answer(404).analyze(photo, catalog)).toEqual({ status: 'unavailable', reason: 'not_deployed' });
     expect(await answer(401).analyze(photo, catalog)).toMatchObject({ error: 'auth', retryable: false });
     expect(await answer(429).analyze(photo, catalog)).toMatchObject({ error: 'rate_limited', retryable: false });
     expect(await answer(400).analyze(photo, catalog)).toMatchObject({ error: 'unknown', retryable: false });
@@ -70,13 +80,33 @@ describe('edgeMealPhotoProvider', () => {
     expect(invoke).toHaveBeenCalledTimes(1);
   });
 
-  it('a provider failure (502 analysis_failed) is a service error, retried once', async () => {
+  it('every provider failed (502 analysis_failed): the precise reason, not sent again', async () => {
+    const answer = async (reason: string) => {
+      const invoke = jest.fn<ReturnType<InvokeAnalyzeMeal>, Parameters<InvokeAnalyzeMeal>>(async () => ({
+        status: 502,
+        data: { error: 'analysis_failed', reason, tried: [] },
+      }));
+      const result = await edgeMealPhotoProvider(invoke).analyze(photo, catalog);
+      expect(invoke).toHaveBeenCalledTimes(1);
+      return result;
+    };
+    expect(await answer('quota')).toEqual({ status: 'error', error: 'quota', retryable: false });
+    expect(await answer('provider_auth')).toEqual({ status: 'error', error: 'provider_auth', retryable: false });
+    expect(await answer('model_not_found')).toEqual({ status: 'error', error: 'provider_auth', retryable: false });
+    expect(await answer('rate_limited')).toMatchObject({ error: 'rate_limited' });
+    expect(await answer('unavailable')).toEqual({ status: 'error', error: 'service', retryable: false });
+  });
+
+  it('504: the server already gave every provider its time, the app does not ask again', async () => {
     const invoke = jest.fn<ReturnType<InvokeAnalyzeMeal>, Parameters<InvokeAnalyzeMeal>>(async () => ({
-      status: 502,
-      data: { error: 'analysis_failed' },
+      status: 504,
+      data: { error: 'timeout' },
     }));
-    expect(await edgeMealPhotoProvider(invoke).analyze(photo, catalog)).toMatchObject({ error: 'service' });
-    expect(invoke).toHaveBeenCalledTimes(2);
+    expect(await edgeMealPhotoProvider(invoke).analyze(photo, catalog)).toMatchObject({
+      error: 'timeout',
+      retryable: false,
+    });
+    expect(invoke).toHaveBeenCalledTimes(1);
   });
 
   it('times out an attempt and aborts its request', async () => {

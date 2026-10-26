@@ -29,7 +29,23 @@ import { useDataStore } from '@/state/data';
 export type AnalysisPhase = 'start' | 'preview' | 'analyzing' | 'review' | 'unavailable' | 'error';
 
 export type AnalysisIssue =
-  'denied' | 'too_large' | 'pick_failed' | 'timeout' | 'network' | 'service' | 'rate_limited' | 'auth' | 'unknown';
+  | 'denied'
+  | 'too_large'
+  | 'pick_failed'
+  | 'timeout'
+  | 'network'
+  | 'service'
+  | 'rate_limited'
+  | 'auth'
+  | 'quota'
+  | 'provider_auth'
+  | 'unknown';
+
+/**
+ * Why the analysis cannot run at all (D-048), each with its own message: no account service in
+ * this build, the server function missing, not starting, or with no vision provider configured.
+ */
+export type UnavailableReason = 'local_mode' | 'not_deployed' | 'boot_error' | 'not_configured';
 
 /** Issues where "Réessayer" can help; the others offer composing by hand only. */
 export const RETRYABLE_ISSUES: readonly AnalysisIssue[] = ['timeout', 'network', 'service', 'unknown'];
@@ -46,6 +62,7 @@ export function useMealAnalysis(date: IsoDate) {
   const addLoggedMeal = useDataStore((s) => s.addLoggedMeal);
   const [phase, setPhase] = useState<AnalysisPhase>('start');
   const [issue, setIssue] = useState<AnalysisIssue | null>(null);
+  const [unavailable, setUnavailable] = useState<{ reason: UnavailableReason; missing: string[] } | null>(null);
   const [uri, setUri] = useState<string | null>(null);
   const [photo, setPhoto] = useState<MealPhoto | null>(null);
   const [draft, setDraft] = useState<MealDraft>(emptyDraft());
@@ -90,6 +107,9 @@ export function useMealAnalysis(date: IsoDate) {
       setDraft(draftFromDetection(result.data));
       setPhase('review');
     } else if (result.status === 'unavailable') {
+      const reason =
+        result.reason === 'not_deployed' || result.reason === 'boot_error' ? result.reason : 'not_configured';
+      setUnavailable({ reason, missing: result.missing ?? [] });
       setPhase('unavailable');
     } else {
       setIssue(result.error === 'offline' ? 'network' : result.error);
@@ -134,6 +154,8 @@ export function useMealAnalysis(date: IsoDate) {
   return {
     /** False in local mode (no account service): the photo analysis cannot run, composing can. */
     photoAvailable: isSupabaseConfigured,
+    /** Why the analysis cannot run (phase `unavailable`, or local mode), and the missing settings. */
+    unavailable: isSupabaseConfigured ? unavailable : { reason: 'local_mode' as const, missing: [] },
     /** False on a computer's browser: only "choose a photo" is offered there. */
     cameraAvailable: cameraCaptureAvailable(),
     phase,

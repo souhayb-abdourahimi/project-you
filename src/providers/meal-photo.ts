@@ -6,15 +6,18 @@ import type { MealPhotoProvider, ProviderResult } from './types';
 /** One call of the `analyze-meal` Edge Function: its HTTP status and JSON body. */
 export type InvokeAnalyzeMeal = (body: unknown, signal: AbortSignal) => Promise<{ status: number; data: unknown }>;
 
-export const MEAL_PHOTO_TIMEOUT_MS = 25_000;
+/** Above the server's whole provider chain (45 s, analyze-meal/index.ts): the app never gives up first. */
+export const MEAL_PHOTO_TIMEOUT_MS = 50_000;
 const RETRY_DELAY_MS = 800;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * The meal photo provider over the `analyze-meal` Edge Function (secrets stay on the server). One
- * bounded retry on a network or 5xx failure, a timeout per attempt, cancellable by the caller. The
- * answer is parsed against `MealPhotoDetection`: anything else is an error, never "repaired".
+ * bounded retry on a network or unexplained 5xx failure (the server already tries its providers in
+ * turn, so a timeout or a known provider failure is not sent again), a timeout per attempt,
+ * cancellable by the caller. Each failure keeps its precise reason (D-048). The answer is parsed
+ * against `MealPhotoDetection`: anything else is an error, never "repaired".
  */
 export function edgeMealPhotoProvider(
   invoke: InvokeAnalyzeMeal,
@@ -68,14 +71,21 @@ async function once(
         },
       };
     }
-    // 503: no vision secrets; 404: the function is not deployed. Both fall back to the composition by hand.
-    if (status === 503 || status === 404) return { status: 'unavailable', reason: 'not_configured' };
+    // Each "unavailable" says why, and the screen says it too (never a vague "not yet available").
+    if (status === 404) return { status: 'unavailable', reason: 'not_deployed' };
+    if (status === 503)
+      // Our own body names the missing settings; anything else is the platform (function not starting).
+      return errorCode(data) === 'not_configured'
+        ? { status: 'unavailable', reason: 'not_configured', missing: missingOf(data) }
+        : { status: 'unavailable', reason: 'boot_error' };
     if (status === 401) return { status: 'error', error: 'auth', retryable: false };
     if (status === 429) return { status: 'error', error: 'rate_limited', retryable: false };
-    if (status === 504) return { status: 'error', error: 'timeout', retryable: true };
+    // The server already gave every provider its time: asking again would only double the wait.
+    if (status === 504) return { status: 'error', error: 'timeout', retryable: false };
     // The service answered with something unusable: asking again sends the same photo for nothing.
     if (status === 502 && errorCode(data) === 'invalid_output')
       return { status: 'error', error: 'unknown', retryable: false };
+    if (status === 502 && errorCode(data) === 'analysis_failed') return failure(reasonOf(data));
     // The connection works: the analysis service itself failed (worth one more try, not "check your connection").
     if (status >= 500) return { status: 'error', error: 'service', retryable: true };
     return { status: 'error', error: 'unknown', retryable: false };
@@ -88,6 +98,35 @@ async function once(
     outer?.removeEventListener('abort', abort);
   }
 }
+
+function failure(reason: string | null): ProviderResult<MealPhotoDetection> {
+  if (reason === 'quota') return { status: 'error', error: 'quota', retryable: false };
+  if (reason === 'provider_auth' || reason === 'model_not_found')
+    return { status: 'error', error: 'provider_auth', retryable: false };
+  if (reason === 'rate_limited') return { status: 'error', error: 'rate_limited', retryable: false };
+  if (reason === 'timeout') return { status: 'error', error: 'timeout', retryable: false };
+  if (reason === 'bad_request' || reason === 'invalid_output')
+    return { status: 'error', error: 'unknown', retryable: false };
+  return { status: 'error', error: 'service', retryable: false };
+}
+
+const field = (data: unknown, key: string): unknown =>
+  data !== null && typeof data === 'object' ? (data as Record<string, unknown>)[key] : undefined;
+
+const reasonOf = (data: unknown): string | null => {
+  const reason = field(data, 'reason');
+  return typeof reason === 'string' ? reason : null;
+};
+
+/** Setting names only (`OPENAI_API_KEY`…), never shown if they look like anything else. */
+const missingOf = (data: unknown): string[] => {
+  const missing = field(data, 'missing');
+  return Array.isArray(missing)
+    ? missing
+        .filter((m): m is string => typeof m === 'string' && /^[A-Z_]{3,40}( \([a-z0-9_-]{1,20} \?\))?$/.test(m))
+        .slice(0, 5)
+    : [];
+};
 
 const errorCode = (data: unknown): string | null =>
   data !== null && typeof data === 'object' && typeof (data as { error?: unknown }).error === 'string'
