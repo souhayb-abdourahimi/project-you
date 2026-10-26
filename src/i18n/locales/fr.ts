@@ -1447,6 +1447,7 @@ const fr = {
     recompositionHint: 'En recomposition, la balance bouge peu : le tour de taille et tes performances en disent plus.',
     waist: 'Tour de taille (cm)',
     logWaist: 'Noter mon tour de taille',
+    log: 'Noter',
     savedWeight: 'Poids noté pour aujourd’hui.',
     savedWaist: 'Tour de taille noté pour aujourd’hui.',
     consistency: 'Régularité (4 semaines)',

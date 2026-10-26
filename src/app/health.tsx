@@ -29,7 +29,7 @@ export default function HealthScreen() {
     return (
       <Screen>
         <Text color="textMuted">{t('health.web.intro')}</Text>
-        <QuickEntry today={toIsoDate(new Date())} initiallyOpen />
+        <QuickEntry today={toIsoDate(new Date())} initiallyOpen fixed />
         <Button variant="secondary" label={t('health.web.seeProgress')} onPress={() => router.push('/progress')} />
         <Text variant="caption" color="textMuted">
           {t('health.web.nativeLater')}

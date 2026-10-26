@@ -60,14 +60,60 @@ where conrelid = 'public.motivations'::regclass and conname = 'motivations_reaso
 select relrowsecurity from pg_class where oid = 'public.motivations'::regclass;
 ```
 
-## 2. Secrets de `analyze-meal`
+### 1 ter. Migration `calendar_feeds` (D-049, même méthode)
+
+Table du lien iCal (lien scellé, créneaux occupés seulement). Idempotente.
+
+1. SQL Editor → New query → coller tout `supabase/migrations/20261026000001_calendar_feeds.sql` → Run.
+2. Vérifier (lecture seule) :
+
+```sql
+-- RLS active : attendu true
+select relrowsecurity from pg_class where oid = 'public.calendar_feeds'::regclass;
+
+-- 4 policies propriétaire : attendu delete / insert / select / update
+select policyname, cmd from pg_policies where tablename = 'calendar_feeds' order by policyname;
+
+-- anon n'a aucun droit : attendu 0 ligne pour anon
+select grantee, privilege_type from information_schema.role_table_grants
+where table_schema = 'public' and table_name = 'calendar_feeds' and grantee = 'anon';
+
+-- Aucune colonne de titre ou de détail d'événement : attendu 0 ligne
+select column_name from information_schema.columns
+where table_schema = 'public' and table_name = 'calendar_feeds'
+  and column_name in ('title', 'summary', 'description', 'location', 'url');
+```
+
+## 2. Secrets des Edge Functions (`analyze-meal`, `calendar-feed`)
 
 ```bash
 npx supabase@latest login
 npx supabase@latest link --project-ref krcqdrrfnvfpvczxwrmt
 ```
 
-Créer un fichier **hors du dépôt** (par exemple `~/projectyou-fn.env`) avec **un** des deux fournisseurs.
+Créer un fichier **hors du dépôt** (par exemple `~/projectyou-fn.env`). `analyze-meal` accepte un fournisseur ou une **liste ordonnée** : le premier qui répond gagne, l'utilisateur ne voit rien si le premier échoue.
+
+**Recommandé, gratuit en secours (D-048)** : OpenAI d'abord, Cloudflare Workers AI ensuite (offre gratuite, 10 000 neurons par jour, aucun paiement) :
+
+```
+MEAL_VISION_PROVIDER=openai,cloudflare
+MEAL_VISION_MODEL=gpt-6-luna
+OPENAI_API_KEY=<ta clé de projet OpenAI>
+CLOUDFLARE_ACCOUNT_ID=<identifiant du compte Cloudflare>
+CLOUDFLARE_AI_TOKEN=<jeton API avec la permission Workers AI>
+```
+
+**Tout gratuit** (aucune clé OpenAI) : `MEAL_VISION_PROVIDER=cloudflare` avec seulement les deux secrets `CLOUDFLARE_*`. Modèle par défaut `@cf/mistralai/mistral-small-3.1-24b-instruct` ; pour en essayer un autre : `MEAL_VISION_CLOUDFLARE_MODEL=@cf/…`.
+
+Jeton Cloudflare : dash.cloudflare.com → My Profile → API Tokens → Create Token → modèle « Workers AI » (lecture + édition), limité à ton compte. L'identifiant du compte est dans Workers & Pages → colonne de droite (Account ID).
+
+Comparer les modèles gratuits sur tes vraies photos avant de choisir (rien n'est enregistré, le jeton n'est jamais affiché) :
+
+```bash
+CLOUDFLARE_ACCOUNT_ID=… CLOUDFLARE_AI_TOKEN=… npx tsx scripts/vision/compare-cloudflare.ts ~/Images/repas1.jpg ~/Images/repas2.jpg
+```
+
+Autres possibilités, un seul fournisseur :
 
 OpenAI (recommandé : `gpt-6-luna`, voir les modèles compatibles dans `docs/MEAL_PHOTO_ANALYSIS.md`) :
 
@@ -85,38 +131,68 @@ MEAL_VISION_MODEL=<identifiant du modèle de vision choisi>
 ANTHROPIC_API_KEY=<ta clé>
 ```
 
+Lien iCal (D-049) : une clé de chiffrement, générée sur ta machine, ajoutée au même fichier :
+
+```bash
+echo "CALENDAR_FEED_KEY=$(openssl rand -base64 32)" >> ~/projectyou-fn.env
+```
+
+Garde-la : si elle change, les liens iCal déjà enregistrés ne peuvent plus être lus (chaque utilisateur devra recoller son lien). `places-nearby` n'a besoin d'aucun secret.
+
 Côté OpenAI : une clé de **projet** dédiée à Project You, avec une limite de dépense mensuelle dans le tableau de bord OpenAI (Limits). Aucun en-tête d'organisation n'est nécessaire.
 
 ```bash
 npx supabase@latest secrets set --env-file ~/projectyou-fn.env
 rm ~/projectyou-fn.env
-npx supabase@latest secrets list   # les 3 noms apparaissent, jamais les valeurs
+npx supabase@latest secrets list   # les noms apparaissent, jamais les valeurs
 ```
 
 Pour changer de fournisseur plus tard : reposer ces 3 secrets, retirer l'ancienne clé (`npx supabase@latest secrets unset ANTHROPIC_API_KEY` ou `OPENAI_API_KEY`), puis relancer le déploiement de l'étape 3 : le fournisseur est lu au démarrage de la fonction, et un redéploiement garantit que toutes les instances lisent les nouveaux secrets. Aucune nouvelle version de l'app.
 
 `SUPABASE_URL`, `SUPABASE_ANON_KEY` et `SUPABASE_SERVICE_ROLE_KEY` sont injectés par Supabase : rien à poser.
 
-## 3. Déployer `analyze-meal`
+## 3. Déployer les fonctions
 
 ```bash
 npx supabase@latest functions deploy analyze-meal --project-ref krcqdrrfnvfpvczxwrmt
-npx supabase@latest functions list --project-ref krcqdrrfnvfpvczxwrmt   # analyze-meal ACTIVE, delete-account ACTIVE
+npx supabase@latest functions deploy places-nearby --project-ref krcqdrrfnvfpvczxwrmt
+npx supabase@latest functions deploy calendar-feed --project-ref krcqdrrfnvfpvczxwrmt
+npx supabase@latest functions list --project-ref krcqdrrfnvfpvczxwrmt   # les 4 ACTIVE avec delete-account
 ```
 
-Ne passe pas `--no-verify-jwt`. Contrôle : un appel sans connexion doit être refusé (attendu `401`).
+Ne passe jamais `--no-verify-jwt`. Contrôle : un appel sans connexion doit être refusé (attendu `401` pour chacune).
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}\n" -X POST https://krcqdrrfnvfpvczxwrmt.supabase.co/functions/v1/analyze-meal
+for f in analyze-meal places-nearby calendar-feed; do
+  printf "%s " "$f"; curl -s -o /dev/null -w "%{http_code}\n" -X POST "https://krcqdrrfnvfpvczxwrmt.supabase.co/functions/v1/$f"
+done
 ```
+
+**Diagnostic de `analyze-meal`** (sans photo, sans rien envoyer au fournisseur) : un GET avec ton jeton de session répond la version du code déployé, les fournisseurs actifs et les **noms** des secrets manquants. Récupérer le jeton : dans l'app web connectée, outils de développement → Application → Local Storage → clé `sb-krcqdrrfnvfpvczxwrmt-auth-token` → `access_token` (il expire après une heure ; ne le colle nulle part ailleurs).
+
+```bash
+read -rs TOKEN   # coller le jeton, rien ne s'affiche
+curl -s -H "Authorization: Bearer $TOKEN" https://krcqdrrfnvfpvczxwrmt.supabase.co/functions/v1/analyze-meal; echo
+unset TOKEN
+```
+
+Attendu : `{"version":"2026-10-26","providers":[{"provider":"openai",…},{"provider":"cloudflare",…}],"missing":[]}`. Une `version` absente ou plus ancienne : la fonction déployée n'est pas la dernière, relancer le déploiement. `missing` non vide : poser ces secrets (étape 2), redéployer.
 
 Puis, dans l'app connectée : Nutrition → ajouter un repas → photo → « Analyser » renvoie un brouillon. C'est le premier appel réel au fournisseur : il n'a pas pu être fait depuis l'environnement de développement.
 
 - Brouillon affiché : vérifier que chaque aliment a ses grammes et que les calories affichées sont celles du catalogue (étiquette « estimation »), pas un chiffre du modèle.
-- « Analyse photo pas encore disponible » (503) : un des 3 secrets manque ou `MEAL_VISION_PROVIDER` est mal écrit. Un 503 peut aussi venir d'une fonction qui ne démarre pas (`BOOT_ERROR`) : regarder Edge Functions → analyze-meal → Logs.
-- Erreur avec « Réessayer » après environ 40 s : délai dépassé deux fois (20 s par appel, une relance automatique).
-- Erreur avec « Réessayer » (502) : clé refusée, modèle inconnu ou incompatible, quota épuisé. Vérifier la clé et `MEAL_VISION_MODEL` ; les journaux de la fonction ne contiennent ni la photo ni la réponse.
+- L'écran dit maintenant **pourquoi** l'analyse n'est pas disponible : fonction non déployée, réglage manquant (avec le nom du secret), fonction qui ne démarre pas, ou mode local. Le GET de diagnostic ci-dessus confirme.
+- Tous les fournisseurs ont échoué (502 `analysis_failed`) : l'écran donne la raison (quota ou crédit épuisé, clé refusée, modèle introuvable, limite atteinte, délai dépassé) et propose la composition à la main. Délai : 25 s par fournisseur, 45 s au total.
+- Les journaux de la fonction ne contiennent ni la photo, ni la réponse, ni la clé.
 - Dans tous ces cas, « Composer mon repas à la main » fonctionne : c'est le repli prévu, pas une panne.
+
+**Contrôle de `calendar-feed`** dans l'app connectée : Calendrier → coller un lien iCal (Google Agenda : Paramètres → ton agenda → « Adresse secrète au format iCal ») → « Tester le lien » (nombre d'événements) → « Utiliser ce calendrier » → Programme : les séances évitent les créneaux occupés. Sans `CALENDAR_FEED_KEY`, l'écran dit « pas encore configuré sur le serveur ».
+
+**Contrôle de `places-nearby`** : Lieux → « Chercher autour de moi ». Délai ou service occupé : le message le dit, « Réessayer » relance. Mesurer Overpass depuis ta connexion (16 requêtes polies, villes fixes, aucune position à toi) :
+
+```bash
+node scripts/places/measure-overpass.mjs
+```
 
 ## 4. Sécurité Auth (tableau de bord)
 

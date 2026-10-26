@@ -29,7 +29,8 @@ Project You est un outil de fitness et bien-être ; il ne remplace pas un profes
 ## Calendrier et position (phase 2)
 
 - **Calendrier** : seules les heures de début et de fin des événements sont lues (ni titre, ni lieu, ni invités), et gardées sur l'appareil pour la semaine en cours. L'app écrit uniquement dans son propre calendrier « Project You ». Déconnexion (écran Calendrier ou Privacy Center) = suppression de ce calendrier et oubli des heures lues. Inclus dans l'export (`deviceSettings.calendar`) ; effacé à la déconnexion du compte.
-- **Position** : demandée seulement quand l'utilisateur lance une recherche de lieux, arrondie à ~100 m avant l'envoi à OpenStreetMap, jamais enregistrée, synchronisée ni journalisée. Refus = l'app reste utilisable (salle saisie à la main).
+- **Lien iCal (D-049)** : lu par le serveur (`calendar-feed`), jamais par le navigateur. Le lien est scellé (AES-256-GCM, secret `CALENDAR_FEED_KEY`) dans `calendar_feeds` ; on garde seulement l'hôte affiché et les **plages occupées** des 6 semaines à venir : jamais de titre, lieu, description ni invités, et rien n'est déduit des titres. Texte affiché : « PROJECT YOU utilise uniquement les horaires occupés de ton calendrier pour planifier tes séances. Les titres et détails de tes événements ne sont pas utilisés par le coach. » Suppression : bouton « Supprimer ce calendrier », réinitialisation locale, suppression du compte (cascade). Export : la ligne sans le lien scellé.
+- **Position** : demandée seulement quand l'utilisateur lance une recherche de lieux, arrondie à ~100 m sur l'appareil avant tout envoi (à la fonction `places-nearby`, qui l'arrondit encore, puis à OpenStreetMap), jamais enregistrée, synchronisée ni journalisée ; la fonction garde au plus 10 minutes en mémoire la réponse d'une zone arrondie. Refus = l'app reste utilisable (salle saisie à la main).
 
 ## Santé et activité (phase 2, D-018)
 

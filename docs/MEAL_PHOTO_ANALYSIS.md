@@ -14,14 +14,15 @@ Le modèle ne renvoie **jamais** de calories ni de macros : on lui demande seule
 
 ## Fournisseurs de vision
 
-Choisi par le secret `MEAL_VISION_PROVIDER` (insensible à la casse) ; un seul actif à la fois. Les deux adaptateurs (`supabase/functions/analyze-meal/vision.ts`) envoient le même prompt (`visionPrompt` : catalogue `id: nom`, « Do not return calories or macros ») et renvoient la même forme brute, contrôlée ensuite par `sanitizeDetection`.
+Choisi par le secret `MEAL_VISION_PROVIDER` (insensible à la casse) : un fournisseur, ou une **liste ordonnée** séparée par des virgules (D-048), par exemple `openai,cloudflare`. Le suivant n'est essayé que si le précédent échoue (quota, clé, modèle, limite, délai, sortie invalide), sans rien montrer à l'utilisateur ; 25 s par fournisseur, 45 s pour toute la chaîne. Les adaptateurs (`supabase/functions/analyze-meal/vision.ts`) envoient le même prompt (`visionPrompt` : catalogue `id: nom`, « Do not return calories or macros ») et renvoient la même forme brute, contrôlée ensuite par `sanitizeDetection`.
 
 | `MEAL_VISION_PROVIDER` | Clé | Modèle | API appelée | Paramètres |
 |---|---|---|---|---|
 | `anthropic` | `ANTHROPIC_API_KEY` | `MEAL_VISION_MODEL` | `POST https://api.anthropic.com/v1/messages` | `temperature: 0`, 800 tokens max |
+| `cloudflare` (gratuit, D-048) | `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_AI_TOKEN` | `MEAL_VISION_CLOUDFLARE_MODEL`, défaut `@cf/mistralai/mistral-small-3.1-24b-instruct` | `POST https://api.cloudflare.com/client/v4/accounts/<id>/ai/run/<modèle>` (Workers AI) | sortie imposée `guided_json` (même schéma strict), image en data-URI, 700 tokens max ; offre gratuite 10 000 neurons / jour |
 | `openai` | `OPENAI_API_KEY` | `MEAL_VISION_MODEL` | `POST https://api.openai.com/v1/responses` | sortie structurée stricte (`text.format` json_schema `meal_foods`), `reasoning.effort: low`, `max_output_tokens: 4096`, `store: false`, pas de `temperature` |
 
-Contrat de sortie, identique pour les deux : `{"items":[{"label","foodId","grams","confidence"}]}`, 12 aliments au plus. Côté OpenAI, le schéma strict `MEAL_DETECTION_SCHEMA` ne contient que ces quatre champs : aucun champ nutritionnel ; le libellé libre est nettoyé de tout chiffre nutritionnel par le handler. Un id hors du catalogue devient « non reconnu », une portion impossible devient « inconnue », tout champ en plus est supprimé, et la nutrition est recalculée depuis Ciqual dans `domain/meals/photo-analysis.ts`.
+Contrat de sortie, identique pour tous : `{"items":[{"label","foodId","grams","confidence"}]}`, 12 aliments au plus. Côté OpenAI, le schéma strict `MEAL_DETECTION_SCHEMA` ne contient que ces quatre champs : aucun champ nutritionnel ; le libellé libre est nettoyé de tout chiffre nutritionnel par le handler. Un id hors du catalogue devient « non reconnu », une portion impossible devient « inconnue », tout champ en plus est supprimé, et la nutrition est recalculée depuis Ciqual dans `domain/meals/photo-analysis.ts`.
 
 Réponse OpenAI lue seulement si `status` vaut `completed` : on prend le texte des parties `output_text` des éléments `message` (les éléments `reasoning` sont ignorés). Un refus (`refusal`) → `invalid_output` ; une réponse `incomplete` (plafond de tokens, filtre) ou `failed` → `analysis_failed`. Rien n'est réparé.
 
@@ -56,7 +57,7 @@ Pas encore testé contre l'API réelle (pas de clé ni de réseau vers OpenAI de
 
 ## États de l'écran
 
-`start` (photo ou composition à la main) → `preview` (rien n'est envoyé avant « Analyser ») → `analyzing` (annulable) → `review` (brouillon) ; `unavailable` (pas de service : mode local, secrets absents ou fonction non déployée) ; `error` (délai, réseau, quota, connexion, résultat inexploitable — la photo est gardée, rien n'est ajouté). Composition à la main : même brouillon, même calcul, sans photo ni service.
+`start` (photo ou composition à la main) → `preview` (rien n'est envoyé avant « Analyser ») → `analyzing` (annulable) → `review` (brouillon) ; `unavailable` avec sa raison précise (D-048) : mode local, fonction non déployée (404), réglage manquant (503 `not_configured` avec les noms des secrets), fonction qui ne démarre pas (`BOOT_ERROR`) ; `error` avec sa raison : quota ou crédit épuisé, clé refusée, modèle introuvable, limite atteinte, délai, réseau, résultat inexploitable (la photo est gardée, rien n'est ajouté). Composition à la main : même brouillon, même calcul, sans photo ni service.
 
 ## Règles
 
@@ -78,25 +79,27 @@ Pas encore testé contre l'API réelle (pas de clé ni de réseau vers OpenAI de
 Depuis un poste connecté au projet (`supabase login` puis `supabase link --project-ref krcqdrrfnvfpvczxwrmt`) :
 
 1. Appliquer la migration `20261017000001_logged_meals.sql` dans l'éditeur SQL (pas `supabase db push`, voir `docs/RELEASE_RUNBOOK.md`).
-2. Définir les secrets de la fonction (valeurs saisies sur le poste, jamais commitées) : `supabase secrets set --env-file <fichier hors du dépôt>`, puis supprimer le fichier. Soit `MEAL_VISION_PROVIDER=openai`, `OPENAI_API_KEY`, `MEAL_VISION_MODEL=gpt-6-luna` ; soit `MEAL_VISION_PROVIDER=anthropic`, `ANTHROPIC_API_KEY`, `MEAL_VISION_MODEL`. Changer de fournisseur = changer ces secrets puis relancer `supabase functions deploy analyze-meal` (le fournisseur est lu au démarrage de la fonction) ; aucune nouvelle version de l'app.
+2. Définir les secrets de la fonction (valeurs saisies sur le poste, jamais commitées) : `supabase secrets set --env-file <fichier hors du dépôt>`, puis supprimer le fichier. Recommandé : `MEAL_VISION_PROVIDER=openai,cloudflare` avec `OPENAI_API_KEY`, `MEAL_VISION_MODEL=gpt-6-luna`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_AI_TOKEN` ; tout gratuit : `MEAL_VISION_PROVIDER=cloudflare` et les deux secrets Cloudflare ; ou `anthropic` avec `ANTHROPIC_API_KEY` et `MEAL_VISION_MODEL` (`MEAL_VISION_ANTHROPIC_MODEL` pour l'avoir dans une chaîne). Changer de fournisseur = changer ces secrets puis relancer `supabase functions deploy analyze-meal` (le fournisseur est lu au démarrage de la fonction) ; aucune nouvelle version de l'app.
 3. Déployer : `supabase functions deploy analyze-meal`, avec la vérification JWT par défaut (ne pas passer `--no-verify-jwt`).
-4. Vérifier : la fonction est ACTIVE ; un appel sans JWT répond 401 ; dans l'app connectée, « Analyser » renvoie un brouillon.
+4. Vérifier : la fonction est ACTIVE ; un appel sans JWT répond 401 ; un GET avec un jeton de session répond `{version, providers, missing}` (aucun appel au fournisseur, noms de secrets seulement) ; dans l'app connectée, « Analyser » renvoie un brouillon.
 
 Repli (testé du handler au view model de l'écran, sans réseau ni appareil) :
 
 | Situation | Réponse de la fonction | Écran |
 |---|---|---|
-| Fonction non déployée | 404 | « Analyse photo pas encore disponible » + « Composer mon repas à la main » |
-| `MEAL_VISION_PROVIDER` absent ou inconnu, clé ou modèle manquant (ou clé de l'autre fournisseur) | 503 `not_configured` | idem |
-| Clé refusée, modèle inconnu ou incompatible, quota OpenAI, panne (401/403/404/429/5xx chez OpenAI) | 502 `analysis_failed` | erreur, « Réessayer » + « Composer mon repas à la main » |
-| Refus du modèle, réponse illisible | 502 `invalid_output` | idem |
-| Plus de 20 s | 504 `timeout` (requête OpenAI annulée) | une relance automatique, puis idem (environ 40 s au total) |
+| Fonction non déployée | 404 | « Service d'analyse non déployé » + « Composer mon repas à la main » |
+| Secret absent, fournisseur inconnu, clé publique Supabase absente | 503 `not_configured` + `missing` (noms) + `version` | « Analyse photo pas encore configurée » avec le nom du réglage manquant + composition |
+| La fonction ne démarre pas | 503 / 5xx `BOOT_ERROR` de la passerelle | « Le service d'analyse ne démarre pas » + composition |
+| Un fournisseur échoue, le suivant répond | 200 | brouillon, rien de visible |
+| Tous échouent : quota / crédit, clé refusée, modèle introuvable, limite, panne | 502 `analysis_failed` + `reason` + `tried` | raison précise, « Réessayer » + composition |
+| Refus du modèle, réponse illisible | 502 `invalid_output` | idem, pas de nouvel essai automatique |
+| Délai de la chaîne (45 s) | 504 `timeout` | idem (délai côté app 50 s) |
 
 Rien n'est ajouté au journal sans confirmation. Checklist complète : `docs/RELEASE_CHECKLIST.md`.
 
 ## À décider (validation humaine)
 
-1. **Fournisseur de vision** et son contrat de traitement des données (photos de repas = donnée personnelle) : adaptateurs Anthropic et OpenAI prêts, choix par `MEAL_VISION_PROVIDER` ; un autre fournisseur = un adaptateur `VisionModel` de plus.
+1. **Fournisseur de vision** et son contrat de traitement des données (photos de repas = donnée personnelle) : adaptateurs Anthropic, OpenAI et Cloudflare Workers AI prêts, choix et ordre par `MEAL_VISION_PROVIDER` ; un autre fournisseur = un adaptateur `VisionModel` de plus. Cloudflare : relire ses conditions Workers AI (conservation des entrées) avant la bêta publique ; la mention de consentement parle aujourd'hui de 30 jours (cas OpenAI).
 2. **Quota partagé** (table ou Redis) avant un lancement public ; le quota par instance est une protection minimale.
 3. **Catalogue** : 36 aliments Ciqual aujourd'hui ; un repas courant (pizza, sandwich) restera « non reconnu » tant que le catalogue n'est pas élargi (import Ciqual, D-020).
 4. **Mentions App Store / Play** (caméra, photothèque, traitement par un tiers).

@@ -99,7 +99,8 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     maxWidth: '100%',
     borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
+    // 10 pt: four session facts fit on one line of an iPhone 15 (D-048 density pass).
+    paddingHorizontal: spacing.sm + 2,
     paddingVertical: spacing.xs + 1,
   },
 });

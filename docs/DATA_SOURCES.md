@@ -75,6 +75,8 @@ Lu le 2026-10-01 sur les pages officielles ; à revérifier avant chaque changem
   - **Depuis le 2026-04-19** (relu le 2026-10-25, D-046) : une application sans User-Agent identifiant reçoit 406, un navigateur doit envoyer un Referer, une partie des plages AWS / Azure est bloquée. L'app envoie `User-Agent: ProjectYou/<version> (…)` en natif (un navigateur interdit de le changer) et garde le Referer sur le web (`strict-origin-when-cross-origin`).
   - Repli : une seule instance publique de secours, `overpass.private.coffee`, essayée une fois sur 429, 5xx, délai ou panne réseau ; jamais sur une requête refusée (400). Aucune boucle, aucune erreur mise en cache.
   - Limites côté app : délai serveur 10 s (`[timeout:10]`), délai client 14 s, 250 éléments au plus lus, les 30 plus proches affichés, cache 10 min des réponses réussies, une même recherche en cours partagée.
+  - **Mesure du 2026-10-26 (D-048)** depuis un runner GitHub : 15 requêtes sur 16 sans réponse en 30 s, 1 réponse 502 « server currently busy » en 174 ms, sur les deux instances, pour l'ancienne comme la nouvelle requête. Les instances publiques étaient saturées ou limitaient ces adresses ; non mesuré depuis une IP résidentielle (`node scripts/places/measure-overpass.mjs`).
+  - **Fonction `places-nearby` (D-048)** quand un compte est configuré : User-Agent identifiant (`ProjectYou/1.0 (…; +https://github.com/souhayb-abdourahimi/project-you)`), `[timeout:8]`, `[maxsize]` 16 Mo, 200 éléments au plus, une instance de repli, quota par utilisateur, cache 10 min en mémoire par zone arrondie. Position arrondie à ~100 m, ni stockée ni journalisée.
 - **Nominatim** (`nominatim.openstreetmap.org`, géocodage, **non utilisé**) :
   - 1 requête par seconde maximum.
   - User-Agent ou Referer identifiant l'application.
@@ -88,6 +90,10 @@ Lu le 2026-10-01 sur les pages officielles ; à revérifier avant chaque changem
 - Ces serveurs conviennent au développement et à une bêta fermée, pas à la production.
 - Avant le lancement, choisir et brancher derrière `PlacesProvider` une instance auto-hébergée ou un fournisseur sous contrat.
 - L'UI et le moteur n'ont pas à changer.
+
+## Calendrier iCal de l'utilisateur (D-049)
+
+Source fournie par l'utilisateur (son propre lien) : seules les plages occupées sont lues et gardées, avec la date de lecture. Pas de métadonnées de fournisseur : ce n'est pas une donnée externe publique. Détails : `docs/CALENDAR_FEED.md`.
 
 ## Formules (données internes, pas externes)
 

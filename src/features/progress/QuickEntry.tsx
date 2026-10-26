@@ -8,9 +8,22 @@ import { useDataStore } from '@/state/data';
 import { MIN_TOUCH, spacing } from '@/theme';
 
 /** A weigh-in or a waist measurement, in one gesture. */
-export function QuickEntry({ today, initiallyOpen }: { today: string; initiallyOpen: boolean }) {
+/**
+ * `fixed`: always open, without the fold control (the web Health screen, where entering is the
+ * point). Buttons say "Noter" next to their labelled field; screen readers hear the full action.
+ */
+export function QuickEntry({
+  today,
+  initiallyOpen,
+  fixed = false,
+}: {
+  today: string;
+  initiallyOpen: boolean;
+  fixed?: boolean;
+}) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(initiallyOpen);
+  const [isOpen, setOpen] = useState(initiallyOpen);
+  const open = fixed || isOpen;
   const logWeight = useDataStore((s) => s.logWeight);
   const logWaist = useDataStore((s) => s.logWaist);
   const [weight, setWeight] = useState<number | undefined>();
@@ -20,25 +33,34 @@ export function QuickEntry({ today, initiallyOpen }: { today: string; initiallyO
   const [saved, setSaved] = useState<'weight' | 'waist' | null>(null);
   return (
     <Card tone="subtle" style={styles.card}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('progress.quickEntry')}
-        accessibilityHint={t('progress.quickEntryHint')}
-        accessibilityState={{ expanded: open }}
-        aria-expanded={open}
-        onPress={() => setOpen((o) => !o)}
-        style={styles.title}>
-        <Icon name="weight" size="sm" color="progress" />
-        <View style={styles.flex}>
-          <Text variant="headline">{t('progress.quickEntry')}</Text>
-          {open ? null : (
-            <Text variant="caption" color="textMuted">
-              {t('progress.quickEntryHint')}
-            </Text>
-          )}
+      {fixed ? (
+        <View style={styles.title}>
+          <Icon name="weight" size="sm" color="progress" />
+          <Text variant="headline" accessibilityRole="header">
+            {t('progress.quickEntry')}
+          </Text>
         </View>
-        <Icon name={open ? 'close' : 'plus'} size="sm" color="primary" />
-      </Pressable>
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('progress.quickEntry')}
+          accessibilityHint={t('progress.quickEntryHint')}
+          accessibilityState={{ expanded: open }}
+          aria-expanded={open}
+          onPress={() => setOpen((o) => !o)}
+          style={styles.title}>
+          <Icon name="weight" size="sm" color="progress" />
+          <View style={styles.flex}>
+            <Text variant="headline">{t('progress.quickEntry')}</Text>
+            {open ? null : (
+              <Text variant="caption" color="textMuted">
+                {t('progress.quickEntryHint')}
+              </Text>
+            )}
+          </View>
+          <Icon name={open ? 'close' : 'plus'} size="sm" color="primary" />
+        </Pressable>
+      )}
       {open ? (
         <>
           <View style={styles.entry}>
@@ -55,7 +77,8 @@ export function QuickEntry({ today, initiallyOpen }: { today: string; initiallyO
             </View>
             <Button
               compact
-              label={t('progress.logWeight')}
+              label={t('progress.log')}
+              accessibilityLabel={t('progress.logWeight')}
               disabled={!weight || weight < 25 || weight > 400}
               onPress={() => {
                 if (weight) logWeight(today, weight);
@@ -80,7 +103,8 @@ export function QuickEntry({ today, initiallyOpen }: { today: string; initiallyO
             <Button
               compact
               variant="secondary"
-              label={t('progress.logWaist')}
+              label={t('progress.log')}
+              accessibilityLabel={t('progress.logWaist')}
               disabled={!waistCm || waistCm < 10 || waistCm > 300}
               onPress={() => {
                 if (waistCm) logWaist(today, waistCm);

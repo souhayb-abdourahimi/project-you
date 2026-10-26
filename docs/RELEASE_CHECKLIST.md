@@ -82,6 +82,12 @@ Projet Supabase : `krcqdrrfnvfpvczxwrmt`. Les threads cloud n'atteignent pas ce 
 - [ ] Mode avion puis ouverture depuis l'icône : l'app s'ouvre, les données locales sont là, les actions réseau disent qu'elles sont hors ligne.
 - [ ] Export des données (Confidentialité) : la feuille de partage propose « Enregistrer dans Fichiers ».
 - [ ] iPhone SE (ou affichage zoomé) : rien n'est coupé.
+- [ ] **D-048** : aucune icône en carré □ sur aucun écran (Aujourd'hui, Programme, Nutrition, Progrès, Profil, Réglages, Repas, Lieux), en clair et en sombre, au premier lancement **et** après avoir tué puis rouvert l'app.
+- [ ] **D-048** : déployer une nouvelle version pendant que l'app installée est ouverte, la remettre au premier plan : bannière « Nouvelle version disponible » ; « Mettre à jour » recharge sans perdre la session ni les données.
+- [ ] **D-048** : Santé (web) → noter un poids et un tour de taille ; ils apparaissent dans Progrès.
+- [ ] **D-048** : analyse photo réelle → brouillon ; GET de diagnostic `analyze-meal` (runbook § 3) sans `missing`.
+- [ ] **D-049** : Calendrier → coller un vrai lien iCal (Google Agenda, Outlook, ENT…) → « Tester le lien » donne un nombre d'événements plausible → « Utiliser ce calendrier » → Programme : aucune séance sur un créneau occupé ; désactiver → les séances reviennent ; « Supprimer ce calendrier ».
+- [ ] **D-049** : un lien expiré ou privé → message « refuse l'accès », rien n'est gardé.
 
 ## 7. VoiceOver et TalkBack
 

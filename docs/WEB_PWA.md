@@ -87,10 +87,10 @@ L'Edge Function `analyze-meal` répond déjà au préflight CORS (`Access-Contro
 ## 5. Hors ligne : ce qui est mis en cache, et ce qui ne l'est jamais
 
 - **Pages** : réseau d'abord ; hors ligne, la dernière coquille de l'app s'ouvre. L'app affiche alors son propre état hors ligne.
-- **Fichiers statiques du même site** (bundle JS haché, police d'icônes, images, icônes) : cache d'abord, 150 fichiers au plus. Le premier chargement les garde dès que le service worker est actif.
+- **Fichiers statiques du même site** (bundle JS haché, images, icônes ; aucune police d'icônes depuis D-048 : les icônes sont des dessins SVG dans le bundle) : cache d'abord, 150 fichiers au plus. Le premier chargement les garde dès que le service worker est actif.
 - **Jamais en cache** : Supabase, OpenStreetMap / Overpass, le service d'analyse photo, toute requête non GET, toute réponse d'API. Une erreur réseau arrive donc toujours à l'app comme une erreur (« pas de faux hors ligne »).
 - **Données personnelles** : elles restent dans le stockage de l'app (comme avant), jamais dans le cache du service worker.
-- **Mise à jour** : `sw.js` et `index.html` ne sont jamais gardés par le cache HTTP ; un nouveau déploiement est pris au lancement suivant. Changer `VERSION` dans `sw.js` vide les anciens caches.
+- **Mise à jour (D-048)** : `sw.js` et `index.html` ne sont jamais gardés par le cache HTTP, et le worker est enregistré avec `updateViaCache: 'none'`. Chaque export tamponne `sw.js` avec l'empreinte du build (`scripts/pwa/stamp-sw.mjs`, lancé par `build:web` et `build:pwa` ; `check-dist.mjs` refuse un worker non tamponné) : chaque déploiement est un nouveau worker, dont les caches remplacent les anciens. App ouverte pendant un déploiement : bannière « Nouvelle version disponible — Mettre à jour » ; rien ne change avant le toucher, puis la page se recharge. L'app installée cherche une mise à jour quand elle revient au premier plan.
 - Le service worker n'est enregistré qu'en production web (`__DEV__` faux), jamais en natif ni dans `expo start`.
 
 ## 6. Installer sur l'iPhone
@@ -109,9 +109,9 @@ Confirmation d'e-mail : le lien du mail s'ouvre dans Safari, pas dans l'app inst
 
 | Sujet | Web / PWA sur iPhone | App native (plus tard) |
 | --- | --- | --- |
-| Apple Santé (HealthKit) | indisponible ; l'écran le dit et propose la saisie à la main | lecture poids / pas / séances |
+| Apple Santé (HealthKit) | pas de lecture ; l'écran Santé permet de noter poids et tour de taille sur place, une ligne annonce la synchro avec l'app native | lecture poids / pas / séances |
 | Rappels programmés | indisponibles ; l'écran le dit, les réglages restent enregistrés pour le compte | notifications locales |
-| Calendrier de l'appareil | indisponible ; l'écran le dit, les créneaux saisis restent utilisés | lecture des heures occupées, calendrier « Project You » |
+| Calendrier de l'appareil | pas d'accès ; disponibilités manuelles + **lien iCal** (D-049, créneaux occupés seulement, compte nécessaire) ; aucun bouton grisé | lecture des heures occupées, calendrier « Project You » |
 | Photo du repas | appareil photo et photothèque **via le sélecteur de fichiers de Safari** (pas d'aperçu caméra intégré) | sélecteur natif |
 | Position | à chaque recherche, permission gérée par Safari (Réglages › Confidentialité et sécurité › Service de localisation › Sites web Safari) ; peut être redemandée | permission de l'app |
 | Hors ligne | coquille de l'app + données déjà sur l'appareil ; pas de synchronisation en arrière-plan | idem, plus le premier plan / arrière-plan natif |
@@ -121,6 +121,7 @@ Confirmation d'e-mail : le lien du mail s'ouvre dans Safari, pas dans l'app inst
 
 ## 8. Vérifications
 
-- Automatisées (Chromium) : `e2e/pwa.spec.ts` — manifeste et icônes, balises iPhone, zoom non bloqué, mode sombre, réouverture hors ligne, cache limité au même site, pas de défilement horizontal à 375 px, bouton retour sans historique.
+- Automatisées (Chromium) : `e2e/pwa.spec.ts` — manifeste et icônes, balises iPhone, zoom non bloqué, mode sombre, réouverture hors ligne, cache limité au même site (aucune police), pas de défilement horizontal à 375 px, bouton retour sans historique, bannière de mise à jour.
+- Automatisées (WebKit, profil iPhone 15, en CI) et Chromium : `e2e/critical.spec.ts` — 14 écrans clair et sombre sans glyphe manquant (□, U+FFFD, zone PUA), chaque icône dessinée, pas de débordement ; position simulée ; photo choisie par le champ fichier puis analysée (faux projet). **WebKit sous Linux n'est pas Safari iOS** : il valide le moteur (rendu, SVG, service worker, champ fichier, API de position), pas le mode écran d'accueil, le clavier iOS, la vraie caméra, le GPS, les polices iOS ni l'encoche.
 - Captures : `scripts/screens/pwa.screens.ts` (iPhone 15, iPhone SE, sombre, bureau).
 - **Non vérifiable sans iPhone** : Safari réel, mode écran d'accueil, invite de position iOS, appareil photo via le champ fichier, clavier iOS, barre d'état, encoche. Liste à dérouler : `docs/RELEASE_CHECKLIST.md` § PWA iPhone.

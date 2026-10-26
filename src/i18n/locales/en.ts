@@ -1433,6 +1433,7 @@ const en: LocaleShape = {
     recompositionHint: 'During recomposition the scale moves little: waist and performance tell you more.',
     waist: 'Waist (cm)',
     logWaist: 'Log my waist',
+    log: 'Log',
     savedWeight: 'Weight saved for today.',
     savedWaist: 'Waist saved for today.',
     consistency: 'Consistency (4 weeks)',

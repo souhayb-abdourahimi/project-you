@@ -43,6 +43,10 @@ Supabase / PostgreSQL. Migrations versionnées dans `supabase/migrations/` (horo
 | `coach_memory` | **héritée, inutilisée** (D-042) | ni lue ni écrite par l'app : la mémoire du coach vit dans `adjustments` (`coach.*`, D-039) ; exportée, supprimée avec le compte ; suppression ou usage futur à décider |
 | `ai_conversations` / `ai_messages` | AIConversation, AIMessage | phase 3 ; tables créées mais inutilisées au MVP |
 
+## Migration `20261026000001_calendar_feeds.sql` (D-049)
+
+Table `calendar_feeds`, une ligne par utilisateur (clé `user_id`, cascade à la suppression du compte) : `url_ciphertext` (lien iCal scellé AES-256-GCM, jamais lu par l'app), `url_host`, `enabled`, `status`, `last_error` (liste fermée : `timeout`, `access_denied`, `not_found`, `not_ics`, `too_large`, `unavailable`, `blocked_address`), `last_synced_at`, `busy` (jsonb, 3 000 plages au plus, `{start, end, allDay}` seulement), `busy_from`, `busy_to`, `event_count`, `created_at`, `updated_at` (trigger). RLS propriétaire (4 policies), aucun droit pour `anon`. Écrite par la fonction `calendar-feed` avec le JWT de l'utilisateur (RLS appliquée), lue / désactivée / supprimée par l'app. Idempotente. Tests : `supabase/tests/rls.sql`, `supabase/tests/settings.sql`. **À coller dans le SQL Editor.**
+
 ## Migration `20261025000001_motivation_reasons.sql` (D-046)
 
 `motivations.reasons text[] not null default '{}'` : les motivations choisies (choix multiple, valeurs connues seulement, au plus 10, contrainte `motivations_reasons_known`). Idempotente (`add column if not exists`, contrainte créée seulement si absente), rien n'est supprimé ni réécrit. RLS inchangée (politiques propriétaire de `motivations`), testée dans `supabase/tests/settings.sql` (A lit et modifie ses raisons, B ne voit rien, valeur inconnue refusée, double application sans effet). Le client n'envoie la colonne qu'une fois la question répondue sur l'appareil. **À coller dans le SQL Editor avant de publier le client qui la contient.**

@@ -45,7 +45,7 @@ export function TodayGlance({ plan, journey }: { plan: Plan; journey: Journey })
     <View style={styles.glance}>
       {glance.nutrition || side ? (
         <View style={styles.row}>
-          {glance.nutrition ? <Nutrition n={glance.nutrition} /> : null}
+          {glance.nutrition ? <Nutrition n={glance.nutrition} alone={!side} /> : null}
           {side}
         </View>
       ) : null}
@@ -54,7 +54,8 @@ export function TodayGlance({ plan, journey }: { plan: Plan; journey: Journey })
   );
 }
 
-function Nutrition({ n }: { n: NonNullable<Glance['nutrition']> }) {
+/** `alone`: no second tile beside it (no steps, no weight yet): ring and words side by side. */
+function Nutrition({ n, alone }: { n: NonNullable<Glance['nutrition']>; alone: boolean }) {
   const { t, i18n } = useTranslation();
   const num = (v: number) => formatNumber(v, i18n.language);
   // Nothing noted yet: the targets, never "0 g" as if it were a measurement.
@@ -80,24 +81,29 @@ function Nutrition({ n }: { n: NonNullable<Glance['nutrition']> }) {
               {t('today.glance.nutrition')}
             </Text>
           </View>
-          {/* Ring, then its label: side by side, "Protéines" breaks mid-word on an iPhone SE. */}
-          <ProgressRing value={n.proteinG / n.proteinTargetG} color="nutrition" label={label} size={64} stroke={6}>
-            <Text variant="headline">{shown(n.proteinG)}</Text>
-            <Text variant="micro" color="textMuted">
-              / {num(n.proteinTargetG)} g
-            </Text>
-          </ProgressRing>
-          <View>
-            <Text variant="captionStrong">{t('today.glance.protein')}</Text>
-            <Text variant="caption" color="textMuted">
-              {t('nutrition.estimate')}
-            </Text>
+          {/* Half tile: ring, then its label ("Protéines" breaks mid-word side by side on an
+              iPhone SE). Alone on the row: side by side, so the tile is not half empty. */}
+          <View style={alone ? styles.wide : styles.halfBody}>
+            <ProgressRing value={n.proteinG / n.proteinTargetG} color="nutrition" label={label} size={64} stroke={6}>
+              <Text variant="headline">{shown(n.proteinG)}</Text>
+              <Text variant="micro" color="textMuted">
+                / {num(n.proteinTargetG)} g
+              </Text>
+            </ProgressRing>
+            <View style={alone ? styles.flex : styles.halfBody}>
+              <View>
+                <Text variant="captionStrong">{t('today.glance.protein')}</Text>
+                <Text variant="caption" color="textMuted">
+                  {t('nutrition.estimate')}
+                </Text>
+              </View>
+              <Text variant="caption" color="textSecondary" numberOfLines={2}>
+                {none
+                  ? t('today.glance.nothingYet')
+                  : t('today.glance.energy', { eaten: num(n.kcal), target: num(n.kcalTarget) })}
+              </Text>
+            </View>
           </View>
-          <Text variant="caption" color="textSecondary" numberOfLines={2}>
-            {none
-              ? t('today.glance.nothingYet')
-              : t('today.glance.energy', { eaten: num(n.kcal), target: num(n.kcalTarget) })}
-          </Text>
         </View>
       </Card>
     </Pressable>
@@ -266,6 +272,7 @@ const styles = StyleSheet.create({
   inline: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   half: { flex: 1, minWidth: 150 },
   halfBody: { gap: spacing.sm },
+  wide: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   value: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs },
   strip: { flexDirection: 'row', justifyContent: 'space-between' },
   day: { alignItems: 'center', gap: spacing.xs },

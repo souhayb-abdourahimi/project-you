@@ -4,6 +4,15 @@ Tâches importantes à ne pas perdre entre deux sessions. Référence des IDs : 
 
 ## En cours / prochaine étape
 
+- [ ] **Passe iPhone PWA (D-048) + lien iCal (D-049), 2026-10-26**, branche `claude/w9-checkin-premium`, rien de fusionné ni déployé. Fait : icônes SVG par registre (plus de police d'icônes, garde-fous Jest / dist / E2E), analyse photo auto-diagnostiquée + chaîne de fournisseurs avec Cloudflare Workers AI gratuit, Edge Function `places-nearby`, Santé et Calendrier web sans écran mort, bannière de mise à jour, suite WebKit iPhone 15 en CI, export E2E « compte » contre un faux projet, lien iCal complet (migration, fonction `calendar-feed`, écran, planification, export, suppression). À faire par Souhayb (runbook § 1 ter, 2, 3) :
+  - [ ] Coller `20261026000001_calendar_feeds.sql` dans le SQL Editor.
+  - [ ] Secrets : `CALENDAR_FEED_KEY` (`openssl rand -base64 32`), `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_AI_TOKEN`, `MEAL_VISION_PROVIDER=openai,cloudflare` (ou `cloudflare` seul).
+  - [ ] Déployer `analyze-meal`, `places-nearby`, `calendar-feed` ; GET de diagnostic `analyze-meal`.
+  - [ ] Comparer les modèles Cloudflare sur de vraies photos (`scripts/vision/compare-cloudflare.ts`) ; relire les conditions de conservation Workers AI et adapter la mention de consentement si besoin.
+  - [ ] Mesurer Overpass depuis Fedora (`node scripts/places/measure-overpass.mjs`) ; depuis GitHub, 15/16 délais à 30 s. Avant une diffusion large : instance Overpass auto-hébergée ou fournisseur sous contrat derrière `places-nearby`.
+  - [ ] Dérouler `RELEASE_CHECKLIST.md` § 6 bis (lignes D-048 / D-049) sur l'iPhone 15.
+  - [ ] Plus tard : export .ics des séances (non fait), quota partagé pour `calendar-feed` et `places-nearby` (aujourd'hui par instance), rotation de `CALENDAR_FEED_KEY` (aujourd'hui : changer la clé oblige à recoller les liens).
+
 - [ ] **PWA iPhone (D-047, 2026-10-25)**, branche `claude/w9-checkin-premium`, rien de fusionné ni déployé. Fait : manifeste, icônes, balises iOS, service worker coquille, position web, photo web honnête, export par feuille de partage, retour sans historique, Cloudflare Pages (`docs/WEB_PWA.md`). À faire par Souhayb : compte Cloudflare + `npm run deploy:web`, Redirect URLs Supabase (§ 4), puis `RELEASE_CHECKLIST.md` § 6 bis sur l'iPhone 15. Plus tard : Web Push (iOS 16.4+, app installée) si les rappels deviennent nécessaires sur le web.
 - [ ] **Passe qualité produit (D-046, 2026-10-25)**, branche `claude/w9-checkin-premium`, rien de fusionné :
   - [x] Onboarding : choix uniques en passage automatique, motivations multiples, « Aucun régime particulier », questions sans effet retirées, date cible et budget en un toucher, raisons de blocage affichées.
