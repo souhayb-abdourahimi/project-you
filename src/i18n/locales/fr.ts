@@ -8,6 +8,11 @@ const fr = {
     save: 'Enregistrer',
     cancel: 'Annuler',
     confirm: 'Confirmer',
+    update: {
+      available: 'Nouvelle version disponible',
+      apply: 'Mettre à jour',
+      later: 'Plus tard',
+    },
     delete: 'Supprimer',
     edit: 'Modifier',
     add: 'Ajouter',

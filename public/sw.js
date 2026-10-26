@@ -7,8 +7,12 @@
  * - Same-origin static files (hashed JS bundles, fonts, images, icons): cache first.
  * - Never cached: other origins, non-GET requests, API responses, anything personal. User data
  *   lives in the app's own storage, never in this cache.
+ * - Updates (D-048): BUILD is stamped at export (scripts/pwa/stamp-sw.mjs), so every new build is a
+ *   new worker. The first install takes over at once; an update waits until the page asks
+ *   ("Mettre à jour"), so a running app never switches files under the user's feet.
  */
-const VERSION = 'v2';
+const BUILD = '__BUILD__';
+const VERSION = `v3-${BUILD}`;
 const SHELL = `py-shell-${VERSION}`;
 const STATIC = `py-static-${VERSION}`;
 const STATIC_LIMIT = 150;
@@ -31,7 +35,8 @@ async function precache() {
 }
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(precache().then(() => self.skipWaiting()));
+  // First install: nothing to replace, take over now. Update: wait for the page's go-ahead.
+  event.waitUntil(precache().then(() => (self.registration.active ? undefined : self.skipWaiting())));
 });
 
 self.addEventListener('activate', (event) => {
@@ -103,6 +108,7 @@ async function keep(urls) {
 self.addEventListener('message', (event) => {
   const data = event.data;
   if (data && data.type === 'keep-loaded-files' && Array.isArray(data.urls)) event.waitUntil(keep(data.urls));
+  if (data && data.type === 'skip-waiting') self.skipWaiting();
 });
 
 self.addEventListener('fetch', (event) => {

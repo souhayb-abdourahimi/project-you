@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 
 import { HomeFallbackButton } from '@/components/navigation/HomeFallbackButton';
+import { UpdateBanner } from '@/components/navigation/UpdateBanner';
 import { useApplyDisplaySettings } from '@/hooks/useApplyDisplaySettings';
 import { hydrated, useSync } from '@/hooks/useSync';
 import { applyWebChrome, registerServiceWorker } from '@/services/web';
@@ -75,6 +76,7 @@ export default function RootLayout() {
           options={{ presentation: 'modal', headerShown: true, title: t('antiAbandon.title') }}
         />
       </Stack>
+      <UpdateBanner />
     </ThemeProvider>
   );
 }

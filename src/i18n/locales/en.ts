@@ -10,6 +10,11 @@ const en: LocaleShape = {
     save: 'Save',
     cancel: 'Cancel',
     confirm: 'Confirm',
+    update: {
+      available: 'New version available',
+      apply: 'Update',
+      later: 'Later',
+    },
     delete: 'Delete',
     edit: 'Edit',
     add: 'Add',

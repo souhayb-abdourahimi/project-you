@@ -54,7 +54,12 @@ export default defineConfig({
       : []),
   ],
   webServer: [
-    { command: 'node scripts/serve-dist.mjs', port: 8765, reuseExistingServer: !process.env.CI },
+    {
+      command: 'node scripts/serve-dist.mjs',
+      env: { E2E_HOOKS: '1' },
+      port: 8765,
+      reuseExistingServer: !process.env.CI,
+    },
     {
       command: 'node scripts/serve-dist.mjs',
       env: { DIST_DIR: 'dist-account', PORT: '8766' },

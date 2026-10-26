@@ -18,6 +18,9 @@ const required = [
   'icons/apple-touch-icon.png',
 ];
 for (const file of required) if (!existsSync(join(root, file))) problems.push(`missing dist/${file}`);
+// Without a build stamp, installed apps would never be offered this version (D-048).
+if (existsSync(join(root, 'sw.js')) && readFileSync(join(root, 'sw.js'), 'utf8').includes("'__BUILD__'"))
+  problems.push('sw.js not stamped (run node scripts/pwa/stamp-sw.mjs)');
 
 function* files(dir) {
   for (const name of readdirSync(dir)) {

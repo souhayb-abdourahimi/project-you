@@ -6,19 +6,70 @@ import { Platform } from 'react-native';
  */
 const isBrowser = Platform.OS === 'web' && typeof window !== 'undefined' && typeof document !== 'undefined';
 
+/** Listeners of "a new version is installed and waiting" (the update banner). */
+const updateListeners = new Set<() => void>();
+let waitingWorker: ServiceWorker | null = null;
+let reloadOnTakeOver = false;
+let lastUpdateCheck = 0;
+
+/** Called once a new version is ready; returns the unsubscribe function. */
+export function onUpdateReady(listener: () => void): () => void {
+  updateListeners.add(listener);
+  if (waitingWorker) listener();
+  return () => {
+    updateListeners.delete(listener);
+  };
+}
+
+/** "Mettre à jour": the waiting version takes over, then the page reloads on its files. */
+export function applyUpdate(): void {
+  if (!isBrowser || !waitingWorker) return;
+  reloadOnTakeOver = true;
+  waitingWorker.postMessage({ type: 'skip-waiting' });
+}
+
+function announce(worker: ServiceWorker) {
+  waitingWorker = worker;
+  updateListeners.forEach((listener) => listener());
+}
+
 /** Registers the app-shell service worker (public/sw.js) in production web builds only. */
 export function registerServiceWorker(): void {
   if (!isBrowser || __DEV__ || !('serviceWorker' in navigator)) return;
+  const sw = navigator.serviceWorker;
+  sw.addEventListener('controllerchange', () => {
+    if (reloadOnTakeOver) window.location.reload();
+  });
   // A failure only means no offline shell: the app works the same online.
-  navigator.serviceWorker
-    .register('/sw.js', { scope: '/' })
-    .then(() => navigator.serviceWorker.ready)
+  sw
+    // updateViaCache 'none': the worker file is always revalidated, so a new build is seen.
+    .register('/sw.js', { scope: '/', updateViaCache: 'none' })
     .then((registration) => {
-      // Files loaded before the worker took over (icon font, images): the worker keeps the
-      // same-origin static ones so the app opens offline. URLs only, nothing personal.
+      // Already waiting at launch: this page was loaded from the network (pages are network
+      // first), so the new version is the one running. It takes over quietly, no reload.
+      if (registration.waiting && sw.controller) registration.waiting.postMessage({ type: 'skip-waiting' });
+      registration.addEventListener('updatefound', () => {
+        const next = registration.installing;
+        next?.addEventListener('statechange', () => {
+          // Installed while an older version controls this page: offer the update.
+          if (next.state === 'installed' && sw.controller) announce(next);
+        });
+      });
+      // An installed app can stay open for days: look for a new version when it comes back.
+      const check = () => {
+        if (document.visibilityState !== 'visible' || Date.now() - lastUpdateCheck < 60_000) return;
+        lastUpdateCheck = Date.now();
+        registration.update().catch(() => undefined);
+      };
+      document.addEventListener('visibilitychange', check);
+      return sw.ready;
+    })
+    .then((registration) => {
+      // Files loaded before the worker took over (images): the worker keeps the same-origin
+      // static ones so the app opens offline. URLs only, nothing personal.
       const keep = (urls: string[]) => registration.active?.postMessage({ type: 'keep-loaded-files', urls });
       keep(performance.getEntriesByType('resource').map((entry) => entry.name));
-      // Files still loading at that moment (the icon font) are reported when they finish.
+      // Files still loading at that moment are reported when they finish.
       if (typeof PerformanceObserver === 'undefined') return;
       const observer = new PerformanceObserver((list) => keep(list.getEntries().map((entry) => entry.name)));
       observer.observe({ type: 'resource' });

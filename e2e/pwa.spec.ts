@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { SCENARIOS } from '../src/domain/scenarios';
 
-import { collectErrors, seedProfile, text } from './helpers';
+import { button, collectErrors, seedProfile, text } from './helpers';
 
 /**
  * Installable web app (D-047): manifest, iPhone meta tags, app-shell service worker. Chromium only
@@ -117,4 +117,33 @@ test('a page opened without history (reload, reopened app) still has a way back'
   await page.getByRole('button', { name: 'Retour à Aujourd’hui' }).filter({ visible: true }).first().click();
   await expect(page).toHaveURL(/\/$/);
   await expect(text(page, 'Aujourd’hui')).toBeVisible();
+});
+
+test('a new build is offered with a discreet banner, applied only when the user asks', async ({ page, context }) => {
+  const errors = collectErrors(page);
+  await seedProfile(page, SCENARIOS.beginner);
+  await page.goto('/');
+  await expect(text(page, 'Aujourd’hui')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+  const first = await page.evaluate(async () => (await caches.keys()).find((k) => k.startsWith('py-shell-')));
+  expect(first).toMatch(/^py-shell-v3-[0-9a-f]{12}$/); // stamped at export
+
+  // A new deploy: the same worker with another build stamp (served to this test context only).
+  await context.addCookies([{ name: 'py-e2e-sw-build', value: 'nextbuild001', url: page.url() }]);
+  await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.update());
+  await expect(text(page, 'Nouvelle version disponible')).toBeVisible();
+  // Nothing switched yet: the running version keeps control until the user chooses.
+  expect(await page.evaluate(async () => (await caches.keys()).includes('py-shell-v3-nextbuild001'))).toBe(true);
+  expect(await page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+
+  const reloaded = page.waitForEvent('load');
+  await button(page, 'Mettre à jour').click();
+  await reloaded;
+  await expect(text(page, 'Aujourd’hui')).toBeVisible();
+  await expect(text(page, 'Nouvelle version disponible')).toHaveCount(0);
+  // The old caches are gone with the old version.
+  await expect
+    .poll(() => page.evaluate(async () => (await caches.keys()).filter((k) => k.startsWith('py-shell-'))))
+    .toEqual(['py-shell-v3-nextbuild001']);
+  expect(errors).toEqual([]);
 });
