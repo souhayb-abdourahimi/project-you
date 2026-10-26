@@ -1,7 +1,7 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { useTranslation } from 'react-i18next';
 
-import { ICONS } from '@/components/ui/Icon';
+import { ICONS } from '@/components/ui/icons';
 import { useColors } from '@/theme';
 
 import { TABS } from './tabs';

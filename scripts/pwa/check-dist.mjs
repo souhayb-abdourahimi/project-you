@@ -38,6 +38,8 @@ let supabaseUrl = false;
 for (const path of files(root)) {
   const name = relative(root, path);
   if (/(^|\/)\.env/.test(name)) problems.push(`env file shipped: ${name}`);
+  // Icons are vector drawings (D-048): an icon font would bring back the squares on iPhone Safari.
+  if (/material-?symbols|materialicons/i.test(name)) problems.push(`icon font shipped: ${name}`);
   if (!/\.(js|html|json|webmanifest|txt|map)$/.test(name)) continue;
   const text = readFileSync(path, 'utf8');
   for (const [pattern, kind] of SECRETS) if (pattern.test(text)) problems.push(`${kind} found in ${name}`);

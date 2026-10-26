@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { parseNumber } from '@/lib/format';
 import { MIN_TOUCH, radius, spacing, typography, useColors } from '@/theme';
 
+import { Icon } from './Icon';
 import { Text } from './Text';
 
 /**
@@ -48,7 +49,7 @@ export function NumberStepper({
         {label}
       </Text>
       <View style={[styles.row, compact && styles.rowCompact]}>
-        <StepButton label={decrease} symbol="−" onPress={() => bump(-step)} compact={compact} />
+        <StepButton label={decrease} icon="minus" onPress={() => bump(-step)} compact={compact} />
         <TextInput
           accessibilityLabel={label}
           value={shown}
@@ -71,7 +72,7 @@ export function NumberStepper({
             {unit}
           </Text>
         ) : null}
-        <StepButton label={increase} symbol="+" onPress={() => bump(step)} compact={compact} />
+        <StepButton label={increase} icon="plus" onPress={() => bump(step)} compact={compact} />
       </View>
     </View>
   );
@@ -79,12 +80,12 @@ export function NumberStepper({
 
 function StepButton({
   label,
-  symbol,
+  icon,
   onPress,
   compact,
 }: {
   label: string;
-  symbol: string;
+  icon: 'minus' | 'plus';
   onPress: () => void;
   compact?: boolean;
 }) {
@@ -99,9 +100,7 @@ function StepButton({
         compact && styles.stepCompact,
         { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 },
       ]}>
-      <Text variant="title" color="primary" accessibilityRole="none">
-        {symbol}
-      </Text>
+      <Icon name={icon} size="lg" color="primary" />
     </Pressable>
   );
 }

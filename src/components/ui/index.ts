@@ -1,7 +1,8 @@
 export { Button, IconButton } from './Button';
 export { ActionCard, Card, HeroCard, MetricCard, type CardTone } from './Card';
 export { Badge, ChoiceGroup, Chip, type BadgeTone } from './Chip';
-export { Icon, ICONS, type IconName } from './Icon';
+export { Icon } from './Icon';
+export { ICONS, type IconName } from './icons';
 export {
   Avatar,
   Banner,

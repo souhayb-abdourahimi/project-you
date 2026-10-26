@@ -66,7 +66,8 @@ test('offline: the installed app still opens, and only app files are cached', as
   await expect(text(page, 'Aujourd’hui')).toBeVisible();
   await page.evaluate(() => navigator.serviceWorker.ready);
   await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
-  // The icon font and the bundle are kept once the worker took over.
+  // The bundle is kept once the worker took over. Icons are drawings inside it (D-048): no icon
+  // font is ever downloaded, so none can be served stale or missing after an update.
   await expect
     .poll(async () => {
       const urls = await page.evaluate(async () => {
@@ -74,7 +75,7 @@ test('offline: the installed app still opens, and only app files are cached', as
         for (const name of await caches.keys()) for (const r of await (await caches.open(name)).keys()) all.push(r.url);
         return all;
       });
-      return urls.some((u) => u.endsWith('.ttf')) && urls.some((u) => u.includes('/_expo/static/js/'));
+      return !urls.some((u) => u.endsWith('.ttf')) && urls.some((u) => u.includes('/_expo/static/js/'));
     })
     .toBe(true);
 

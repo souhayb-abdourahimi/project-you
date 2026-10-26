@@ -8,7 +8,7 @@
  * - Never cached: other origins, non-GET requests, API responses, anything personal. User data
  *   lives in the app's own storage, never in this cache.
  */
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL = `py-shell-${VERSION}`;
 const STATIC = `py-static-${VERSION}`;
 const STATIC_LIMIT = 150;
