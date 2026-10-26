@@ -1,3 +1,4 @@
+import { overpassQuery as serverQuery } from '../../../../supabase/functions/places-nearby/overpass.ts';
 import { MAX_PLACES, coarsen, distanceMeters, overpassQuery, parseOverpass, readOverpassAnswer } from '../osm';
 
 const HOME = { lat: 48.85661, lng: 2.35222 };
@@ -60,7 +61,17 @@ describe('OpenStreetMap places', () => {
     const q = overpassQuery('store', HOME, 1500);
     expect(q).toContain('around:1500,48.857,2.352');
     expect(q).not.toContain('48.85661');
-    expect(q).toContain('"shop"="supermarket"');
+    expect(q).toContain('nw["shop"~"^(supermarket|convenience|greengrocer|health_food)$"]');
+  });
+
+  it('is the same query as the places-nearby Edge Function, light enough for busy public servers', () => {
+    for (const kind of ['gym', 'store'] as const) {
+      expect(overpassQuery(kind, HOME, 3000)).toBe(serverQuery(kind, HOME, 3000));
+    }
+    const q = overpassQuery('gym', HOME, 5000);
+    expect(q).toMatch(/^\[out:json\]\[timeout:8\]\[maxsize:16777216\];/);
+    expect(q).not.toContain('nwr');
+    expect(q).toMatch(/out center tags qt 200;$/);
   });
 
   it('computes a plausible great-circle distance', () => {

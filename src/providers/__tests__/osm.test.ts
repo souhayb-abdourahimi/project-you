@@ -7,7 +7,14 @@ import {
   osmGymProvider,
   osmPlacesProvider,
   osmStoreProvider,
+  setInvokePlaces,
 } from '../osm';
+
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  getItem: async () => null,
+  setItem: async () => undefined,
+  removeItem: async () => undefined,
+}));
 
 const HOME = { lat: 48.85661, lng: 2.35222 };
 const realFetch = global.fetch;
@@ -41,6 +48,8 @@ const gym = (id: number, name = 'Salle') => ({
 
 beforeEach(() => {
   jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
+  // No account session: the device asks Overpass itself (the function path is tested below).
+  setInvokePlaces(async () => null);
 });
 afterEach(() => {
   jest.useRealTimers();
@@ -208,3 +217,44 @@ describe('OpenStreetMap provider', () => {
     expect(r).toMatchObject({ status: 'ok', data: [{ kind: 'store', name: 'Marché' }] });
   });
 });
+
+describe('places-nearby function (signed in)', () => {
+  const ok = { status: 200, data: { elements: [gym(1, 'Salle du parc')], source: 'overpass-api.de' } };
+
+  it('sends only the rounded position and the kind, and reads real places from the answer', async () => {
+    const invoke = jest.fn(async (_body: unknown) => ok);
+    setInvokePlaces(invoke);
+    const fetchMock = answers({ status: 500 });
+    const result = await run(osmGymProvider.nearby(HOME, 5000));
+    expect(invoke.mock.calls[0][0]).toEqual({ kind: 'gym', lat: 48.857, lng: 2.352, radius: 5000 });
+    expect(result).toMatchObject({ status: 'ok', data: [{ name: 'Salle du parc' }], meta: { isMock: false } });
+    // The device itself never called Overpass.
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('each server answer keeps its own meaning: timeout, busy, unavailable, nothing found', async () => {
+    const cases: [{ status: number; data: unknown }, unknown][] = [
+      [{ status: 504, data: { error: 'timeout' } }, { status: 'error', error: 'timeout' }],
+      [{ status: 503, data: { error: 'rate_limited' } }, { status: 'error', error: 'rate_limited' }],
+      [{ status: 502, data: { error: 'unavailable' } }, { status: 'error', error: 'service' }],
+      [{ status: 200, data: { elements: [], source: 'x' } }, { status: 'unavailable', reason: 'no_data' }],
+    ];
+    for (const [answer, expected] of cases) {
+      clearPlacesCache();
+      setInvokePlaces(async () => answer);
+      expect(await run(osmStoreProvider.nearby(HOME, 2000))).toMatchObject(expected as object);
+    }
+  });
+
+  it('function not deployed yet (404): the device searches directly, nothing breaks', async () => {
+    setInvokePlaces(async () => ({ status: 404, data: null }));
+    answers({ status: 200, body: { elements: [gym(2, 'Direct')] } });
+    expect(await run(osmGymProvider.nearby(HOME, 5000))).toMatchObject({ status: 'ok', data: [{ name: 'Direct' }] });
+  });
+
+  it('a function that never answers is a timeout, not an endless "searching"', async () => {
+    setInvokePlaces((_body, signal) => new Promise((_, reject) => signal.addEventListener('abort', () => reject(new Error('aborted')))));
+    expect(await run(osmGymProvider.nearby(HOME, 5000))).toMatchObject({ status: 'error', error: 'timeout' });
+  });
+});
+

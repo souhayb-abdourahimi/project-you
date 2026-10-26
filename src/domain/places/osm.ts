@@ -41,9 +41,12 @@ const SELECTORS: Record<PlaceKind, Selector[]> = {
 /** Places kept after sorting by distance: the nearest ones, never an arbitrary subset. */
 export const MAX_PLACES = 30;
 /** Elements the server may return; enough for a dense city centre, then sorted here. */
-const SERVER_LIMIT = 250;
+const SERVER_LIMIT = 200;
 /** Server-side time budget (seconds), below the client timeout so the server answers first. */
-export const SERVER_TIMEOUT_S = 10;
+export const SERVER_TIMEOUT_S = 8;
+/** A smaller memory reservation: busy public instances admit small queries first. */
+const MAX_SIZE_BYTES = 16 * 1024 * 1024;
+const STORE_SHOPS = 'supermarket|convenience|greengrocer|health_food';
 
 /**
  * The position is rounded to about 100 m before leaving the device, so the exact location is
@@ -57,16 +60,23 @@ export function isValidPoint(p: GeoPoint): boolean {
   return Number.isFinite(p.lat) && Number.isFinite(p.lng) && Math.abs(p.lat) <= 90 && Math.abs(p.lng) <= 180;
 }
 
+/**
+ * Same query as the `places-nearby` Edge Function (supabase/functions/places-nearby/overpass.ts,
+ * a test keeps them identical): nodes and ways only, one regex on the indexed `shop` key, a small
+ * memory and time budget, at most 200 elements (D-048).
+ */
 export function overpassQuery(kind: PlaceKind, near: GeoPoint, radiusMeters: number): string {
   const { lat, lng } = coarsen(near);
-  const r = Math.round(Math.min(Math.max(radiusMeters, 200), 10_000));
-  const parts = SELECTORS[kind]
-    .map(
-      ({ key, value, sport }) =>
-        `nwr["${key}"="${value}"]${sport ? `["sport"~"${sport}"]` : ''}(around:${r},${lat},${lng});`,
-    )
-    .join('');
-  return `[out:json][timeout:${SERVER_TIMEOUT_S}];(${parts});out center tags ${SERVER_LIMIT};`;
+  const around = `(around:${Math.round(Math.min(Math.max(radiusMeters, 200), 10_000))},${lat},${lng})`;
+  const statements =
+    kind === 'gym'
+      ? [
+          `nw["leisure"="fitness_centre"]${around};`,
+          `nw["amenity"="gym"]${around};`,
+          `nw["leisure"="sports_centre"]["sport"~"${GYM_SPORTS}"]${around};`,
+        ]
+      : [`nw["shop"~"^(${STORE_SHOPS})$"]${around};`, `nw["amenity"="marketplace"]${around};`];
+  return `[out:json][timeout:${SERVER_TIMEOUT_S}][maxsize:${MAX_SIZE_BYTES}];(${statements.join('')});out center tags qt ${SERVER_LIMIT};`;
 }
 
 /** Great-circle distance in metres ("as the crow flies", not a travel time). */

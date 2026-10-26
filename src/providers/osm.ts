@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import { Linking, Platform } from 'react-native';
 
 import { SERVER_TIMEOUT_S, coarsen, overpassQuery, readOverpassAnswer } from '@/domain/places/osm';
+import { supabase } from '@/services/supabase';
 
 import type {
   GeoPoint,
@@ -96,10 +97,83 @@ async function ask(endpoint: string, query: string, kind: PlaceKind, point: GeoP
   }
 }
 
+/**
+ * The `places-nearby` Edge Function (D-048): the search runs on the server, which sends a real
+ * User-Agent and asks a second instance when the first is slow. Only the rounded position and the
+ * kind are sent. `null`: not usable here (no account session), the device asks Overpass itself.
+ */
+export type InvokePlaces = (
+  body: { kind: PlaceKind; lat: number; lng: number; radius: number },
+  signal: AbortSignal,
+) => Promise<{ status: number; data: unknown } | null>;
+
+/** Server budget: hedge after 4 s + 11 s per instance; the client waits a little longer. */
+const FUNCTION_TIMEOUT_MS = 20_000;
+
+const invokeSupabasePlaces: InvokePlaces = async (body, signal) => {
+  if (!supabase) return null;
+  const { data: session } = await supabase.auth.getSession();
+  if (!session.session) return null;
+  const { data, error } = await supabase.functions.invoke('places-nearby', { body, signal });
+  if (!error) return { status: 200, data };
+  const response = (error as { context?: unknown }).context;
+  if (response instanceof Response) return { status: response.status, data: await response.json().catch(() => null) };
+  throw error;
+};
+
+let invokePlaces: InvokePlaces = invokeSupabasePlaces;
+/** For tests. */
+export function setInvokePlaces(fn: InvokePlaces) {
+  invokePlaces = fn;
+}
+
+/** The function's answer as the app's result; `null` when the function is not there (not deployed). */
+async function viaFunction(kind: PlaceKind, point: GeoPoint, radius: number): Promise<ProviderResult<Place[]> | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FUNCTION_TIMEOUT_MS);
+  try {
+    const answer = await invokePlaces({ kind, lat: point.lat, lng: point.lng, radius }, controller.signal);
+    if (!answer || answer.status === 404) return null;
+    const code = (answer.data as { error?: unknown } | null)?.error;
+    if (answer.status === 200) {
+      const read = readOverpassAnswer(answer.data, kind, point);
+      if (read.kind !== 'ok') return { status: 'error', error: 'service', retryable: true };
+      if (read.places.length === 0) return { status: 'unavailable', reason: 'no_data' };
+      const source = (answer.data as { source?: unknown }).source;
+      return {
+        status: 'ok',
+        data: read.places,
+        meta: {
+          provider: 'openstreetmap-overpass',
+          externalId: typeof source === 'string' ? source.slice(0, 80) : null,
+          source: 'OpenStreetMap (contributeurs, licence ODbL)',
+          fetchedAt: new Date().toISOString(),
+          updatedAt: null,
+          confidence: 'medium',
+          isMock: false,
+        },
+      };
+    }
+    if (answer.status === 504 || code === 'timeout') return { status: 'error', error: 'timeout', retryable: true };
+    if (answer.status === 429 || code === 'rate_limited' || code === 'too_many_requests')
+      return { status: 'error', error: 'rate_limited', retryable: true };
+    if (answer.status === 401) return { status: 'error', error: 'auth', retryable: false };
+    return { status: 'error', error: 'service', retryable: true };
+  } catch {
+    if (controller.signal.aborted) return { status: 'error', error: 'timeout', retryable: true };
+    return isOffline()
+      ? { status: 'error', error: 'offline', retryable: true }
+      : { status: 'error', error: 'network', retryable: true };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 const isOffline = () => typeof navigator !== 'undefined' && navigator.onLine === false;
 
 /**
- * Gyms and food stores from OpenStreetMap through public Overpass instances (no key).
+ * Gyms and food stores from OpenStreetMap through public Overpass instances (no key), via the
+ * `places-nearby` function when signed in.
  * Collaborative data: confidence "medium", source shown, nothing added when a field is missing.
  * At most one request per instance, one short pause between them, never a loop. Answers are
  * cached 10 minutes per rounded area; the same search already running is shared, not repeated.
@@ -114,6 +188,13 @@ async function nearby(kind: PlaceKind, near: GeoPoint, radiusMeters: number): Pr
   if (running) return running;
 
   const run = (async (): Promise<ProviderResult<Place[]>> => {
+    // Signed in: the server searches (real User-Agent, hedged fallback). Otherwise, or while the
+    // function is not deployed, the device asks Overpass directly.
+    const remote = await viaFunction(kind, point, radiusMeters);
+    if (remote) {
+      if (remote.status !== 'error') cache.set(key, { at: Date.now(), result: remote });
+      return remote;
+    }
     const query = overpassQuery(kind, point, radiusMeters);
     let last: Attempt = { status: 'error', error: 'unknown', retryable: true };
     for (const [i, endpoint] of OVERPASS_ENDPOINTS.entries()) {
