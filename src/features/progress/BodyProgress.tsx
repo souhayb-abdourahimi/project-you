@@ -1,13 +1,13 @@
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { Button, Card, Icon, Section, Text, TrendLine } from '@/components/ui';
+import { Card, Section, Text, TrendLine } from '@/components/ui';
 import type { ProgressJourney } from '@/domain/journey/progress-journey';
-import { MassField, NumberField } from '@/features/onboarding/fields';
 import { useDataStore } from '@/state/data';
-import { MIN_TOUCH, spacing } from '@/theme';
+import { spacing } from '@/theme';
 
+import { QuickEntry } from './QuickEntry';
 import { weightTrend } from './view';
 
 const signed = (v: number) => (v > 0 ? `+${v}` : String(v));
@@ -128,87 +128,10 @@ export function BodyProgress({
   );
 }
 
-/** A weigh-in or a waist measurement, in one gesture. */
-function QuickEntry({ today, initiallyOpen }: { today: string; initiallyOpen: boolean }) {
-  const { t } = useTranslation();
-  const [open, setOpen] = useState(initiallyOpen);
-  const logWeight = useDataStore((s) => s.logWeight);
-  const logWaist = useDataStore((s) => s.logWaist);
-  const [weight, setWeight] = useState<number | undefined>();
-  const [waistCm, setWaistCm] = useState<number | undefined>();
-  const [formKey, setFormKey] = useState(0);
-  return (
-    <Card tone="subtle" style={styles.card}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('progress.quickEntry')}
-        accessibilityHint={t('progress.quickEntryHint')}
-        accessibilityState={{ expanded: open }}
-        aria-expanded={open}
-        onPress={() => setOpen((o) => !o)}
-        style={styles.title}>
-        <Icon name="weight" size="sm" color="progress" />
-        <View style={styles.flex}>
-          <Text variant="headline">{t('progress.quickEntry')}</Text>
-          {open ? null : (
-            <Text variant="caption" color="textMuted">
-              {t('progress.quickEntryHint')}
-            </Text>
-          )}
-        </View>
-        <Icon name={open ? 'close' : 'plus'} size="sm" color="primary" />
-      </Pressable>
-      {open ? (
-        <>
-          <View style={styles.entry}>
-            <View style={styles.field}>
-              <MassField
-                key={`w${formKey}`}
-                label={(unit) => t('onboarding.profile.body.weight', { unit })}
-                valueKg={weight}
-                onChange={setWeight}
-              />
-            </View>
-            <Button
-              compact
-              label={t('progress.logWeight')}
-              disabled={!weight || weight < 25 || weight > 400}
-              onPress={() => {
-                if (weight) logWeight(today, weight);
-                setWeight(undefined);
-                setFormKey((k) => k + 1);
-              }}
-            />
-          </View>
-          <View style={styles.entry}>
-            <View style={styles.field}>
-              <NumberField key={`c${formKey}`} label={t('progress.waist')} value={waistCm} onChange={setWaistCm} />
-            </View>
-            <Button
-              compact
-              variant="secondary"
-              label={t('progress.logWaist')}
-              disabled={!waistCm || waistCm < 10 || waistCm > 300}
-              onPress={() => {
-                if (waistCm) logWaist(today, waistCm);
-                setWaistCm(undefined);
-                setFormKey((k) => k + 1);
-              }}
-            />
-          </View>
-        </>
-      ) : null}
-    </Card>
-  );
-}
-
 const styles = StyleSheet.create({
   card: { gap: spacing.md },
-  entry: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, flexWrap: 'wrap' },
-  field: { flex: 1, minWidth: 150 },
   block: { gap: spacing.xxs },
   trend: { gap: spacing.xs, marginTop: spacing.md },
-  title: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: MIN_TOUCH },
   measure: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
   flex: { flex: 1 },
 });
