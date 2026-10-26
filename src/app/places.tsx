@@ -3,25 +3,10 @@ import { View } from 'react-native';
 
 import { Banner, Button, Card, ChoiceGroup, EmptyState, LoadingScreen, Screen, Text } from '@/components/ui';
 import { toIsoDate } from '@/domain/shared/dates';
+import { placesErrorKey } from '@/features/places/errors';
 import { PlaceCard } from '@/features/places/PlaceCard';
 import { usePlaces } from '@/features/places/usePlaces';
 import { formatDate } from '@/lib/format';
-
-/** One message per real cause: "check your connection" only when the device is offline. */
-function placesErrorKey(error: string): 'offline' | 'timeout' | 'busy' | 'unreachable' | 'service' {
-  switch (error) {
-    case 'offline':
-      return 'offline';
-    case 'timeout':
-      return 'timeout';
-    case 'rate_limited':
-      return 'busy';
-    case 'network':
-      return 'unreachable';
-    default:
-      return 'service';
-  }
-}
 
 function ErrorWithRetry({ message, onRetry }: { message: string; onRetry: () => void }) {
   const { t } = useTranslation();

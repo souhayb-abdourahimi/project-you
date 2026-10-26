@@ -8,8 +8,8 @@ Toutes passent par les interfaces de `src/providers/types.ts`. Câblage : `src/p
 | ProductProvider | Open Food Facts | 2 | code-barres, confiance moyenne, confirmation utilisateur |
 | CalendarProvider | **branché** : calendrier de l'appareil via `expo-calendar` (EventKit / Android) | 2 | D-016 : lecture des heures occupées seulement ; écriture dans un calendrier « Project You » dédié ; jamais d'édition d'événements personnels ; web non supporté |
 | HealthProvider | **branché** : Apple Santé (`@kingstinct/react-native-healthkit`), Health Connect (`react-native-health-connect`), rien sur le web | 2 | D-018 : lecture seule de 4 types, gardé sur l'appareil ; build de développement requis (pas Expo Go) ; non testé sur appareil réel (`docs/MOBILE_HEALTH_TEST_PLAN.md`) |
-| PlacesProvider (+ Gym/Store) | **branché** : OpenStreetMap (Overpass) | 2 | D-017/D-019 : seul point d'entrée de l'UI (`places.nearby(kind, …)`) ; instance publique pour dev/bêta seulement |
-| MapsProvider | **branché** : openstreetmap.org | 2 | `maps.open(point)` ; aucune URL de carte dans les features |
+| PlacesProvider (+ Gym/Store) | **branché** : Geoapify Places via `places-nearby` (clé serveur), secours OpenStreetMap (Overpass) | 2 | D-017/D-019/D-051 : seul point d'entrée de l'UI (`places.nearby(kind, …)`) ; aucune clé Google, aucune facturation |
+| MapsProvider | **branché** : Plans (iPhone, app et PWA), lien `geo:` (Android), openstreetmap.org (web, secours) | 2 | `maps.open(point, nom)` (`src/providers/maps.ts`) ; aucune clé, aucune URL Google ; seule la position du lieu est transmise |
 | LocationProvider | **branché** : `expo-location` (premier plan, à la demande) | 2 | position jamais enregistrée ni synchronisée |
 | SportsProvider | OpenStreetMap | 2 | non branché (parcs, activités) |
 | PriceProvider / PromotionProvider | à choisir | 3 | uniquement données réelles |

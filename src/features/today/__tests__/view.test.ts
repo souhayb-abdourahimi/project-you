@@ -114,16 +114,16 @@ const item = (over: Partial<DailyItem>): DailyItem => ({
 });
 
 describe('heroContent: planned facts only', () => {
-  it('a session to do: its focus, minutes, version and start, on the graphite surface', () => {
+  it('a session to do: its start first, then minutes, version and place, on the graphite surface', () => {
     expect(
       heroContent(item({ params: { focus: 'upper', minutes: 20, variant: 'short', location: 'gym', start: '18:00' } })),
     ).toEqual({
       focus: 'upper',
       chips: [
+        { kind: 'start', time: '18:00' },
         { kind: 'minutes', minutes: 20 },
         { kind: 'variant', variant: 'short' },
         { kind: 'location', location: 'gym' },
-        { kind: 'start', time: '18:00' },
       ],
       tone: 'inverse',
     });

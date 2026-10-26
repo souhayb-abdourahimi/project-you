@@ -226,7 +226,7 @@ describe('places-nearby function (signed in)', () => {
     setInvokePlaces(invoke);
     const fetchMock = answers({ status: 500 });
     const result = await run(osmGymProvider.nearby(HOME, 5000));
-    expect(invoke.mock.calls[0][0]).toEqual({ kind: 'gym', lat: 48.857, lng: 2.352, radius: 5000 });
+    expect(invoke.mock.calls[0][0]).toEqual({ kind: 'gym', lat: 48.857, lng: 2.352, radius: 5000, lang: 'fr' });
     expect(result).toMatchObject({ status: 'ok', data: [{ name: 'Salle du parc' }], meta: { isMock: false } });
     // The device itself never called Overpass.
     expect(fetchMock).not.toHaveBeenCalled();
@@ -270,5 +270,49 @@ describe('places-nearby function (signed in)', () => {
         new Promise((_, reject) => signal.addEventListener('abort', () => reject(new Error('aborted')))),
     );
     expect(await run(osmGymProvider.nearby(HOME, 5000))).toMatchObject({ status: 'error', error: 'timeout' });
+  });
+
+  describe('Geoapify through the function (D-051)', () => {
+    const place = {
+      id: 'geoapify:abc',
+      kind: 'gym',
+      name: 'Club Bastille',
+      category: 'sport.fitness.fitness_centre',
+      location: { lat: 48.8531, lng: 2.3694 },
+      address: '12 Rue de la Roquette, 75011 Paris',
+      openingHours: null,
+      website: null,
+      distanceMeters: 1312,
+    };
+
+    it('reads the places, labels Geoapify and OpenStreetMap, never calls Overpass from the device', async () => {
+      setInvokePlaces(async () => ({ status: 200, data: { provider: 'geoapify', places: [place], source: 'Geoapify' } }));
+      const fetchMock = answers({ status: 500 });
+      const r = await run(osmGymProvider.nearby(HOME, 5000));
+      expect(r).toMatchObject({
+        status: 'ok',
+        data: [{ id: 'geoapify:abc', name: 'Club Bastille', address: '12 Rue de la Roquette, 75011 Paris' }],
+        meta: { provider: 'geoapify', isMock: false, confidence: 'medium' },
+      });
+      if (r.status === 'ok') expect(r.meta.source).toMatch(/Geoapify.*OpenStreetMap/);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('drops an invalid place rather than showing it; an empty list is "nothing around"', async () => {
+      setInvokePlaces(async () => ({
+        status: 200,
+        data: { provider: 'geoapify', places: [place, { ...place, id: 'geoapify:bad', name: '' }, { foo: 1 }] },
+      }));
+      const r = await run(osmGymProvider.nearby(HOME, 5000));
+      expect(r.status === 'ok' && r.data.map((p) => p.id)).toEqual(['geoapify:abc']);
+      clearPlacesCache();
+      setInvokePlaces(async () => ({ status: 200, data: { provider: 'geoapify', places: [] } }));
+      expect(await run(osmGymProvider.nearby(HOME, 5000))).toEqual({ status: 'unavailable', reason: 'no_data' });
+    });
+
+    it('a used-up daily quota is said as such', async () => {
+      setInvokePlaces(async () => ({ status: 503, data: { error: 'quota' } }));
+      expect(await run(osmGymProvider.nearby(HOME, 5000))).toMatchObject({ status: 'error', error: 'quota' });
+    });
   });
 });

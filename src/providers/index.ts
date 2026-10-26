@@ -4,7 +4,8 @@
  */
 import { deviceCalendarProvider } from './calendar';
 import { deviceLocationProvider } from './location';
-import { osmGymProvider, osmMapsProvider, osmPlacesProvider, osmStoreProvider } from './osm';
+import { deviceMapsProvider } from './maps';
+import { osmGymProvider, osmPlacesProvider, osmStoreProvider } from './osm';
 import { deviceHealthProvider } from './health';
 import { supabaseMealPhotoProvider } from './meal-photo';
 import { providers as unavailable } from './unavailable';
@@ -18,7 +19,7 @@ export const providers = {
   ...unavailable,
   calendar: deviceCalendarProvider,
   places: osmPlacesProvider,
-  maps: osmMapsProvider,
+  maps: deviceMapsProvider,
   gym: osmGymProvider,
   store: osmStoreProvider,
   location: deviceLocationProvider,

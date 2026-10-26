@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
-import { Button, Card, ProgressBar, Row, Screen, Text } from '@/components/ui';
+import { Button, Card, LoadingScreen, ProgressBar, Row, Screen, Text } from '@/components/ui';
 import {
   autoAdvances,
   blockedReason,
@@ -22,9 +22,8 @@ import { ChangePreview } from '@/features/settings/ChangePreview';
 import { commitProfile } from '@/features/settings/useCommitProfile';
 import { editedSnapshot, profileImpact } from '@/domain/settings/impact';
 import { toIsoDate } from '@/domain/shared/dates';
+import { useProfileGate } from '@/hooks/useProfileGate';
 import { useDataStore } from '@/state/data';
-import { useSession } from '@/services/auth';
-import { isSupabaseConfigured } from '@/services/supabase';
 import type { Allergen } from '@/domain/profile/schemas';
 import { useProfileStore } from '@/state/profile';
 import { spacing, useReducedMotion } from '@/theme';
@@ -34,9 +33,10 @@ const ADVANCE_MS = 220;
 
 export default function OnboardingScreen() {
   const { t } = useTranslation();
-  const { draft, currentStep, updateDraft, setStep, complete, localMode, snapshot } = useProfileStore();
+  const { draft, currentStep, updateDraft, setStep, complete, snapshot } = useProfileStore();
   const adjustments = useDataStore((s) => s.adjustments);
-  const { session, loading } = useSession();
+  // Signed in: the questionnaire is offered only once the account is known to have no profile.
+  const gate = useProfileGate();
   // Allergies of the saved profile that the new answers drop: saved only after an explicit "yes" (B2).
   const [removing, setRemoving] = useState<Allergen[] | null>(null);
   const reduceMotion = useReducedMotion();
@@ -48,8 +48,10 @@ export default function OnboardingScreen() {
   };
   useEffect(() => cancelAdvance, [currentStep]);
 
-  if (loading) return null;
-  if (isSupabaseConfigured && !session && !localMode) return <Redirect href="/sign-in" />;
+  if (gate === null) return null;
+  if (gate === 'sign-in') return <Redirect href="/sign-in" />;
+  if (gate === 'wait') return <LoadingScreen />;
+  if (gate === 'unreachable') return <Redirect href="/" />;
 
   const year = new Date().getFullYear();
   const steps = visibleSteps(draft);

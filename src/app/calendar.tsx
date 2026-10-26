@@ -6,6 +6,8 @@ import { CalendarFeedCard } from '@/features/calendar/CalendarFeedCard';
 import { useCalendarFeed } from '@/features/calendar/useCalendarFeed';
 import { calendarSupported, useCalendarLink } from '@/features/calendar/useCalendarLink';
 import { toIsoDate } from '@/domain/shared/dates';
+import { placementSummary } from '@/features/program/scheduleView';
+import { usePlan } from '@/hooks/usePlan';
 import { formatDate } from '@/lib/format';
 
 /**
@@ -17,6 +19,8 @@ export default function CalendarScreen() {
   const { t, i18n } = useTranslation();
   const cal = useCalendarLink();
   const feed = useCalendarFeed();
+  // The week as placed with the calendar (D-050): said on the iCal card.
+  const plan = usePlan();
   const yesNo = [
     { value: 'on', label: t('common.yes') },
     { value: 'off', label: t('common.no') },
@@ -36,7 +40,7 @@ export default function CalendarScreen() {
         />
       </Card>
 
-      <CalendarFeedCard feed={feed} />
+      <CalendarFeedCard feed={feed} week={plan ? placementSummary(plan.schedule, plan.sessionsPerWeek) : null} />
 
       {!calendarSupported ? (
         <Text variant="caption" color="textMuted">

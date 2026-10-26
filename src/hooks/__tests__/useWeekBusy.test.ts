@@ -5,7 +5,7 @@ import { SCENARIOS } from '@/domain/scenarios';
 import { useCalendarStore } from '@/state/calendar';
 import { useCalendarFeedStore } from '@/state/calendarFeed';
 
-import { useWeekBusy } from '../useWeekBusy';
+import { useWeekBusy, useWeekCalendar } from '../useWeekBusy';
 
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
@@ -98,3 +98,61 @@ describe('useWeekBusy', () => {
     }
   });
 });
+
+describe('useWeekCalendar (D-050)', () => {
+  it('null without an active calendar: the planner keeps its former behaviour', async () => {
+    const { result } = await renderHook(() => useWeekCalendar(WEEK));
+    expect(result.current).toBeNull();
+    link(false);
+    const off = await renderHook(() => useWeekCalendar(WEEK));
+    expect(off.result.current).toBeNull();
+  });
+
+  it('an enabled link is active, even on a week without events', async () => {
+    useCalendarFeedStore.getState().set({
+      host: 'edt.example.fr',
+      enabled: true,
+      busy: [],
+      eventCount: 0,
+      syncedAt: '2026-09-27T08:00:00.000Z',
+      issue: null,
+    });
+    const { result } = await renderHook(() => useWeekCalendar(WEEK));
+    expect(result.current).toEqual({ busy: [] });
+  });
+
+  it('no availability entered: sessions get real times between the iCal events', async () => {
+    link(true);
+    const s = SCENARIOS.beginner;
+    const { result } = await renderHook(() => useWeekCalendar(WEEK));
+    const plan = planWeek({
+      weekStart: WEEK,
+      schedule: { availability: [], fixedConstraints: [] },
+      training: s.training,
+      calendar: result.current!,
+    });
+    expect(plan.availability).toBe('calendar_auto');
+    const workouts = plan.days.flatMap((d) =>
+      d.items.flatMap((i) => (i.kind === 'workout' ? [{ day: d.weekday, start: i.start, end: i.end }] : [])),
+    );
+    expect(workouts).toHaveLength(s.training.sessionsPerWeek);
+    for (const w of workouts) {
+      expect(w.start).not.toBeNull();
+      // The evening job (17:00–22:00 on weekdays) is never touched.
+      if (w.day <= 5) expect(w.end! <= '17:00').toBe(true);
+    }
+  });
+
+  it('switching the link off or refreshing it changes what the planner reads at once', async () => {
+    link(true);
+    const { result, rerender } = await renderHook(() => useWeekCalendar(WEEK));
+    expect(result.current?.busy).toHaveLength(5);
+    useCalendarFeedStore.getState().patch({ enabled: false });
+    await rerender({});
+    expect(result.current).toBeNull();
+    useCalendarFeedStore.getState().patch({ enabled: true });
+    await rerender({});
+    expect(result.current?.busy).toHaveLength(5);
+  });
+});
+

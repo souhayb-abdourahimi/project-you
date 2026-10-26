@@ -152,7 +152,8 @@ export interface LocationProvider {
 }
 /** Opens a point on a map; the UI never builds a map URL itself. */
 export interface MapsProvider {
-  open(at: GeoPoint): Promise<ProviderResult<true>>;
+  /** `label`: the place's name, shown by the maps app (never the user's own position). */
+  open(at: GeoPoint, label?: string): Promise<ProviderResult<true>>;
 }
 export interface NotificationProvider {
   requestPermission(): Promise<ProviderResult<true>>;

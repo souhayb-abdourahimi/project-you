@@ -17,7 +17,7 @@ Toute donnée externe importante transporte `ExternalDataMeta` (`src/domain/shar
 | Recettes | éditoriales Project You | interne | nutrition **calculée** à partir des valeurs Ciqual de chaque ingrédient, affichée comme estimation |
 | Exercices | bibliothèque éditoriale Project You | interne | consignes générales ; vidéos/illustrations seulement de source légitime |
 | Prix, promotions | aucun fournisseur fiable choisi | indisponible | pas de prix affiché au MVP ; saisie utilisateur (ticket) possible |
-| Magasins, salles, lieux sportifs | **OpenStreetMap via Overpass** (`PlacesProvider`, D-017/D-019) | phase 2, branché | instance publique = dev/bêta seulement ; fournisseur de production à choisir |
+| Magasins, salles, lieux sportifs | **Geoapify Places** (données OpenStreetMap) via `places-nearby`, secours **Overpass** (`PlacesProvider`, D-017/D-019/D-051) | branché | Geoapify plan Free (clé serveur `GEOAPIFY_API_KEY`) ; Overpass public = secours best-effort |
 | Fréquentation des salles | aucune | indisponible | jamais inventée ; on optimise seulement selon horaires/planning |
 | Sécurité d'un parcours | aucune par défaut | indisponible | jamais « safe/dangerous » ; seulement données publiques sourcées et datées |
 | Calendrier | EventKit (iOS), Google Calendar | phase 2 | MVP : créneaux saisis manuellement |
@@ -63,7 +63,19 @@ Toute donnée externe importante transporte `ExternalDataMeta` (`src/domain/shar
 
 **Mettre à jour la table** : déposer le nouveau fichier dans `data/ciqual/`, mettre à jour `SOURCE`, `SOURCE_SHA256` et `EXPECTED_ROWS` dans le script en connaissance de cause, `npm run ciqual:import`, relire le diff de `foods.generated.json`, puis `npm run check`. La CI lance `npm run ciqual:check` (le fichier généré doit correspondre exactement à la source).
 
-## Serveurs OpenStreetMap publics (D-019)
+## Geoapify Places : source principale des lieux (D-051)
+
+Lu le 2026-10-26 dans la documentation et la spécification OpenAPI de Geoapify, et sur la page des tarifs.
+
+- **Plan Free** : 3 000 crédits par jour, jusqu'à 5 requêtes par seconde, sans carte bancaire, usage commercial autorisé. Une recherche de lieux coûte 1 crédit par tranche de 20 lieux : l'app en demande 20, donc **1 crédit par recherche** (et le cache de 10 min évite les répétitions). Le quota est « souple » : Geoapify contacte le compte qui le dépasse souvent ; le code d'erreur exact d'un quota épuisé n'est pas documenté (402, ou 429 avec un message de crédits : les deux sont traités comme « limite du jour »).
+- **Appel** : `GET https://api.geoapify.com/v2/places` avec `categories`, `filter=circle:lon,lat,rayon`, `bias=proximity:lon,lat`, `limit=20`, `lang`, `apiKey`. **Uniquement depuis la fonction `places-nearby`** : la clé est un secret serveur (`Deno.env.get('GEOAPIFY_API_KEY')`), jamais dans `EXPO_PUBLIC_*`, le bundle PWA, le stockage local ni le code client.
+- **Catégories** (noms Geoapify, vérifiés dans la spécification) : salles `sport.fitness.fitness_centre`, `sport.fitness.gym` (`sport.fitness.fitness_station`, agrès d'extérieur, exclu) ; alimentation `commercial.supermarket`, `commercial.convenience`, `commercial.food_and_drink.fruit_and_vegetable`, `commercial.food_and_drink.health_food`, `commercial.marketplace` (même périmètre que la requête OpenStreetMap).
+- **Réponse** : GeoJSON ; l'app garde `place_id`, `name`, `lat`/`lon`, `distance` (sinon calculée à vol d'oiseau), l'adresse seulement si une rue existe, `opening_hours` et `website` tels quels quand la source les a. Rien d'inventé : un lieu sans nom ou sans position est écarté. Pas de note, pas d'équipement.
+- **Attribution** : « Powered by Geoapify · © OpenStreetMap contributors (ODbL) », affichée sous chaque liste.
+- **Confidentialité** : position arrondie à ~100 m sur l'appareil puis de nouveau sur le serveur, ni stockée ni journalisée ; cache serveur 10 min par zone arrondie.
+- **Ordre** : cache → quota par utilisateur → Geoapify (1 requête) → si échec (délai, 5xx, trop de demandes, quota, clé refusée) Overpass une fois (requête couverte ci-dessous, 2 instances au plus) → message précis. Jamais de boucle. Sans clé : Overpass seul.
+
+## Serveurs OpenStreetMap publics (D-019) : secours best-effort
 
 Lu le 2026-10-01 sur les pages officielles ; à revérifier avant chaque changement de volume.
 
@@ -87,9 +99,8 @@ Lu le 2026-10-01 sur les pages officielles ; à revérifier avant chaque changem
 - **Attribution ODbL** : « © les contributeurs OpenStreetMap ». La source est affichée sous chaque liste de lieux.
 
 **Conséquence** :
-- Ces serveurs conviennent au développement et à une bêta fermée, pas à la production.
-- Avant le lancement, choisir et brancher derrière `PlacesProvider` une instance auto-hébergée ou un fournisseur sous contrat.
-- L'UI et le moteur n'ont pas à changer.
+- Ces serveurs ne sont plus la source principale (D-051) : ils servent de secours quand Geoapify n'est pas configuré ou échoue, et en mode local (sans compte).
+- L'UI et le moteur n'ont pas à changer d'une source à l'autre (`PlacesProvider`).
 
 ## Calendrier iCal de l'utilisateur (D-049)
 

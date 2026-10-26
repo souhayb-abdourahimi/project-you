@@ -73,6 +73,11 @@ export interface SyncResult {
   /** Remote rows ignored because they did not validate. */
   rejected: number;
   offline: boolean;
+  /**
+   * Every table was read and merged: what the account holds on the server (its profile included)
+   * is now on this device. False when the round stopped before or during the pull.
+   */
+  pullComplete: boolean;
   /** Structured failures of the round (empty when everything went through). */
   errors: SyncError[];
 }
@@ -103,7 +108,7 @@ export async function syncOnce(
   options: { claim?: boolean; now?: () => string } = {},
 ): Promise<SyncResult> {
   const now = options.now ?? (() => new Date().toISOString());
-  const result: SyncResult = { pulled: 0, pushed: 0, deleted: 0, failed: 0, rejected: 0, offline: false, errors: [] };
+  const result: SyncResult = { pulled: 0, pushed: 0, deleted: 0, failed: 0, rejected: 0, offline: false, pullComplete: false, errors: [] };
   const fail = (kind: SyncErrorKind, phase: SyncError['phase'], table?: SyncTable, count = 1) => {
     const same = result.errors.find((e) => e.kind === kind && e.phase === phase && e.table === table);
     if (same) same.count += count;
@@ -161,6 +166,7 @@ export async function syncOnce(
     result.rejected = merged.rejected;
     if (merged.rejected > 0) fail('invalid_data', 'pull', undefined, merged.rejected);
     store.write({ ...merged.state, synced: merged.synced, lastPulledAt: maxUpdatedAt });
+    result.pullComplete = true;
   }
 
   // Push.

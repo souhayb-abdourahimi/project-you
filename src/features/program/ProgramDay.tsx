@@ -10,6 +10,7 @@ import { useDataStore } from '@/state/data';
 import { MIN_TOUCH, radius, spacing, useColors } from '@/theme';
 
 import type { ProgramDayView, ProgramSessionView } from './useProgramWeek';
+import { sessionLine } from './scheduleView';
 import { SessionStatusLine } from './SessionStatusLine';
 
 /**
@@ -68,11 +69,22 @@ export function WeekDayRow({
   const focus = day.sessions
     .map((s) => (s.focus ? t(`enums.focus.${s.focus}`) : t('program.offPlanSession')))
     .join(' · ');
+  // "17:30 · Haut du corps · ≈ 39 min · Salle": the time only when the planner found a free slot.
+  const line = day.sessions
+    .map((s) =>
+      sessionLine([
+        s.slot?.start,
+        s.focus ? t(`enums.focus.${s.focus}`) : t('program.offPlanSession'),
+        s.minutes ? t('program.estimated', { count: s.minutes }) : null,
+        s.slot ? t(`enums.location.${s.slot.location}`) : null,
+      ]),
+    )
+    .join(' / ');
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      accessibilityLabel={`${formatDate(day.date, i18n.language)}, ${focus}`}
+      accessibilityLabel={`${formatDate(day.date, i18n.language)}, ${line || focus}`}
       onPress={onPress}
       style={({ pressed }) => [
         styles.weekRow,
@@ -84,7 +96,7 @@ export function WeekDayRow({
       <View style={styles.flex}>
         <Text variant="bodyMedium">{weekday.charAt(0).toUpperCase() + weekday.slice(1)}</Text>
         <Text variant="caption" color="textSecondary" numberOfLines={1}>
-          {focus}
+          {line || focus}
         </Text>
         {first && first.status !== 'planned' ? (
           <SessionStatusLine status={first.status} movedTo={first.movedTo} replacedBy={first.replacedBy} compact />

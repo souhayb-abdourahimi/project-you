@@ -57,6 +57,10 @@ const en: LocaleShape = {
     weakPassword: 'Password must be at least 8 characters.',
     failed: 'Could not sign in. Check your credentials and connection.',
     signOut: 'Sign out',
+    unreachable: {
+      title: 'Your profile is on its way',
+      body: 'Your account could not be read on this device yet. Your profile is safe in your account: check your connection, we also keep trying on our own.',
+    },
   },
   onboarding: {
     progress: 'Step {{current}} of {{total}}',
@@ -665,7 +669,10 @@ const en: LocaleShape = {
       needs_availability: 'Add your availability to schedule sessions at precise times.',
       fewer_sessions_than_requested: 'Your schedule cannot fit every requested session this week: we placed what fits.',
       home_fallback_used: 'Some sessions are planned at home because there is not enough time to reach the gym.',
+      no_free_slot:
+        'Your calendar leaves no free time long enough this week (session and travel included). No time is made up: you can adjust your availability or shorten your sessions.',
     },
+    changeDuration: 'Change session length',
     rest: 'Rest',
     prescriptionUnknown: 'Original prescription unavailable.',
     open: 'Open session',
@@ -2225,6 +2232,13 @@ const en: LocaleShape = {
     feed: {
       title: 'Add an iCal calendar',
       linkedTitle: 'Your iCal calendar',
+      usesGaps: 'PROJECT YOU uses the free times between your events to place your sessions.',
+      week: {
+        placed_one: 'This week: {{count}} session placed between your events.',
+        placed_other: 'This week: {{count}} sessions placed between your events.',
+        partial: 'This week: {{placed}} of {{requested}} session(s) fit between your events.',
+        none: 'This week, no free time is long enough for a session. No time is made up: you can change your availability or session length.',
+      },
       intro:
         'Paste the iCal link of your school, work or personal schedule. PROJECT YOU reads busy times and nothing else, to place your sessions better.',
       urlLabel: 'iCal link (https or webcal)',
@@ -2386,7 +2400,7 @@ const en: LocaleShape = {
   places: {
     title: 'Nearby gyms and stores',
     open: 'Nearby gyms and stores',
-    intro: 'OpenStreetMap data, entered by contributors: check opening hours before you go.',
+    intro: 'Places from OpenStreetMap, entered by contributors: check opening hours before you go.',
     kinds: { gym: 'Gyms', store: 'Food stores' },
     kindLabel: 'Type of place',
     locationWhy:
@@ -2405,11 +2419,9 @@ const en: LocaleShape = {
     },
     errors: {
       offline: 'You are offline. The search can resume as soon as you are back online; the rest of the app works.',
-      timeout: 'OpenStreetMap is taking too long to answer. Try again in a moment.',
-      busy: 'The OpenStreetMap service is getting too many requests. Try again in a few minutes.',
-      unreachable:
-        'The OpenStreetMap service is not answering right now. Try again later; the rest of the app works normally.',
-      service: 'The OpenStreetMap service is temporarily unavailable. Try again later; nothing is wrong on your side.',
+      unavailable: 'The places service is temporarily unavailable. Try again in a moment.',
+      busy: 'The places service is getting too many requests. Try again in a few minutes.',
+      quota: 'The places service has reached its free limit for today. Try again tomorrow; you can still enter your gym in your profile.',
     },
     distance: '≈ {{distance}} as the crow flies',
     noAddress: 'Address: data unavailable',
@@ -2773,6 +2785,7 @@ const en: LocaleShape = {
       weights: 'weigh-ins',
       notification_preferences: 'reminder preferences',
       adjustment: 'plan change you accepted',
+      calendar_busy: 'busy times of your calendar',
       evidence: {
         weeks: 'weeks observed',
         adherencePct: 'workout regularity',
@@ -2828,7 +2841,10 @@ const en: LocaleShape = {
     planning: {
       goal: 'Fit sessions into your real week',
       constraint: { availability: 'free slots', fixed: 'fixed commitments', recovery: 'recovery' },
-      reason: { fit_real_schedule: 'Sessions placed in your free slots, with rest in between.' },
+      reason: {
+        fit_real_schedule: 'Sessions placed in your free slots, with rest in between.',
+        calendar_gaps: 'Sessions placed between 7 am and 10 pm in the gaps of your calendar, travel included, with rest in between.',
+      },
     },
     progression: {
       goal: 'Progress without injury',

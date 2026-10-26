@@ -1,13 +1,14 @@
 import Constants from 'expo-constants';
-import { Linking, Platform } from 'react-native';
+import i18n from 'i18next';
+import { Platform } from 'react-native';
 
 import { SERVER_TIMEOUT_S, coarsen, overpassQuery, readOverpassAnswer } from '@/domain/places/osm';
+import { readServerPlaces } from '@/domain/places/server';
 import { supabase } from '@/services/supabase';
 
 import type {
   GeoPoint,
   GymProvider,
-  MapsProvider,
   Place,
   PlaceKind,
   PlacesProvider,
@@ -103,12 +104,15 @@ async function ask(endpoint: string, query: string, kind: PlaceKind, point: GeoP
  * kind are sent. `null`: not usable here (no account session), the device asks Overpass itself.
  */
 export type InvokePlaces = (
-  body: { kind: PlaceKind; lat: number; lng: number; radius: number },
+  body: { kind: PlaceKind; lat: number; lng: number; radius: number; lang: 'fr' | 'en' },
   signal: AbortSignal,
 ) => Promise<{ status: number; data: unknown } | null>;
 
-/** Server budget: hedge after 4 s + 11 s per instance; the client waits a little longer. */
-const FUNCTION_TIMEOUT_MS = 20_000;
+/** Server budget: Geoapify 8 s, then Overpass (hedge after 4 s + 11 s); the client waits a little longer. */
+const FUNCTION_TIMEOUT_MS = 28_000;
+
+/** Attribution asked by Geoapify and by OpenStreetMap, whose data Geoapify serves. */
+export const GEOAPIFY_SOURCE = 'Powered by Geoapify · © OpenStreetMap contributors (ODbL)';
 
 const invokeSupabasePlaces: InvokePlaces = async (body, signal) => {
   if (!supabase) return null;
@@ -132,9 +136,29 @@ async function viaFunction(kind: PlaceKind, point: GeoPoint, radius: number): Pr
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FUNCTION_TIMEOUT_MS);
   try {
-    const answer = await invokePlaces({ kind, lat: point.lat, lng: point.lng, radius }, controller.signal);
+    const lang = i18n.language === 'en' ? 'en' : 'fr';
+    const answer = await invokePlaces({ kind, lat: point.lat, lng: point.lng, radius, lang }, controller.signal);
     if (!answer || answer.status === 404) return null;
     const code = (answer.data as { error?: unknown } | null)?.error;
+    if (answer.status === 200 && (answer.data as { provider?: unknown } | null)?.provider === 'geoapify') {
+      // Geoapify (D-051): places already shaped by the server, checked again here.
+      const places = readServerPlaces(answer.data, kind);
+      if (!places) return { status: 'error', error: 'service', retryable: true };
+      if (places.length === 0) return { status: 'unavailable', reason: 'no_data' };
+      return {
+        status: 'ok',
+        data: places,
+        meta: {
+          provider: 'geoapify',
+          externalId: null,
+          source: GEOAPIFY_SOURCE,
+          fetchedAt: new Date().toISOString(),
+          updatedAt: null,
+          confidence: 'medium',
+          isMock: false,
+        },
+      };
+    }
     if (answer.status === 200) {
       const read = readOverpassAnswer(answer.data, kind, point);
       if (read.kind !== 'ok') return { status: 'error', error: 'service', retryable: true };
@@ -154,6 +178,7 @@ async function viaFunction(kind: PlaceKind, point: GeoPoint, radius: number): Pr
         },
       };
     }
+    if (code === 'quota') return { status: 'error', error: 'quota', retryable: true };
     if (answer.status === 504 || code === 'timeout') return { status: 'error', error: 'timeout', retryable: true };
     if (answer.status === 429 || code === 'rate_limited' || code === 'too_many_requests')
       return { status: 'error', error: 'rate_limited', retryable: true };
@@ -218,30 +243,6 @@ async function nearby(kind: PlaceKind, near: GeoPoint, radiusMeters: number): Pr
 export const osmPlacesProvider: PlacesProvider = { nearby };
 export const osmGymProvider: GymProvider = { nearby: (near, radius) => nearby('gym', near, radius) };
 export const osmStoreProvider: StoreProvider = { nearby: (near, radius) => nearby('store', near, radius) };
-
-/** Opens openstreetmap.org on the point (OSM attribution included on the site). */
-export const osmMapsProvider: MapsProvider = {
-  open: async (at) => {
-    try {
-      await Linking.openURL(`https://www.openstreetmap.org/?mlat=${at.lat}&mlon=${at.lng}#map=18/${at.lat}/${at.lng}`);
-      return {
-        status: 'ok',
-        data: true,
-        meta: {
-          provider: 'openstreetmap',
-          externalId: null,
-          source: 'openstreetmap.org',
-          fetchedAt: new Date().toISOString(),
-          updatedAt: null,
-          confidence: 'medium',
-          isMock: false,
-        },
-      };
-    } catch {
-      return { status: 'error', error: 'unknown', retryable: false };
-    }
-  },
-};
 
 /** For tests. */
 export function clearPlacesCache() {

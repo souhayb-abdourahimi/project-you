@@ -74,7 +74,7 @@ export function usePlaces() {
     if (next.success) setSnapshot(next.data);
   };
 
-  const openMap = (place: Place) => providers.maps.open(place.location);
+  const openMap = (place: Place) => providers.maps.open(place.location, place.name);
 
   return {
     radiusKm: RADIUS[placeKind] / 1000,

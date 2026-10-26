@@ -31,10 +31,11 @@ export function heroContent(item: DailyItem): HeroContent {
   const chips: HeroChip[] = [];
   const minutes = Number(p.minutes);
   if (item.kind === 'workout' && item.status === 'todo') {
+    // The time first ("17:30 · ≈ 39 min · Salle"), only when the planner found a real free slot.
+    if (typeof p.start === 'string' && p.start) chips.push({ kind: 'start', time: p.start });
     if (Number.isFinite(minutes) && minutes > 0) chips.push({ kind: 'minutes', minutes });
     if (p.variant === 'short' || p.variant === 'light') chips.push({ kind: 'variant', variant: p.variant });
     if (p.location === 'gym' || p.location === 'home') chips.push({ kind: 'location', location: p.location });
-    if (typeof p.start === 'string' && p.start) chips.push({ kind: 'start', time: p.start });
     return { focus: typeof p.focus === 'string' ? p.focus : null, chips, tone: 'inverse' };
   }
   return { focus: null, chips, tone: 'surface' };

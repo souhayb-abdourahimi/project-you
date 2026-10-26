@@ -25,3 +25,16 @@ export function useWeekBusy(weekStart: IsoDate): BusySlot[] {
     [device, feed, weekStart],
   );
 }
+
+/**
+ * The calendar the planner reads this week (D-050): its busy times when a calendar is active (the
+ * device calendar read, or an enabled iCal link), null otherwise. Active with no busy time this
+ * week still counts: the free week is then real, and sessions get real times.
+ */
+export function useWeekCalendar(weekStart: IsoDate): { busy: BusySlot[] } | null {
+  const busy = useWeekBusy(weekStart);
+  const device = useCalendarStore((s) => s.connected && s.readBusy);
+  const feed = useCalendarFeedStore((s) => !!s.link?.enabled);
+  const active = device || feed;
+  return useMemo(() => (active ? { busy } : null), [active, busy]);
+}

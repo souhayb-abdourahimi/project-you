@@ -61,6 +61,10 @@ const fr = {
     weakPassword: 'Le mot de passe doit contenir au moins 8 caractères.',
     failed: 'Connexion impossible. Vérifie tes identifiants et ta connexion.',
     signOut: 'Se déconnecter',
+    unreachable: {
+      title: 'Ton profil arrive',
+      body: 'Ton compte n’a pas encore pu être lu sur cet appareil. Ton profil est en sécurité sur ton compte : vérifie ta connexion, on réessaie aussi tout seuls.',
+    },
   },
   onboarding: {
     progress: 'Étape {{current}} sur {{total}}',
@@ -675,7 +679,10 @@ const fr = {
       fewer_sessions_than_requested:
         'Ton planning ne permet pas toutes les séances demandées cette semaine : on a placé ce qui rentre.',
       home_fallback_used: 'Certaines séances sont prévues à la maison faute de temps pour aller à la salle.',
+      no_free_slot:
+        'Ton calendrier ne laisse aucun créneau assez long cette semaine (séance et trajet compris). Aucune heure n’est inventée : tu peux ajuster tes disponibilités ou raccourcir tes séances.',
     },
+    changeDuration: 'Changer la durée des séances',
     rest: 'Repos',
     prescriptionUnknown: 'Prescription d’origine indisponible.',
     open: 'Ouvrir la séance',
@@ -2252,6 +2259,13 @@ const fr = {
     feed: {
       title: 'Ajouter un calendrier iCal',
       linkedTitle: 'Ton calendrier iCal',
+      usesGaps: 'PROJECT YOU utilise les créneaux libres entre tes événements pour placer tes séances.',
+      week: {
+        placed_one: 'Cette semaine : {{count}} séance placée entre tes événements.',
+        placed_other: 'Cette semaine : {{count}} séances placées entre tes événements.',
+        partial: 'Cette semaine : {{placed}} séance(s) sur {{requested}} rentrent entre tes événements.',
+        none: 'Cette semaine, aucun créneau libre n’est assez long pour une séance. Aucune heure n’est inventée : tu peux modifier tes disponibilités ou la durée des séances.',
+      },
       intro:
         'Colle le lien iCal de ton planning scolaire, professionnel ou personnel. PROJECT YOU lit uniquement les créneaux occupés pour mieux placer tes séances.',
       urlLabel: 'Lien iCal (https ou webcal)',
@@ -2420,7 +2434,7 @@ const fr = {
   places: {
     title: 'Salles et magasins proches',
     open: 'Salles et magasins proches',
-    intro: 'Données OpenStreetMap, saisies par des contributeurs : vérifie les horaires avant de te déplacer.',
+    intro: 'Lieux issus d’OpenStreetMap, saisis par des contributeurs : vérifie les horaires avant de te déplacer.',
     kinds: { gym: 'Salles de sport', store: 'Magasins d’alimentation' },
     kindLabel: 'Type de lieu',
     locationWhy:
@@ -2442,12 +2456,10 @@ const fr = {
     errors: {
       offline:
         'Tu es hors connexion. La recherche pourra reprendre dès que tu seras en ligne ; le reste de l’app fonctionne.',
-      timeout: 'OpenStreetMap met trop de temps à répondre. Réessaie dans un instant.',
-      busy: 'Le service OpenStreetMap reçoit trop de demandes. Réessaie dans quelques minutes.',
-      unreachable:
-        'Le service OpenStreetMap ne répond pas pour le moment. Réessaie plus tard ; le reste de l’app fonctionne normalement.',
-      service:
-        'Le service OpenStreetMap est momentanément indisponible. Réessaie plus tard ; ce n’est pas un problème de ton côté.',
+      unavailable: 'Le service de lieux est momentanément indisponible. Réessaie dans un instant.',
+      busy: 'Le service de lieux reçoit trop de demandes. Réessaie dans quelques minutes.',
+      quota:
+        'Le service de lieux a atteint sa limite gratuite du jour. Réessaie demain ; tu peux toujours indiquer ta salle dans ton profil.',
     },
     distance: '≈ {{distance}} à vol d’oiseau',
     noAddress: 'Adresse : donnée indisponible',
@@ -2824,6 +2836,7 @@ const fr = {
       weights: 'pesées',
       notification_preferences: 'préférences de rappel',
       adjustment: 'changement de plan accepté',
+      calendar_busy: 'créneaux occupés de ton calendrier',
       evidence: {
         weeks: 'semaines observées',
         adherencePct: 'régularité des séances',
@@ -2879,7 +2892,11 @@ const fr = {
     planning: {
       goal: 'Placer les séances dans ta vraie semaine',
       constraint: { availability: 'créneaux libres', fixed: 'contraintes fixes', recovery: 'récupération' },
-      reason: { fit_real_schedule: 'Séances placées dans tes créneaux libres, avec du repos entre elles.' },
+      reason: {
+        fit_real_schedule: 'Séances placées dans tes créneaux libres, avec du repos entre elles.',
+        calendar_gaps:
+          'Séances placées entre 7 h et 22 h dans les trous de ton calendrier, trajet compris, avec du repos entre elles.',
+      },
     },
     progression: {
       goal: 'Progresser sans se blesser',

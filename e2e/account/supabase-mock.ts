@@ -52,6 +52,12 @@ export interface MockState {
   /** What analyze-meal answers (status and body); bodies it received are kept in `analyses`. */
   analysis?: { status: number; body: unknown };
   analyses?: unknown[];
+  /** Rows the account already holds on the server, by table (the sync's pull reads them). */
+  rows?: Record<string, Record<string, unknown>[]>;
+  /** Held until resolved: every read of the account waits (a slow first pull). */
+  pullGate?: Promise<void>;
+  /** Tables the app read, in order (to check what was pulled before a decision). */
+  reads?: string[];
 }
 
 const cors = {
@@ -109,9 +115,15 @@ export async function mockAccount(page: Page, state: MockState) {
       }
     }
 
-    // The sync and everything else: an empty account that accepts writes.
+    // The sync and everything else: the account's rows (empty unless given), writes accepted.
     if (url.pathname.startsWith('/rest/v1/rpc/')) return json(route, 200, null);
-    if (method === 'GET' || method === 'HEAD') return json(route, 200, [], { 'content-range': '*/0' });
+    if (method === 'GET' || method === 'HEAD') {
+      const table = url.pathname.replace('/rest/v1/', '');
+      (state.reads ??= []).push(table);
+      if (state.pullGate) await state.pullGate;
+      const rows = state.rows?.[table] ?? [];
+      return json(route, 200, rows, { 'content-range': `0-${Math.max(rows.length - 1, 0)}/${rows.length}` });
+    }
     if (method === 'POST') return json(route, 201, []);
     return json(route, 204, undefined);
   });

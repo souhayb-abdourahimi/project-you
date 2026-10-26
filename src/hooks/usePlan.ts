@@ -18,7 +18,7 @@ import { activeProgram, ensureProgram, ensureWeek, prescriptionFor, variantTempl
 import { useDataStore } from '@/state/data';
 import { useProfileStore } from '@/state/profile';
 
-import { useWeekBusy } from './useWeekBusy';
+import { useWeekCalendar } from './useWeekBusy';
 import { useWeights } from './useWeights';
 
 /** Applies user reschedules on top of the engine's weekly plan. */
@@ -92,7 +92,7 @@ export function usePlan() {
   const today = toIsoDate(new Date());
   const weekStart = startOfWeek(today);
   const year = Number(today.slice(0, 4));
-  const busy = useWeekBusy(weekStart);
+  const calendar = useWeekCalendar(weekStart);
 
   // Safety signals that only need weigh-ins and marked meals (no plan targets): enough to freeze the
   // weight basis without depending on the targets it feeds (docs/ADAPTATION_ENGINE.md §4).
@@ -142,14 +142,16 @@ export function usePlan() {
     );
     const feasibility = assessGoalFeasibility(snapshot, today);
     const workoutPlan = generateWorkoutPlan({ goal: snapshot.goal.type, training: effective.training });
-    // Busy times from the device calendar and the iCal link count as fixed constraints (this week).
+    // Busy times from the device calendar and the iCal link (this week): subtracted from the
+    // availability, or from 07:00–22:00 when none was entered (D-050). The profile is not changed.
     const schedule = planSchedule({
       weekStart,
-      schedule: { ...snapshot.schedule, fixedConstraints: [...snapshot.schedule.fixedConstraints, ...busy] },
+      schedule: snapshot.schedule,
       training: effective.training,
+      ...(calendar ? { calendar } : {}),
     });
     return { targets, feasibility, workoutPlan, schedule, basis, sessionsPerWeek, startedOn, training };
-  }, [snapshot, year, today, weekStart, busy, adjustments, weights, frozen, startedOn]);
+  }, [snapshot, year, today, weekStart, calendar, adjustments, weights, frozen, startedOn]);
 
   const planKey = useMemo(
     () =>

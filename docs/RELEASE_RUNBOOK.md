@@ -137,7 +137,15 @@ Lien iCal (D-049) : une clé de chiffrement, générée sur ta machine, ajoutée
 echo "CALENDAR_FEED_KEY=$(openssl rand -base64 32)" >> ~/projectyou-fn.env
 ```
 
-Garde-la : si elle change, les liens iCal déjà enregistrés ne peuvent plus être lus (chaque utilisateur devra recoller son lien). `places-nearby` n'a besoin d'aucun secret.
+Garde-la : si elle change, les liens iCal déjà enregistrés ne peuvent plus être lus (chaque utilisateur devra recoller son lien).
+
+Lieux proches (D-051) : une clé **Geoapify** gratuite (plan Free, 3 000 crédits par jour, sans carte bancaire). Sur https://myprojects.geoapify.com : créer un compte, un projet « Project You », copier la clé API du projet. Puis, dans le même fichier :
+
+```bash
+read -rs GEO && echo "GEOAPIFY_API_KEY=$GEO" >> ~/projectyou-fn.env && unset GEO   # coller la clé, rien ne s'affiche
+```
+
+Sans `GEOAPIFY_API_KEY`, `places-nearby` utilise OpenStreetMap (Overpass) seul, comme avant. Aucune clé Google, aucune facturation à activer. Liste des secrets attendus : `supabase/functions/.env.example`.
 
 Côté OpenAI : une clé de **projet** dédiée à Project You, avec une limite de dépense mensuelle dans le tableau de bord OpenAI (Limits). Aucun en-tête d'organisation n'est nécessaire.
 
@@ -188,7 +196,17 @@ Puis, dans l'app connectée : Nutrition → ajouter un repas → photo → « An
 
 **Contrôle de `calendar-feed`** dans l'app connectée : Calendrier → coller un lien iCal (Google Agenda : Paramètres → ton agenda → « Adresse secrète au format iCal ») → « Tester le lien » (nombre d'événements) → « Utiliser ce calendrier » → Programme : les séances évitent les créneaux occupés. Sans `CALENDAR_FEED_KEY`, l'écran dit « pas encore configuré sur le serveur ».
 
-**Contrôle de `places-nearby`** : Lieux → « Chercher autour de moi ». Délai ou service occupé : le message le dit, « Réessayer » relance. Mesurer Overpass depuis ta connexion (16 requêtes polies, villes fixes, aucune position à toi) :
+**Contrôle de `places-nearby`** : d'abord le diagnostic (même jeton que ci-dessus), qui ne renvoie jamais la clé :
+
+```bash
+read -rs TOKEN
+curl -s -H "Authorization: Bearer $TOKEN" https://krcqdrrfnvfpvczxwrmt.supabase.co/functions/v1/places-nearby; echo
+unset TOKEN
+```
+
+Attendu avec la clé : `{"version":"2026-10-26.geoapify","providers":["geoapify","overpass"],"geoapifyConfigured":true,"fallback":"overpass"}`. `geoapifyConfigured:false` : secret absent ou fonction pas redéployée depuis.
+
+Puis Lieux → « Chercher autour de moi » : la source sous la liste dit « Powered by Geoapify · © OpenStreetMap contributors ». Service indisponible, trop de demandes ou limite gratuite du jour atteinte : le message le dit, « Réessayer » relance. Mesurer Overpass (le secours) depuis ta connexion (16 requêtes polies, villes fixes, aucune position à toi) :
 
 ```bash
 node scripts/places/measure-overpass.mjs

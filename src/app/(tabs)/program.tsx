@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { Banner, Card, LoadingScreen, Rationale, Screen, ScreenHeader, Section } from '@/components/ui';
 import { ProgramDayCard, WeekDayRow } from '@/features/program/ProgramDay';
 import { ProgramVersionCard } from '@/features/program/ProgramVersionCard';
+import { ScheduleWarnings } from '@/features/program/ScheduleWarnings';
 import { useProgramWeek } from '@/features/program/useProgramWeek';
 import { WeekStrip } from '@/features/program/WeekStrip';
 import { usePlan } from '@/hooks/usePlan';
@@ -33,9 +34,7 @@ export default function ProgramScreen() {
         {selected ? <WeekStrip days={week.days} selected={selected.date} onSelect={setPicked} /> : null}
       </View>
       {week.lightWeek ? <Banner tone="primary" message={t('program.adapted.light_week')} /> : null}
-      {plan.schedule.warnings.map((w) => (
-        <Banner key={w} message={t(`program.warnings.${w}`)} />
-      ))}
+      <ScheduleWarnings warnings={plan.schedule.warnings} />
       {selected ? <ProgramDayCard day={selected} /> : null}
 
       {training.length > 0 ? (

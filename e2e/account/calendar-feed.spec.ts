@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { SCENARIOS } from '../../src/domain/scenarios';
+import { SCENARIOS, scenario } from '../../src/domain/scenarios';
 import { button, collectErrors, field, seedProfile, text } from '../helpers';
 import { mockAccount, type MockState } from './supabase-mock';
 
@@ -124,4 +124,45 @@ test('each problem with a link is said plainly, and nothing is kept', async ({ p
   // Manual availability stays reachable whatever happens to the link.
   await button(page, 'Modifier mes disponibilités').click();
   await expect(page).toHaveURL(/\/settings\/schedule$/);
+});
+
+// Classes Monday to Friday, 08:00–12:00 and 14:00–17:00 Paris time (UTC+2): busy ranges only.
+const CLASSES = ['2026-09-28', '2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02'].flatMap((d) => [
+  { start: `${d}T06:00:00.000Z`, end: `${d}T10:00:00.000Z`, allDay: false },
+  { start: `${d}T12:00:00.000Z`, end: `${d}T15:00:00.000Z`, allDay: false },
+]);
+const minutes = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+
+test('no availability entered: the calendar gives real times between the events (D-050)', async ({ page }) => {
+  const errors = collectErrors(page);
+  const state: MockState = { feed: null, calls: [], busy: CLASSES };
+  await mockAccount(page, state);
+  await seedProfile(page, scenario({ schedule: { availability: [], fixedConstraints: [] } }));
+  await page.clock.setFixedTime(MONDAY);
+
+  // Before: days only, no hour is invented.
+  await page.goto('/program');
+  await expect(text(page, 'Ton programme')).toBeVisible();
+  await expect(page.getByText(/^\d{2}:\d{2} · /).filter({ visible: true })).toHaveCount(0);
+
+  await page.goto('/calendar');
+  await field(page, 'Lien iCal (https ou webcal)').fill(LINK);
+  await button(page, 'Tester le lien').click();
+  await button(page, 'Utiliser ce calendrier').click();
+  await expect(text(page, 'PROJECT YOU utilise les créneaux libres entre tes événements pour placer tes séances.')).toBeVisible();
+  await expect(text(page, 'Cette semaine : 3 séances placées entre tes événements.')).toBeVisible();
+
+  // Programme: each session has a start time, at the gym, outside the classes with its travel.
+  await page.goto('/program');
+  const lines = page.getByText(/^\d{2}:\d{2} · .+ · Salle$/).filter({ visible: true });
+  await expect(lines.first()).toBeVisible();
+  for (const line of await lines.allTextContents()) {
+    const start = minutes(line);
+    expect(start - 10).toBeGreaterThanOrEqual(minutes('07:00'));
+    // Weekdays: 12:00–14:00 or after 17:00 (60 min + 10 min travel each way).
+    const lunch = start >= minutes('12:10') && start + 70 <= minutes('14:00');
+    const evening = start >= minutes('17:10') && start + 70 <= minutes('22:00');
+    expect(lunch || evening).toBe(true);
+  }
+  expect(errors).toEqual([]);
 });

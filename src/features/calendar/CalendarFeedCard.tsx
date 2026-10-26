@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
@@ -6,13 +7,15 @@ import { toIsoDate } from '@/domain/shared/dates';
 import { formatDate } from '@/lib/format';
 import { spacing } from '@/theme';
 
+import type { PlacementSummary } from '@/features/program/scheduleView';
+
 import type { CalendarFeedModel } from './useCalendarFeed';
 
 /**
  * "Ajouter un calendrier iCal" (D-049): paste, test (with the count of events found), use; then
  * refresh, switch off or delete. Says plainly that only busy times are used.
  */
-export function CalendarFeedCard({ feed }: { feed: CalendarFeedModel }) {
+export function CalendarFeedCard({ feed, week }: { feed: CalendarFeedModel; week?: PlacementSummary | null }) {
   const { t, i18n } = useTranslation();
   const { link, phase, tested, issue } = feed;
   const busy = phase !== 'idle';
@@ -44,6 +47,7 @@ export function CalendarFeedCard({ feed }: { feed: CalendarFeedModel }) {
             ? t('calendar.feed.synced', { date: date(link.syncedAt), count: link.eventCount })
             : t('calendar.feed.neverSynced')}
         </Text>
+        {link.enabled ? <WeekPlacement week={week ?? null} /> : null}
         {link.issue || issue ? (
           <Notice tone="caution" role="alert" message={t(`calendar.feed.issue.${issue ?? link.issue}`)} />
         ) : null}
@@ -122,6 +126,36 @@ export function CalendarFeedCard({ feed }: { feed: CalendarFeedModel }) {
         {t('calendar.feed.privacy')}
       </Text>
     </Card>
+  );
+}
+
+/** What the link does to this week's sessions (D-050): never an hour the planner did not find. */
+function WeekPlacement({ week }: { week: PlacementSummary | null }) {
+  const { t } = useTranslation();
+  return (
+    <>
+      <Text color="textSecondary">{t('calendar.feed.usesGaps')}</Text>
+      {week?.kind === 'placed' ? (
+        <Text variant="caption" color="textMuted">
+          {t('calendar.feed.week.placed', { count: week.count })}
+        </Text>
+      ) : null}
+      {week?.kind === 'partial' ? (
+        <Text variant="caption" color="textMuted">
+          {t('calendar.feed.week.partial', { placed: week.placed, requested: week.requested })}
+        </Text>
+      ) : null}
+      {week?.kind === 'none' ? (
+        <Notice tone="info" message={t('calendar.feed.week.none')}>
+          <Button
+            compact
+            variant="secondary"
+            label={t('program.changeDuration')}
+            onPress={() => router.push('/settings/training')}
+          />
+        </Notice>
+      ) : null}
+    </>
   );
 }
 

@@ -1,7 +1,10 @@
 // Supabase Edge Function (Deno). Deploy: `supabase functions deploy places-nearby` (JWT required).
-// No secret. Nothing about the request (position, query) is logged.
+// Optional secret GEOAPIFY_API_KEY (D-051): Geoapify first, Overpass as fallback; without it,
+// Overpass only. The key stays on the server: never logged, never returned, never sent to the app.
+// Nothing about the request (position, query) is logged.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
+import { callGeoapify, geoapifyUrl } from './geoapify.ts';
 import { callOverpass, handlePlacesNearby, type PlacesBody } from './handler.ts';
 
 const env = (name: string) => Deno.env.get(name) || undefined;
@@ -47,12 +50,19 @@ Deno.serve(async (req: Request) => {
       status: 503,
       headers: { ...cors, 'Content-Type': 'application/json' },
     });
-  const body = await req.json().catch(() => null);
+  const body = req.method === 'POST' ? await req.json().catch(() => null) : null;
+  const geoapifyKey = env('GEOAPIFY_API_KEY');
   const result = await handlePlacesNearby(
     { method: req.method, authorization: req.headers.get('Authorization'), body },
     {
       getUserId: async (token) => (await client.auth.getUser(token)).data.user?.id ?? null,
       overpass: (query) => callOverpass(query, { userAgent: USER_AGENT }),
+      ...(geoapifyKey
+        ? {
+            geoapify: (kind, at, radius, lang) =>
+              callGeoapify(geoapifyUrl(kind, at, radius, geoapifyKey, lang), kind, at),
+          }
+        : {}),
       allow: async (userId) => {
         const now = Date.now();
         const recent = (calls.get(userId) ?? []).filter((t) => now - t < WINDOW_MS);

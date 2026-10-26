@@ -28,6 +28,7 @@ describe('places-nearby handler', () => {
       lat: 48.857,
       lng: 2.352,
       radius: 5000,
+      lang: 'fr',
     });
     expect(readPlacesRequest({ kind: 'bar', lat: 1, lng: 1 })).toBeNull();
     expect(readPlacesRequest({ kind: 'gym', lat: 91, lng: 1 })).toBeNull();
@@ -62,6 +63,7 @@ describe('places-nearby handler', () => {
     expect(first).toEqual({
       status: 200,
       body: {
+        provider: 'overpass',
         elements: [{ type: 'node', id: 1, lat: 1, lon: 2, center: undefined, tags: { name: 'x' } }],
         source: 'overpass-api.de',
       },

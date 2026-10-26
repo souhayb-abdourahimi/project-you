@@ -797,3 +797,26 @@ Souhayb a validé Aujourd'hui (passe 3.1) et demandé deux micro-corrections (3.
 - **Confidentialité.** Export : la ligne sans le lien scellé. Suppression : bouton dédié, réinitialisation locale, suppression du compte (cascade).
 - **À faire par le propriétaire** : coller `20261026000001_calendar_feeds.sql`, poser `CALENDAR_FEED_KEY`, déployer `calendar-feed` (docs/RELEASE_RUNBOOK.md).
 - **Date** : 2026-10-26
+
+## D-050 — Lien iCal : les séances vont dans les vrais trous du calendrier (2026-10-26)
+
+- **Problème.** Avec un lien iCal chargé mais aucune disponibilité saisie, le moteur passait en répartition par défaut (`DEFAULT_SPREAD`) et affichait des séances **sans heure** : le calendrier ne servait à rien.
+- **Décision.** `effectiveAvailability` (pure) : disponibilités saisies → elles, toujours prioritaires ; aucune saisie et un calendrier actif → fenêtre automatique 07:00–22:00 chaque jour ; ni l'un ni l'autre → l'ancien repli sans heure. Le profil n'est jamais modifié pour y écrire cette fenêtre. Les plages occupées (horaires seulement, jamais de titre) sont soustraites.
+- **Choix du trou.** Salle avec trajet aller-retour et durée complète > maison > séance courte, puis le trou le plus confortable (marge plafonnée à 30 min), puis le plus tôt ; jours consécutifs pénalisés ; déterministe. Fenêtre automatique : séance au milieu du trou (arrondi 5 min), trajets inclus dans le trou ; disponibilités saisies : au début, comme avant. Aucun trou assez long → `no_free_slot`, aucune heure inventée, Programme propose de modifier les disponibilités ou la durée.
+- **Affichage.** Aujourd'hui et Programme mettent l'heure en premier (« 17:30 · Haut du corps · ≈ 39 min · Salle ») quand le moteur en a trouvé une. Carte iCal : « PROJECT YOU utilise les créneaux libres entre tes événements pour placer tes séances. » et le bilan de la semaine.
+- **Date** : 2026-10-26
+
+## D-051 — Lieux proches : Geoapify d'abord, OpenStreetMap en secours, aucune facturation (2026-10-26)
+
+- **Problème.** Les instances Overpass publiques sont saturées (D-048 : 15 délais sur 16). Google Places est exclu : le propriétaire refuse toute activation de facturation.
+- **Décision.** Geoapify Places (plan Free, 3 000 crédits par jour, sans carte) devient la source principale, **uniquement via `places-nearby`** avec le secret serveur `GEOAPIFY_API_KEY`. Overpass reste le secours de dernier recours et la seule source sans clé ou en mode local. Une requête Geoapify, puis au plus un appel Overpass, jamais de boucle. Catégories prises dans la spécification Geoapify (voir DATA_SOURCES.md), 20 lieux par recherche (1 crédit), cache 10 min, position arrondie ~100 m jamais stockée ni journalisée. Rien d'inventé : pas d'horaires, de note ni d'équipement que la source n'a pas.
+- **Erreurs.** Messages génériques qui ne nomment plus OpenStreetMap : hors ligne, service momentanément indisponible, trop de demandes, limite gratuite du jour, position refusée, aucun résultat.
+- **Carte.** « Voir sur la carte » sans clé : Plans sur iPhone (app et PWA via maps.apple.com), lien `geo:` sur Android, openstreetmap.org ailleurs et en secours.
+- **Diagnostic.** GET authentifié sur `places-nearby` : version, fournisseurs, `geoapifyConfigured`, secours ; jamais la clé.
+- **Date** : 2026-10-26
+
+## D-052 — Après connexion, le profil du serveur décide ; jamais un onboarding deviné (2026-10-26)
+
+- **Bug.** PWA supprimée puis réinstallée, connexion à un compte existant : l'onboarding recommençait. Cause : `useSyncStatus.initialPullDone` passait à `true` dans l'état déconnecté et n'était jamais remis à `false` quand une session apparaissait ; l'écran des onglets voyait « session, pas de profil, premier pull fait » avant même que le pull du compte commence, et redirigeait vers `/onboarding`.
+- **Décision.** `profileGate` (pure) : connecté, rien n'est décidé tant que les données de l'appareil n'appartiennent pas au compte courant (`useDataStore.ownerId`) ; « pas de profil » seulement après un pull **de ce compte** qui a atteint le serveur (`firstPull` porte l'identifiant du compte, remis à zéro à chaque connexion). Premier pull impossible (hors ligne) : écran « Ton profil arrive » avec Réessayer, jamais l'onboarding. Aucun drapeau `onboardingComplete` séparé : le profil serveur (`profiles`, `goals`, `motivations`, `user_preferences`) reste la seule source. Changement de compte : le profil du compte précédent n'est jamais affiché.
+- **Date** : 2026-10-26

@@ -91,9 +91,11 @@ export function useSync() {
   useEffect(() => {
     const status = useSyncStatus.getState();
     if (!supabase || !userId) {
-      status.set({ phase: 'idle', initialPullDone: !userId });
+      status.set({ phase: 'idle', firstPull: null });
       return;
     }
+    // A new account: nothing is known about its profile until one of its own rounds ends.
+    status.set({ phase: 'syncing', firstPull: null });
     const client = supabase;
     const remote: SyncClient = {
       select: async (table: SyncTable, since) =>
@@ -121,20 +123,31 @@ export function useSync() {
         // The account's data wins only until a first round actually reached the server.
         if (!result.offline) claim = false;
         if (!cancelled) {
+          const firstPull = useSyncStatus.getState().firstPull;
           useSyncStatus.getState().set({
+            // Once reached, it stays reached for this account (a later offline round changes nothing).
+            firstPull:
+              result.pullComplete || firstPull?.userId !== userId
+                ? { userId, outcome: result.pullComplete ? 'reached' : 'unreachable' }
+                : firstPull,
             phase: result.offline
               ? 'offline'
               : result.failed > 0 || result.errors.some((e) => e.kind !== 'invalid_data')
                 ? 'error'
                 : 'idle',
-            initialPullDone: true,
             lastSyncedAt: result.offline ? useSyncStatus.getState().lastSyncedAt : new Date().toISOString(),
             failed: result.failed,
             errors: result.errors,
           });
         }
       } catch {
-        if (!cancelled) useSyncStatus.getState().set({ phase: 'error', initialPullDone: true });
+        if (!cancelled) {
+          const firstPull = useSyncStatus.getState().firstPull;
+          useSyncStatus.getState().set({
+            phase: 'error',
+            firstPull: firstPull?.userId === userId ? firstPull : { userId, outcome: 'unreachable' },
+          });
+        }
       } finally {
         running = false;
       }
